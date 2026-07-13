@@ -67,14 +67,20 @@ Ischys/
 
 ## Build & run
 
+Ischys isn't on the App Store yet, so building from source is the only way to run
+it today. You'll need **macOS with Xcode** (for the iOS build) and a free Apple
+developer account to sign it onto your own device.
+
 ```bash
 cd frontend
 npm install
-npx expo run:ios        # build + run on a connected device / simulator
+npx expo run:ios --device   # build + install on a connected iPhone
+# or drop --device to run in the iOS Simulator
 ```
 
-`npm run typecheck` and `npm test` (pure-logic unit tests, run in both UTC and a
-non-UTC timezone) gate every change.
+The app opens straight to your training — there's no server to point at and no
+sign-in. `npm run typecheck` and `npm test` (pure-logic unit tests, run in both
+UTC and a non-UTC timezone) gate every change.
 
 ## Licence
 

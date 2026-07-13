@@ -1,0 +1,26 @@
+# Gitleaks config. Extends the default ruleset; only narrows it where the default
+# rule fires on something that is provably not a secret.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public configuration that the generic-api-key rule mistakes for secrets"
+regexTarget = "line"
+regexes = [
+  # The OIDC issuer is a URL, not a credential. The `:9000` port pushes the line
+  # over the generic-api-key entropy threshold.
+  '''ISCHYS_OIDC_ISSUER=''',
+
+  # An EMPTY client secret. The `\s*$` is what makes this safe to allow:
+  # `ISCHYS_OIDC_CLIENT_SECRET=` matches, `ISCHYS_OIDC_CLIENT_SECRET=hunter2` does
+  # not, so committing a real one still fails the scan.
+  #
+  # `(?m)` is load-bearing. Go anchors `$` to end-of-TEXT by default, and gitleaks
+  # hands the allowlist more than one line, so without it the anchor never matched
+  # and this rule did nothing.
+  #
+  # Ischys uses a public PKCE client, so the secret is blank by design (see
+  # core/auth.py: it is only sent when truthy).
+  '''(?m)ISCHYS_OIDC_CLIENT_SECRET=\s*$''',
+]

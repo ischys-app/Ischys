@@ -1,0 +1,8 @@
+{
+  "name": "live-activity",
+  "version": "0.1.0",
+  "description": "Starts, updates and ends the Ischys workout Live Activity.",
+  "main": "index.ts",
+  "license": "MIT",
+  "author": "Ischys"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "health",
+  "version": "0.1.0",
+  "description": "Writes Ischys workouts to Apple Health",
+  "main": "index.ts",
+  "author": "Ischys",
+  "license": "MIT"
+}

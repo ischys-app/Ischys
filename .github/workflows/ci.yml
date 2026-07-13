@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A PR from a fork gets read-only access; nothing here needs more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      # Guards the symlinks that make the widget and the app compile the same
+      # Swift source. A `cp` over one of them reintroduces two copies that drift,
+      # and ActivityKit then fails to match the Activity silently.
+      - name: Live Activity shared sources
+        run: npm run lint:la
+        working-directory: frontend
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+        working-directory: frontend
+
+      # Timestamp handling is timezone-sensitive: the suite must pass somewhere
+      # that is not UTC, or the naive-datetime bug reappears unnoticed.
+      - name: Tests (UTC)
+        run: npm test
+        working-directory: frontend
+        env:
+          TZ: UTC
+
+      - name: Tests (Europe/Athens)
+        run: npm test
+        working-directory: frontend
+        env:
+          TZ: Europe/Athens

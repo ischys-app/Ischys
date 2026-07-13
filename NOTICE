@@ -1,0 +1,28 @@
+Ischys — third-party attributions
+================================
+
+Ischys itself is MIT-licensed (see LICENSE).
+
+Exercise catalog and images
+---------------------------
+
+`frontend/assets/catalog/catalog.json` (the bundled on-device exercise catalog,
+736 exercises) is derived from **free-exercise-db**:
+
+    https://github.com/yuhonas/free-exercise-db
+
+free-exercise-db is released into the public domain under **The Unlicense**.
+No attribution is required; this notice is a courtesy.
+
+Exercise images originate from the same project. The app runs entirely
+on-device, so nothing about which exercises a user views ever leaves their
+phone.
+
+Previously
+----------
+
+Earlier revisions seeded the catalog from **wger** (https://wger.de). wger's
+application is AGPL-3.0-or-later and its exercise data is Creative Commons
+(CC-BY-SA). Redistributing that data inside an MIT repository would not have
+carried the share-alike obligation, so it was removed in favour of a
+public-domain source. No wger data remains in this repository.

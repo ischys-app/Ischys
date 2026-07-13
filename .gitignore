@@ -1,0 +1,23 @@
+# --- Secrets & local data (never commit) ---
+.env
+.env.local
+*.db
+
+# --- Node / Expo (frontend) ---
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.log
+.metro-health-check*
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Claude Code / harness state (never published) ---
+**/.claude/
+**/.mcp.json

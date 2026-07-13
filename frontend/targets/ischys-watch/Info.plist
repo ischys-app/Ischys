@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- HealthKit force-crashes an app that touches health data without these.
+         The Watch reads heart rate and writes the workout session, so it needs
+         both. Merged with the keys GENERATE_INFOPLIST_FILE produces. -->
+    <key>NSHealthShareUsageDescription</key>
+    <string>Ischys reads your heart rate during a workout to show it live and save it with the session.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Ischys records your workout to Apple Health so it appears in Fitness.</string>
+    <!-- Lets the Watch app run an HKWorkoutSession in the background AND be
+         launched into a workout by the phone (startWatchApp). Without it, a
+         phone-initiated start can't begin the session, so watchOS falls back to
+         an "Open on iPhone" Handoff card instead of running our app. -->
+    <key>WKBackgroundModes</key>
+    <array>
+      <string>workout-processing</string>
+    </array>
+  </dict>
+</plist>

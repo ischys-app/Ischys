@@ -10,7 +10,7 @@
     "backgroundColor": "#0A0A0B",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "app.ischys.mobile",
       "appleTeamId": "L3T79ZQ685",
       "buildNumber": "2",

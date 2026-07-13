@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Ischys",
+    "slug": "ischys",
+    "scheme": "ischys",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0A0B",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.ischys.mobile",
+      "appleTeamId": "L3T79ZQ685",
+      "buildNumber": "2",
+      "infoPlist": {
+        "NSSupportsLiveActivities": true,
+        "NSHealthShareUsageDescription": "Ischys reads your heart rate during a workout when an Apple Watch is recording it.",
+        "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness."
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.app.ischys.mobile"
+        ],
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
+      }
+    },
+    "android": {
+      "package": "app.ischys.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0B",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@bacons/apple-targets",
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      "expo-video",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0A0A0B",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0A0A0B"
+          }
+        }
+      ],
+      "expo-sqlite"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

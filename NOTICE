@@ -1,0 +1,41 @@
+Ischys — third-party attributions
+================================
+
+Ischys itself is MIT-licensed (see LICENSE).
+
+Exercise catalog
+----------------
+
+`frontend/assets/catalog/catalog.json` (the bundled on-device exercise catalog,
+736 exercises — names, muscles, categories, and how-to instruction text) is
+derived from **free-exercise-db**:
+
+    https://github.com/yuhonas/free-exercise-db
+
+free-exercise-db is released into the public domain under **The Unlicense**.
+No attribution is required; this notice is a courtesy. Only catalog metadata and
+instruction text are bundled — no exercise images ship with the app.
+
+Fonts
+-----
+
+The Live Activity widget bundles two typefaces, both licensed under the
+**SIL Open Font License, Version 1.1** (full text alongside the font files in
+`frontend/targets/ischys-widget/assets/`):
+
+    Space Grotesk  — Copyright 2020 The Space Grotesk Project Authors
+                     https://github.com/floriankarsten/space-grotesk
+                     SpaceGrotesk-OFL.txt
+
+    JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors
+                     https://github.com/JetBrains/JetBrainsMono
+                     JetBrainsMono-OFL.txt
+
+Previously
+----------
+
+Earlier revisions seeded the catalog from **wger** (https://wger.de). wger's
+application is AGPL-3.0-or-later and its exercise data is Creative Commons
+(CC-BY-SA). Redistributing that data inside an MIT repository would not have
+carried the share-alike obligation, so it was removed in favour of a
+public-domain source. No wger data remains in this repository.

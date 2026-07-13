@@ -1,0 +1,21 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // Let source modules import siblings with an explicit .ts extension, matching
+    // what `node --test` (type-stripping) requires — so a node-tested pure module
+    // can compose others instead of inlining them. tsc is typecheck-only here
+    // (Metro does the bundling), so noEmit satisfies the flag's requirement.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts"
+  ]
+}

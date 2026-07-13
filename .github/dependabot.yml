@@ -1,0 +1,17 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Expo/React Native move as a unit; separate PRs just conflict with each other.
+      expo:
+        patterns: ['expo', 'expo-*', '@expo/*', 'react-native', 'react-native-*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

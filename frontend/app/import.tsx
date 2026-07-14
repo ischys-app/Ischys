@@ -36,15 +36,40 @@ type PickedFile = {
 
 type ParsedCsv = {
   supported: true;
-  rows: Record<string, string>[];
+  rows?: Record<string, string>[];
   workouts: number;
   exercises: number;
   sets: number;
-  cardioSkipped: number;
+  cardioSkipped?: number;
   firstWorkouts: { name: string; count: number }[];
 };
 
 type ParsePayload = ParsedCsv | { supported: false };
+
+/** Preview summary for an Ischys JSON backup. */
+function summarizeJson(text: string): ParsePayload {
+  try {
+    const data = JSON.parse(text);
+    const wk = Array.isArray(data?.workouts) ? data.workouts : null;
+    if (!wk) return { supported: false };
+    const exercises = new Set<string>();
+    let sets = 0;
+    const firstWorkouts: { name: string; count: number }[] = [];
+    for (let i = 0; i < wk.length; i++) {
+      const w = wk[i] ?? {};
+      let count = 0;
+      for (const ex of Array.isArray(w.exercises) ? w.exercises : []) {
+        if (ex?.name) exercises.add(ex.name);
+        count += Array.isArray(ex?.sets) ? ex.sets.length : 0;
+      }
+      sets += count;
+      if (i < 5) firstWorkouts.push({ name: (w.name ?? 'Workout') || 'Workout', count });
+    }
+    return { supported: true, workouts: wk.length, exercises: exercises.size, sets, firstWorkouts };
+  } catch {
+    return { supported: false };
+  }
+}
 
 /** Slim chevron-left glyph matching the header back button in `settings.tsx`. */
 function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
@@ -183,20 +208,22 @@ export default function ImportScreen() {
       setParse(null);
       return;
     }
-    const isCsv =
-      (file.mimeType ?? '').includes('csv') || /\.csv$/i.test(file.name);
-    if (!isCsv) {
-      setParse({ supported: false });
-      return;
-    }
+    const isJson = (file.mimeType ?? '').includes('json') || /\.json$/i.test(file.name);
+    const isCsv = (file.mimeType ?? '').includes('csv') || /\.csv$/i.test(file.name);
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch(file.uri);
         const text = await res.text();
         if (cancelled) return;
-        const rows = parseCsv(text);
-        setParse(summarize(rows));
+        // Sniff by extension/mime, falling back to content (JSON starts with `{`).
+        if (isJson || (!isCsv && text.trimStart().startsWith('{'))) {
+          setParse(summarizeJson(text));
+        } else if (isCsv || text.includes('title')) {
+          setParse(summarize(parseCsv(text)));
+        } else {
+          setParse({ supported: false });
+        }
       } catch {
         if (!cancelled) setParse({ supported: false });
       }
@@ -210,7 +237,7 @@ export default function ImportScreen() {
     setErrorMsg(null);
     try {
       const res = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', '*/*'],
+        type: ['text/csv', 'application/json', '*/*'],
         copyToCacheDirectory: true,
       });
       if (res.canceled) return;
@@ -320,10 +347,10 @@ function FilePickState({
         <View style={styles.dropzoneIconWrap}>
           <UploadIcon size={30} color={color.accent} strokeWidth={2} />
         </View>
-        <Text style={styles.dropzoneTitle}>Choose a Hevy CSV export</Text>
+        <Text style={styles.dropzoneTitle}>Choose an export to import</Text>
         <Text style={styles.dropzoneSub}>
-          Point Ischys at a Hevy CSV export and we&apos;ll map every set into
-          your log.
+          Point Ischys at an Ischys JSON backup or a Hevy CSV export and
+          we&apos;ll load every set into your log.
         </Text>
         <Pressable
           onPress={onPick}
@@ -349,8 +376,9 @@ function FilePickState({
       </View>
 
       <Text style={styles.smallPrint}>
-        Supported today: <Text style={styles.smallPrintStrong}>Hevy CSV</Text>.
-        Cardio-only rows (distance/duration without weight × reps) are skipped.
+        Supported: <Text style={styles.smallPrintStrong}>Ischys JSON</Text> (a
+        full backup) and <Text style={styles.smallPrintStrong}>Hevy CSV</Text>.
+        Cardio-only CSV rows (distance/duration without weight × reps) are skipped.
       </Text>
       {!!errorMsg && (
         <View style={styles.errorBanner}>
@@ -413,7 +441,7 @@ function PreviewState({
 
       {parse && !parse.supported && (
         <Text style={styles.parseHint}>
-          This doesn&apos;t look like a Hevy CSV. Export your workouts as CSV and try again.
+          This doesn&apos;t look like an Ischys JSON backup or a Hevy CSV. Pick one of those and try again.
         </Text>
       )}
 
@@ -425,7 +453,7 @@ function PreviewState({
               <StatCell label="EXERCISES" value={parse.exercises} />
               <StatCell label="SETS" value={parse.sets} />
             </View>
-            {parse.cardioSkipped > 0 && (
+            {(parse.cardioSkipped ?? 0) > 0 && (
               <Text style={styles.cardioSkip}>
                 {parse.cardioSkipped} rows will be skipped (cardio / rest-only)
               </Text>

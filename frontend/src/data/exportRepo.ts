@@ -12,6 +12,7 @@ import type { ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
 import { toHevyCsv, parseHevy, type ExportWorkout } from './hevyCsv';
+import { parseServerDate } from '../lib/serverTime';
 import { initialsOf } from './exercisesRepo';
 import { recomputeForExercise } from './recordStore';
 
@@ -95,8 +96,20 @@ async function findOrCreateExercise(
   return { id, created: true };
 }
 
+/**
+ * Import a file — an Ischys JSON backup (full fidelity: notes, supersets, PR
+ * flags) or a Hevy CSV. Sniffs the format so the caller doesn't have to.
+ */
 export async function importFile(file: { uri: string; name: string; mimeType?: string }): Promise<ImportResult> {
   const text = await readAsStringAsync(file.uri);
+  const looksJson =
+    text.trimStart().startsWith('{') ||
+    /\.json$/i.test(file.name) ||
+    (file.mimeType ?? '').includes('json');
+  return looksJson ? importJsonBackup(text) : importHevyCsv(text);
+}
+
+async function importHevyCsv(text: string): Promise<ImportResult> {
   const parsed = parseHevy(text);
 
   const cache = new Map<string, string>();
@@ -174,6 +187,143 @@ export async function importFile(file: { uri: string; name: string; mimeType?: s
     exercises_created: exercisesCreated,
     sets_imported: setsImported,
     rows_skipped: parsed.rowsSkipped,
+    warnings,
+  };
+}
+
+type JsonSet = { type?: string; weight_kg?: number | null; reps?: number | null; done?: boolean; is_pr?: boolean };
+type JsonExercise = { name?: string; note?: string | null; superset_group?: number | null; sets?: JsonSet[] };
+type JsonWorkout = {
+  name?: string;
+  started_at?: string;
+  ended_at?: string | null;
+  duration_seconds?: number;
+  exercises?: JsonExercise[];
+};
+
+/**
+ * Restore an Ischys JSON backup (the shape `exportData('json')` produces). Unlike
+ * the CSV path this is loss-free — it keeps exercise notes, superset groups, PR
+ * flags, and each workout's exact structure. Idempotent by (name, started_at).
+ */
+async function importJsonBackup(text: string): Promise<ImportResult> {
+  let data: { workouts?: JsonWorkout[] };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('Not a valid Ischys JSON export');
+  }
+  const workoutsIn = Array.isArray(data?.workouts) ? data.workouts : [];
+
+  const cache = new Map<string, string>();
+  let workoutsCreated = 0;
+  let exercisesCreated = 0;
+  let setsImported = 0;
+  let duplicatesSkipped = 0;
+  let workoutsSkipped = 0;
+  const touched = new Set<string>();
+  const warnings: string[] = [];
+
+  const seen = new Set(
+    (await db.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
+      (w) => `${w.name}@@${w.startedAt}`,
+    ),
+  );
+
+  await db.transaction(async (tx) => {
+    for (const w of workoutsIn) {
+      const name = (w.name ?? '').trim() || 'Workout';
+      const startedAt = parseServerDate(w.started_at ?? '');
+      if (Number.isNaN(startedAt)) {
+        workoutsSkipped++;
+        continue;
+      }
+      const key = `${name}@@${startedAt}`;
+      if (seen.has(key)) {
+        duplicatesSkipped++;
+        continue;
+      }
+      seen.add(key);
+
+      const endedRaw = w.ended_at ? parseServerDate(w.ended_at) : NaN;
+      const endedAt = Number.isNaN(endedRaw) ? startedAt : endedRaw;
+      const wid = newId();
+      await tx.insert(schema.workouts).values({
+        id: wid,
+        userId: LOCAL_USER_ID,
+        name,
+        status: 'completed',
+        startedAt,
+        endedAt,
+        durationSeconds: w.duration_seconds ?? Math.max(0, Math.floor((endedAt - startedAt) / 1000)),
+        updatedAt: nowMs(),
+      });
+
+      const allSets: SetLike[] = [];
+      const exs = Array.isArray(w.exercises) ? w.exercises : [];
+      for (let p = 0; p < exs.length; p++) {
+        const pe = exs[p];
+        const exName = (pe.name ?? '').trim();
+        if (!exName) continue;
+        const { id: exId, created } = await findOrCreateExercise(exName, cache, tx);
+        if (created) exercisesCreated++;
+        touched.add(exId);
+        const weId = newId();
+        await tx.insert(schema.workoutExercises).values({
+          id: weId,
+          workoutId: wid,
+          exerciseId: exId,
+          position: p,
+          restSeconds: 120,
+          note: pe.note ?? null,
+          supersetGroup: pe.superset_group ?? null,
+          updatedAt: nowMs(),
+        });
+        const psets = Array.isArray(pe.sets) ? pe.sets : [];
+        for (let j = 0; j < psets.length; j++) {
+          const ps = psets[j];
+          const done = ps.done !== false; // exported workouts are completed
+          const type = (ps.type as SetType) ?? 'normal';
+          const weight = ps.weight_kg ?? null;
+          const reps = ps.reps ?? null;
+          await tx.insert(schema.workoutSets).values({
+            id: newId(),
+            workoutExerciseId: weId,
+            position: j,
+            type,
+            weight,
+            reps,
+            done: done ? 1 : 0,
+            isPr: ps.is_pr ? 1 : 0,
+            completedAt: done ? startedAt : null,
+            updatedAt: nowMs(),
+          });
+          allSets.push({ type, weight, reps, done });
+          setsImported++;
+        }
+      }
+      await tx
+        .update(schema.workouts)
+        .set({ totalVolume: workoutVolume(allSets), totalSets: countWorkingSets(allSets), updatedAt: nowMs() })
+        .where(eq(schema.workouts.id, wid));
+      workoutsCreated++;
+    }
+
+    for (const exId of touched) await recomputeForExercise(exId, tx);
+  });
+
+  if (duplicatesSkipped > 0) {
+    warnings.push(`${duplicatesSkipped} workout${duplicatesSkipped === 1 ? '' : 's'} already imported, skipped`);
+  }
+  if (workoutsSkipped > 0) {
+    warnings.push(`${workoutsSkipped} workout${workoutsSkipped === 1 ? '' : 's'} skipped (no valid date)`);
+  }
+
+  return {
+    workouts_created: workoutsCreated,
+    exercises_created: exercisesCreated,
+    sets_imported: setsImported,
+    rows_skipped: 0,
     warnings,
   };
 }

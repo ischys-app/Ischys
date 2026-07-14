@@ -50,6 +50,9 @@ import { parseServerDate } from '../../src/lib/serverTime';
 import {
   forgetActiveWorkout,
   rememberActiveWorkout,
+  rememberRest,
+  recallRest,
+  forgetRest,
 } from '../../src/lib/activeWorkout';
 import { onRestAction, onWorkoutChanged, type RestAction } from '../../src/lib/liveActivityBridge';
 import type { ExerciseOut } from '../../src/api/types';
@@ -213,6 +216,14 @@ export default function ActiveWorkout() {
       setStartedAt(parseServerDate(w.started_at));
       setElapsed(w.duration_seconds);
       setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i])));
+      // Restore an in-flight rest countdown if the app was killed mid-rest.
+      const savedRest = recallRest(w.id);
+      if (savedRest) {
+        setRestTotal(savedRest.total);
+        setRestEndsAt(savedRest.endsAt);
+        setRestStartedAt(savedRest.endsAt - savedRest.total * 1000);
+        setRestRemaining(restRemainingSeconds(savedRest.endsAt, Date.now()));
+      }
       setLoading(false);
     })();
     return () => {
@@ -363,6 +374,14 @@ export default function ActiveWorkout() {
       setRestEndsAt(null);
     }
   }, [restRemaining, restEndsAt]);
+
+  // Persist the in-flight rest so a mid-rest app *kill* (not just background)
+  // can restore the countdown on reopen — it lives only in component state.
+  useEffect(() => {
+    if (!persist || !workoutId) return;
+    if (restEndsAt != null) rememberRest(workoutId, restEndsAt, restTotal);
+    else forgetRest();
+  }, [persist, workoutId, restEndsAt, restTotal]);
 
   // The Lock Screen card. Memoised on the state it actually shows, so the 1 Hz
   // tick cannot push an ActivityKit update every second — the widget's own
@@ -820,6 +839,11 @@ export default function ActiveWorkout() {
         break;
       case 'addSet':
         if (st) addSet(st.currentExerciseId);
+        break;
+      case 'requestState':
+        // The Watch just entered its session and wants the current state — push it
+        // so it fills in from defaults immediately.
+        if (!isDemo && st) pushWatchState(st);
         break;
       default:
         break; // startEmpty / startRoutine only apply before a workout exists

@@ -286,7 +286,18 @@ export async function addWorkoutExercise(
   },
 ): Promise<WorkoutExerciseOut> {
   const weId = newId();
-  const sets = body.sets ?? [];
+  let sets = body.sets;
+  // No explicit sets: prefill from this exercise's last completed session (the
+  // same carry-forward a routine gives), so re-adding an exercise you've done
+  // shows your latest weights/reps instead of coming in blank. Fall back to a
+  // single empty set when there's no history.
+  if (!sets) {
+    const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, workoutId)))[0];
+    const prev = await previousSets(body.exercise_id, w ? w.startedAt : nowMs());
+    sets = prev.length
+      ? prev.map((s) => ({ type: s.type as SetType, weight: s.weight, reps: s.reps, done: false }))
+      : [{ type: 'normal' as SetType, done: false }];
+  }
   // Position read + inserts atomic: two rapid adds must not read the same
   // position and collide, and the exercise's sets must land as one unit.
   await db.transaction(async (tx) => {

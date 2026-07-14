@@ -37,3 +37,35 @@ export function recallActiveWorkout(): string | null {
     return null;
   }
 }
+
+// --- In-flight rest timer, so a mid-rest app kill doesn't lose the countdown ---
+const REST_KEY = 'ischys.activeRest';
+
+export function rememberRest(workoutId: string, endsAt: number, total: number): void {
+  try {
+    SecureStore.setItem(REST_KEY, JSON.stringify({ workoutId, endsAt, total }));
+  } catch {
+    // storage unavailable — the rest bar just won't survive a kill
+  }
+}
+
+export function forgetRest(): void {
+  try {
+    SecureStore.deleteItemAsync(REST_KEY).catch(() => {});
+  } catch {
+    // as above
+  }
+}
+
+/** Restore in-flight rest for this workout, if it belongs to it and hasn't ended. */
+export function recallRest(workoutId: string): { endsAt: number; total: number } | null {
+  try {
+    const raw = SecureStore.getItem(REST_KEY);
+    if (!raw) return null;
+    const r = JSON.parse(raw) as { workoutId?: string; endsAt?: number; total?: number };
+    if (r.workoutId !== workoutId || typeof r.endsAt !== 'number' || r.endsAt <= Date.now()) return null;
+    return { endsAt: r.endsAt, total: typeof r.total === 'number' ? r.total : 0 };
+  } catch {
+    return null;
+  }
+}

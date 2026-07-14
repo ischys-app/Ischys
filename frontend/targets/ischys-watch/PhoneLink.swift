@@ -118,6 +118,10 @@ final class PhoneLink: NSObject, WCSessionDelegate {
   func addSet() { send(["action": "addSet"]) }
   func startEmpty() { send(["action": "startEmpty"]) }
   func startRoutine(_ id: String) { send(["action": "startRoutine", "routineId": id]) }
+  /// Ask the phone to (re)push the current workout state — closes the race where
+  /// our session screen appears before the phone's first state push lands, which
+  /// left the Watch showing empty defaults (0 reps, set 1 of 1).
+  func requestState() { send(["action": "requestState"]) }
 
   /// Live sensor metrics, pushed frequently. Sent live when the phone app is
   /// reachable; otherwise coalesced into the application context so the newest HR

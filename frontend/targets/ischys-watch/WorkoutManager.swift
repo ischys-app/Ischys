@@ -70,6 +70,9 @@ final class WorkoutManager: NSObject, ObservableObject {
         // The phone's pushes still fill in the exercise/set detail.
         WorkoutModel.shared.screen = .session
         WorkoutModel.shared.startTicking(sessionStart: start)
+        // Pull the phone's current workout state so the session screen isn't left
+        // showing empty defaults if the phone's first push was missed.
+        PhoneLink.shared.requestState()
       }
     } catch {
       // A session that can't start leaves isRunning false; the UI shows Start.

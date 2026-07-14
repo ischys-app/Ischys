@@ -97,7 +97,8 @@ export type WatchAction =
   | { action: 'discard' }
   | { action: 'addSet' }
   | { action: 'startEmpty' }
-  | { action: 'startRoutine'; routineId: string };
+  | { action: 'startRoutine'; routineId: string }
+  | { action: 'requestState' };
 
 /** The workout state pushed to the Watch. Mirrors PhoneState in the watch target. */
 export type WatchState = Record<string, unknown>;

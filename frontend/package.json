@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@bacons/apple-targets": "^4.0.7",
+    "@bacons/apple-targets": "^5.0.0",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo-google-fonts/space-grotesk": "^0.4.1",
     "babel-preset-expo": "~57.0.0",

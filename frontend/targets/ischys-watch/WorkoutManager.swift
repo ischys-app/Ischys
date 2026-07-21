@@ -148,7 +148,13 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
       if shouldDiscard {
         self.builder?.discardWorkout()
       } else {
-        self.builder?.finishWorkout { _, _ in }
+        self.builder?.finishWorkout { workout, _ in
+          // Confirm the save to the phone so it doesn't write a duplicate. If
+          // this never arrives — the save failed, auth was missing, we crashed —
+          // the phone times out waiting and writes the workout itself, so a
+          // finished workout is never silently lost.
+          if workout != nil { PhoneLink.shared.workoutSaved() }
+        }
       }
     }
     sessionStart = nil

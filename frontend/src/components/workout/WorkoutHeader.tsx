@@ -19,6 +19,8 @@ type Props = {
   onDiscard?: () => void;
   /** Live heart-rate BPM; when supplied renders the HR chip before Finish. */
   heartRate?: number | null;
+  /** Live active energy (kcal) a Watch is burning; renders a chip beside HR. */
+  activeCal?: number | null;
 };
 
 /** Pulsing heart used inside the HR overlay. Scale 1 → 1.28 → 1 over 1s loop. */
@@ -63,6 +65,7 @@ export function WorkoutHeader({
   onFinish,
   onDiscard,
   heartRate,
+  activeCal,
 }: Props) {
   return (
     <View style={[styles.header, { paddingTop: topInset }]}>
@@ -80,6 +83,12 @@ export function WorkoutHeader({
           <View style={styles.hrChip} accessibilityLabel={`Heart rate ${heartRate} bpm`}>
             <PulsingHeart />
             <Text style={styles.hrValue}>{String(heartRate)}</Text>
+          </View>
+        )}
+        {activeCal != null && activeCal > 0 && (
+          <View style={styles.calChip} accessibilityLabel={`Active energy ${activeCal} calories`}>
+            <Text style={styles.calValue}>{String(activeCal)}</Text>
+            <Text style={styles.calUnit}>cal</Text>
           </View>
         )}
         {onDiscard && (
@@ -178,6 +187,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: color.text1,
     fontVariant: ['tabular-nums'],
+  },
+  calChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 34,
+    paddingHorizontal: 11,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,149,0,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,149,0,0.24)',
+    flexShrink: 0,
+    marginRight: 8,
+  },
+  calValue: {
+    fontFamily: font.monoSemi,
+    fontSize: 13,
+    fontWeight: '600',
+    color: color.text1,
+    fontVariant: ['tabular-nums'],
+  },
+  calUnit: {
+    fontFamily: font.monoSemi,
+    fontSize: 10,
+    color: color.text3,
   },
 
   strip: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },

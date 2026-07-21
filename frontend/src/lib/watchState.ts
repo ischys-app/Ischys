@@ -61,6 +61,13 @@ function locate(exercises: readonly (ExerciseLike & { id: string })[]): Located 
   return null;
 }
 
+/**
+ * Parse a typed weight. `decimal-pad` inserts the locale decimal separator, so a
+ * comma-locale keyboard yields "24,8" — `parseFloat` would stop at the comma and
+ * drop the fraction. Normalise first so the Watch's volume matches the phone's.
+ */
+const parseWeight = (s: string): number => parseFloat(String(s ?? '').replace(',', '.'));
+
 /** Session totals: volume + set counts over done, non-warmup sets. */
 function totals(exercises: readonly (ExerciseLike & { id: string })[]) {
   let volumeKg = 0;
@@ -70,7 +77,7 @@ function totals(exercises: readonly (ExerciseLike & { id: string })[]) {
     for (const s of ex.sets) {
       setsTotal += 1;
       if (s.done && s.type !== 'warmup') {
-        volumeKg += (parseFloat(s.weight) || 0) * (parseFloat(s.reps) || 0);
+        volumeKg += (parseWeight(s.weight) || 0) * (parseFloat(s.reps) || 0);
         setsDone += 1;
       }
     }

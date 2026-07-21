@@ -98,7 +98,9 @@ export type WatchAction =
   | { action: 'addSet' }
   | { action: 'startEmpty' }
   | { action: 'startRoutine'; routineId: string }
-  | { action: 'requestState' };
+  | { action: 'requestState' }
+  /** The Watch confirming it saved this session's HKWorkout (see healthSync). */
+  | { action: 'workoutSaved' };
 
 /** The workout state pushed to the Watch. Mirrors PhoneState in the watch target. */
 export type WatchState = Record<string, unknown>;

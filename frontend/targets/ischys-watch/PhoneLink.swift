@@ -122,6 +122,10 @@ final class PhoneLink: NSObject, WCSessionDelegate {
   /// our session screen appears before the phone's first state push lands, which
   /// left the Watch showing empty defaults (0 reps, set 1 of 1).
   func requestState() { send(["action": "requestState"]) }
+  /// Confirms the Watch saved this session as an HKWorkout, so the phone won't
+  /// write a duplicate. The phone reads the absence of this (a timeout) as "the
+  /// Watch didn't save" and writes the workout itself — no finished workout lost.
+  func workoutSaved() { send(["action": "workoutSaved"]) }
 
   /// Live sensor metrics, pushed frequently. Sent live when the phone app is
   /// reachable; otherwise coalesced into the application context so the newest HR

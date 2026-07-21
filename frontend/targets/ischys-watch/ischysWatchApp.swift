@@ -4,11 +4,21 @@ import SwiftUI
 @main
 struct IschysWatchApp: App {
   @WKApplicationDelegateAdaptor(AppDelegate.self) var delegate
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some Scene {
     WindowGroup {
       RootView()
         .environmentObject(WorkoutModel.shared)
+    }
+    .onChange(of: scenePhase) { _, phase in
+      // Ask for HealthKit access every time we reach the foreground, not only at
+      // launch (see AppDelegate). The phone starts our workout via startWatchApp,
+      // which can launch us in the background — and watchOS suppresses the
+      // permission prompt there. A launch-only request means a user who never
+      // opens the watch app by hand is never asked, so heart rate silently reads
+      // 0 until they dig into Settings. HealthKit ignores the repeat once answered.
+      if phase == .active { WorkoutManager.shared.requestAuthorization() }
     }
   }
 }

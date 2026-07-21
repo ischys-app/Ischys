@@ -292,8 +292,8 @@ function EmptyState({ onStartEmpty }: { onStartEmpty: () => void }) {
       </View>
       <Text style={styles.emptyTitle}>Welcome to Ischys</Text>
       <Text style={styles.emptySub}>
-        Your training log lives on your own server. Build a routine to get started — or jump straight into an empty
-        session.
+        Your training log lives on your device — nothing leaves it. Build a routine to get started, or jump straight
+        into an empty session.
       </Text>
       <View style={styles.emptyButtons}>
         <Pressable

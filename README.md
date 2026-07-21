@@ -4,6 +4,10 @@
 *strength*. Your entire training log lives on **your phone** — no account, no
 server, no cloud. Nothing ever leaves the device.
 
+**[⬇︎ Download on the App Store](https://apps.apple.com/app/id6790443643)** ·
+free · iPhone. Or [build it from source](#build--run) — it's open, MIT-licensed,
+and the whole thing runs on-device either way.
+
 The design is a precision instrument: monochrome, near-black, sharp, and legible
 mid-set with sweaty hands. Big number targets, previous-session references one
 tap away, and the accent colour reserved for a single action — completing a set.
@@ -67,9 +71,10 @@ Ischys/
 
 ## Build & run
 
-Ischys isn't on the App Store yet, so building from source is the only way to run
-it today. You'll need **macOS with Xcode** (for the iOS build) and a free Apple
-developer account to sign it onto your own device.
+Ischys is [on the App Store](https://apps.apple.com/app/id6790443643) (free) if
+you just want to use it. To build it yourself, you'll need **macOS with Xcode**
+(for the iOS build) and a free Apple developer account to sign it onto your own
+device.
 
 ```bash
 cd frontend

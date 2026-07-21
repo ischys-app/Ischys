@@ -97,6 +97,15 @@ const DEFAULT_REST = 120;
 /** Server number → input string ('' for null). */
 const numStr = (n: number | null | undefined) => (n == null ? '' : String(n));
 
+/**
+ * Parse a user-typed weight. `decimal-pad` inserts the device's locale decimal
+ * separator, so on a comma-locale keyboard the field holds "24,8" — and
+ * `parseFloat` stops at the comma and silently drops the fraction (you log 24.8
+ * and see 24 next time). Normalise the comma before parsing. NaN for empty/blank.
+ */
+const parseWeight = (s: string | null | undefined): number =>
+  parseFloat(String(s ?? '').replace(',', '.'));
+
 /** Map a stored WorkoutExerciseOut (+ optional previous-session sets) to the local model. */
 function mapExercise(
   we: WorkoutExerciseOut,
@@ -175,8 +184,11 @@ export default function ActiveWorkout() {
   // an invented number. `subscribeLiveHeartRate` self-gates on the connect +
   // read-HR preferences and is silent otherwise.
   const [heartRate, setHeartRate] = useState<number | null>(null);
-  // True once the Watch streams metrics — it then owns the saved HKWorkout, so
-  // the phone must not write a duplicate on finish.
+  // Live active energy the Watch streams alongside HR (was previously dropped).
+  const [activeCal, setActiveCal] = useState<number | null>(null);
+  // True once the Watch streams metrics — it was then recording, so at finish the
+  // phone lets the Watch be the primary HKWorkout writer and backfills only if the
+  // Watch never confirms the save (see syncFinishedWorkout).
   const watchRecordedRef = useRef(false);
   useEffect(() => {
     if (isDemo) return;
@@ -427,6 +439,26 @@ export default function ActiveWorkout() {
     // it in the deps the card would never start.
   }, [liveActivity, restStartedAt, restEndsAt, startedAt]);
 
+  // Re-show the Live Activity if the user swiped it away. iOS ends a dismissed
+  // card but we still think it runs, so on return to foreground we ask the
+  // native side whether one is actually live and restart it if not — as long as
+  // the workout still has something to show.
+  useEffect(() => {
+    if (!LiveActivity.isSupported()) return;
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      if (!liveActivity || startedAtRef.current == null) return;
+      if (LiveActivity.isActive()) return;
+      const state = {
+        ...liveActivity,
+        restStartedAt: restStartedAt ?? undefined,
+        restEndsAt: restEndsAt ?? undefined,
+      };
+      activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+    });
+    return () => sub.remove();
+  }, [liveActivity, restStartedAt, restEndsAt]);
+
   // Card buttons are drained at the root layout, because an intent can launch
   // the app in the background with this screen unmounted. Sets are written
   // there; here we only mirror rest, which lives in this component's state,
@@ -480,7 +512,7 @@ export default function ActiveWorkout() {
     for (const ex of exercises) {
       for (const s of ex.sets) {
         if (!s.done || s.type === 'warmup') continue;
-        vol += (parseFloat(s.weight) || 0) * (parseFloat(s.reps) || 0);
+        vol += (parseWeight(s.weight) || 0) * (parseFloat(s.reps) || 0);
         count += 1;
       }
     }
@@ -590,7 +622,7 @@ export default function ActiveWorkout() {
     const reps = set.prevReps ?? '';
     patchSet(exId, setId, { weight, reps });
     if (persist) {
-      const w = parseFloat(weight);
+      const w = parseWeight(weight);
       const r = parseInt(reps, 10);
       write(
         patchSetApi(setId, {
@@ -604,7 +636,7 @@ export default function ActiveWorkout() {
   const editWeight = (exId: string, setId: string, text: string) => {
     patchSet(exId, setId, { weight: text });
     if (persist) {
-      const w = parseFloat(text);
+      const w = parseWeight(text);
       debounce(`w:${setId}`, () => patchSetApi(setId, { weight: Number.isNaN(w) ? null : w }));
     }
   };
@@ -756,7 +788,9 @@ export default function ActiveWorkout() {
     stopWatchSession();
     forgetActiveWorkout();
     // Mirror the session to Apple Health (best-effort; never blocks finishing).
-    // `startedAt` is the same stored origin the elapsed clock uses.
+    // `startedAt` is the same stored origin the elapsed clock uses. When the Watch
+    // was recording, this waits briefly for it to confirm its save and writes the
+    // workout itself if it doesn't — so it survives navigating to the summary.
     if (startedAt != null) {
       void syncFinishedWorkout(workoutId, startedAt, Date.now(), watchRecordedRef.current);
     }
@@ -852,9 +886,10 @@ export default function ActiveWorkout() {
 
   useEffect(() => {
     const offAction = onWatchAction((a) => applyWatchAction.current(a));
-    const offMetrics = onWatchMetrics(({ bpm }) => {
+    const offMetrics = onWatchMetrics(({ bpm, cal }) => {
       watchRecordedRef.current = true;
       if (bpm > 0) setHeartRate(bpm);
+      if (cal > 0) setActiveCal(cal);
     });
     return () => {
       offAction();
@@ -883,6 +918,7 @@ export default function ActiveWorkout() {
         onFinish={onFinish}
         onDiscard={onDiscard}
         heartRate={heartRate}
+        activeCal={activeCal}
       />
 
       <KeyboardAvoidingView

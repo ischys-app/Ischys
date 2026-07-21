@@ -48,6 +48,55 @@ export async function connectHealth(): Promise<boolean> {
 /** A pref defaults ON: only an explicit "0" disables it. */
 const prefOn = (v: string | null): boolean => v !== '0';
 
+// How long the phone waits for the Watch to confirm it saved the HKWorkout
+// before writing the workout itself. The confirmation is a WatchConnectivity
+// message — near-instant while the Watch is reachable, which it is right after
+// the user ends — so this only elapses in full when the Watch genuinely did not
+// save. Erring toward writing on timeout risks a rare duplicate but never a
+// lost workout, which is the trade we want.
+const WATCH_SAVE_TIMEOUT_MS = 10_000;
+
+// Epoch ms of the last "Watch saved its HKWorkout" confirmation, plus a hook the
+// active waiter installs so a confirmation wakes it immediately.
+let lastWatchSaveAt = 0;
+let notifyWatchSaved: (() => void) | null = null;
+let watchSaveListening = false;
+
+/** Subscribe once (app-lifetime) to the Watch's save confirmation. */
+function ensureWatchSaveListener(): void {
+  if (watchSaveListening) return;
+  watchSaveListening = true;
+  Health.addWatchActionListener((a) => {
+    if ((a as { action?: string }).action === 'workoutSaved') {
+      lastWatchSaveAt = Date.now();
+      notifyWatchSaved?.();
+    }
+  });
+}
+
+/**
+ * Resolves true once the Watch confirms it saved THIS session's HKWorkout, or
+ * false if no confirmation lands within the timeout. `since` is the instant the
+ * finish began: a confirmation already recorded at/after it — e.g. a
+ * watch-initiated End that saved before the phone processed the intent — counts,
+ * closing the race where the confirmation beats the waiter.
+ */
+function awaitWatchSave(since: number): Promise<boolean> {
+  if (lastWatchSaveAt >= since) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (saved: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (notifyWatchSaved === wake) notifyWatchSaved = null;
+      resolve(saved);
+    };
+    const wake = () => done(true);
+    notifyWatchSaved = wake;
+    setTimeout(() => done(false), WATCH_SAVE_TIMEOUT_MS);
+  });
+}
+
 /**
  * Reconciles a finished workout with Apple Health, if the user connected it.
  * Reads the metrics a Watch recorded for the session, saves the workout (with
@@ -61,12 +110,23 @@ export async function syncFinishedWorkout(
   workoutId: string | null,
   startedAtMs: number,
   endedAtMs: number,
-  /** True when the Watch ran the session — then IT wrote the HKWorkout (with HR
-   *  and energy), so the phone must not write a duplicate. */
-  watchRecorded = false,
+  /** True when an Apple Watch ran the session. It's then the primary writer of
+   *  the HKWorkout (with HR and energy) — but the phone verifies the save and
+   *  writes the workout itself if the Watch never confirms, so a finished workout
+   *  is never silently lost. */
+  watchWasActive = false,
 ): Promise<void> {
   try {
     if (!Health.isAvailable()) return;
+    // Begin listening for the Watch's save confirmation immediately, before any
+    // await, so a fast confirmation can't slip past while we read prefs/metrics.
+    const finishedAt = Date.now();
+    let watchSavePromise: Promise<boolean> = Promise.resolve(false);
+    if (watchWasActive) {
+      ensureWatchSaveListener();
+      watchSavePromise = awaitWatchSave(finishedAt);
+    }
+
     const [connected, writePref, hrPref] = await Promise.all([
       SecureStore.getItemAsync(HEALTH_KEYS.connected),
       SecureStore.getItemAsync(HEALTH_KEYS.writeWorkouts),
@@ -77,9 +137,12 @@ export async function syncFinishedWorkout(
     const metrics = await Health.readWorkoutMetrics(startedAtMs, endedAtMs);
 
     if (prefOn(writePref)) {
-      // The Watch is the sole writer when it recorded; otherwise the phone writes
-      // the (energy-less, HR-less) workout itself.
-      const saved = watchRecorded
+      // The Watch owns the write only when it confirms it saved. If it was
+      // recording but never confirms (auth failure, crash, an odd end), waiting
+      // times out and the phone writes the (energy-less) workout itself rather
+      // than lose it. With no Watch, the phone writes straight away.
+      const watchSaved = await watchSavePromise;
+      const saved = watchSaved
         ? true
         : await Health.saveWorkout(startedAtMs, endedAtMs, metrics.energyKcal ?? 0);
       if (saved) {

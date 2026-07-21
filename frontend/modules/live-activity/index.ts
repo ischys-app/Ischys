@@ -39,6 +39,7 @@ export type LiveActivityAction =
 
 type LiveActivityNativeModule = {
   isSupported(): boolean;
+  isActive(): boolean;
   start(workoutStartedAt: number, state: LiveActivityState): string | null;
   update(state: LiveActivityState): Promise<void>;
   end(): Promise<void>;
@@ -51,6 +52,12 @@ const native = requireOptionalNativeModule<LiveActivityNativeModule>('LiveActivi
 /** Live Activities are iOS-only; every call is a no-op elsewhere. */
 export const isSupported = (): boolean =>
   Platform.OS === 'ios' && !!native && native.isSupported();
+
+/**
+ * Whether a workout card is currently live. False after the user swipes it away,
+ * which is the signal the workout screen uses to re-show it on foreground.
+ */
+export const isActive = (): boolean => (native ? native.isActive() : false);
 
 /**
  * `workoutStartedAt` is epoch milliseconds. The widget renders the header's

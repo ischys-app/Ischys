@@ -33,6 +33,14 @@ public class LiveActivityModule: Module {
       return ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
+    /// Whether a workout Activity is currently live. Goes false when the user
+    /// swipes the card away (ActivityKit drops a dismissed Activity from
+    /// `.activities`), so the app can re-show it on the next foreground.
+    Function("isActive") { () -> Bool in
+      guard #available(iOS 16.1, *) else { return false }
+      return !Activity<WorkoutAttributes>.activities.isEmpty
+    }
+
     Function("start") { (workoutStartedAt: Double, state: [String: Any]) -> String? in
       guard #available(iOS 16.1, *) else { return nil }
       guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }

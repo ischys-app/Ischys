@@ -1,15 +1,15 @@
 /**
- * Pure Hevy-CSV helpers (parse + serialize) — no DB, node --test-runnable.
- * The column set mirrors backend/app/services/export_service.py.
+ * Pure workout-CSV helpers (parse + serialize) — no DB, node --test-runnable.
+ * A flat, one-row-per-set CSV that round-trips a full training history.
  */
-export const HEVY_COLUMNS = [
+export const CSV_COLUMNS = [
   'title', 'start_time', 'end_time', 'description', 'exercise_title', 'superset_id',
   'exercise_notes', 'set_index', 'set_type', 'weight_kg', 'reps',
   'distance_km', 'duration_seconds', 'rpe',
 ] as const;
 
-const HEVY_TYPE: Record<string, string> = { warmup: 'warmup', drop: 'dropset', failure: 'failure', normal: 'normal' };
-const HEVY_TYPE_IN: Record<string, string> = { warmup: 'warmup', dropset: 'drop', failure: 'failure', normal: 'normal' };
+const SET_TYPE_OUT: Record<string, string> = { warmup: 'warmup', drop: 'dropset', failure: 'failure', normal: 'normal' };
+const SET_TYPE_IN: Record<string, string> = { warmup: 'warmup', dropset: 'drop', failure: 'failure', normal: 'normal' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Parse RFC-4180-ish CSV (quoted fields, embedded commas/newlines) into rows. */
@@ -34,8 +34,8 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.length > 1 || (r.length === 1 && r[0] !== ''));
 }
 
-/** Hevy timestamp "10 Jul 2026, 09:00" -> epoch ms (local), or null. */
-export function parseHevyTime(v: string): number | null {
+/** CSV timestamp "10 Jul 2026, 09:00" -> epoch ms (local), or null. */
+export function parseCsvTime(v: string): number | null {
   const m = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4}),\s+(\d{1,2}):(\d{2})/.exec(v.trim());
   if (!m) return null;
   const month = MONTHS.indexOf(m[2]);
@@ -43,7 +43,7 @@ export function parseHevyTime(v: string): number | null {
   return new Date(Number(m[3]), month, Number(m[1]), Number(m[4]), Number(m[5])).getTime();
 }
 
-const fmtHevyTime = (ms: number): string => {
+const fmtCsvTime = (ms: number): string => {
   const d = new Date(ms);
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
@@ -66,17 +66,17 @@ export type ExportWorkout = {
   }[];
 };
 
-/** Serialize workouts to a Hevy-format CSV string. */
-export function toHevyCsv(workouts: ExportWorkout[]): string {
-  const lines = [HEVY_COLUMNS.join(',')];
+/** Serialize workouts to a CSV string. */
+export function toWorkoutCsv(workouts: ExportWorkout[]): string {
+  const lines = [CSV_COLUMNS.join(',')];
   for (const w of workouts) {
-    const start = fmtHevyTime(w.startedAt);
-    const end = w.endedAt === null ? '' : fmtHevyTime(w.endedAt);
+    const start = fmtCsvTime(w.startedAt);
+    const end = w.endedAt === null ? '' : fmtCsvTime(w.endedAt);
     for (const ex of w.exercises) {
       for (const s of ex.sets) {
         lines.push([
           w.name, start, end, w.notes ?? '', ex.name,
-          ex.supersetGroup ?? '', ex.note ?? '', s.position, HEVY_TYPE[s.type] ?? 'normal',
+          ex.supersetGroup ?? '', ex.note ?? '', s.position, SET_TYPE_OUT[s.type] ?? 'normal',
           s.weight ?? '', s.reps ?? '', '', '', '',
         ].map(csvCell).join(','));
       }
@@ -85,7 +85,7 @@ export function toHevyCsv(workouts: ExportWorkout[]): string {
   return lines.join('\n') + '\n';
 }
 
-export type ParsedHevy = {
+export type ParsedWorkoutCsv = {
   workouts: {
     title: string;
     startedAt: number | null;
@@ -98,8 +98,8 @@ export type ParsedHevy = {
   rowsSkipped: number;
 };
 
-/** Parse a Hevy CSV into structured workouts (grouped by title+start_time, then exercise). */
-export function parseHevy(text: string): ParsedHevy {
+/** Parse a workout CSV into structured workouts (grouped by title+start_time, then exercise). */
+export function parseWorkoutCsv(text: string): ParsedWorkoutCsv {
   const rows = parseCsv(text);
   if (rows.length === 0) return { workouts: [], rowsSkipped: 0 };
   const header = rows[0].map((h) => h.trim());
@@ -108,7 +108,7 @@ export function parseHevy(text: string): ParsedHevy {
     title: col('title'), start: col('start_time'), exercise: col('exercise_title'),
     superset: col('superset_id'), type: col('set_type'), weight: col('weight_kg'), reps: col('reps'),
   };
-  const byWorkout = new Map<string, ParsedHevy['workouts'][number]>();
+  const byWorkout = new Map<string, ParsedWorkoutCsv['workouts'][number]>();
   let rowsSkipped = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -119,7 +119,7 @@ export function parseHevy(text: string): ParsedHevy {
     const key = `${title}@@${startRaw}`;
     let w = byWorkout.get(key);
     if (!w) {
-      w = { title, startedAt: parseHevyTime(startRaw), exercises: [] };
+      w = { title, startedAt: parseCsvTime(startRaw), exercises: [] };
       byWorkout.set(key, w);
     }
     const num = (v: string | undefined) => {
@@ -134,7 +134,7 @@ export function parseHevy(text: string): ParsedHevy {
       w.exercises.push(ex);
     }
     ex.sets.push({
-      type: HEVY_TYPE_IN[(r[idx.type] ?? '').trim()] ?? 'normal',
+      type: SET_TYPE_IN[(r[idx.type] ?? '').trim()] ?? 'normal',
       weight: num(r[idx.weight]),
       reps: num(r[idx.reps]),
     });

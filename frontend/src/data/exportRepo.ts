@@ -1,7 +1,6 @@
 /**
- * Export / import on-device — local equivalents of /export and /import?source=hevy.
- * Export is the user's backup (and the mechanism for the one-time server->local
- * migration). Import reads a Hevy CSV file and creates completed workouts.
+ * Export / import on-device. Export is the user's backup; import reads a workout
+ * CSV file and creates completed workouts locally.
  */
 import { asc, eq, inArray } from 'drizzle-orm';
 import { readAsStringAsync } from 'expo-file-system/legacy';
@@ -11,7 +10,7 @@ import * as schema from '../db/schema';
 import type { ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
-import { toHevyCsv, parseHevy, type ExportWorkout } from './hevyCsv';
+import { toWorkoutCsv, parseWorkoutCsv, type ExportWorkout } from './workoutCsv';
 import { parseServerDate } from '../lib/serverTime';
 import { initialsOf } from './exercisesRepo';
 import { recomputeForExercise } from './recordStore';
@@ -59,7 +58,7 @@ async function gatherCompleted(): Promise<FullWorkout[]> {
 
 export async function exportData(format: 'json' | 'csv'): Promise<string> {
   const workouts = await gatherCompleted();
-  if (format === 'csv') return toHevyCsv(workouts);
+  if (format === 'csv') return toWorkoutCsv(workouts);
   return JSON.stringify({
     workouts: workouts.map((w) => ({
       id: w.id, name: w.name,
@@ -98,7 +97,7 @@ async function findOrCreateExercise(
 
 /**
  * Import a file — an Ischys JSON backup (full fidelity: notes, supersets, PR
- * flags) or a Hevy CSV. Sniffs the format so the caller doesn't have to.
+ * flags) or a workout CSV. Sniffs the format so the caller doesn't have to.
  */
 export async function importFile(file: { uri: string; name: string; mimeType?: string }): Promise<ImportResult> {
   const text = await readAsStringAsync(file.uri);
@@ -106,11 +105,11 @@ export async function importFile(file: { uri: string; name: string; mimeType?: s
     text.trimStart().startsWith('{') ||
     /\.json$/i.test(file.name) ||
     (file.mimeType ?? '').includes('json');
-  return looksJson ? importJsonBackup(text) : importHevyCsv(text);
+  return looksJson ? importJsonBackup(text) : importWorkoutCsv(text);
 }
 
-async function importHevyCsv(text: string): Promise<ImportResult> {
-  const parsed = parseHevy(text);
+async function importWorkoutCsv(text: string): Promise<ImportResult> {
+  const parsed = parseWorkoutCsv(text);
 
   const cache = new Map<string, string>();
   let workoutsCreated = 0;
@@ -121,7 +120,7 @@ async function importHevyCsv(text: string): Promise<ImportResult> {
   const warnings: string[] = [];
 
   // Idempotency: a completed workout is identified by (name, startedAt) — the key
-  // parseHevy groups on. Re-importing the same export, or a later overlapping one,
+  // parseWorkoutCsv groups on. Re-importing the same export, or a later overlapping one,
   // must not duplicate history. Timeless rows (no parseable start) can't be keyed,
   // so they always import.
   const seen = new Set(

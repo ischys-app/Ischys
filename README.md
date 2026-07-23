@@ -35,7 +35,7 @@ tap away, and the accent colour reserved for a single action — completing a se
 - **Profile** stats — workouts, volume lifted, weekly training bars, streaks.
 - **Apple Watch** companion (mirror + control a live workout), **Live Activity**
   on the Lock Screen, and **Apple Health** (heart-rate read, workout write).
-- **Export / import** — a JSON or Hevy-compatible CSV, for backup or moving in
+- **Export / import** — a JSON or workout CSV, for backup or moving in
   from another tracker.
 - **736-exercise catalog** bundled in the app (from
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db), public domain).

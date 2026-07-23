@@ -76,8 +76,8 @@ Persistence check: add sets, then force-quit and reopen — the workout and its 
 - Top-right gear → **Settings** (unit, timer/haptic toggles, export, import).
 
 ### 5. Export / Import / Health
-- Settings → **Export** writes a JSON or Hevy-compatible CSV of your history.
-- Settings → **Import** picks a Hevy CSV and creates completed workouts locally. Re-importing
+- Settings → **Export** writes a JSON or workout CSV of your history.
+- Settings → **Import** picks a workout CSV and creates completed workouts locally. Re-importing
   the same file is idempotent — already-imported workouts (keyed by name + start time) are
   skipped and reported.
 - **Apple Health** (macOS + dev build + HealthKit entitlements): finished workouts are written

@@ -1,5 +1,5 @@
 /**
- * Import screen — pick a Hevy CSV export, preview parsed counts, then import it
+ * Import screen — pick a workout CSV export, preview parsed counts, then import it
  * into the local database. Three states drive the layout via local `step`:
  * file_pick -> preview -> progress (which auto-flips to 'success' when the import
  * resolves, or 'error' on failure).
@@ -349,7 +349,7 @@ function FilePickState({
         </View>
         <Text style={styles.dropzoneTitle}>Choose an export to import</Text>
         <Text style={styles.dropzoneSub}>
-          Point Ischys at an Ischys JSON backup or a Hevy CSV export and
+          Point Ischys at an Ischys JSON backup or a workout CSV export and
           we&apos;ll load every set into your log.
         </Text>
         <Pressable
@@ -377,7 +377,7 @@ function FilePickState({
 
       <Text style={styles.smallPrint}>
         Supported: <Text style={styles.smallPrintStrong}>Ischys JSON</Text> (a
-        full backup) and <Text style={styles.smallPrintStrong}>Hevy CSV</Text>.
+        full backup) and a <Text style={styles.smallPrintStrong}>workout CSV</Text>.
         Cardio-only CSV rows (distance/duration without weight × reps) are skipped.
       </Text>
       {!!errorMsg && (
@@ -441,7 +441,7 @@ function PreviewState({
 
       {parse && !parse.supported && (
         <Text style={styles.parseHint}>
-          This doesn&apos;t look like an Ischys JSON backup or a Hevy CSV. Pick one of those and try again.
+          This doesn&apos;t look like an Ischys JSON backup or a workout CSV. Pick one of those and try again.
         </Text>
       )}
 

@@ -1,5 +1,5 @@
 /**
- * Full-screen reorder overlay with Hevy-style drag-to-reorder.
+ * Full-screen reorder overlay with drag-to-reorder.
  * Built from the Active Workout design (section B) + drag logic (sections C/D).
  * Drag starts on the grip only; rows shift with a 180ms ease, the dragged row
  * follows the finger with no animation. Uses RN's built-in PanResponder +

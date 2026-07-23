@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseCsv, parseHevy, parseHevyTime, toHevyCsv, type ExportWorkout } from './hevyCsv.ts';
+import { parseCsv, parseWorkoutCsv, parseCsvTime, toWorkoutCsv, type ExportWorkout } from './workoutCsv.ts';
 
 test('parseCsv handles quoted fields with commas', () => {
   const rows = parseCsv('a,b\n"x,y",z\n');
@@ -12,10 +12,10 @@ test('parseCsv handles quoted fields with commas', () => {
   ]);
 });
 
-test('parseHevyTime parses the Hevy timestamp', () => {
-  const ms = parseHevyTime('10 Jul 2026, 09:05');
+test('parseCsvTime parses the CSV timestamp', () => {
+  const ms = parseCsvTime('10 Jul 2026, 09:05');
   assert.equal(ms, new Date(2026, 6, 10, 9, 5).getTime());
-  assert.equal(parseHevyTime('garbage'), null);
+  assert.equal(parseCsvTime('garbage'), null);
 });
 
 test('export -> import round-trips a workout', () => {
@@ -38,8 +38,8 @@ test('export -> import round-trips a workout', () => {
       ],
     },
   ];
-  const csv = toHevyCsv(workouts);
-  const parsed = parseHevy(csv);
+  const csv = toWorkoutCsv(workouts);
+  const parsed = parseWorkoutCsv(csv);
   assert.equal(parsed.workouts.length, 1);
   const w = parsed.workouts[0];
   assert.equal(w.title, 'Push');
@@ -53,6 +53,6 @@ test('export -> import round-trips a workout', () => {
 
 test('rows missing title/exercise are skipped', () => {
   const csv = 'title,start_time,exercise_title,set_type,weight_kg,reps\n,,,normal,60,8\nPush,10 Jul 2026, 09:00,Bench,normal,60,8\n';
-  const parsed = parseHevy(csv);
+  const parsed = parseWorkoutCsv(csv);
   assert.ok(parsed.rowsSkipped >= 1);
 });

@@ -270,7 +270,7 @@ export type SettingsUpdate = Partial<SettingsOut>;
 
 // --- Import ---
 
-/** Result of a Hevy CSV import — counts of what landed after mapping the rows. */
+/** Result of a workout CSV import — counts of what landed after mapping the rows. */
 export type ImportResult = {
   workouts_created: number;
   exercises_created: number;

@@ -6,7 +6,7 @@
     "@bacons/apple-targets": "^4.0.7",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo-google-fonts/space-grotesk": "^0.4.1",
-    "babel-preset-expo": "~57.0.0",
+    "babel-preset-expo": "~57.0.3",
     "drizzle-orm": "^0.45.2",
     "expo": "~57.0.4",
     "expo-blur": "~57.0.0",

@@ -171,6 +171,9 @@ export default function ActiveWorkout() {
   // they change only when rest starts, is adjusted, or ends — never on the tick.
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
+  // Which exercise's rest is running, so changing that exercise's duration can
+  // retime it. `null` for a manually-started rest, which belongs to no exercise.
+  const [restExId, setRestExId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [restSheetExId, setRestSheetExId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -385,6 +388,7 @@ export default function ActiveWorkout() {
     if (restRemaining === 0 && restEndsAt != null) {
       setRestStartedAt(null);
       setRestEndsAt(null);
+      setRestExId(null);
     }
   }, [restRemaining, restEndsAt]);
 
@@ -470,9 +474,7 @@ export default function ActiveWorkout() {
       endRest();
       return;
     }
-    setRestRemaining((r) => Math.max(0, r + action.seconds));
-    setRestEndsAt((e) => (e == null ? e : Math.max(Date.now(), e + action.seconds * 1000)));
-    if (action.seconds > 0) setRestTotal((t) => Math.max(t, restRemaining + action.seconds));
+    adjustRest(action.seconds);
   };
 
   // Held in refs: these listeners are registered once and must not close over a
@@ -487,11 +489,11 @@ export default function ActiveWorkout() {
     // does. Refetch FIRST: our state still shows the set as undone, so naming
     // the "next" exercise before the write lands picks the wrong one — and the
     // set itself would keep rendering unchecked.
-    const offChange = onWorkoutChanged(async (restSeconds) => {
+    const offChange = onWorkoutChanged(async (rest) => {
       await refreshRef.current();
       // The refetch has landed, so the completed set is already `done` — the
       // plain look-ahead is enough here.
-      startRest(restSeconds, upcomingExerciseName());
+      startRest(rest.seconds, upcomingExerciseName(), rest.exerciseId);
     });
 
     // The event can land while this screen is unmounted (a background launch),
@@ -568,14 +570,42 @@ export default function ActiveWorkout() {
   const upcomingExerciseName = (justCompleted?: string): string | null =>
     locateNextSet(exercisesRef.current, justCompleted)?.exercise.name ?? null;
 
-  const startRest = (seconds: number, exerciseName: string | null = null) => {
+  const startRest = (
+    seconds: number,
+    exerciseName: string | null = null,
+    exerciseId: string | null = null,
+  ) => {
     if (seconds <= 0) return;
     const now = Date.now();
     setRestTotal(seconds);
     setRestRemaining(seconds);
     setRestStartedAt(now);
     setRestEndsAt(now + seconds * 1000);
+    setRestExId(exerciseId);
+    restEndsRef.current = now + seconds * 1000;
     armRestAlert(seconds, exerciseName);
+  };
+
+  /**
+   * Nudge the running rest by ±seconds. One place, because three surfaces do it
+   * (the in-app ±15, the Lock Screen card's, the Watch's) and every one of them
+   * also has to re-arm the scheduled alert — a countdown that moved with an
+   * alert that didn't buzzes at the old moment.
+   *
+   * `restEndsRef` is written straight away so a drain of several queued card
+   * taps in one tick composes instead of all reading the same pre-tick end.
+   */
+  const adjustRest = (deltaSeconds: number) => {
+    const end = restEndsRef.current;
+    if (end == null) return;
+    const now = Date.now();
+    const endsAt = Math.max(now, end + deltaSeconds * 1000);
+    restEndsRef.current = endsAt;
+    const remaining = restRemainingSeconds(endsAt, now);
+    setRestEndsAt(endsAt);
+    setRestRemaining(remaining);
+    if (deltaSeconds > 0) setRestTotal((t) => Math.max(t, remaining));
+    armRestAlert(remaining, upcomingExerciseName());
   };
 
   // Ending rest early (Skip, or trimming it to zero) must also cancel the
@@ -587,6 +617,8 @@ export default function ActiveWorkout() {
     setRestRemaining(0);
     setRestStartedAt(null);
     setRestEndsAt(null);
+    setRestExId(null);
+    restEndsRef.current = null;
     const pending = restAlertId.current;
     restAlertId.current = null;
     void cancelRestAlert(pending);
@@ -615,7 +647,7 @@ export default function ActiveWorkout() {
     // what is *coming* — which, after an exercise's last set, is the next
     // exercise. `exercises` has not re-rendered yet, so the set being completed
     // is passed as `treatAsDone`.
-    if (willBeDone) startRest(ex.rest, upcomingExerciseName(setId));
+    if (willBeDone) startRest(ex.rest, upcomingExerciseName(setId), ex.id);
     if (persist) write(patchSetApi(setId, { done: willBeDone }));
   };
 
@@ -792,8 +824,29 @@ export default function ActiveWorkout() {
     ]);
   };
 
-  const setRest = (exId: string, seconds: number) =>
+  const setRest = (exId: string, seconds: number) => {
     setExercises((prev) => prev.map((ex) => (ex.id === exId ? { ...ex, rest: seconds } : ex)));
+
+    // A rest already counting down for this exercise adopts the new duration
+    // now, rather than only on the next set. Re-anchored on when the rest
+    // started, so the part already served still counts: 30s into a 2:00 rest,
+    // switching to 3:00 leaves 2:30 — not a fresh 3:00.
+    if (restExId !== exId || restStartedAt == null) return;
+    const now = Date.now();
+    const endsAt = restStartedAt + seconds * 1000;
+    // The new duration is already spent (or the picker's "Off") — the rest is
+    // simply over, and endRest cancels the alert that was scheduled for it.
+    if (endsAt <= now) {
+      endRest();
+      return;
+    }
+    const remaining = restRemainingSeconds(endsAt, now);
+    setRestTotal(seconds);
+    setRestEndsAt(endsAt);
+    setRestRemaining(remaining);
+    restEndsRef.current = endsAt;
+    armRestAlert(remaining, upcomingExerciseName());
+  };
 
   const onFinish = async () => {
     // Not on unmount: leaving the screen with the workout still running is
@@ -868,13 +921,11 @@ export default function ActiveWorkout() {
             }),
           );
         }
-        if (ex) startRest(ex.rest, upcomingExerciseName(st.currentSetId));
+        if (ex) startRest(ex.rest, upcomingExerciseName(st.currentSetId), ex.id);
         break;
       }
       case 'adjustRest':
-        setRestRemaining((r) => Math.max(0, r + a.seconds));
-        setRestEndsAt((e) => (e == null ? e : Math.max(Date.now(), e + a.seconds * 1000)));
-        if (a.seconds > 0) setRestTotal((t) => Math.max(t, restRemaining + a.seconds));
+        adjustRest(a.seconds);
         break;
       case 'skipRest':
         endRest();
@@ -1029,15 +1080,8 @@ export default function ActiveWorkout() {
         remaining={restRemaining}
         total={restTotal}
         onStart={() => startRest(DEFAULT_REST)}
-        onMinus15={() => {
-          setRestRemaining((r) => Math.max(0, r - 15));
-          setRestEndsAt((e) => (e == null ? e : Math.max(Date.now(), e - 15_000)));
-        }}
-        onPlus15={() => {
-          setRestRemaining((r) => r + 15);
-          setRestTotal((t) => Math.max(t, restRemaining + 15));
-          setRestEndsAt((e) => (e == null ? e : e + 15_000));
-        }}
+        onMinus15={() => adjustRest(-15)}
+        onPlus15={() => adjustRest(15)}
         onSkip={endRest}
       />
 

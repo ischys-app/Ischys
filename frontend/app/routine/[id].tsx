@@ -98,6 +98,9 @@ export default function RoutineBuilder() {
   const [restSheetExId, setRestSheetExId] = useState<string | null>(null);
   /** Set row whose swipe-to-delete panel is revealed — at most one at a time. */
   const [openSetId, setOpenSetId] = useState<string | null>(null);
+  /** Set once Save was tapped with a blank name, so the requirement is explained. */
+  const [nameMissing, setNameMissing] = useState(false);
+  const nameRef = useRef<TextInput>(null);
 
   // Load existing routine (edit mode).
   useEffect(() => {
@@ -268,7 +271,15 @@ export default function RoutineBuilder() {
   const canSave = name.trim() !== '';
 
   const onSave = async () => {
-    if (!canSave || saving) return;
+    if (saving) return;
+    // Save stays tappable when the name is blank: a dimmed, inert button gave no
+    // clue that a name was the thing standing in the way. Tapping it now says so
+    // and puts the cursor in the field.
+    if (!canSave) {
+      setNameMissing(true);
+      nameRef.current?.focus();
+      return;
+    }
     setSaving(true);
     try {
       const payload = buildPayload();
@@ -311,13 +322,21 @@ export default function RoutineBuilder() {
           showsVerticalScrollIndicator={false}
         >
           <TextInput
+            ref={nameRef}
             value={name}
-            onChangeText={setName}
+            onChangeText={(t) => {
+              setName(t);
+              if (t.trim() !== '') setNameMissing(false);
+            }}
             placeholder="Routine name"
-            placeholderTextColor={color.text3}
+            placeholderTextColor={nameMissing ? color.error : color.text3}
             style={styles.titleInput}
             multiline
           />
+
+          {nameMissing ? (
+            <Text style={styles.nameError}>Give your routine a name to save it.</Text>
+          ) : null}
 
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>{exercises.length} exercises</Text>
@@ -376,9 +395,8 @@ export default function RoutineBuilder() {
         </Text>
         <Pressable
           onPress={onSave}
-          disabled={!canSave || saving}
+          disabled={saving}
           hitSlop={8}
-          pointerEvents={!canSave ? 'none' : 'auto'}
           style={[styles.saveBtn, (!canSave || saving) && { opacity: 0.5 }]}
         >
           <Text style={styles.saveText}>Save</Text>
@@ -646,6 +664,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.52,
     paddingHorizontal: 2,
     paddingVertical: 0,
+  },
+  nameError: {
+    fontFamily: font.monoRegular,
+    fontSize: 12,
+    color: color.error,
+    marginTop: 8,
+    marginHorizontal: 2,
   },
   metaRow: {
     flexDirection: 'row',

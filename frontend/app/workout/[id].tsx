@@ -11,6 +11,7 @@ import {
   AppState,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -47,6 +48,11 @@ import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { replaceOrder, swapExercise } from '../../src/lib/replaceExercise';
 import { elapsedSeconds, restRemainingSeconds } from '../../src/lib/clocks';
 import { locateNextSet } from '../../src/lib/nextSet';
+import {
+  forgetLiveActivityHint,
+  liveActivityHintShown,
+  rememberLiveActivityHint,
+} from '../../src/lib/liveActivityHint';
 import { parseServerDate } from '../../src/lib/serverTime';
 import {
   forgetActiveWorkout,
@@ -444,14 +450,49 @@ export default function ActiveWorkout() {
     // it in the deps the card would never start.
   }, [liveActivity, restStartedAt, restEndsAt, startedAt]);
 
+  /**
+   * Say once, at the start of a workout, when Live Activities are switched off
+   * for Ischys — iOS does that by itself after a card is dismissed, `start()`
+   * then quietly returns nil, and nothing else in the app reveals why the Lock
+   * Screen stayed empty (#29). `isAvailable()` keeps this to the case the user
+   * can actually act on: an iPhone too old for Live Activities gets no hint.
+   */
+  const liveActivityChecked = useRef(false);
+  useEffect(() => {
+    if (!liveActivity || liveActivityChecked.current) return;
+    if (!LiveActivity.isAvailable()) return;
+    liveActivityChecked.current = true;
+
+    if (LiveActivity.isSupported()) {
+      // On: re-arm, so a future switch-off earns one fresh reminder.
+      forgetLiveActivityHint();
+      return;
+    }
+    if (liveActivityHintShown()) return;
+    rememberLiveActivityHint();
+    Alert.alert(
+      'Live Activities are off',
+      'Turn on Live Activities for Ischys in Settings to see your rest timer on the Lock Screen.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => void Linking.openSettings().catch(() => {}) },
+      ],
+    );
+  }, [liveActivity]);
+
   // Re-show the Live Activity if the user swiped it away. iOS ends a dismissed
   // card but we still think it runs, so on return to foreground we ask the
   // native side whether one is actually live and restart it if not — as long as
   // the workout still has something to show.
+  //
+  // The `isSupported` check is inside the listener, not around it: coming back
+  // from Settings having just switched Live Activities back on IS a foreground
+  // transition, and a check outside would have been made while they were still
+  // off and would have skipped registering entirely.
   useEffect(() => {
-    if (!LiveActivity.isSupported()) return;
     const sub = AppState.addEventListener('change', (s) => {
       if (s !== 'active') return;
+      if (!LiveActivity.isSupported()) return;
       if (!liveActivity || startedAtRef.current == null) return;
       if (LiveActivity.isActive()) return;
       const state = {

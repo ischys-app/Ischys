@@ -28,9 +28,21 @@ public class LiveActivityModule: Module {
       LiveActivityActionQueue.drain()
     }
 
+    /// Live Activities are usable *right now*: the OS can show them and the user
+    /// has not switched them off for Ischys.
     Function("isSupported") { () -> Bool in
       guard #available(iOS 16.1, *) else { return false }
       return ActivityAuthorizationInfo().areActivitiesEnabled
+    }
+
+    /// Whether the OS can show Live Activities at all, ignoring the per-app
+    /// switch. Paired with `isSupported`, this is what separates "this iPhone is
+    /// too old" from "you turned our card off" — iOS flips that switch by itself
+    /// once a card is dismissed, and without the distinction a workout just
+    /// silently had no Lock Screen card and no way to find out why.
+    Function("isAvailable") { () -> Bool in
+      guard #available(iOS 16.1, *) else { return false }
+      return true
     }
 
     /// Whether a workout Activity is currently live. Goes false when the user

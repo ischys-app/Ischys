@@ -9,6 +9,9 @@ import WatchConnectivity
 struct PhoneState {
   var screen: WatchScreen = .start
   var routines: [RoutineItem] = []
+  /// When the *workout* began, not when this Watch's session did. nil when the
+  /// phone hasn't said (it pushes 0), so the Watch keeps its own origin.
+  var startedAt: Date?
   var routineName = ""
   var exerciseName = ""
   var equipment = ""
@@ -43,6 +46,11 @@ struct PhoneState {
           exerciseCount: $0["exerciseCount"] as? Int ?? 0
         )
       }
+    }
+    // Epoch milliseconds. A Double covers it exactly; `as? Int` would fail on a
+    // JS number that arrives bridged as NSNumber(double).
+    if let ms = (d["startedAt"] as? NSNumber)?.doubleValue, ms > 0 {
+      startedAt = Date(timeIntervalSince1970: ms / 1000)
     }
     routineName = d["routineName"] as? String ?? ""
     exerciseName = d["exerciseName"] as? String ?? ""

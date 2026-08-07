@@ -67,7 +67,12 @@ export default function ExerciseLibrary() {
   const [filter, setFilter] = useState<string>(ALL);
   const [categories, setCategories] = useState<CategoryOut[]>([]);
   const [exercises, setExercises] = useState<ExerciseOut[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Keyed by exercise id, holding the whole `ExerciseOut`. Storing the objects
+  // (not just ids) is what lets a pick made under an earlier search survive:
+  // `exercises` is the *filtered* result set, so a later query drops the row a
+  // selection was made from and an id-only set could no longer resolve it.
+  // Insertion order is the add order.
+  const [selected, setSelected] = useState<Map<string, ExerciseOut>>(new Map());
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,11 +153,11 @@ export default function ExerciseLibrary() {
   // left the field looking inert while typing.
   const searching = loading || query.trim() !== debouncedQuery;
 
-  const toggle = useCallback((id: string) => {
+  const toggle = useCallback((ex: ExerciseOut) => {
     setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const next = new Map(prev);
+      if (next.has(ex.id)) next.delete(ex.id);
+      else next.set(ex.id, ex);
       return next;
     });
   }, []);
@@ -166,12 +171,7 @@ export default function ExerciseLibrary() {
     }
     if (pickMode) {
       // Return the selected ExerciseOut list to whoever opened us (e.g. routine builder).
-      const chosen: ExerciseOut[] = [];
-      for (const id of selected) {
-        const ex = exercises.find((e) => e.id === id);
-        if (ex) chosen.push(ex);
-      }
-      setPendingSelection(chosen);
+      setPendingSelection([...selected.values()]);
       router.back();
       return;
     }
@@ -183,7 +183,7 @@ export default function ExerciseLibrary() {
     setAdding(true);
     try {
       // Sequential POSTs — server assigns position in order.
-      for (const id of selected) {
+      for (const id of selected.keys()) {
         await addWorkoutExercise(workoutId, {
           exercise_id: id,
           rest_seconds: DEFAULT_REST_SECONDS,
@@ -244,7 +244,7 @@ export default function ExerciseLibrary() {
                     exercise={ex}
                     selected={sel}
                     selectable={!browseMode}
-                    onToggle={() => toggle(ex.id)}
+                    onToggle={() => toggle(ex)}
                   />
                 );
               })}

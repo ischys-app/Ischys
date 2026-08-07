@@ -125,6 +125,70 @@ public class HealthModule: Module {
       }
     }
 
+    /// Whether Ischys has ALREADY put a strength HKWorkout over [startMs, endMs].
+    ///
+    /// The Watch is the primary writer when it recorded the session, and it
+    /// confirms the save over WatchConnectivity so the phone knows to stand down.
+    /// That confirmation is not reliable enough to be the only signal: with the
+    /// phone app not frontmost it falls back to `transferUserInfo`, which is
+    /// queued for the phone's next run — long after the phone has given up
+    /// waiting and written its own copy. Asking HealthKit is authoritative.
+    ///
+    /// Only workouts written by Ischys count. Another app's strength session
+    /// overlapping this window must not make us drop the user's workout, so the
+    /// source is matched against our own bundle id — with a prefix, because the
+    /// Watch companion's id is the phone app's plus a suffix and either half of
+    /// the pair may have been the writer.
+    AsyncFunction("hasWorkout") { (startMs: Double, endMs: Double, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(false)
+        return
+      }
+      let ours = Bundle.main.bundleIdentifier ?? ""
+      guard !ours.isEmpty else {
+        promise.resolve(false)
+        return
+      }
+      let start = Date(timeIntervalSince1970: startMs / 1000)
+      let end = Date(timeIntervalSince1970: endMs / 1000)
+
+      // Overlap, not containment: the Watch's session begins a moment after the
+      // workout does and its HKWorkout is stamped from the session, so a strict
+      // match would miss exactly the copy we are looking for.
+      let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+        HKQuery.predicateForSamples(withStart: start, end: end, options: []),
+        HKQuery.predicateForWorkouts(with: .traditionalStrengthTraining),
+      ])
+
+      let query = HKSampleQuery(
+        sampleType: HKObjectType.workoutType(),
+        predicate: predicate,
+        limit: HKObjectQueryNoLimit,
+        sortDescriptors: nil
+      ) { _, samples, _ in
+        // A query error (including workout-read access being denied, which
+        // HealthKit reports as no data rather than an error) resolves false, so
+        // the caller writes. Erring toward a rare duplicate beats losing a
+        // finished workout.
+        let sessionLength = end.timeIntervalSince(start)
+        let found = (samples ?? []).contains { sample in
+          let id = sample.sourceRevision.source.bundleIdentifier
+          guard id == ours || id.hasPrefix(ours + ".") else { return false }
+
+          // Back-to-back sessions touch at an endpoint and would otherwise match
+          // on overlap alone, suppressing a workout that is genuinely new. A
+          // real duplicate covers most of both intervals, so require that of it.
+          let overlap = min(end, sample.endDate)
+            .timeIntervalSince(max(start, sample.startDate))
+          guard overlap > 0 else { return false }
+          let sampleLength = sample.endDate.timeIntervalSince(sample.startDate)
+          return overlap >= sampleLength / 2 && overlap >= sessionLength / 2
+        }
+        promise.resolve(found)
+      }
+      self.store.execute(query)
+    }
+
     /// Aggregates for a finished workout: average and max heart rate (bpm) and
     /// total active energy (kcal) over [startMs, endMs]. Any field is null when
     /// HealthKit holds no samples for it — i.e. no Watch was recording.

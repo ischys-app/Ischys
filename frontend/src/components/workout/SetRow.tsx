@@ -1,9 +1,6 @@
 /** A single logged-set row — grid: [34 | 1fr | 74 | 56 | 40], height 50. Pixel-critical. */
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
-  Animated,
-  Easing,
-  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -22,7 +19,8 @@ import { color, font } from '../../theme/tokens';
  */
 export const KEYBOARD_ACCESSORY_ID = 'ischys-workout-keyboard';
 const accessoryId = Platform.OS === 'ios' ? KEYBOARD_ACCESSORY_ID : undefined;
-import { CheckIcon, TrashIcon } from '../icons';
+import { CheckIcon } from '../icons';
+import { SwipeToDelete } from './SwipeToDelete';
 import { prevLabel, typeMeta, type Exercise, type WorkoutSet } from './types';
 
 type Props = {
@@ -47,11 +45,6 @@ type Props = {
   carryWeight?: string;
   carryReps?: string;
 };
-
-// Matches the design's transform transition: cubic-bezier(0.22, 0.61, 0.36, 1), 220ms.
-const SWIPE_EASING = Easing.bezier(0.22, 0.61, 0.36, 1);
-const SWIPE_DURATION = 220;
-const OPEN_X = -72;
 
 export function SetRow({
   exercise,
@@ -80,85 +73,20 @@ export function SetRow({
     exercise.kind === 'bodyweight' ? 'BW' : carryWeight ?? set.prevWeight ?? '';
   const phReps = carryReps ?? set.prevReps ?? '';
 
-  const swipeEnabled = !!onDelete;
-
-  // Foreground translateX. Refs mirror the latest props so the PanResponder
-  // (created once) never reads stale values.
-  const tx = useRef(new Animated.Value(isOpen ? OPEN_X : 0)).current;
-  const isOpenRef = useRef(isOpen);
-  const onOpenChangeRef = useRef(onOpenChange);
-  onOpenChangeRef.current = onOpenChange;
-
-  const animateTo = (value: number) => {
-    Animated.timing(tx, {
-      toValue: value,
-      duration: SWIPE_DURATION,
-      easing: SWIPE_EASING,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  // React to the panel being opened/closed from outside (e.g. another row opened).
-  useEffect(() => {
-    isOpenRef.current = isOpen;
-    animateTo(isOpen ? OPEN_X : 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  const pan = useRef(
-    PanResponder.create({
-      // 8px / axis-dominance gate — the RN equivalent of touch-action: pan-y, so
-      // the parent ScrollView keeps vertical scrolling until the swipe is clearly horizontal.
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
-      onPanResponderMove: (_, g) => {
-        const base = isOpenRef.current ? OPEN_X : 0;
-        let nx = base + g.dx;
-        if (nx > 0) nx = 0;
-        if (nx < -84) nx = -84;
-        tx.setValue(nx);
-      },
-      onPanResponderRelease: (_, g) => {
-        const base = isOpenRef.current ? OPEN_X : 0;
-        let nx = base + g.dx;
-        if (nx > 0) nx = 0;
-        if (nx < -84) nx = -84;
-        const open = nx < -40;
-        animateTo(open ? OPEN_X : 0);
-        onOpenChangeRef.current?.(open);
-      },
-      onPanResponderTerminate: () => {
-        animateTo(0);
-        onOpenChangeRef.current?.(false);
-      },
-    }),
-  ).current;
-
-  const panHandlers = swipeEnabled ? pan.panHandlers : {};
-
   return (
-    <View style={styles.container}>
-      {swipeEnabled && (
-        <Pressable
-          onPress={onDelete}
-          style={styles.deletePanel}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete set ${badge}`}
-        >
-          <TrashIcon size={16} color="#fff" strokeWidth={2} />
-          <Text style={styles.deleteLabel}>Delete</Text>
-        </Pressable>
-      )}
-
-      <Animated.View
-        {...panHandlers}
-        style={[
-          styles.row,
-          // Opaque, and state-driven: the red delete panel sits behind this row.
-          { backgroundColor: set.done ? color.setRowDone : active ? color.setRowActive : color.surface1 },
-          { transform: [{ translateX: tx }] },
-        ]}
-      >
+    <SwipeToDelete
+      onDelete={onDelete}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      accessibilityLabel={`Delete set ${badge}`}
+      radius={10}
+      rowStyle={[
+        styles.row,
+        // Opaque, and state-driven: the red delete panel sits behind this row.
+        { backgroundColor: set.done ? color.setRowDone : active ? color.setRowActive : color.surface1 },
+      ]}
+    >
+      <>
         {set.done && <View style={styles.doneBar} />}
         {active && <View style={[styles.doneBar, styles.activeBar]} />}
 
@@ -222,34 +150,12 @@ export function SetRow({
             />
           </Pressable>
         </View>
-      </Animated.View>
-    </View>
+      </>
+    </SwipeToDelete>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  deletePanel: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 76,
-    backgroundColor: color.error,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  deleteLabel: {
-    color: '#fff',
-    fontFamily: font.titleSemi,
-    fontSize: 11,
-  },
   row: {
     position: 'relative',
     flexDirection: 'row',

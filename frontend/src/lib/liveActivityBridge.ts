@@ -22,7 +22,12 @@ import { buildLiveActivityState } from './liveActivityState';
 export type RestAction = { type: 'skip' } | { type: 'adjust'; seconds: number };
 
 type RestListener = (action: RestAction) => void;
-type ChangeListener = (restSeconds: number) => void;
+/**
+ * `exerciseId` is the workout-exercise the completed set belonged to — i.e. the
+ * one the rest that follows is *for*. The screen needs it to know whether a
+ * later change to an exercise's rest duration should retime the running rest.
+ */
+type ChangeListener = (rest: { seconds: number; exerciseId: string }) => void;
 
 const restListeners = new Set<RestListener>();
 const changeListeners = new Set<ChangeListener>();
@@ -64,7 +69,10 @@ const forSnapshot = (w: WorkoutOut) =>
  * logs exactly what the app would have logged. Returns the rest to start, or
  * null if the set was already done (a queued tap can outlive a resume).
  */
-async function completeSet(w: WorkoutOut, setId: string): Promise<number | null> {
+async function completeSet(
+  w: WorkoutOut,
+  setId: string,
+): Promise<{ seconds: number; exerciseId: string } | null> {
   const we = w.exercises.find((e) => e.sets.some((s) => s.id === setId));
   const index = we?.sets.findIndex((s) => s.id === setId) ?? -1;
   if (!we || index === -1) return null;
@@ -82,7 +90,7 @@ async function completeSet(w: WorkoutOut, setId: string): Promise<number | null>
   if (patch.weight !== undefined) set.weight = patch.weight;
   if (patch.reps !== undefined) set.reps = patch.reps;
 
-  return we.rest_seconds;
+  return { seconds: we.rest_seconds, exerciseId: we.id };
 }
 
 /** Re-push the card from server truth, refilling `next`. */
@@ -132,16 +140,16 @@ export async function applyPendingCardActions(): Promise<void> {
     if (!active) return;
     const workout = await getWorkout(active.id);
 
-    let rest: number | null = null;
+    let rest: { seconds: number; exerciseId: string } | null = null;
     for (const done of completions) {
       if (done.action !== 'completeSet') continue;
-      const seconds = await completeSet(workout, done.setId);
-      if (seconds != null) rest = seconds;
+      const applied = await completeSet(workout, done.setId);
+      if (applied != null) rest = applied;
     }
 
     if (rest == null) return; // every tap was stale
     changeListeners.forEach((l) => l(rest));
-    await pushCard(workout, rest);
+    await pushCard(workout, rest.seconds);
   } catch {
     // The queue is already drained. Losing a tap beats applying it twice, and
     // the screen refetches from the server whenever it regains focus.

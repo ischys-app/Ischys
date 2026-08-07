@@ -142,9 +142,21 @@ export async function syncFinishedWorkout(
       // times out and the phone writes the (energy-less) workout itself rather
       // than lose it. With no Watch, the phone writes straight away.
       const watchSaved = await watchSavePromise;
-      const saved = watchSaved
-        ? true
-        : await Health.saveWorkout(startedAtMs, endedAtMs, metrics.energyKcal ?? 0);
+      // A timeout is not proof the Watch failed to save — only that it failed to
+      // say so in time, which is common: `workoutSaved` travels over
+      // WatchConnectivity, and with the phone app not frontmost (the usual case
+      // when the workout was ended FROM the Watch) it falls back to
+      // `transferUserInfo` and is queued until the phone next runs. The
+      // HKWorkout is already in Health by then and writing another puts the
+      // session in Fitness twice. HealthKit is the authority, so ask it before
+      // writing — and it also covers a phone-side sync that ran twice.
+      const alreadyInHealth = watchSaved
+        ? false
+        : await Health.hasWorkout(startedAtMs, endedAtMs);
+      const saved =
+        watchSaved || alreadyInHealth
+          ? true
+          : await Health.saveWorkout(startedAtMs, endedAtMs, metrics.energyKcal ?? 0);
       if (saved) {
         await SecureStore.setItemAsync(HEALTH_KEYS.lastSync, new Date().toISOString());
         const prev = Number(await SecureStore.getItemAsync(HEALTH_KEYS.written)) || 0;

@@ -38,6 +38,7 @@ import {
   TrashIcon,
 } from '../../src/components/icons';
 import { RestPickerSheet } from '../../src/components/workout/RestPickerSheet';
+import { SwipeToDelete } from '../../src/components/workout/SwipeToDelete';
 import {
   restLabel,
   TYPE_CYCLE,
@@ -95,6 +96,8 @@ export default function RoutineBuilder() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [restSheetExId, setRestSheetExId] = useState<string | null>(null);
+  /** Set row whose swipe-to-delete panel is revealed — at most one at a time. */
+  const [openSetId, setOpenSetId] = useState<string | null>(null);
 
   // Load existing routine (edit mode).
   useEffect(() => {
@@ -214,6 +217,21 @@ export default function RoutineBuilder() {
       ),
     );
 
+  /**
+   * Remove one planned set. No confirmation — the swipe-open + Delete tap is
+   * already deliberate, matching the active-workout screen's `deleteSet`.
+   * Removing the last set is allowed: an exercise with no sets is a valid
+   * (if unusual) routine, and "+ Add Set" is right there to undo it.
+   */
+  const removeSet = (rexId: string, setId: string) => {
+    setOpenSetId(null);
+    setExercises((prev) =>
+      prev.map((e) =>
+        e.id !== rexId ? e : { ...e, sets: e.sets.filter((s) => s.id !== setId) },
+      ),
+    );
+  };
+
   const patchSet = (rexId: string, setId: string, patch: Partial<RSet>) =>
     setExercises((prev) =>
       prev.map((e) =>
@@ -320,6 +338,9 @@ export default function RoutineBuilder() {
                   onNoteChange={(t) => setNote(rex.id, t)}
                   onOpenRest={() => setRestSheetExId(rex.id)}
                   onAddSet={() => addSet(rex.id)}
+                  onRemoveSet={(setId) => removeSet(rex.id, setId)}
+                  openSetId={openSetId}
+                  onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
                   onCycleType={(setId) => cycleType(rex.id, setId)}
                   onWeightChange={(setId, t) =>
                     patchSet(rex.id, setId, { targetWeight: t })
@@ -398,6 +419,9 @@ function ExerciseCardBuilder({
   onNoteChange,
   onOpenRest,
   onAddSet,
+  onRemoveSet,
+  openSetId,
+  onSetOpenChange,
   onCycleType,
   onWeightChange,
   onRepsChange,
@@ -408,6 +432,9 @@ function ExerciseCardBuilder({
   onNoteChange: (t: string) => void;
   onOpenRest: () => void;
   onAddSet: () => void;
+  onRemoveSet: (setId: string) => void;
+  openSetId: string | null;
+  onSetOpenChange: (setId: string, open: boolean) => void;
   onCycleType: (setId: string) => void;
   onWeightChange: (setId: string, t: string) => void;
   onRepsChange: (setId: string, t: string) => void;
@@ -495,7 +522,15 @@ function ExerciseCardBuilder({
 
           const meta = typeMeta[s.type];
           return (
-            <View key={s.id} style={styles.setRow}>
+            <SwipeToDelete
+              key={s.id}
+              onDelete={() => onRemoveSet(s.id)}
+              isOpen={openSetId === s.id}
+              onOpenChange={(open) => onSetOpenChange(s.id, open)}
+              accessibilityLabel={`Delete set ${badge}`}
+              radius={9}
+              rowStyle={styles.setRow}
+            >
               <View style={styles.colSet}>
                 <Pressable
                   onPress={() => onCycleType(s.id)}
@@ -531,7 +566,7 @@ function ExerciseCardBuilder({
                   style={styles.numInput}
                 />
               </View>
-            </View>
+            </SwipeToDelete>
           );
         })}
       </View>
@@ -800,6 +835,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     height: 46,
     borderRadius: 9,
+    // Opaque (same tone as the card it sits on) so the swipe-revealed delete
+    // panel stays hidden behind the row until it slides away.
+    backgroundColor: color.surface1,
   },
   badge: {
     width: 30,

@@ -927,8 +927,9 @@ export default function ActiveWorkout() {
         name || 'Workout',
         { resting: restRemaining > 0, remaining: restRemaining, total: restTotal },
         (sets, i) => resolveSet(sets[i], carryFor(sets, i)),
+        startedAt,
       ),
-    [exercises, name, restRemaining, restTotal],
+    [exercises, name, restRemaining, restTotal, startedAt],
   );
   const watchStateRef = useRef(watchState);
   watchStateRef.current = watchState;

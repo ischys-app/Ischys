@@ -119,6 +119,16 @@ test('the next-set label advances to the next exercise after an exercise’s las
   assert.equal(s?.nextSetLabel, 'Next: Set 1 of 3');
 });
 
+test('the workout start is pushed, so the Watch counts elapsed from it', () => {
+  const s = buildWatchState(legPress(set('a', '1', '1')), 'R', rest, resolve, 1_700_000_000_000);
+  assert.equal(s?.startedAt, 1_700_000_000_000);
+});
+
+test('an unknown workout start pushes 0, not a 1970 origin', () => {
+  const s = buildWatchState(legPress(set('a', '1', '1')), 'R', rest, resolve);
+  assert.equal(s?.startedAt, 0);
+});
+
 test('rest state passes through', () => {
   const s = buildWatchState(
     legPress(set('a', '1', '1', true), set('b', '1', '1')),

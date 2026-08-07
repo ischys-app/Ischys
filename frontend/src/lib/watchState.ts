@@ -31,6 +31,14 @@ type Resolve = (
 
 export type WatchState = {
   screen: 'session';
+  /**
+   * Epoch ms the *workout* began — the Watch's elapsed clock counts from this.
+   * Its own `HKWorkoutSession` starts whenever the Watch app got going, which
+   * can be seconds or minutes later, and counting from that made the two clocks
+   * disagree (#32). 0 when the phone doesn't know it yet; the Watch then keeps
+   * its session start rather than jumping to 1970.
+   */
+  startedAt: number;
   routineName: string;
   exerciseName: string;
   equipment: string;
@@ -86,6 +94,8 @@ export function buildWatchState(
   routineName: string,
   rest: { resting: boolean; remaining: number; total: number },
   resolve: Resolve,
+  /** Epoch ms the workout began; omit (or null) before it is known. */
+  startedAt: number | null = null,
 ): WatchState | null {
   const current = locateNextSet(exercises);
   if (!current) return null;
@@ -102,6 +112,7 @@ export function buildWatchState(
 
   return {
     screen: 'session',
+    startedAt: startedAt ?? 0,
     routineName,
     exerciseName: ex.name,
     equipment: ex.equipment,

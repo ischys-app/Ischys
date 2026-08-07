@@ -10,10 +10,12 @@
  * wake up and push. JS still owns the write; this is only so the card responds
  * to a tap on a locked phone.
  *
- * Pure — no imports, so `node --test` can run it. The carry-forward rules are
- * injected as `resolve` rather than imported, keeping this file self-contained
- * (see setCarry.ts, which is tested separately). See liveActivityState.test.ts.
+ * Pure — the only import is the shared look-ahead, so `node --test` can run it.
+ * The carry-forward rules are injected as `resolve` rather than imported,
+ * keeping this file self-contained (see setCarry.ts, which is tested
+ * separately). See liveActivityState.test.ts.
  */
+import { locateNextSet } from './nextSet.ts';
 
 export type LiveActivityMode = 'logging' | 'rest';
 
@@ -61,30 +63,19 @@ const weightLabelFor = (weight: string): string =>
 const repsLabelFor = (reps: string): string =>
   reps.trim() === '' ? '—' : `${reps.trim()} reps`;
 
-type Located = { ex: ExerciseLike; index: number };
-
-/** First set that is neither done nor `treatAsDone`, scanning exercises in order. */
-function locate(
-  exercises: readonly ExerciseLike[],
-  treatAsDone?: string,
-): Located | null {
-  for (const ex of exercises) {
-    const index = ex.sets.findIndex((s) => !s.done && s.id !== treatAsDone);
-    if (index !== -1) return { ex, index };
-  }
-  return null;
-}
+type Located = { exercise: ExerciseLike; setIndex: number };
 
 function describe(at: Located, resolve: Resolve): NextSet {
-  const filled = resolve(at.ex.sets, at.index);
+  const { exercise, setIndex } = at;
+  const filled = resolve(exercise.sets, setIndex);
   const weightLabel = weightLabelFor(filled.weight);
   const repsLabel = repsLabelFor(filled.reps);
   return {
-    exerciseName: at.ex.name,
-    subtitle: `Next: set ${at.index + 1} of ${at.ex.sets.length} (${weightLabel} ${TIMES} ${repsLabel})`,
+    exerciseName: exercise.name,
+    subtitle: `Next: set ${setIndex + 1} of ${exercise.sets.length} (${weightLabel} ${TIMES} ${repsLabel})`,
     weightLabel,
     repsLabel,
-    setId: at.ex.sets[at.index].id,
+    setId: exercise.sets[setIndex].id,
   };
 }
 
@@ -97,17 +88,17 @@ export function buildLiveActivityState(
   resting: boolean,
   resolve: Resolve,
 ): LiveActivitySnapshot | null {
-  const current = locate(exercises);
+  const current = locateNextSet(exercises);
   if (!current) return null;
 
-  const { ex, index } = current;
+  const { exercise: ex, setIndex: index } = current;
   const set = ex.sets[index];
   const filled = resolve(ex.sets, index);
   const weightLabel = weightLabelFor(filled.weight);
   const repsLabel = repsLabelFor(filled.reps);
   const position = `set ${index + 1} of ${ex.sets.length}`;
 
-  const after = locate(exercises, set.id);
+  const after = locateNextSet(exercises, set.id);
 
   return {
     exerciseName: ex.name,

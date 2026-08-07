@@ -5,9 +5,11 @@
  * pushed from the iPhone"). This builds the snapshot the Watch's `PhoneState`
  * decodes — the current set, the set-progress dots, and the session totals.
  *
- * Pure — no imports, so `node --test` can run it. The carry-forward rule is
- * injected as `resolve` (see setCarry.ts), keeping this self-contained.
+ * Pure — the only import is the shared look-ahead, so `node --test` can run it.
+ * The carry-forward rule is injected as `resolve` (see setCarry.ts), keeping
+ * this self-contained.
  */
+import { locateNextSet } from './nextSet.ts';
 
 export type WatchSetDot = 'done' | 'active' | 'pending';
 
@@ -51,16 +53,6 @@ export type WatchState = {
   currentSetId: string;
 };
 
-type Located = { ex: ExerciseLike & { id: string }; index: number };
-
-function locate(exercises: readonly (ExerciseLike & { id: string })[]): Located | null {
-  for (const ex of exercises) {
-    const index = ex.sets.findIndex((s) => !s.done);
-    if (index !== -1) return { ex, index };
-  }
-  return null;
-}
-
 /**
  * Parse a typed weight. `decimal-pad` inserts the locale decimal separator, so a
  * comma-locale keyboard yields "24,8" — `parseFloat` would stop at the comma and
@@ -95,10 +87,10 @@ export function buildWatchState(
   rest: { resting: boolean; remaining: number; total: number },
   resolve: Resolve,
 ): WatchState | null {
-  const current = locate(exercises);
+  const current = locateNextSet(exercises);
   if (!current) return null;
 
-  const { ex, index } = current;
+  const { exercise: ex, setIndex: index } = current;
   const set = ex.sets[index];
   const filled = resolve(ex.sets, index);
 
@@ -123,7 +115,14 @@ export function buildWatchState(
     resting: rest.resting,
     restRemaining: rest.remaining,
     restTotal: rest.total,
-    nextSetLabel: `Next: Set ${Math.min(index + 2, ex.sets.length)}`,
+    // The Watch's Rest screen shows only this line, so it must describe the set
+    // the rest is *for* — which is the located set: during rest the set just
+    // completed is already `done`, so the look-ahead has moved on (crossing into
+    // the next exercise when the last set of one is finished). The old
+    // `Math.min(index + 2, ex.sets.length)` looked one set too far and then
+    // clamped inside the current exercise, so the final set of an exercise
+    // showed its own number back as "next".
+    nextSetLabel: `Next: Set ${index + 1} of ${ex.sets.length}`,
     volumeKg: t.volumeKg,
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,

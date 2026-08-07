@@ -46,6 +46,7 @@ import {
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { replaceOrder, swapExercise } from '../../src/lib/replaceExercise';
 import { elapsedSeconds, restRemainingSeconds } from '../../src/lib/clocks';
+import { locateNextSet } from '../../src/lib/nextSet';
 import { parseServerDate } from '../../src/lib/serverTime';
 import {
   forgetActiveWorkout,
@@ -488,8 +489,9 @@ export default function ActiveWorkout() {
     // set itself would keep rendering unchecked.
     const offChange = onWorkoutChanged(async (restSeconds) => {
       await refreshRef.current();
-      const ex = exercisesRef.current.find((e) => e.sets.some((s) => !s.done));
-      startRest(restSeconds, ex?.name ?? null);
+      // The refetch has landed, so the completed set is already `done` — the
+      // plain look-ahead is enough here.
+      startRest(restSeconds, upcomingExerciseName());
     });
 
     // The event can land while this screen is unmounted (a background launch),
@@ -558,6 +560,14 @@ export default function ActiveWorkout() {
     });
   };
 
+  /**
+   * Name of the exercise the *next* set belongs to — what the end-of-rest alert
+   * announces. `justCompleted` is skipped as though already done, so this can be
+   * called before `setExercises` has re-rendered. `null` once nothing is left.
+   */
+  const upcomingExerciseName = (justCompleted?: string): string | null =>
+    locateNextSet(exercisesRef.current, justCompleted)?.exercise.name ?? null;
+
   const startRest = (seconds: number, exerciseName: string | null = null) => {
     if (seconds <= 0) return;
     const now = Date.now();
@@ -601,7 +611,11 @@ export default function ActiveWorkout() {
     }
 
     patchSet(exId, setId, { done: willBeDone });
-    if (willBeDone) startRest(ex.rest, ex.name);
+    // The rest belongs to the exercise just finished, but the alert announces
+    // what is *coming* — which, after an exercise's last set, is the next
+    // exercise. `exercises` has not re-rendered yet, so the set being completed
+    // is passed as `treatAsDone`.
+    if (willBeDone) startRest(ex.rest, upcomingExerciseName(setId));
     if (persist) write(patchSetApi(setId, { done: willBeDone }));
   };
 
@@ -854,7 +868,7 @@ export default function ActiveWorkout() {
             }),
           );
         }
-        if (ex) startRest(ex.rest, ex.name);
+        if (ex) startRest(ex.rest, upcomingExerciseName(st.currentSetId));
         break;
       }
       case 'adjustRest':

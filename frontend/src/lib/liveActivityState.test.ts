@@ -111,3 +111,35 @@ test('the workout’s last set has no next', () => {
   const s = buildLiveActivityState(legPress(set('a', '154', '12')), false, resolve);
   assert.equal(s?.next, undefined);
 });
+
+test('the look-ahead crosses the boundary on an exercise’s LAST set', () => {
+  // #19: on the final set of Squat, `next` must be Bench set 1 — never another
+  // set of Squat. This is what the card's ✓ redraws itself into.
+  const s = buildLiveActivityState(
+    [
+      { name: 'Squat', rest: 180, sets: [set('a', '100', '5', true), set('b', '100', '5')] },
+      { name: 'Bench', rest: 90, sets: [set('c', '80', '8'), set('d', '80', '8')] },
+    ],
+    false,
+    resolve,
+  );
+  assert.equal(s?.setId, 'b');
+  assert.equal(s?.next?.exerciseName, 'Bench');
+  assert.equal(s?.next?.setId, 'c');
+  assert.equal(s?.next?.subtitle, 'Next: set 1 of 2 (80 kg × 8 reps)');
+});
+
+test('resting after an exercise’s last set describes the next exercise', () => {
+  // Same moment, one tick later: the completed set is now `done`, so the card
+  // is already showing Bench rather than a stale Squat.
+  const s = buildLiveActivityState(
+    [
+      { name: 'Squat', rest: 180, sets: [set('a', '100', '5', true), set('b', '100', '5', true)] },
+      { name: 'Bench', rest: 90, sets: [set('c', '80', '8'), set('d', '80', '8')] },
+    ],
+    true,
+    resolve,
+  );
+  assert.equal(s?.exerciseName, 'Bench');
+  assert.equal(s?.subtitle, 'Next: set 1 of 2 (80 kg × 8 reps)');
+});

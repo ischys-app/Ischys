@@ -77,16 +77,46 @@ test('volume and set counts cover done, non-warmup sets only', () => {
   assert.equal(s?.setsTotal, 4);
 });
 
-test('the next-set label never runs past the last set', () => {
-  const s = buildWatchState(legPress(set('a', '1', '1'), set('b', '1', '1')), 'R', rest, resolve);
-  assert.equal(s?.nextSetLabel, 'Next: Set 2');
-  const last = buildWatchState(
-    legPress(set('a', '1', '1', true), set('b', '1', '1')),
+/**
+ * The Rest screen shows only this line, so it names the set the rest is for —
+ * the located set, which during rest is the one you are about to do.
+ */
+test('the next-set label describes the set the rest is for', () => {
+  const s = buildWatchState(
+    legPress(set('a', '1', '1', true), set('b', '1', '1'), set('c', '1', '1')),
     'R',
-    rest,
+    { resting: true, remaining: 45, total: 90 },
     resolve,
   );
-  assert.equal(last?.nextSetLabel, 'Next: Set 2');
+  assert.equal(s?.nextSetLabel, 'Next: Set 2 of 3');
+});
+
+test('the next-set label advances to the next exercise after an exercise’s last set', () => {
+  // #20: this used to clamp to the current exercise's last set and read
+  // "Next: Set 2" — a set of the exercise the user had just finished.
+  const s = buildWatchState(
+    [
+      {
+        id: 'e1',
+        name: 'Squat',
+        equipment: 'Barbell',
+        rest: 180,
+        sets: [set('a', '100', '5', true), set('b', '100', '5', true)],
+      },
+      {
+        id: 'e2',
+        name: 'Bench',
+        equipment: 'Barbell',
+        rest: 120,
+        sets: [set('c', '80', '5'), set('d', '80', '5'), set('e', '80', '5')],
+      },
+    ],
+    'R',
+    { resting: true, remaining: 45, total: 90 },
+    resolve,
+  );
+  assert.equal(s?.exerciseName, 'Bench');
+  assert.equal(s?.nextSetLabel, 'Next: Set 1 of 3');
 });
 
 test('rest state passes through', () => {

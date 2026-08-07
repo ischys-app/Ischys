@@ -12,6 +12,7 @@ type HealthNativeModule = {
   requestAuthorization(): Promise<boolean>;
   /** `startedAt`/`endedAt` are epoch ms; `energyKcal` 0 to attach no energy. */
   saveWorkout(startedAt: number, endedAt: number, energyKcal: number): Promise<boolean>;
+  hasWorkout(startedAt: number, endedAt: number): Promise<boolean>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   startHeartRateUpdates(): void;
   stopHeartRateUpdates(): void;
@@ -48,6 +49,23 @@ export const saveWorkout = async (
   endedAt: number,
   energyKcal = 0,
 ): Promise<boolean> => (native ? native.saveWorkout(startedAt, endedAt, energyKcal) : false);
+
+/**
+ * Whether Ischys — the phone app or its Watch companion — has already written a
+ * strength HKWorkout covering this window. The phone checks before writing a
+ * workout the Watch may have saved without its confirmation arriving in time.
+ *
+ * False on an older native module that lacks the query, which just restores the
+ * previous behaviour: write and risk the duplicate rather than lose the workout.
+ */
+export const hasWorkout = async (startedAt: number, endedAt: number): Promise<boolean> => {
+  if (!native || typeof native.hasWorkout !== 'function') return false;
+  try {
+    return await native.hasWorkout(startedAt, endedAt);
+  } catch {
+    return false;
+  }
+};
 
 /** Avg/max HR and energy a Watch recorded for [startedAt, endedAt]. */
 export const readWorkoutMetrics = async (

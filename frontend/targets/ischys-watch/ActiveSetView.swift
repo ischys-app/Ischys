@@ -14,6 +14,9 @@ struct ActiveSetView: View {
   @State private var editing: Field = .weight
   /// Crown-driven value for the selected field, written back as a string.
   @State private var crownValue: Double = 0
+  /// Set while a `seedCrown` write is in flight, so the `crownValue` change it
+  /// causes is not mistaken for the user turning the Crown.
+  @State private var seeding = false
   @FocusState private var crownFocused: Bool
 
   private var content: some View {
@@ -38,7 +41,10 @@ struct ActiveSetView: View {
         sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true
       )
       .onChange(of: crownValue) { _, v in applyCrown(v) }
-      .onChange(of: model.setNum) { _, _ in seedCrown() }
+      // Re-seed whenever the phone replaced the values — a new set, or an edit
+      // to the one we are on. Keyed on the model's seed counter rather than
+      // `setNum`, which missed the second case entirely (#30).
+      .onChange(of: model.valueSeed) { _, _ in seedCrown() }
       .onAppear {
         seedCrown()
         crownFocused = true
@@ -51,10 +57,25 @@ struct ActiveSetView: View {
   }
 
   private func seedCrown() {
-    crownValue = Double(editing == .weight ? model.weight : model.reps) ?? 0
+    // A comma-locale keyboard on the phone yields "24,8"; `Double` would reject
+    // it and drop the Crown to 0, so normalise the separator first.
+    let text = editing == .weight ? model.weight : model.reps
+    let next = Double(text.replacingOccurrences(of: ",", with: ".")) ?? 0
+    // An unchanged value fires no `onChange`, so `seeding` must not be armed for
+    // a write that will never land — it would swallow the user's next real turn.
+    guard next != crownValue else { return }
+    seeding = true
+    crownValue = next
   }
 
   private func applyCrown(_ v: Double) {
+    // Our own seed, not the user's wrist: leave the phone's value exactly as
+    // pushed rather than rewriting it through the 0.5 rounding below.
+    if seeding {
+      seeding = false
+      return
+    }
+    model.noteCrownEdit()
     if editing == .weight {
       // Keep the 0.5 step: whole numbers show plain, halves show one decimal.
       let w = (v * 2).rounded() / 2

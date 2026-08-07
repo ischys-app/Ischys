@@ -64,6 +64,12 @@ final class WorkoutModel: ObservableObject {
   @Published var prevReps = ""
   @Published var setDots: [SetDot] = []
 
+  /// Bumped whenever `weight`/`reps` were replaced by the phone. The Crown keeps
+  /// its own Double, so the Active Set view has to be told to re-seed it —
+  /// without that, the display would show the new number while the next notch
+  /// wrote the old one straight back.
+  @Published var valueSeed = 0
+
   // S3 — Rest. `restRemaining` ticks locally; the phone owns start/total.
   @Published var resting = false
   @Published var restRemaining = 0
@@ -97,6 +103,23 @@ final class WorkoutModel: ObservableObject {
   /// wins as soon as it arrives and the session start is only the fallback until
   /// then (see `apply`).
   private var elapsedOrigin: Date?
+
+  // MARK: Crown arbitration
+
+  /// When the user last turned the Digital Crown. The phone is the source of
+  /// truth for weight/reps, but a value yanked out from under a wrist that is
+  /// mid-adjustment is worse than a value a couple of seconds stale — so a
+  /// pushed edit waits for the Crown to go quiet.
+  private var lastCrownEdit: Date?
+  private let crownGrace: TimeInterval = 3
+
+  /// Called by the Active Set view on a real user turn (not on a re-seed).
+  func noteCrownEdit() { lastCrownEdit = Date() }
+
+  private var crownIsBusy: Bool {
+    guard let last = lastCrownEdit else { return false }
+    return Date().timeIntervalSince(last) < crownGrace
+  }
 
   /// Drives the elapsed clock while a session runs.
   func startTicking(sessionStart: Date) {
@@ -153,11 +176,20 @@ final class WorkoutModel: ObservableObject {
     setsTotal = s.setsTotal
     summary = s.summary
 
-    // A changed exercise/set reseeds the Crown-editable values; an unchanged set
-    // keeps the user's local Crown edit.
-    if s.exerciseName != exerciseName || s.setNum != setNum {
+    // A changed exercise/set always reseeds the Crown-editable values — a new set
+    // means new seed values.
+    let setChanged = s.exerciseName != exerciseName || s.setNum != setNum
+    // So does an edit the phone made to the set we are already on (#30). This
+    // used to be ignored entirely, so typing a weight on the phone before
+    // ticking the set off left the Watch showing the old number. The one thing
+    // that outranks the phone is a wrist mid-turn; that edit lands once the
+    // Crown goes quiet, or when the set changes.
+    let pushedEdit = !setChanged && !crownIsBusy && (s.weight != weight || s.reps != reps)
+    if setChanged || pushedEdit {
       weight = s.weight
       reps = s.reps
+      if setChanged { lastCrownEdit = nil }
+      valueSeed &+= 1
     }
     exerciseName = s.exerciseName
     setNum = s.setNum

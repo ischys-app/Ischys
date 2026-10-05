@@ -1,6 +1,7 @@
 /** One exercise: header, note, rest-timer row, set grid, + Add Set. */
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { effortRowLine, type EffortScaleKind } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
 import { exerciseArt } from '../../lib/exerciseArt';
 import { color, font } from '../../theme/tokens';
@@ -33,6 +34,11 @@ type Props = {
   /** Per-set progression proposal, keyed by set id (#69). */
   suggestionFor?: (setId: string) => { kind: 'up' | 'hold' | 'down'; weight: number; reps: number } | null;
   onUseSuggestion?: (setId: string) => void;
+  /**
+   * Effort per set (#84). Absent — the setting is Off — and every row renders
+   * exactly as it does without the feature.
+   */
+  effort?: { kind: EffortScaleKind; onOpen: (setId: string) => void } | null;
   /** Offers the warm-up ramp. Absent → the button isn't shown (see below). */
   onWarmup?: () => void;
   /** e.g. "A1" — this exercise's place in its superset. Absent when solo. */
@@ -80,6 +86,7 @@ export function ExerciseCard({
   onFieldFocus,
   suggestionFor,
   onUseSuggestion,
+  effort,
   onWarmup,
   supersetTag,
   onSuperset,
@@ -190,6 +197,7 @@ export function ExerciseCard({
           if (s.type === 'normal') working += 1;
           const carry = carryFor(exercise.sets, idx);
           const active = hasDone && idx === firstUndone;
+          const suggestion = suggestionFor?.(s.id) ?? null;
           return (
             <SetRow
               key={s.id}
@@ -203,8 +211,20 @@ export function ExerciseCard({
               onRepsChange={(t) => onRepsChange(s.id, t)}
               onToggleDone={() => onToggleDone(s.id)}
               onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
-              suggestion={suggestionFor?.(s.id) ?? null}
+              suggestion={suggestion}
               onUseSuggestion={() => onUseSuggestion?.(s.id)}
+              effortLine={
+                effort
+                  ? effortRowLine({
+                      mode: effort.kind,
+                      done: s.done,
+                      rpe: s.rpe,
+                      prevRpe: s.prevRpe,
+                      hasSuggestion: !!suggestion,
+                    })
+                  : undefined
+              }
+              onEffortPress={effort ? () => effort.onOpen(s.id) : undefined}
               onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
               isOpen={openSetId === s.id}
               onOpenChange={(o) => onSetOpenChange?.(s.id, o)}

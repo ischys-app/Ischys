@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import type { EffortRowLine } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
 import { color, font } from '../../theme/tokens';
 
@@ -43,6 +44,14 @@ type Props = {
   suggestion?: { kind: 'up' | 'hold' | 'down'; weight: number; reps: number } | null;
   /** Fills both inputs from the suggestion. Must NOT tick the set. */
   onUseSuggestion?: () => void;
+  /**
+   * The effort line for PREV's second slot (#84): last session's rating, this
+   * set's, or the way in to add one. Absent → the row is exactly the row
+   * without the feature. A suggestion showing on an undone set keeps the slot.
+   */
+  effortLine?: EffortRowLine | null;
+  /** Opens the rating sheet, from a rating or `+ RPE`. `last @9` is not a way in. */
+  onEffortPress?: () => void;
   /** Fired by the swipe-revealed Delete button. Omitted → swipe disabled, no panel. */
   onDelete?: () => void;
   /** This row's swipe panel is revealed. */
@@ -75,6 +84,8 @@ export function SetRow({
   onFieldFocus,
   suggestion,
   onUseSuggestion,
+  effortLine,
+  onEffortPress,
   onDelete,
   isOpen = false,
   onOpenChange,
@@ -167,6 +178,28 @@ export function SetRow({
                 {`${GLYPH[suggestion.kind]} ${fmtNum(suggestion.weight)} × ${suggestion.reps}`}
               </Text>
             </Pressable>
+          ) : effortLine ? (
+            // `last @9` is a reference and does nothing; the done row's line —
+            // the rating, or `+ RPE` — opens the scale.
+            effortLine.kind === 'last' || !onEffortPress ? (
+              <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
+                {effortLine.text}
+              </Text>
+            ) : (
+              <Pressable
+                onPress={onEffortPress}
+                hitSlop={{ top: 2, bottom: 12, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  effortLine.kind === 'add' ? 'Rate this set' : `Effort ${effortLine.text}`
+                }
+                accessibilityHint="Opens the effort scale"
+              >
+                <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
+                  {effortLine.text}
+                </Text>
+              </Pressable>
+            )
           ) : null}
         </View>
 
@@ -278,6 +311,9 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   suggestTextEdited: { color: color.text3 },
+  // The effort line shares the suggestion's slot and size; weight and colour
+  // say which kind it is (see `effortStyles`).
+  effortText: { fontSize: 11, fontVariant: ['tabular-nums'] },
   suggestTextDown: { color: color.warning },
   input: {
     height: 38,
@@ -305,4 +341,11 @@ const styles = StyleSheet.create({
   },
   checkDone: { backgroundColor: color.accent },
   checkIdle: { backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border },
+});
+
+/** Last session's rating recedes; today's is one step brighter; `+ RPE` is a quiet way in. */
+const effortStyles = StyleSheet.create({
+  last: { fontFamily: font.monoRegular, color: color.text3 },
+  today: { fontFamily: font.monoMedium, color: color.text2 },
+  add: { fontFamily: font.monoMedium, color: color.text3 },
 });

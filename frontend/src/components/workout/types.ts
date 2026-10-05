@@ -23,6 +23,10 @@ export interface WorkoutSet {
   /** Previous-session reps. */
   prevReps?: string;
   done: boolean;
+  /** This set's effort, always as RPE (domain/effort.ts). Unset when unrated. */
+  rpe?: number | null;
+  /** The same set's effort last session. */
+  prevRpe?: number | null;
 }
 
 export interface Exercise {
@@ -109,6 +113,21 @@ export function weightColumnLabel(ex: Exercise, unit: Unit): string {
 }
 
 export { prevLabel } from './prevLabel';
+
+/**
+ * A set's badge: the working-set number for a normal set, the type's letter
+ * otherwise. The same glyph the row draws, for anything that names a set
+ * ("SET 3").
+ */
+export function setBadge(sets: readonly { type: SetType }[], index: number): string {
+  const type = sets[index]?.type ?? 'normal';
+  if (type === 'warmup') return 'W';
+  if (type === 'drop') return 'D';
+  if (type === 'failure') return 'F';
+  let working = 0;
+  for (let i = 0; i <= index && i < sets.length; i++) if (sets[i].type === 'normal') working += 1;
+  return String(working);
+}
 
 let _seq = 0;
 const uid = (p: string) => `${p}-${_seq++}`;

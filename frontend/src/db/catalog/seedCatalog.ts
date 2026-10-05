@@ -3,7 +3,7 @@
  * DB, so it is never imported by node-tested code. Chunked inserts keep us under
  * SQLite's variable limit.
  */
-import { db } from '../client';
+import { atomically, db } from '../client';
 import * as schema from '../schema';
 import type { Catalog } from './catalogTypes';
 import { buildSeedRows } from './seedPlan';
@@ -16,7 +16,7 @@ export async function seedCatalog(catalog: Catalog): Promise<{ inserted: boolean
   if (already.length > 0) return { inserted: false };
 
   const rows = buildSeedRows(catalog);
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     await tx.insert(schema.categories).values(rows.categories);
     await tx.insert(schema.muscles).values(rows.muscles);
     for (const part of chunk(rows.exercises, 200)) await tx.insert(schema.exercises).values(part);

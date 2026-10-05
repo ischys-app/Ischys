@@ -1,7 +1,9 @@
 /**
  * Edit a completed workout (#83).
  *
- * Source of truth: design-handoff board 13a, frames E2–E8.
+ * Source of truth: design-handoff board 13a, frames E2–E8, and its follow-ups
+ * on 13b: a removed exercise stays in place (E9–E11), and the Date & time
+ * sheet says what Save does to the workout's Apple Health entry (E12–E14).
  *
  * A thin view over domain/workoutEdit.ts. Nothing is written until Save, and
  * Save is one transaction (data/workoutEditRepo.ts). The cards and set rows are
@@ -9,7 +11,9 @@
  * is what is missing — no clock, no HR strip, no rest timer, no ticks.
  *
  * This screen starts nothing: no Live Activity, no Watch session, no rest
- * notification, no HealthKit session. It imports none of them.
+ * notification, no HealthKit session. Its one dealing with Health comes after
+ * a save that changed the workout's time: an entry Ischys wrote is moved to
+ * match (#90), best-effort, and never as part of the save itself.
  */
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -52,6 +56,7 @@ import {
   loadWorkoutForEdit,
   saveWorkoutEdit,
 } from '../../../src/data/workoutEditRepo';
+import { healthEditLine, type HealthEditState } from '../../../src/domain/healthEntry';
 import {
   addExercise,
   addSet,
@@ -84,6 +89,7 @@ import {
   type RecordContext,
 } from '../../../src/domain/workoutEdit';
 import { haptics } from '../../../src/lib/haptics';
+import { loadHealthEditState, syncEditedWorkout } from '../../../src/lib/healthSync';
 import { takePendingSelection } from '../../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../../src/lib/weightUnit';
 import { color, font } from '../../../src/theme/tokens';
@@ -136,6 +142,8 @@ export default function EditWorkout() {
 
   const [session, setSession] = useState<EditSession | null>(null);
   const [records, setRecords] = useState<RecordContext | null>(null);
+  /** What is known about the workout's Health entry. Null until it is. */
+  const [health, setHealth] = useState<HealthEditState | null>(null);
   /** Nothing to edit: no such workout, or it is not a finished one. */
   const [missing, setMissing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -172,6 +180,13 @@ export default function EditWorkout() {
         // the edit, so a number is never shown or saved under another one.
         setSession(openEditSession(ctx.original, getWeightUnit()));
         setRecords(ctx.records);
+        // Asked now, not when the Date & time sheet opens, so its Health line
+        // is there on the sheet's first frame. A workout finished before
+        // entries were recorded is looked up in Health here, once. Never
+        // throws, and has no say in whether the workout can be edited.
+        void loadHealthEditState(workoutId, ctx.original).then((state) => {
+          if (alive) setHealth(state);
+        });
       } catch {
         if (alive) setMissing(true);
       }
@@ -247,8 +262,9 @@ export default function EditWorkout() {
     if (!current || saveStarted.current) return;
     saveStarted.current = true;
     setSaving(true);
+    const plan = buildPlan(current);
     try {
-      await saveWorkoutEdit(buildPlan(current));
+      await saveWorkoutEdit(plan);
     } catch {
       saveStarted.current = false;
       setSaving(false);
@@ -257,6 +273,9 @@ export default function EditWorkout() {
       Alert.alert('Couldn’t save', 'Nothing was changed. Try again.');
       return;
     }
+    // The edit is committed. If it moved the workout in time, the Health
+    // entry Ischys wrote follows it; not awaited, and unable to fail the save.
+    void syncEditedWorkout(plan.workoutId, current.original, plan);
     haptics.success();
     setConfirmSave(false);
     // Opened from the Summary, which is right underneath. Opened from a
@@ -685,6 +704,7 @@ export default function EditWorkout() {
               durationSeconds: stored.durationSeconds,
               endedAt: stored.endedAt,
             }}
+            healthLine={health ? healthEditLine(health) : null}
             onDone={(when) => {
               edit((s) => setWhen(s, when));
               setWhenField(null);

@@ -11,10 +11,10 @@
  */
 import { and, eq, inArray } from 'drizzle-orm';
 
-import type { RecordMetric, SetType, WorkoutSummaryOut } from '../api/types';
+import type { SetType, WorkoutSummaryOut } from '../api/types';
 import { db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
-import { computeRecords, detectPrs, headlinePr, type PRSession } from '../domain/records';
+import { headlinePr, type PRSession } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { volumeByMuscle } from '../domain/volumeByMuscle';
 import type { EditPlan, OriginalWorkout, RecordContext } from '../domain/workoutEdit';
@@ -24,7 +24,7 @@ import { getCountWarmups } from '../lib/warmupVolume';
 import { nowMs } from './ids';
 import type { WorkoutSetRow } from './map';
 import { completedSessionsFor, loadWorkout, muscleLabel } from './queries';
-import { recomputeForExercise } from './recordStore';
+import { prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
 
 type Kind = 'weighted' | 'bodyweight';
 
@@ -150,10 +150,11 @@ type SummaryPr = WorkoutSummaryOut['prs'][number];
  * Applies an edit: one transaction, then nothing.
  *
  * Inside it, in order: the removals, the exercise and set changes, the
- * workout's own row (date, duration, volume, set count), the records this
- * workout set, and finally `recomputeForExercise` for every exercise the edit
- * touched — which is what withdraws a record the edit removed and lets the
- * next best session take it back.
+ * workout's own row (date, duration, volume, set count), and then, for every
+ * exercise the edit touched, its record flags across its whole history
+ * (`reflagExercisePrs`) and its materialised records (`recomputeForExercise`)
+ * — which is what withdraws a record the edit removed and lets the next best
+ * session take it back.
  *
  * Bodyweight and the warm-up setting are read BEFORE the transaction opens:
  * both live in SecureStore, and awaiting SecureStore inside an expo-sqlite
@@ -164,9 +165,11 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
   const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, wid)))[0];
   if (!w) throw new Error('workout not found');
   if (w.status !== 'completed') throw new Error(`workout not finished (${w.status})`);
-  // Editing never deletes a workout. The screen keeps Save inert in this
-  // state; this is the same rule for any other caller.
+  // Editing never deletes a workout, never stores an exercise with no sets,
+  // and never drops a half-typed set. The screen keeps Save inert in these
+  // states; this is the same rule for any other caller.
   if (plan.setCount === 0) throw new Error('a workout needs at least one set');
+  if (plan.blocked) throw new Error('the edit has a set or an exercise that cannot be saved');
 
   const currentBw = await getBodyweightKg();
   const countWarmups = await getCountWarmups();
@@ -176,6 +179,13 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
   const prs: { exerciseId: string; pr: Omit<SummaryPr, 'exercise_id' | 'exercise_name'> }[] = [];
 
   await db.transaction(async (tx) => {
+    // Which workouts count each touched exercise among their PRs, as stored.
+    // Read before anything moves; `reflagExercisePrs` replaces that share.
+    const heldBefore = new Map<string, Set<string>>();
+    for (const eid of plan.touchedExerciseIds) {
+      heldBefore.set(eid, await prCountHolders(eid, tx, currentBw, countWarmups));
+    }
+
     // --- removals -----------------------------------------------------------
     // No FK cascades in the schema, so an exercise's sets go first.
     for (const weId of plan.removedExerciseIds) {
@@ -293,12 +303,9 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
       .set({
         ...when,
         // The snapshot taken at finish stays: the edit corrects what was
-        // lifted, not the mass it was lifted at.
-        totalVolume: workoutVolume(
-          setLikes,
-          resolveWorkoutBodyweight(w.bodyweightKg, currentBw),
-          countWarmups,
-        ),
+        // lifted, not the mass it was lifted at. A workout with no snapshot
+        // counts no bodyweight, as finish and import store it — not today's.
+        totalVolume: workoutVolume(setLikes, w.bodyweightKg ?? 0, countWarmups),
         totalSets: countWorkingSets(setLikes),
         updatedAt: nowMs(),
       })
@@ -306,35 +313,19 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
 
     if (!recordsMoved) return;
 
-    // --- the records this workout set --------------------------------------
-    // Finish decides them by comparing against the records as they stood then.
-    // Re-deciding them for a workout in the past means the same comparison
-    // against the sessions before it, not against everything since.
-    await tx
-      .update(schema.workoutSets)
-      .set({ isPr: 0, updatedAt: nowMs() })
-      .where(and(inArray(schema.workoutSets.workoutExerciseId, weIds), eq(schema.workoutSets.isPr, 1)));
-    const ownSetIds = new Set(allSets.map((s) => s.id));
-    for (const eid of exerciseIds) {
-      const kind = kindByExerciseId.get(eid) ?? 'weighted';
-      const sessions = await completedSessionsFor(eid, tx);
-      const earlier = sessions.filter((s) => s.workoutId !== wid && s.startedAt < startedAt);
-      const own = sessions.filter((s) => s.workoutId === wid);
-      const before = computeRecords(toPrSessions(earlier, kind, currentBw), countWarmups);
-      const baseline: Partial<Record<RecordMetric, number>> = {};
-      for (const rv of Object.values(before)) baseline[rv.metric] = rv.value;
-      // This workout first, as `completedSessionsFor` orders it: newest first.
-      const after = computeRecords(toPrSessions([...own, ...earlier], kind, currentBw), countWarmups);
-      const deltas = detectPrs(baseline, after).filter((d) => d.value.workoutId === wid);
-      for (const d of deltas) {
-        if (d.value.workoutSetId && ownSetIds.has(d.value.workoutSetId)) {
-          await tx
-            .update(schema.workoutSets)
-            .set({ isPr: 1, updatedAt: nowMs() })
-            .where(eq(schema.workoutSets.id, d.value.workoutSetId));
-        }
-      }
-      const head = headlinePr(deltas);
+    // --- the records, across each touched exercise's whole history ----------
+    // Not just this workout's: a best lowered here hands its flag to the later
+    // set that is now the record, and a date moved here reorders who was first.
+    // Exercises the edit did not touch are not re-decided at all.
+    for (const eid of plan.touchedExerciseIds) {
+      const steps = await reflagExercisePrs(
+        eid,
+        tx,
+        currentBw,
+        countWarmups,
+        heldBefore.get(eid) ?? new Set(),
+      );
+      const head = headlinePr(steps.get(wid)?.deltas ?? []);
       if (head) {
         prs.push({
           exerciseId: eid,
@@ -347,19 +338,19 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
           },
         });
       }
-    }
-    await tx
-      .update(schema.workouts)
-      .set({ prCount: prs.length, updatedAt: nowMs() })
-      .where(eq(schema.workouts.id, wid));
-
-    // --- every touched exercise's records, from its whole history ----------
-    for (const eid of plan.touchedExerciseIds) {
+      // The materialised records themselves: what withdraws one the edit
+      // removed and lets the next best session take it back.
       await recomputeForExercise(eid, tx, currentBw, countWarmups);
     }
   });
 
-  await refreshCachedSummary(wid, recordsMoved ? prs : null);
+  // The edit is committed. A cache that fails to refresh must not be reported
+  // as a save that failed: a retry would insert the same rows a second time.
+  try {
+    await refreshCachedSummary(wid, recordsMoved ? { touched: plan.touchedExerciseIds, prs } : null);
+  } catch {
+    // The Summary re-reads the database the next time it is opened cold.
+  }
 }
 
 /**
@@ -370,23 +361,37 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
  */
 async function refreshCachedSummary(
   wid: string,
-  prs: { exerciseId: string; pr: Omit<SummaryPr, 'exercise_id' | 'exercise_name'> }[] | null,
+  records: {
+    touched: string[];
+    prs: { exerciseId: string; pr: Omit<SummaryPr, 'exercise_id' | 'exercise_name'> }[];
+  } | null,
 ): Promise<void> {
   const cached = getSummary(wid);
   if (!cached) return;
   const workout = await loadWorkout(wid);
   if (!workout) return;
-  const nameById = new Map(workout.exercises.map((we) => [we.exercise.id, we.exercise.name]));
+  let prs = cached.prs;
+  if (records) {
+    // A touched exercise shows what the save decided; the rest keep the
+    // record they were shown with, as long as they are still in the workout.
+    const touched = new Set(records.touched);
+    const decided = new Map(records.prs.map((p) => [p.exerciseId, p.pr]));
+    const kept = new Map(cached.prs.map((p) => [p.exercise_id, p]));
+    prs = [];
+    for (const id of new Set(workout.exercises.map((we) => we.exercise.id))) {
+      const name = workout.exercises.find((we) => we.exercise.id === id)?.exercise.name ?? '';
+      const pr = decided.get(id);
+      const old = kept.get(id);
+      if (touched.has(id)) {
+        if (pr) prs.push({ exercise_id: id, exercise_name: name, ...pr });
+      } else if (old) {
+        prs.push(old);
+      }
+    }
+  }
   saveSummary(wid, {
     workout,
-    prs:
-      prs === null
-        ? cached.prs
-        : prs.map((p) => ({
-            exercise_id: p.exerciseId,
-            exercise_name: nameById.get(p.exerciseId) ?? '',
-            ...p.pr,
-          })),
+    prs,
     volume_by_muscle: volumeByMuscle(
       workout.exercises.map((we) => ({
         muscleLabel: muscleLabel(

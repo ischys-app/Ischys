@@ -7,7 +7,7 @@ import Foundation
 /// phone is locked and idle. So it buzzed for some rests and not for others.
 ///
 /// This holds the rule and nothing else — no timer, no WatchKit — so it can be
-/// compiled and tested on a Mac (scripts/test-watch-rest-alarm.sh). The caller
+/// compiled and tested on a Mac (scripts/test-watch-logic.sh). The caller
 /// feeds it every state the phone pushes and every clock tick, and plays the
 /// haptic whenever a call returns true.
 ///

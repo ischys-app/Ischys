@@ -224,7 +224,7 @@ struct ActiveSetView: View {
 /// hands off to the phone, which is the only place the exercise library lives.
 ///
 /// DECISION 2 (resolved): this Finish button and `ControlsView` both call the same
-/// `PhoneLink.endWorkout()`, which SAVES the workout. They now read the same —
+/// `WorkoutModel.requestFinish()`, which SAVES the workout. They now read the same —
 /// **"Finish" in accent** in both places. ControlsView's old "End" in error red was
 /// inverted (red implies loss, but the losing action is Discard), so Discard took
 /// the error red there and Finish took the accent. One action, one name, one colour.
@@ -270,10 +270,9 @@ struct EndOfWorkoutState: View {
 
   private var finishButton: some View {
     Button {
-      // Save the Watch's HKWorkoutSession, then tell the phone to finish — the
-      // same end path ControlsView calls "End". See DECISION 2 above.
-      WorkoutManager.shared.end()
-      PhoneLink.shared.endWorkout()
+      // Ask the phone to finish; the Watch's session is saved once it has — the
+      // same path as ControlsView's Finish. See DECISION 2 above.
+      model.requestFinish()
     } label: {
       HStack(spacing: 7) {
         Image(systemName: "stop.fill").font(.system(size: 15))

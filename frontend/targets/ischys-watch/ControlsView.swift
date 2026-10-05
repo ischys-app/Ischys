@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// S5 — Controls. A 2×2 grid of circular actions for the running session:
-/// Finish and Discard both close the Watch's `HKWorkoutSession` before telling
-/// the phone what to do with the workout; Pause holds the session; Add asks the
-/// phone to append a set. The phone remains the source of truth for the data —
+/// Finish asks the phone to finish and closes the Watch's `HKWorkoutSession`
+/// once it has (`WorkoutModel.requestFinish`); Discard closes it at once and
+/// tells the phone; Pause holds the session; Add asks the phone to append a set. The phone remains the source of truth for the data —
 /// these buttons only send intents (see `PhoneLink`).
 ///
 /// DECISION 2 (resolved — see `EndOfWorkoutState` in `ActiveSetView`): this was
@@ -22,13 +22,15 @@ struct ControlsView: View {
 
       LazyVGrid(columns: [GridItem(spacing: 12), GridItem(spacing: 12)], spacing: 12) {
         controlButton(color: Ischys.accent, icon: "stop.fill", label: "Finish") {
-          WorkoutManager.shared.end()
-          PhoneLink.shared.endWorkout()
+          model.requestFinish()
         }
         controlButton(color: Ischys.warning, icon: "pause.fill", label: "Pause") {
           WorkoutManager.shared.pause()
         }
         controlButton(color: Ischys.error, icon: "trash", label: "Discard") {
+          // No waiting for the phone here, unlike Finish. A discard saves
+          // nothing to Health, so there is no recording to end up duplicated,
+          // and the phone leaves the workout whether or not its delete worked.
           WorkoutManager.shared.discard()
           PhoneLink.shared.discardWorkout()
         }

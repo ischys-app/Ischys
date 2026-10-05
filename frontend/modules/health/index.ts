@@ -252,7 +252,14 @@ export type WatchAction =
   | { action: 'logSet'; weight: string; reps: string; unit?: 'kg' | 'lb' }
   | { action: 'adjustRest'; seconds: number }
   | { action: 'skipRest' }
-  | { action: 'end' }
+  /**
+   * Finish. `finishId` is present when the Watch is keeping its session running
+   * until the phone says how the finish went, and names the request that answer
+   * must carry (see the handshake in src/lib/watchFinish.ts). Absent when the
+   * Watch has already ended and saved: an older build, or a phone it could not
+   * reach.
+   */
+  | { action: 'end'; finishId?: string }
   | { action: 'discard' }
   | { action: 'addSet' }
   | { action: 'startEmpty' }
@@ -272,8 +279,9 @@ export const updateWatchState = (state: WatchState): void => native?.updateWatch
 
 /**
  * Drains Watch actions that arrived before any JS listener existed, and marks JS
- * as listening from here on. Only workout-ending actions are ever buffered — see
- * `consumeWatchActions` in the native module for why.
+ * as listening from here on. Only workout-ending actions and the Watch's
+ * `workoutSaved` confirmation are ever buffered — see `consumeWatchActions` in
+ * the native module for why.
  *
  * Empty on an older native build that lacks the function, which just restores the
  * previous behaviour (the pre-subscribe window drops the action).

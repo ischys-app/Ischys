@@ -22,6 +22,7 @@ import { Alert, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import type { WatchAction } from '../modules/health';
 import * as LiveActivity from '../modules/live-activity';
 import {
   discardWorkout,
@@ -49,7 +50,14 @@ import {
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
-import { completesWorkout, notifyWatchFinished, routeWatchFinish } from '../src/lib/watchFinish';
+import {
+  completesWorkout,
+  finishRequestId,
+  finishVerdict,
+  notifyWatchFinished,
+  routeWatchFinish,
+  screenHoldsWatchFinish,
+} from '../src/lib/watchFinish';
 import { parseServerDate } from '../src/lib/serverTime';
 import { color } from '../src/theme/tokens';
 
@@ -132,8 +140,8 @@ function useWatchStart() {
  * Completes a workout the user finished on the Watch, when no workout screen is
  * mounted to do it.
  *
- * Finishing on the wrist ends the Watch's own session and asks the phone to
- * finish too. That request was only ever handled inside the workout screen — so
+ * Finishing on the wrist asks the phone to finish. That request was only ever
+ * handled inside the workout screen — so
  * finishing while the phone sat in a pocket (backgrounded and since terminated,
  * or simply backed out to Home) dropped it: the Watch showed the workout done
  * and the phone still called it active, offering to resume a workout that was
@@ -143,6 +151,10 @@ function useWatchStart() {
  * fallback, and deliberately does NOT navigate: it can run while the app is in
  * the background or sitting on an unrelated tab, and yanking the user to a
  * summary they didn't ask for is worse than letting them find it in History.
+ *
+ * A Watch that is waiting to hear how the finish went (its request carries a
+ * `finishId`, #95) is told either way, and keeps recording until it is. One
+ * that is not waiting has already ended its session and is told nothing.
  */
 function useWatchFinish() {
   useEffect(() => {
@@ -150,10 +162,24 @@ function useWatchFinish() {
     // both carry the same one. Only finishes take the turn, so the Watch's
     // other messages, which all arrive here too, cannot make one be dropped.
     let applying = false;
-    const apply = async (action: string) => {
+    // `heardAt` comes with an action drained at launch: the instant from which
+    // a Watch "saved" confirmation is this finish's (it can have been buffered
+    // before the finish itself was applied).
+    const apply = async (a: WatchAction, heardAt?: number) => {
+      const action = a.action;
       if (!completesWorkout(action)) return;
       if (applying) return;
       applying = true;
+      const finishId = finishRequestId(a);
+      // Tells a waiting Watch how it went, once. Nothing is sent to one that
+      // is not waiting: it would not know what to make of it.
+      let told = false;
+      const tellWatch = (outcome: 'finished' | 'failed') => {
+        const verdict = told ? null : finishVerdict(outcome, finishId);
+        if (!verdict) return;
+        told = true;
+        pushWatchState(verdict);
+      };
       try {
         const [active] = await listWorkouts({ status: 'active', limit: 1 });
         if (routeWatchFinish(action, active?.id ?? null) !== 'fallback' || !active) return;
@@ -181,30 +207,48 @@ function useWatchFinish() {
           summary = await finishWorkout(active.id);
         } catch {
           // Still active on the phone, with all of the above in place, and
-          // resumable from Home. The Watch cannot be told from here: it ended
-          // its session and went to its Start screen when Finish was tapped,
-          // and only a mounted workout screen has the state to send it back
-          // (it does so, and restarts the session, when the workout is opened).
+          // resumable from Home. A waiting Watch is told, stays in the workout
+          // and keeps recording. One that ended its session when Finish was
+          // tapped is on its Start screen, and only a mounted workout screen
+          // has the state to send it back (it does so, and restarts the
+          // session, when the workout is opened).
+          tellWatch('failed');
           Alert.alert(
             'Couldn’t finish workout',
             'Nothing was changed. Open the workout and try again.',
           );
           return;
         }
+        // Stored: a waiting Watch can end its session and save its recording.
+        tellWatch('finished');
         void LiveActivity.end();
         forgetActiveWorkout();
         clearRest(active.id);
         // The Watch ran the session, so it is the primary writer of the
-        // HKWorkout; this verifies that save rather than duplicating it.
+        // HKWorkout; this verifies that save rather than duplicating it. A
+        // Watch that waited saves only now, so the wait for it is longer.
         const startedAt = parseServerDate(active.started_at);
         if (!Number.isNaN(startedAt)) {
-          void syncFinishedWorkout(active.id, startedAt, finishBeganAt, true, finishBeganAt);
+          void syncFinishedWorkout(
+            active.id,
+            startedAt,
+            finishBeganAt,
+            true,
+            heardAt ?? finishBeganAt,
+            finishId != null,
+          );
         }
         saveSummary(active.id, summary);
         notifyWatchFinished(active.id);
       } catch {
         // Best-effort: a finish we couldn't apply leaves the workout active and
-        // resumable, which is the state the user was already in.
+        // resumable, which is the state the user was already in. A Watch still
+        // waiting on it keeps recording.
+        //
+        // Unless a workout screen is mounted. Reading the active workout is
+        // what failed here, so this never learned the finish was the screen's
+        // to complete, and the screen is completing it: it answers the Watch.
+        if (!screenHoldsWatchFinish()) tellWatch('failed');
       } finally {
         applying = false;
       }
@@ -213,10 +257,11 @@ function useWatchFinish() {
     // Actions queued natively before any listener existed — the cold-launch case,
     // where WCSession can deliver before the JS bundle has subscribed.
     void (async () => {
-      for (const a of await consumeWatchActions()) await apply(a.action);
+      const { actions, heardAt } = await consumeWatchActions();
+      for (const a of actions) await apply(a, heardAt);
     })();
 
-    return onWatchAction((a) => void apply(a.action));
+    return onWatchAction((a) => void apply(a));
   }, []);
 }
 

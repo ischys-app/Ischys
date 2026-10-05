@@ -74,6 +74,10 @@ struct SessionView: View {
   @EnvironmentObject var model: WorkoutModel
 
   var body: some View {
+    // While the finish cover is up, nothing under it takes input. The cover is
+    // opaque and on top, but that alone leaves it to hit-testing to keep a
+    // swipe from reaching the pager; switching the pages off does not.
+    let covered = model.finishing || model.finishFailed
     ZStack(alignment: .bottom) {
       TabView {
         ActiveSetView()
@@ -81,6 +85,8 @@ struct SessionView: View {
         ControlsView()
       }
       .tabViewStyle(.page)
+      .allowsHitTesting(!covered)
+      .accessibilityHidden(covered)
 
       if model.resting {
         RestBanner()
@@ -88,7 +94,13 @@ struct SessionView: View {
           .padding(.horizontal, 10)
           .padding(.bottom, 20)
           .transition(.move(edge: .bottom))
+          .allowsHitTesting(!covered)
+          .accessibilityHidden(covered)
       }
+
+      // Last, so it sits over the pages and the rest banner alike while a
+      // finish is in flight or has just failed.
+      FinishStatusView()
     }
     .animation(.easeInOut(duration: 0.2), value: model.resting)
   }

@@ -118,6 +118,13 @@ final class WorkoutModel: ObservableObject {
   // S6 — Summary
   @Published var summary: SessionSummary?
 
+  // Finish (#95). The Watch asks the phone to finish and keeps recording until
+  // it hears how that went; see `FinishHandshake` and "Finishing" below.
+  /// Finish was tapped and the phone has not answered yet.
+  @Published var finishing = false
+  /// The phone could not finish the workout. Shown until acknowledged.
+  @Published var finishFailed = false
+
   // MARK: Derived state
 
   /// E1 — every planned set is logged, so the Active Set page has nothing left
@@ -199,6 +206,8 @@ final class WorkoutModel: ObservableObject {
     if let start = elapsedOrigin {
       elapsedSec = max(0, Int(Date().timeIntervalSince(start)))
     }
+    // A second chance for the finish timeout, should its own timer be held back.
+    pollFinish()
     // A second chance for the rest's end, should its own timer be held back.
     restTick()
   }
@@ -243,6 +252,128 @@ final class WorkoutModel: ObservableObject {
     WKInterfaceDevice.current().play(.notification)
   }
 
+  // MARK: Finishing
+
+  private var finishHandshake = FinishHandshake()
+  private var finishTimer: Timer?
+
+  /// Finish was tapped, on Controls or on the all-sets-done page.
+  ///
+  /// The phone decides whether the workout is finished, so it is asked first
+  /// and the session keeps recording until it answers. Ending here straight
+  /// away, as this used to, saved a recording for a workout the phone could
+  /// still fail to finish.
+  func requestFinish() {
+    let id = UUID().uuidString
+    let start = finishHandshake.begin(
+      id: id, now: Date(), phoneReachable: PhoneLink.shared.canAskNow)
+    switch start {
+    case .ignore:
+      return
+    case .endNow:
+      // Out of reach: nothing would answer, so do not make the user wait for
+      // nothing. The request is queued and the phone finishes when it gets it.
+      WorkoutManager.shared.end()
+      PhoneLink.shared.endWorkout()
+    case .ask:
+      finishFailed = false
+      finishing = true
+      scheduleFinishTimer()
+      PhoneLink.shared.requestFinish(id: id)
+    }
+  }
+
+  /// The phone answered a finish request (`PhoneLink`).
+  func finishVerdict(_ verdict: FinishHandshake.Verdict, id: String) {
+    perform(finishHandshake.verdict(verdict, id: id))
+  }
+
+  /// A finish request could not be delivered (`PhoneLink`).
+  func finishUndeliverable(id: String) {
+    perform(finishHandshake.undeliverable(id: id))
+  }
+
+  /// The workout was closed from the phone, or our session ended for any
+  /// reason: whatever was being waited on is settled, and a "couldn't finish"
+  /// for a workout that is now over has nothing left to say.
+  func finishSettled() {
+    finishHandshake.cancel()
+    clearFinishTimer()
+    finishing = false
+    finishFailed = false
+  }
+
+  private func pollFinish() {
+    guard finishHandshake.isWaiting else { return }
+    perform(finishHandshake.poll(now: Date()))
+  }
+
+  /// Ends the recording, which takes the Watch back to Start when the session
+  /// reports it has ended. With no session running (heart-rate access off)
+  /// nothing would report, and the Watch sat on the finished workout's pages
+  /// until the phone happened to push a new state; so leave here instead.
+  func endSessionOrLeave(discard: Bool = false) {
+    if WorkoutManager.shared.isRunning {
+      if discard { WorkoutManager.shared.discard() } else { WorkoutManager.shared.end() }
+    } else {
+      finishSettled()
+      stopTicking()
+      screen = .start
+    }
+  }
+
+  private func perform(_ step: FinishHandshake.Step) {
+    switch step {
+    case .none:
+      return
+    case .endAndSave:
+      clearFinishTimer()
+      finishing = false
+      endSessionOrLeave()
+    case .endAndQueueRequest:
+      clearFinishTimer()
+      finishing = false
+      endSessionOrLeave()
+      PhoneLink.shared.queueEndWorkout()
+    case .keepRecording:
+      clearFinishTimer()
+      finishing = false
+      finishFailed = true
+      WKInterfaceDevice.current().play(.failure)
+    case .queueRequest:
+      // The session was ended and saved when the wait ran out. Only the
+      // request is still owed to the phone.
+      PhoneLink.shared.queueEndWorkout()
+    }
+  }
+
+  /// One shot at the deadline. The elapsed tick polls too, but it only runs
+  /// while a session does, and Finish can be tapped without one.
+  private func scheduleFinishTimer() {
+    clearFinishTimer()
+    guard let deadline = finishHandshake.deadline else { return }
+    let timer = Timer(fire: deadline, interval: 0, repeats: false) { [weak self] _ in
+      Task { @MainActor in self?.finishTimerFired() }
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    finishTimer = timer
+  }
+
+  /// The timer is spent once it fires, and it can fire with the wait not over:
+  /// the deadline is a wall-clock time, and a clock set back puts it in the
+  /// future again (`FinishHandshake.poll` then moves it to at most a timeout
+  /// away). With no session there is no elapsed tick to poll later, so arm it
+  /// again for wherever the deadline now is, or "Finishing…" never comes down.
+  private func finishTimerFired() {
+    pollFinish()
+    if finishHandshake.isWaiting { scheduleFinishTimer() }
+  }
+
+  private func clearFinishTimer() {
+    finishTimer?.invalidate()
+    finishTimer = nil
+  }
+
   // MARK: Mirroring — apply the phone's pushed state
 
   /// Merge a decoded state snapshot from the phone. Only the fields the phone
@@ -260,6 +391,9 @@ final class WorkoutModel: ObservableObject {
     screen = s.screen
     // Once the phone has moved us off Start, any pending hand-off is resolved.
     if s.screen != .start { pendingRoutineId = nil }
+    // A "couldn't finish" belongs to the workout it was about. Once the phone
+    // has moved us out of it, it must not be waiting on the next one.
+    if s.screen != .session { finishFailed = false }
     // Only when the push actually carried them. Mid-workout pushes don't, and
     // overwriting here left the Start screen empty the next time it appeared.
     if let pushed = s.routines { routines = pushed }

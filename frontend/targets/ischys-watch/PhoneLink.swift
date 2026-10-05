@@ -152,7 +152,43 @@ final class PhoneLink: NSObject, WCSessionDelegate {
   }
   func adjustRest(_ seconds: Int) { send(["action": "adjustRest", "seconds": seconds]) }
   func skipRest() { send(["action": "skipRest"]) }
+  /// Finish, from a Watch that has already ended and saved its session. Sent
+  /// now when the phone is in reach, queued otherwise.
   func endWorkout() { send(["action": "end"]) }
+
+  /// Whether a finish request sent now would reach the phone now, so that an
+  /// answer can be waited for.
+  var canAskNow: Bool {
+    let s = WCSession.default
+    return s.activationState == .activated && s.isReachable
+  }
+
+  /// Finish, from a Watch that keeps recording until the phone answers (#95).
+  /// The phone replies with `finishVerdict` and this `finishId` (see `receive`).
+  ///
+  /// Never queued: a queued request is answered whenever the phone next runs,
+  /// far too late to wait for. If it cannot be sent, or sending fails, the
+  /// model is told, ends the session and queues a plain `endWorkout` instead.
+  func requestFinish(id: String) {
+    guard canAskNow else {
+      Task { @MainActor in WorkoutModel.shared.finishUndeliverable(id: id) }
+      return
+    }
+    WCSession.default.sendMessage(
+      ["action": "end", "finishId": id], replyHandler: nil,
+      errorHandler: { _ in
+        Task { @MainActor in WorkoutModel.shared.finishUndeliverable(id: id) }
+      })
+  }
+
+  /// Finish, queued for whenever the phone next runs: for a request that could
+  /// not be delivered live. Always `transferUserInfo`, never `sendMessage`,
+  /// which has just failed.
+  func queueEndWorkout() {
+    let s = WCSession.default
+    guard s.activationState == .activated else { return }
+    s.transferUserInfo(["action": "end"])
+  }
   func discardWorkout() { send(["action": "discard"]) }
   func addSet() { send(["action": "addSet"]) }
   func startEmpty() { send(["action": "startEmpty"]) }
@@ -185,6 +221,17 @@ final class PhoneLink: NSObject, WCSessionDelegate {
   // MARK: Phone → watch
 
   private func receive(_ context: [String: Any]) {
+    // The phone's answer to a finish request (#95). It travels as a state push
+    // because that is the one channel an older Watch build already reads
+    // harmlessly; the phone only sends it to a Watch that asked with an id.
+    if let raw = context["finishVerdict"] as? String, let id = context["finishId"] as? String {
+      if let verdict = FinishHandshake.Verdict(rawValue: raw) {
+        Task { @MainActor in WorkoutModel.shared.finishVerdict(verdict, id: id) }
+      }
+      // On its own (the phone had no workout screen to describe) it is not a
+      // state at all, and decoding it as one would blank the session screen.
+      if context["screen"] == nil { return }
+    }
     let state = PhoneState(from: context)
     Task { @MainActor in WorkoutModel.shared.apply(state) }
   }
@@ -231,13 +278,16 @@ final class PhoneLink: NSObject, WCSessionDelegate {
 
   // The phone ends the Watch session when the user finishes/discards there. Save
   // on a plain stop; throw away on a discard so nothing reaches Health.
+  //
+  // A stop is also how the phone's workout screen says a finish the Watch asked
+  // for has worked (#95): either way the workout is over on the phone, so
+  // whatever the Watch was waiting to hear is settled.
   private func handleCommand(_ message: [String: Any]) -> Bool {
     guard let cmd = message["cmd"] as? String else { return false }
     DispatchQueue.main.async {
-      switch cmd {
-      case "discard": WorkoutManager.shared.discard()
-      default: WorkoutManager.shared.end()
-      }
+      WorkoutModel.shared.finishSettled()
+      // Also leaves the workout's pages when there is no session to end.
+      WorkoutModel.shared.endSessionOrLeave(discard: cmd == "discard")
     }
     return true
   }

@@ -34,12 +34,17 @@ final class WorkoutEntries {
 
   enum ReplaceOutcome {
     case replaced(UUID)
-    /// No entry with that UUID any more: it was deleted in Health.
+    /// No entry with that UUID any more: it was deleted in Health. Only ever
+    /// the answer of a query that ran and found nothing; a query that could not
+    /// run is `.failed`.
     case missing
     /// The entry is not one the phone wrote. Nothing was done to it.
     case notOurs
     /// iOS does not let Ischys write workouts.
     case denied
+    /// Nothing changed, and nothing was learned either: a query or a write did
+    /// not go through (a locked phone refuses both). The entry is still the
+    /// workout's, and the next edit to its time tries again.
     case failed
 
     var payload: [String: Any] {
@@ -52,6 +57,10 @@ final class WorkoutEntries {
       }
     }
   }
+
+  /// On every entry `replace` saves: the UUID of the entry it stands in for.
+  /// What lets a replace that was cut short be recognised and finished later.
+  static let replacesKey = "IschysReplacesWorkoutUUID"
 
   private let store: HKHealthStore
 
@@ -89,7 +98,12 @@ final class WorkoutEntries {
   /// Saves one strength-training workout spanning [start, end], with the active
   /// energy for that window when there is any. Returns nil when HealthKit
   /// finished without producing a workout.
-  func save(start: Date, end: Date, energyKcal: Double) async throws -> HKWorkout? {
+  ///
+  /// `replacing` is set only by `replace`: the entry this one stands in for,
+  /// recorded in its metadata. A finished workout's entry carries none.
+  func save(
+    start: Date, end: Date, energyKcal: Double, replacing: UUID? = nil
+  ) async throws -> HKWorkout? {
     let config = HKWorkoutConfiguration()
     // Traditional = weights/machines (what Ischys logs). Functional would be
     // kettlebell/bodyweight movement work; wrong for a barbell app.
@@ -108,6 +122,12 @@ final class WorkoutEntries {
         type: energyType, quantity: quantity, start: start, end: end
       )
       try? await builder.addSamples([sample])
+    }
+
+    // Only bookkeeping for a later replace, so, like the energy, failing to
+    // attach it is not a reason to lose the entry.
+    if let replacing {
+      try? await builder.addMetadata([Self.replacesKey: replacing.uuidString])
     }
 
     try await builder.endCollection(at: end)
@@ -135,7 +155,9 @@ final class WorkoutEntries {
     let sessionLength = end.timeIntervalSince(start)
 
     var best: (workout: HKWorkout, writer: Writer, overlap: TimeInterval)?
-    for workout in await workouts(matching: predicate) {
+    // An error is "nothing found" here, and deliberately: the finish path asks
+    // this before writing, and must write rather than lose a workout.
+    for workout in await workouts(matching: predicate) ?? [] {
       guard let writer = writer(of: workout) else { continue }
 
       // Back-to-back sessions touch at an endpoint and would otherwise match on
@@ -169,20 +191,43 @@ final class WorkoutEntries {
   ///
   /// The new entry is saved before the old one is deleted, so a failure part way
   /// leaves Health with the entry it had rather than with none.
+  ///
+  /// `.missing` is only ever a query that ran and found nothing. One that could
+  /// not run — HealthKit refuses every query while the phone is locked, and
+  /// this runs just after Save — is `.failed`, which keeps the entry on record.
+  ///
+  /// If the app is killed between "save new" and "delete old", Health holds
+  /// both and the workout still points at the old one; killed just after the
+  /// delete, it points at an entry that is gone. Every entry saved here names
+  /// the one it replaces (`replacesKey`), so the next replace sees either case
+  /// and finishes the job first: with the old entry still there, the leftover
+  /// new one is taken back; with the old one gone, the leftover is the entry.
+  /// Until that next replace the first case shows the workout twice in Health.
   func replace(uuid: UUID, start: Date, end: Date) async -> ReplaceOutcome {
     guard end > start else { return .failed }
     guard canWriteWorkouts else { return .denied }
-    guard let old = await workouts(matching: HKQuery.predicateForObject(with: uuid)).first else {
-      return .missing
+    guard let stored = await workouts(matching: HKQuery.predicateForObject(with: uuid)) else {
+      return .failed
     }
-    guard writer(of: old) == .phone else { return .notOurs }
+    if let found = stored.first, writer(of: found) != .phone { return .notOurs }
+    guard let leftovers = await replacements(of: uuid) else { return .failed }
+
+    // The entry to replace: the stored one, or, when a cut-short replace
+    // already deleted it, the one that replace saved in its place.
+    guard let old = stored.first ?? leftovers.first else { return .missing }
+    for extra in leftovers where extra.uuid != old.uuid {
+      guard await discard(extra) else { return .failed }
+    }
 
     // Read while the old workout still exists: once it is deleted, nothing
     // says which energy sample was its.
-    let oldEnergy = await ownEnergySamples(of: old)
+    guard let oldEnergy = await ownEnergySamples(of: old) else { return .failed }
+    // The workout's own total, or, when HealthKit has none to give, the sum of
+    // the samples about to be deleted, so the energy is never dropped with them.
+    let energy = statisticsEnergy(of: old) ?? Self.totalKcal(of: oldEnergy)
 
     guard
-      let new = try? await save(start: start, end: end, energyKcal: energyKcal(of: old))
+      let new = try? await save(start: start, end: end, energyKcal: energy, replacing: old.uuid)
     else { return .failed }
 
     do {
@@ -203,17 +248,41 @@ final class WorkoutEntries {
   // MARK: Helpers
 
   private func energyKcal(of workout: HKWorkout) -> Double {
-    guard let energyType else { return 0 }
-    return workout.statistics(for: energyType)?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+    statisticsEnergy(of: workout) ?? 0
   }
 
-  private func workouts(matching predicate: NSPredicate) async -> [HKWorkout] {
-    await samples(of: HKObjectType.workoutType(), matching: predicate).compactMap { $0 as? HKWorkout }
+  /// The workout's active-energy total as HealthKit reports it, or nil when it
+  /// reports none.
+  private func statisticsEnergy(of workout: HKWorkout) -> Double? {
+    guard let energyType else { return nil }
+    return workout.statistics(for: energyType)?.sumQuantity()?.doubleValue(for: .kilocalorie())
+  }
+
+  private static func totalKcal(of samples: [HKSample]) -> Double {
+    samples
+      .compactMap { ($0 as? HKQuantitySample)?.quantity.doubleValue(for: .kilocalorie()) }
+      .reduce(0, +)
+  }
+
+  /// Nil when the query failed, which is not the same as finding none.
+  private func workouts(matching predicate: NSPredicate) async -> [HKWorkout]? {
+    await samples(of: HKObjectType.workoutType(), matching: predicate)?
+      .compactMap { $0 as? HKWorkout }
+  }
+
+  /// The phone-written entries `replace` saved in place of `uuid`: at most one,
+  /// and only when a replace was cut short. Nil when the query failed.
+  private func replacements(of uuid: UUID) async -> [HKWorkout]? {
+    let predicate = HKQuery.predicateForObjects(
+      withMetadataKey: Self.replacesKey, allowedValues: [uuid.uuidString]
+    )
+    return await workouts(matching: predicate)?.filter { writer(of: $0) == .phone }
   }
 
   /// The energy samples this app saved with a workout it built. Never another
   /// source's: those are not ours to delete, and HealthKit would refuse anyway.
-  private func ownEnergySamples(of workout: HKWorkout) async -> [HKSample] {
+  /// Nil when the query failed.
+  private func ownEnergySamples(of workout: HKWorkout) async -> [HKSample]? {
     guard let energyType else { return [] }
     let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
       HKQuery.predicateForObjects(from: workout),
@@ -222,25 +291,37 @@ final class WorkoutEntries {
     return await samples(of: energyType, matching: predicate)
   }
 
-  private func samples(of type: HKSampleType, matching predicate: NSPredicate) async -> [HKSample] {
+  /// The samples matching a predicate, or nil when HealthKit could not answer
+  /// (protected data while the phone is locked, above all). An empty array is
+  /// a real "there are none"; callers must not read nil as that.
+  private func samples(of type: HKSampleType, matching predicate: NSPredicate) async -> [HKSample]? {
     await withCheckedContinuation { continuation in
       let query = HKSampleQuery(
         sampleType: type,
         predicate: predicate,
         limit: HKObjectQueryNoLimit,
         sortDescriptors: nil
-      ) { _, samples, _ in
-        continuation.resume(returning: samples ?? [])
+      ) { _, samples, error in
+        continuation.resume(returning: error == nil ? samples : nil)
       }
       store.execute(query)
     }
   }
 
-  private func discard(_ workout: HKWorkout) async {
-    let energy = await ownEnergySamples(of: workout)
-    try? await store.delete(workout)
+  /// Deletes a workout this app saved, and its energy. False when the workout
+  /// is still there.
+  @discardableResult
+  private func discard(_ workout: HKWorkout) async -> Bool {
+    // Not knowing the energy samples is no reason to keep the workout.
+    let energy = await ownEnergySamples(of: workout) ?? []
+    do {
+      try await store.delete(workout)
+    } catch {
+      return false
+    }
     if !energy.isEmpty {
       try? await store.delete(energy)
     }
+    return true
   }
 }

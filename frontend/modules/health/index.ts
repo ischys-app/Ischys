@@ -23,12 +23,13 @@ export type FoundWorkout = {
 
 export type ReplaceWorkoutResult =
   | { status: 'replaced'; uuid: string }
-  /** No entry with that UUID any more. */
+  /** Health answered, and has no entry with that UUID any more. */
   | { status: 'missing' }
   /** Not an entry the phone wrote (a Watch recording). Nothing was done to it. */
   | { status: 'notOurs' }
   /** iOS does not let Ischys write workouts. */
   | { status: 'denied' }
+  /** Nothing changed; includes Health not answering (a locked phone). */
   | { status: 'failed' }
   /** No Health here, or a native module that predates replacing. */
   | { status: 'unavailable' };

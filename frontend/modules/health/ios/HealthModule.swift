@@ -177,10 +177,12 @@ public class HealthModule: Module {
     /// Moves an entry the PHONE wrote to [startMs, endMs]: deletes it by UUID
     /// and saves a new one over the new window, carrying its energy over.
     ///
-    /// Resolves `{ status }`: "replaced" (with the new `uuid`), "missing" (no
-    /// such entry any more), "notOurs" (the entry is not one the phone wrote —
-    /// a Watch recording is never deleted or altered), "denied" (not authorised
-    /// to write workouts), "failed", or "unavailable". Never rejects.
+    /// Resolves `{ status }`: "replaced" (with the new `uuid`), "missing"
+    /// (Health was asked and has no such entry any more), "notOurs" (the entry
+    /// is not one the phone wrote — a Watch recording is never deleted or
+    /// altered), "denied" (not authorised to write workouts), "failed" (nothing
+    /// changed; includes Health not answering, as on a locked phone), or
+    /// "unavailable". Never rejects.
     AsyncFunction("replaceWorkout") { (uuid: String, startMs: Double, endMs: Double, promise: Promise) in
       guard HKHealthStore.isHealthDataAvailable() else {
         promise.resolve(["status": "unavailable"])

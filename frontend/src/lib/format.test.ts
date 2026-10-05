@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import {
   fmtHeaderDate,
   fmtHistoryGroupTitle,
+  fmtShortDayUpper,
   fmtVolumeLarge,
   fmtVolumeShort,
   parseIso,
@@ -83,4 +84,10 @@ test('fmtVolumeLarge scales through k and M in either unit', () => {
 
 test('garbage does not throw', () => {
   assert.ok(Number.isNaN(parseIso('nonsense').getTime()));
+});
+
+test('the short day reads weekday, day, month in capitals', () => {
+  // Built from local parts, so it holds in any timezone.
+  assert.equal(fmtShortDayUpper(new Date(2025, 8, 30, 18, 4)), 'TUE 30 SEP');
+  assert.equal(fmtShortDayUpper(new Date(2026, 0, 4)), 'SUN 4 JAN');
 });

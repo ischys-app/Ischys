@@ -39,6 +39,11 @@ export function fmtVolumeShort(kg: number, unit: Unit): { value: string; unit: s
   return { value: String(Math.round(v)), unit: ` ${unit}` };
 }
 
+/** e.g. "TUE 30 SEP" — the Routine View's last-performed line. Local time. */
+export function fmtShortDayUpper(d: Date): string {
+  return `${WEEKDAY_UPPER[d.getDay()]} ${d.getDate()} ${MONTH_UPPER[d.getMonth()]}`;
+}
+
 /** seconds → "H:MM" (e.g. 10080 → "2:48") */
 export function fmtDuration(sec: number): string {
   const h = Math.floor(sec / 3600);

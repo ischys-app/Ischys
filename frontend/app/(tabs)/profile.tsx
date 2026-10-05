@@ -40,22 +40,11 @@ export default function Profile() {
   const [muscle, setMuscle] = useState<{ work: Map<string, number>; historyDays: number } | null>(null);
   const [measurements, setMeasurements] = useState<Map<MetricId, MeasurementRow>>(new Map());
 
-  // Loaded once: the window is a rolling week, so it doesn't change while the
-  // tab is open.
   useEffect(() => {
     let alive = true;
     void latestMeasurements()
       .then((m) => {
         if (alive) setMeasurements(m);
-      })
-      .catch(() => {});
-    void muscleWorkEntries(7)
-      .then((r) => {
-        if (!alive) return;
-        setMuscle({
-          work: aggregateMuscleWork({ entries: r.entries, windowDays: 7, today: new Date() }),
-          historyDays: r.historyDays,
-        });
       })
       .catch(() => {});
     return () => {
@@ -74,32 +63,12 @@ export default function Profile() {
     await setProfileName(next);
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getProfile().catch(() => null),
-      listRecentRecords(10).catch(() => [] as RecordOut[]),
-      listWorkouts({ limit: 300, status: 'completed' }).catch(() => [] as WorkoutListItem[]),
-    ])
-      .then(([p, r, w]) => {
-        if (cancelled) return;
-        setProfile(p);
-        setRecords(r);
-        setWorkouts(w);
-        setLoading(false);
-      })
-      .catch(() => {
-        // Each call above already catches, so this cannot fire today — but a
-        // rejection here would otherwise leave the spinner up forever.
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // Refresh Health-connection flag whenever this tab regains focus (e.g. after
   // connecting in /health), so the pill appears/disappears without a full reload.
+  //
+  // Stats, records, the workout list and muscle work load here too, on focus
+  // rather than once on mount: a workout finished, edited or deleted elsewhere
+  // must show when we come back to this tab, as History and Home do.
   useFocusEffect(
     useCallback(() => {
       try {
@@ -107,6 +76,37 @@ export default function Profile() {
       } catch {
         // web / unsupported platform — leave prior value
       }
+
+      let cancelled = false;
+      void muscleWorkEntries(7)
+        .then((r) => {
+          if (cancelled) return;
+          setMuscle({
+            work: aggregateMuscleWork({ entries: r.entries, windowDays: 7, today: new Date() }),
+            historyDays: r.historyDays,
+          });
+        })
+        .catch(() => {});
+      Promise.all([
+        getProfile().catch(() => null),
+        listRecentRecords(10).catch(() => [] as RecordOut[]),
+        listWorkouts({ limit: 300, status: 'completed' }).catch(() => [] as WorkoutListItem[]),
+      ])
+        .then(([p, r, w]) => {
+          if (cancelled) return;
+          setProfile(p);
+          setRecords(r);
+          setWorkouts(w);
+          setLoading(false);
+        })
+        .catch(() => {
+          // Each call above already catches, so this cannot fire today — but a
+          // rejection here would otherwise leave the spinner up forever.
+          if (!cancelled) setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
     }, []),
   );
 

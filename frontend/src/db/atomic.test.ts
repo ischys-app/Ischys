@@ -187,7 +187,8 @@ test('one started from inside another fails with a reason instead of waiting on 
       await d.atomic.atomically(async () => void (await d.insert('inner')));
       await d.insert('b');
     }),
-    /inside another/,
+    // The message names both ways a turn fails to come.
+    (err: Error) => /inside another transaction/.test(err.message) && /other than a database statement/.test(err.message),
   );
   // The inner body never ran, and the outer one was rolled back whole.
   assert.deepEqual(d.log, ['begin immediate', 'insert a', 'rollback']);
@@ -223,4 +224,45 @@ test('a long body that keeps the rule never makes the one behind it give up', as
   const second = d.atomic.atomically(async () => void (await d.insert('b')));
   await Promise.all([first, second]);
   assert.deepEqual(d.log.slice(-3), ['begin immediate', 'insert b', 'commit']);
+});
+
+test('one stuck behind a body that left the thread gives up, and the one ahead still commits', async () => {
+  const d = impatientDb();
+  const first = d.atomic.atomically(async () => {
+    await d.insert('a1');
+    // Breaks the rule: three times the patience, with the thread handed back.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    await d.insert('a2');
+  });
+  const second = d.atomic.atomically(async () => void (await d.insert('b')));
+  await assert.rejects(second, /other than a database statement/);
+  await first;
+  assert.deepEqual(d.log, ['begin immediate', 'insert a1', 'insert a2', 'commit']);
+});
+
+test('bare statements from a chain in the same task land inside the transaction', async () => {
+  // What the rule does not keep out: no timer runs, but microtasks take turns.
+  const log: string[] = [];
+  const warnings: string[] = [];
+  const d = {
+    log,
+    warnings,
+    atomic: createAtomic((statement) => void log.push(statement), (message) => void warnings.push(message)),
+    insert: async (row: string) => void log.push(`insert ${row}`),
+  };
+  const bystander = async () => {
+    for (let i = 0; i < 12; i++) await d.insert(`x${i}`);
+  };
+  await Promise.all([
+    d.atomic.atomically(async () => {
+      for (let i = 0; i < 4; i++) await d.insert(`a${i}`);
+    }),
+    bystander(),
+  ]);
+  const begin = log.indexOf('begin immediate');
+  const commit = log.indexOf('commit');
+  const within = log.slice(begin + 1, commit).filter((entry) => entry.startsWith('insert x'));
+  assert.ok(within.length > 0, log.join(', '));
+  // And nothing reported it: the thread never went back to the event loop.
+  assert.deepEqual(d.warnings, []);
 });

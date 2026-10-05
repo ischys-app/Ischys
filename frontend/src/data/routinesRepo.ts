@@ -5,7 +5,7 @@
  */
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
-import { db } from '../db/client';
+import { atomically, db } from '../db/client';
 import * as schema from '../db/schema';
 import type { RoutineExerciseIn, RoutineOut } from '../api/types';
 import type { LoggedExercise } from '../domain/routineView';
@@ -169,7 +169,7 @@ export async function createRoutine(body: {
 }): Promise<RoutineOut> {
   const id = newId();
   const lastPos = (await db.select().from(schema.routines)).reduce((m, r) => Math.max(m, r.position + 1), 0);
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     await tx.insert(schema.routines).values({
       id,
       userId: LOCAL_USER_ID,
@@ -193,7 +193,7 @@ export async function updateRoutine(
     patch.initials = initialsOf(body.name);
   }
   // Atomic: replacing the exercise list must never leave the routine half-cleared.
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     await tx.update(schema.routines).set(patch).where(eq(schema.routines.id, id));
     if (body.exercises !== undefined) {
       await clearExercises(tx, id);
@@ -204,7 +204,7 @@ export async function updateRoutine(
 }
 
 export async function deleteRoutine(id: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     await clearExercises(tx, id);
     await tx.delete(schema.routines).where(eq(schema.routines.id, id));
   });

@@ -18,15 +18,42 @@
  * handler or native callback can run in between. Read SecureStore, files and
  * anything else that really waits BEFORE calling this.
  *
- * What happens if a body breaks the rule and something else does run:
- *  - a read sees this transaction's uncommitted rows;
- *  - a lone write joins it, and is lost with it if it rolls back;
+ * What that does NOT keep out: another chain of database statements that is
+ * already under way in the same task. Microtasks from different chains take
+ * turns, so the halves of `Promise.all([a(), b()])`, or of `void a(); void
+ * b();`, or a chain started by a handler that also started this one, run
+ * their statements in between this body's, rule kept or not. If the other
+ * chain is itself an `atomically` it waits its turn (they are queued here)
+ * and nothing mixes. If it is bare statements, they land inside this
+ * transaction, as listed below. So do not start a database chain alongside a
+ * write and leave both running: await the one before starting the other.
+ *
+ * What a statement from outside the body does when it lands in here, whether
+ * it came from a chain in the same task or because the body broke the rule:
+ *  - a read sees this transaction's uncommitted rows, which a rollback then
+ *    takes back from under whatever was decided on them;
+ *  - a lone write joins it: stored if this commits, lost if this rolls back,
+ *    though its own caller was told it succeeded;
  *  - a `db.transaction(…)` fails at its own `begin` ("cannot start a
  *    transaction within a transaction") without touching this one;
- *  - another `atomically` waits its turn (they are queued here).
+ *  - another `atomically` waits its turn.
  * So this transaction stays all-or-nothing either way; it is the bystander
  * that suffers. A body that gives the thread away is reported through
- * `onYield`, so the mistake shows up in the logs the first time it is made.
+ * `onYield`, so that mistake shows up in the logs the first time it is made.
+ * A chain interleaving on microtasks is not reported: no timer fires, so
+ * nothing here can see it.
+ *
+ * NEVER call `atomically` from inside a body, directly or through a function
+ * that opens its own: the inner one queues behind the outer one, which is
+ * waiting for it. Each top-level write opens one transaction and hands the
+ * open connection (`tx`) to whatever it calls. Should one slip through, it is
+ * an error, not a hang: a caller whose turn has not come within `stallMs` of
+ * timer time rejects. That happens in two ways. A nested call never gets its
+ * turn at all, and its rejection fails the outer body and rolls it back. Or
+ * the body ahead broke the rule and is still waiting on something slow, in
+ * which case the caller behind gives up while the one ahead carries on. A
+ * body that keeps the rule never leaves the thread (a long one holds the
+ * timers back with everything else), so nothing queued behind it times out.
  *
  * Pure: it is handed the three statements to run, so it is node-tested.
  * db/client.ts binds it to the connection as `atomically`.
@@ -44,6 +71,8 @@ export type Atomic = {
 export function createAtomic(
   run: (statement: TransactionStatement) => void,
   onYield: (message: string) => void = (message) => console.warn(message),
+  /** How long a caller waits its turn, in timer time, before it gives up: nested, or stuck behind a body that left the thread. */
+  stallMs = 10_000,
 ): Atomic {
   let open = false;
   /** Settles when the transaction ahead of the next caller is over. Never rejects. */
@@ -53,7 +82,33 @@ export function createAtomic(
     const ahead = tail;
     let done!: () => void;
     tail = new Promise<void>((resolve) => (done = resolve));
-    await ahead;
+    let stalled: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        stalled = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `[db] a transaction waited ${stallMs} ms for the one ahead of it. Either it was ` +
+                  'started inside another transaction, which then waits on itself (a body must ' +
+                  'not call `atomically`, or a function that does: hand the open connection, ' +
+                  '`tx`, to the helper instead), or the body ahead of it is waiting on something ' +
+                  'other than a database statement and has held the connection all this time ' +
+                  '(read SecureStore, files and the like before opening the transaction). ' +
+                  'See db/atomic.ts.',
+              ),
+            ),
+          stallMs,
+        );
+        void ahead.then(resolve);
+      });
+    } catch (err) {
+      // Out of the queue, but whoever is behind still waits for the one ahead.
+      void ahead.then(done);
+      throw err;
+    } finally {
+      clearTimeout(stalled);
+    }
 
     let yielded = false;
     let watch: ReturnType<typeof setTimeout> | undefined;

@@ -23,12 +23,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { CategoryOut, ExerciseOut } from '../src/api/types';
 import {
-  addWorkoutExercise,
+  addWorkoutExercises,
   listCategories,
   listExerciseUsage,
   listExercises,
-  nextSupersetGroup,
-  setSupersetGroup,
 } from '../src/api/workouts';
 import { ChevronRightIcon, InfoIcon, PlusIcon, SearchIcon } from '../src/components/icons';
 import { setPendingSelection } from '../src/lib/pendingSelection';
@@ -245,21 +243,15 @@ export default function ExerciseLibrary() {
     addingRef.current = true;
     setAdding(true);
     try {
-      // Sequential writes — position is assigned in order.
-      const added: string[] = [];
-      for (const id of selected.keys()) {
-        const we = await addWorkoutExercise(workoutId, {
-          exercise_id: id,
-          rest_seconds: DEFAULT_REST_SECONDS,
-        });
-        if (we?.id) added.push(we.id);
-      }
-      // Pair them immediately, so "Add as superset" lands as one action rather
-      // than making the user group them again on the next screen.
-      if (asSuperset && added.length >= 2) {
-        const group = await nextSupersetGroup(workoutId);
-        await setSupersetGroup(added, group);
-      }
+      // One write for the lot, positions assigned in order, and paired in the
+      // same step, so "Add as superset" lands as one action rather than making
+      // the user group them again on the next screen. All or nothing: a
+      // failure leaves the selection to be retried without adding any twice.
+      await addWorkoutExercises(
+        workoutId,
+        [...selected.keys()].map((id) => ({ exercise_id: id, rest_seconds: DEFAULT_REST_SECONDS })),
+        { asSuperset },
+      );
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to add exercises');

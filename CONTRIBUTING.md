@@ -18,7 +18,7 @@ TZ=Europe/Athens npm test   # timestamps are timezone-sensitive; see below
 There is no backend — the app runs entirely on-device (SQLite + Drizzle). The
 whole suite is `frontend`.
 
-## Three invariants that fail silently
+## Four invariants that fail silently
 
 **1. The widget and the app compile the *same* Swift source.**
 
@@ -85,6 +85,16 @@ a config plugin: the standard `ios.xcodeproj` mod runs before the watch and widg
 exist. Signing needs an untracked `frontend/signing.local.json` (copy
 `signing.local.example.json`); without it the script tells you what to write, and ordinary
 development is unaffected since Debug stays on automatic signing.
+
+**4. `db.transaction(async …)` is not a transaction.**
+
+The expo-sqlite driver is synchronous: it commits the moment the callback returns, which
+for an `async` callback is at its first `await`, so every later statement commits on its
+own and a crash or a throw halfway leaves the write half-stored. Use `atomically` from
+`frontend/src/db/client.ts` for any write of more than one statement (`npm test` fails on a
+new `.transaction(async`). Its body may await nothing but database statements — read
+SecureStore and files before it — and must not call a function that opens a transaction
+of its own; hand that helper the open `tx` instead (`frontend/src/db/atomic.ts` has the why).
 
 ## Tests are pure
 

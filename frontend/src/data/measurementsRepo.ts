@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
-import { db } from '../db/client';
+import { atomically, db } from '../db/client';
 import * as schema from '../db/schema';
 import { newId } from '../db/ids';
 import { nowMs } from './ids';
@@ -83,7 +83,7 @@ export async function addMeasurements(
   measuredAt = nowMs(),
 ): Promise<void> {
   if (entries.length === 0) return;
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     for (const e of entries) {
       await tx.insert(schema.bodyMeasurements).values({
         id: newId(),

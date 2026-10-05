@@ -4,6 +4,7 @@ import { beforeEach, test } from 'node:test';
 
 import {
   claimWatchFinish,
+  completesWorkout,
   notifyWatchFinished,
   onWatchFinished,
   releaseAllWatchFinishClaims,
@@ -78,4 +79,14 @@ test('one throwing subscriber does not stop the others', () => {
   onWatchFinished((id) => seen.push(id));
   notifyWatchFinished('w1');
   assert.deepEqual(seen, ['w1']);
+});
+
+test('only Finish and Discard complete a workout', () => {
+  assert.equal(completesWorkout('end'), true);
+  assert.equal(completesWorkout('discard'), true);
+  for (const action of ['logSet', 'requestState', 'workoutSaved', 'addSet', 'startEmpty', '']) {
+    assert.equal(completesWorkout(action), false, action);
+    // And what the fallback's turn-taking relies on: these never reach a finish.
+    assert.equal(routeWatchFinish(action, 'w1'), 'ignore', action);
+  }
 });

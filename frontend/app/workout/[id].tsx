@@ -69,6 +69,7 @@ import { onRestAction, onWorkoutChanged, type RestAction } from '../../src/lib/l
 import type { ExerciseOut } from '../../src/api/types';
 import { saveSummary } from '../../src/lib/summaryCache';
 import {
+  ensureWatchSaveListener,
   onWatchAction,
   onWatchMetrics,
   pushWatchState,
@@ -1061,7 +1062,11 @@ export default function ActiveWorkout() {
     setExercises((prev) => prev.filter((ex) => ex.id !== exId));
     if (persist && workoutId) {
       // Was local-only: the exercise reappeared on reload.
-      removeWorkoutExercise(workoutId, exId).catch(() => {});
+      removeWorkoutExercise(workoutId, exId).catch(() => {
+        // Nothing was removed (it is all or nothing), so the exercise still
+        // counts at finish. Show what the store holds rather than hide it.
+        void refresh();
+      });
     }
   };
 
@@ -1119,7 +1124,12 @@ export default function ActiveWorkout() {
     setExercises((prev) =>
       prev.map((e) => (e.id === exId ? { ...e, sets: e.sets.filter((s) => s.id !== setId) } : e)),
     );
-    if (persist && workoutId) deleteSetApi(setId).catch(() => {});
+    if (persist && workoutId) {
+      deleteSetApi(setId).catch(() => {
+        // The set is still stored, and would count at finish: bring it back.
+        void refresh();
+      });
+    }
   };
 
   /** Commit a full reorder from the drag overlay; the store persists `position`. */
@@ -1186,7 +1196,52 @@ export default function ActiveWorkout() {
     armRestAlert(remaining, upcomingExerciseName());
   };
 
-  const onFinish = async () => {
+  /**
+   * One finish at a time: the header button, the "all sets done" prompt and the
+   * Watch's end action can all ask for it. A ref, because state lags a tap by a
+   * render. Released only when the finish fails; a finish that worked is on its
+   * way off this screen.
+   */
+  const finishStarted = useRef(false);
+
+  /**
+   * `fromWatch`: the Watch asked. It has already ended its own session by then.
+   */
+  const finish = async (fromWatch: boolean) => {
+    if (finishStarted.current) return;
+    finishStarted.current = true;
+    // The same instant the teardown below used to run at, before the write.
+    const finishBeganAt = Date.now();
+    let summary: Awaited<ReturnType<typeof finishWorkout>> | null = null;
+    if (persist && workoutId) {
+      // The one step that stays ahead of the write: start listening for the
+      // Watch's "saved" message. A Watch that ended the session itself sends it
+      // while the write runs, and syncFinishedWorkout below would be too late
+      // to hear it. Listening changes nothing if the finish then fails.
+      if (watchRecordedRef.current) ensureWatchSaveListener();
+      try {
+        // Land any in-flight weight/reps edits before finishWorkout reads the DB to
+        // compute volume/PRs — otherwise a value typed within the last 600ms is lost.
+        await flushPending();
+        summary = await finishWorkout(workoutId);
+      } catch {
+        // Nothing was stored and the workout is still running, so everything
+        // that belongs to a running workout is left exactly as it was: the
+        // Live Activity, the Watch session, the rest timer, the pointer that
+        // reopens this screen. Finishing used to take those down first.
+        finishStarted.current = false;
+        haptics.error();
+        // The Watch closed its session before asking and is back on its Start
+        // screen. Put it back in the workout, as opening this screen does: a
+        // new session if it records, and the state to show either way.
+        if (fromWatch) {
+          void startWatchSession();
+          if (watchStateRef.current) pushWatchState(watchStateRef.current);
+        }
+        Alert.alert('Couldn’t finish workout', 'Nothing was changed. Try again.');
+        return;
+      }
+    }
     haptics.success(); // workout done
     // Not on unmount: leaving the screen with the workout still running is
     // exactly when the card is useful (see the home screen's resume bar).
@@ -1199,26 +1254,27 @@ export default function ActiveWorkout() {
     // was recording, this waits briefly for it to confirm its save and writes the
     // workout itself if it doesn't — so it survives navigating to the summary.
     if (startedAt != null) {
-      void syncFinishedWorkout(workoutId, startedAt, Date.now(), watchRecordedRef.current);
+      void syncFinishedWorkout(
+        workoutId,
+        startedAt,
+        finishBeganAt,
+        watchRecordedRef.current,
+        finishBeganAt,
+      );
     }
-    if (persist && workoutId) {
-      try {
-        // Land any in-flight weight/reps edits before finishWorkout reads the DB to
-        // compute volume/PRs — otherwise a value typed within the last 600ms is lost.
-        await flushPending();
-        const summary = await finishWorkout(workoutId);
-        saveSummary(workoutId, summary);
-        // `justFinished=1` distinguishes a real finish from viewing a past
-        // workout's summary, so the review nudge (#48) only fires on a finish.
-        router.replace(`/summary/${workoutId}?justFinished=1`);
-        return;
-      } catch {
-        // fall through — best-effort fallback below
-      }
+    if (summary && workoutId) {
+      saveSummary(workoutId, summary);
+      // `justFinished=1` distinguishes a real finish from viewing a past
+      // workout's summary, so the review nudge (#48) only fires on a finish.
+      router.replace(`/summary/${workoutId}?justFinished=1`);
+      return;
     }
+    // Nothing is stored for this one (the offline demo): just leave.
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)');
   };
+
+  const onFinish = () => void finish(false);
 
   // --- Apple Watch companion: mirror state to the Watch, apply its controls ---
   const watchState = useMemo(
@@ -1313,7 +1369,7 @@ export default function ActiveWorkout() {
         endRest();
         break;
       case 'end':
-        void onFinish();
+        void finish(true);
         break;
       case 'discard':
         void discardAndLeave();
@@ -2022,7 +2078,7 @@ export default function ActiveWorkout() {
             style={styles.doneFinish}
             onPress={() => {
               setDonePromptOpen(false);
-              void onFinish();
+              onFinish();
             }}
           >
             <Text style={styles.doneFinishText}>Finish Workout</Text>

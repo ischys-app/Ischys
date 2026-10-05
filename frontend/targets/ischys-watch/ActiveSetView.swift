@@ -47,9 +47,11 @@ struct ActiveSetView: View {
       content
         .focusable(true)
         .focused($crownFocused)
-        // 0.5 granularity: weight snaps to 0.5 kg, reps round to whole (below).
+        // One notch is one weight step in the user's unit (0.5 kg / 2.5 lb, see
+        // `WorkoutModel.weightStep`). Reps keep the 0.5 granularity and round
+        // to whole (below), so a rep still takes the two notches it always did.
         .digitalCrownRotation(
-          $crownValue, from: 0, through: 999, by: 0.5,
+          $crownValue, from: 0, through: 999, by: editing == .weight ? model.weightStep : 0.5,
           sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true
         )
         .onChange(of: crownValue) { _, v in applyCrown(v) }
@@ -83,15 +85,18 @@ struct ActiveSetView: View {
 
   private func applyCrown(_ v: Double) {
     // Our own seed, not the user's wrist: leave the phone's value exactly as
-    // pushed rather than rewriting it through the 0.5 rounding below.
+    // pushed rather than rewriting it through the step rounding below.
     if seeding {
       seeding = false
       return
     }
     model.noteCrownEdit()
     if editing == .weight {
-      // Keep the 0.5 step: whole numbers show plain, halves show one decimal.
-      let w = (v * 2).rounded() / 2
+      // Snap to the unit's step: whole numbers show plain, halves show one
+      // decimal ("102.5", "227.5"). A pushed value off the grid — 220.46 lb
+      // from a kilogram-era set — lands on it at the first notch.
+      let step = model.weightStep
+      let w = (v / step).rounded() * step
       model.weight = w == w.rounded() ? String(Int(w)) : String(w)
     } else {
       model.reps = String(Int(v.rounded()))
@@ -141,7 +146,7 @@ struct ActiveSetView: View {
             .font(Ischys.mono(58, .semibold)).monospacedDigit()
             .tracking(-1.5)
             .foregroundStyle(editing == .weight ? Ischys.accent : Ischys.text1)
-          Text("kg").font(Ischys.ui(18, .medium)).foregroundStyle(Ischys.text2)
+          Text(model.unit).font(Ischys.ui(18, .medium)).foregroundStyle(Ischys.text2)
         }
       }
       .buttonStyle(.plain)
@@ -175,7 +180,7 @@ struct ActiveSetView: View {
 
   private var prevLabel: String {
     guard !model.prevWeight.isEmpty || !model.prevReps.isEmpty else { return " " }
-    return "prev  \(model.prevWeight) kg × \(model.prevReps)"
+    return "prev  \(model.prevWeight) \(model.unit) × \(model.prevReps)"
   }
 
   // 6 pills: done/active = accent (active wider), pending = surface-3.
@@ -193,7 +198,7 @@ struct ActiveSetView: View {
 
   private var logButton: some View {
     Button {
-      PhoneLink.shared.logSet(weight: model.weight, reps: model.reps)
+      PhoneLink.shared.logSet(weight: model.weight, reps: model.reps, unit: model.unit)
     } label: {
       HStack(spacing: 6) {
         Image(systemName: "checkmark").font(.system(size: 15, weight: .bold))

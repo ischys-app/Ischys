@@ -36,7 +36,9 @@ struct SessionSummary: Equatable {
   var routineName: String
   var dateLabel: String
   var timeLabel: String
-  var volumeKg: Int
+  /// Already in `unit`.
+  var volume: Int
+  var unit: String
   var sets: Int
   var avgHr: Int
   var activeCal: Int
@@ -78,6 +80,17 @@ final class WorkoutModel: ObservableObject {
   @Published var prevReps = ""
   @Published var setDots: [SetDot] = []
 
+  /// "kg" or "lb" — the unit `weight`, `prevWeight` and `volume` are in. The
+  /// phone owns the preference and does every conversion; the numbers arrive
+  /// ready to show. The Watch uses this for the labels, for the size of a Crown
+  /// notch, and to tell the phone which unit a logged weight is in.
+  @Published var unit = "kg"
+
+  /// One Crown step for the weight field: 0.5 kg, or 2.5 lb — the smallest
+  /// change a lb plate set or dumbbell rack can make, rather than the 1.1 lb
+  /// that half a kilogram converts to.
+  var weightStep: Double { unit == "lb" ? 2.5 : 0.5 }
+
   /// Bumped whenever `weight`/`reps` were replaced by the phone. The Crown keeps
   /// its own Double, so the Active Set view has to be told to re-seed it —
   /// without that, the display would show the new number while the next notch
@@ -95,7 +108,7 @@ final class WorkoutModel: ObservableObject {
   @Published var routineName = ""
   @Published var heartRate = 0
   @Published var activeCal = 0
-  @Published var volumeKg = 0
+  @Published var volume = 0
   @Published var setsDone = 0
   @Published var setsTotal = 0
   @Published var elapsedSec = 0
@@ -202,7 +215,7 @@ final class WorkoutModel: ObservableObject {
     setDots = s.setDots
     nextSetLabel = s.nextSetLabel
     restTotal = s.restTotal
-    volumeKg = s.volumeKg
+    volume = s.volume
     setsDone = s.setsDone
     setsTotal = s.setsTotal
     summary = s.summary
@@ -216,10 +229,15 @@ final class WorkoutModel: ObservableObject {
     // that outranks the phone is a wrist mid-turn; that edit lands once the
     // Crown goes quiet, or when the set changes.
     let pushedEdit = !setChanged && !crownIsBusy && (s.weight != weight || s.reps != reps)
-    if setChanged || pushedEdit {
+    // A unit switch replaces the number outright, Crown or no Crown: the weight
+    // on screen is in the old unit, and relabelling it without replacing it
+    // would show (and log) pounds as kilograms.
+    let unitChanged = s.unit != nil && s.unit != unit
+    if let pushedUnit = s.unit { unit = pushedUnit }
+    if setChanged || pushedEdit || unitChanged {
       weight = s.weight
       reps = s.reps
-      if setChanged { lastCrownEdit = nil }
+      if setChanged || unitChanged { lastCrownEdit = nil }
       valueSeed &+= 1
     }
     exerciseName = s.exerciseName

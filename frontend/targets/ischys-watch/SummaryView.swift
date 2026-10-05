@@ -77,7 +77,7 @@ struct SummaryView: View {
   private func statRows(_ s: SessionSummary) -> some View {
     VStack(spacing: 6) {
       statRow("TIME", s.timeLabel, Ischys.text1)
-      statRow("VOLUME", "\(grouped(s.volumeKg)) kg", Ischys.text1)
+      statRow("VOLUME", "\(grouped(s.volume)) \(s.unit)", Ischys.text1)
       statRow("SETS", "\(s.sets)", Ischys.text1)
       statRow("AVG HR", "\(s.avgHr) bpm", Ischys.error)
       statRow("ACTIVE CAL", "\(s.activeCal)", Ischys.warning)

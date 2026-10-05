@@ -19,6 +19,7 @@ import {
   editSetWeight,
   endsAt,
   exerciseHint,
+  exerciseRows,
   hasChanges,
   joinSuperset,
   leaveSuperset,
@@ -564,7 +565,9 @@ test('a superset whose other half is not saved is saved as no superset', () => {
   );
 });
 
-test('removing one of a pair dissolves the superset on screen and on save', () => {
+// 13b keeps the rail and tags on screen until Save (`exerciseRows`, below);
+// what is saved is unchanged.
+test('removing one of a pair dissolves the superset on save', () => {
   const grouped = [
     oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 3 }),
     oEx('b', [oSet('b1', 10, 5)], { supersetGroup: 3 }),
@@ -572,6 +575,189 @@ test('removing one of a pair dissolves the superset on screen and on save', () =
   const s = removeExercise(open(grouped), 'we-b');
   assert.deepEqual(activeExercises(s).map((e) => e.supersetGroup), [null]);
   assert.deepEqual(buildPlan(s).updatedExercises, [{ id: 'we-a', supersetGroup: null }]);
+});
+
+// --- removed exercises, in place (13b) ---------------------------------------
+
+const three = () => [
+  oEx('a', [oSet('a1', 10, 5), oSet('a2', 10, 5)]),
+  oEx('b', [oSet('b1', 20, 5), oSet('b2', 20, 5), oSet('b3', 20, 5), oSet('b4', 20, 5)]),
+  oEx('c', [oSet('c1', 30, 5)]),
+];
+
+const rowIds = (s: ReturnType<typeof open>) => exerciseRows(s).map((r) => r.exercise.id);
+
+test('a removed exercise becomes a row where its card was', () => {
+  const s = removeExercise(open(three()), 'we-b');
+  const rows = exerciseRows(s);
+  assert.deepEqual(rowIds(s), ['we-a', 'we-b', 'we-c']);
+  assert.deepEqual(rows.map((r) => r.removed), [false, true, false]);
+  assert.deepEqual(rows.map((r) => r.removedLabel), [null, 'REMOVED · 4 SETS', null]);
+});
+
+test('several removed exercises each keep their own place', () => {
+  let s = removeExercise(open(three()), 'we-a');
+  s = removeExercise(s, 'we-c');
+  assert.deepEqual(rowIds(s), ['we-a', 'we-b', 'we-c']);
+  assert.deepEqual(exerciseRows(s).map((r) => r.removed), [true, false, true]);
+  assert.deepEqual(buildPlan(s).removedExerciseIds, ['we-a', 'we-c']);
+});
+
+test('the removed row says how many sets Save takes out of the workout', () => {
+  // One set: singular.
+  let s = removeExercise(open(three()), 'we-c');
+  assert.equal(exerciseRows(s)[2].removedLabel, 'REMOVED · 1 SET');
+  // Rows removed or added on the card first do not change what was stored.
+  s = removeSet(open(three()), 'we-b', 'b4');
+  s = addSet(s, 'we-a', 'n1');
+  s = removeExercise(removeExercise(s, 'we-b'), 'we-a');
+  assert.deepEqual(
+    exerciseRows(s).map((r) => r.removedLabel),
+    ['REMOVED · 2 SETS', 'REMOVED · 4 SETS', null],
+  );
+});
+
+test('undo brings the card back with the set edits made before it was removed', () => {
+  let s = editSetReps(open(three()), 'we-b', 'b2', '9');
+  s = removeSet(s, 'we-b', 'b4');
+  s = removeExercise(s, 'we-b');
+  // While removed, those edits are not part of the plan: the exercise just goes.
+  assert.equal(buildPlan(s).changeCount, 1);
+  assert.deepEqual(buildPlan(s).updatedSets, []);
+
+  s = undoRemoveExercise(s, 'we-b');
+  const row = exerciseRows(s)[1];
+  assert.equal(row.removed, false);
+  assert.deepEqual(row.exercise.sets.map((x) => x.reps), ['5', '9', '5']);
+  assert.equal(wasLabel(s, 'we-b', 'b2'), 'was 20 × 5');
+  const plan = buildPlan(s);
+  assert.deepEqual(plan.removedExerciseIds, []);
+  assert.deepEqual(plan.removedSetIds, ['b4']);
+  assert.deepEqual(plan.updatedSets, [{ id: 'b2', reps: 9 }]);
+});
+
+test('an added exercise goes under everything, removed rows included', () => {
+  let s = removeExercise(open(three()), 'we-c');
+  s = addExercise(s, chosen('bench'), 'we-new', 'n1');
+  assert.deepEqual(rowIds(s), ['we-a', 'we-b', 'we-c', 'we-new']);
+  s = editSetReps(s, 'we-new', 'n1', '5');
+  // Saved positions count only what is saved.
+  assert.equal(buildPlan(s).addedExercises[0].position, 2);
+});
+
+test('reordering the cards leaves a removed row where it is', () => {
+  let s = removeExercise(open(three()), 'we-b');
+  s = reorderExercises(s, ['we-c', 'we-a']);
+  assert.deepEqual(rowIds(s), ['we-c', 'we-b', 'we-a']);
+  assert.deepEqual(exerciseRows(s).map((r) => r.removed), [false, true, false]);
+  assert.deepEqual(buildPlan(s).updatedExercises, [
+    { id: 'we-c', position: 0 },
+    { id: 'we-a', position: 1 },
+  ]);
+  // Undo, and it is back between them.
+  s = undoRemoveExercise(s, 'we-b');
+  assert.deepEqual(activeExercises(s).map((e) => e.id), ['we-c', 'we-b', 'we-a']);
+});
+
+const pair = () => [
+  oEx('a', [oSet('a1', 10, 5), oSet('a2', 10, 5), oSet('a3', 10, 5)], { supersetGroup: 3 }),
+  oEx('b', [oSet('b1', 10, 5), oSet('b2', 10, 5), oSet('b3', 10, 5)], { supersetGroup: 3 }),
+  oEx('c', [oSet('c1', 10, 5)]),
+];
+
+test('an untouched superset reads its letter, its tags and its rounds', () => {
+  const rows = exerciseRows(open(pair()));
+  assert.deepEqual(rows.map((r) => r.tag), ['A1', 'A2', null]);
+  assert.deepEqual(rows.map((r) => r.header), [{ label: 'SUPERSET A', note: '· 3 ROUNDS' }, null, null]);
+  assert.deepEqual(rows.map((r) => [r.railAbove, r.railBelow]), [
+    [false, true],
+    [true, false],
+    [false, false],
+  ]);
+});
+
+test('a removed superset partner stays in the rail with its tag, and the label says the group ends', () => {
+  let s = removeExercise(open(pair()), 'we-b');
+  let rows = exerciseRows(s);
+  assert.deepEqual(rows.map((r) => r.tag), ['A1', 'A2', null]);
+  assert.deepEqual(rows.map((r) => r.exercise.supersetGroup), [3, 3, null]);
+  assert.deepEqual(rows[0].header, { label: 'SUPERSET A', note: '· ENDS WHEN SAVED' });
+  assert.equal(rows[1].removed, true);
+  assert.equal(rows[1].railAbove, true);
+  // What is saved is the 11a rule: one exercise is not a superset.
+  assert.deepEqual(buildPlan(s).updatedExercises, [
+    { id: 'we-a', supersetGroup: null },
+    { id: 'we-c', position: 1 },
+  ]);
+
+  // Undo brings the label back to normal.
+  s = undoRemoveExercise(s, 'we-b');
+  rows = exerciseRows(s);
+  assert.deepEqual(rows[0].header, { label: 'SUPERSET A', note: '· 3 ROUNDS' });
+  assert.equal(hasChanges(s), false);
+});
+
+test('when the first of a group is the one removed, the label sits over its row', () => {
+  const rows = exerciseRows(removeExercise(open(pair()), 'we-a'));
+  assert.deepEqual(rows[0].header, { label: 'SUPERSET A', note: '· ENDS WHEN SAVED' });
+  assert.equal(rows[0].removed, true);
+  assert.deepEqual(rows.map((r) => r.tag), ['A1', 'A2', null]);
+});
+
+test('a group of three with one removed says how many are left after save', () => {
+  const trio = [
+    oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 1 }),
+    oEx('b', [oSet('b1', 10, 5)], { supersetGroup: 1 }),
+    oEx('c', [oSet('c1', 10, 5)], { supersetGroup: 1 }),
+  ];
+  let s = removeExercise(open(trio), 'we-b');
+  let rows = exerciseRows(s);
+  assert.deepEqual(rows[0].header, { label: 'SUPERSET A', note: '· 2 AFTER SAVE' });
+  // Tags do not close the gap until Save.
+  assert.deepEqual(rows.map((r) => r.tag), ['A1', 'A2', 'A3']);
+  // The two that are left are saved as the superset they still are.
+  assert.deepEqual(buildPlan(s).updatedExercises, [{ id: 'we-c', position: 1 }]);
+
+  s = removeExercise(s, 'we-c');
+  rows = exerciseRows(s);
+  assert.deepEqual(rows[0].header, { label: 'SUPERSET A', note: '· ENDS WHEN SAVED' });
+});
+
+test('groups keep their letters while an earlier group is removed', () => {
+  const two = [
+    oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 1 }),
+    oEx('b', [oSet('b1', 10, 5)], { supersetGroup: 1 }),
+    oEx('c', [oSet('c1', 10, 5)], { supersetGroup: 2 }),
+    oEx('d', [oSet('d1', 10, 5)], { supersetGroup: 2 }),
+  ];
+  const s = removeExercise(removeExercise(open(two), 'we-a'), 'we-b');
+  assert.deepEqual(exerciseRows(s).map((r) => r.tag), ['A1', 'A2', 'B1', 'B2']);
+  assert.deepEqual(exerciseRows(s)[2].header, { label: 'SUPERSET B', note: '· 1 ROUND' });
+});
+
+test('the label counts only partners that will be saved', () => {
+  const trio = [
+    oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 1 }),
+    oEx('b', [oSet('b1', 10, 5)], { supersetGroup: 1 }),
+    oEx('c', [oSet('c1', 10, 5)]),
+  ];
+  // A blank addition joins the pair, then a stored partner is removed: what is
+  // left to save is one exercise, because the addition has no set.
+  let s = addExercise(open(trio), chosen('bench'), 'we-new', 'n1');
+  s = joinSuperset(s, ['we-a', 'we-b', 'we-new']);
+  s = removeExercise(s, 'we-b');
+  assert.equal(exerciseRows(s)[0].header?.note, '· ENDS WHEN SAVED');
+  s = editSetReps(s, 'we-new', 'n1', '5');
+  assert.equal(exerciseRows(s)[0].header?.note, '· 2 AFTER SAVE');
+});
+
+test('a card that leaves the group of a removed partner takes the rail with it', () => {
+  let s = removeExercise(open(pair()), 'we-b');
+  s = leaveSuperset(s, 'we-a');
+  const rows = exerciseRows(s);
+  assert.deepEqual(rows.map((r) => r.tag), [null, null, null]);
+  assert.deepEqual(rows.map((r) => r.header), [null, null, null]);
+  assert.deepEqual(rows.map((r) => r.exercise.supersetGroup), [null, null, null]);
 });
 
 // --- empty -------------------------------------------------------------------

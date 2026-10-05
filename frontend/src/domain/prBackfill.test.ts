@@ -7,6 +7,7 @@ import {
   decidePrBackfill,
   planPrBackfill,
   prHistories,
+  rebuiltPrCounts,
   type PrSetRow,
 } from './prBackfill.ts';
 import { countsTowardPrCount, walkPrFlags } from './records.ts';
@@ -212,6 +213,93 @@ test('a volume record another exercise’s count is mistaken for is still counte
   const stored = { w1: 0, w2: 1 };
   assert.equal(byDeltas(rows, stored).w2, 1);
   assert.equal(apply(rows, stored, plan(rows, stored)).prCounts.w2, 2);
+});
+
+// --- merging two exercises into one --------------------------------------------
+
+/**
+ * A lift logged under two names, "bench" and its duplicate "dup", with squat
+ * beside them. Flagged and counted as a finished, backfilled log has it:
+ *  w1  bench 60×5 ★   dup 50×5 ★   squat 100×5 ★     3 PRs
+ *  w2  dup 70×5 ★                                      1
+ *  w3  bench 65×5 ★                                    1
+ */
+const duplicated = (): PrSetRow[] => [
+  row('w1', 'bench', 's1', 60, 5, { isPr: true }),
+  row('w1', 'dup', 's2', 50, 5, { isPr: true, exercisePosition: 1 }),
+  row('w1', 'squat', 's3', 100, 5, { isPr: true, exercisePosition: 2 }),
+  row('w2', 'dup', 's4', 70, 5, { isPr: true }),
+  row('w3', 'bench', 's5', 65, 5, { isPr: true }),
+];
+const duplicatedCounts = { w1: 3, w2: 1, w3: 1 };
+/** The same rows once "dup" is merged into "bench"; flags and counts still as stored. */
+const merged = () => duplicated().map((r) => (r.exerciseId === 'dup' ? { ...r, exerciseId: 'bench' } : r));
+
+const rebuilt = (rows: PrSetRow[], workoutIds: string[]) =>
+  Object.fromEntries(
+    rebuiltPrCounts({ rows, kinds: new Map(), currentBw: null, countWarmups: false }, workoutIds),
+  );
+
+/** The workouts whose stored count holds `exerciseId`, as `prCountHolders` reads them. */
+function holders(rows: PrSetRow[], prCounts: Record<string, number>, exerciseId: string): Set<string> {
+  const out = new Set<string>();
+  const sessions = prHistories(rows, new Map(), null).get(exerciseId) ?? [];
+  const steps = new Map(walkPrFlags(sessions).map((s) => [s.sessionId, s]));
+  for (const sess of sessions) {
+    const flagged = rows.some((r) => r.exerciseId === exerciseId && r.workoutId === sess.id && r.isPr);
+    if (countsTowardPrCount(steps.get(sess.id), flagged, prCounts[sess.id] ?? 0)) out.add(sess.id);
+  }
+  return out;
+}
+
+test('the duplicated log is consistent before the merge', () => {
+  const p = plan(duplicated(), duplicatedCounts);
+  assert.deepEqual([p.raise, p.lower, p.prCounts.size], [[], [], 0]);
+});
+
+test('after a merge the survivor has one first-ever record, not two', () => {
+  const p = plan(merged(), duplicatedCounts);
+  // dup's own "first ever" 50×5 sits beside a heavier set, and bench's 65×5
+  // now comes after dup's 70×5: neither was a record in the one history.
+  assert.deepEqual(p.lower.slice().sort(), ['s2', 's5']);
+  assert.deepEqual(p.raise, []);
+});
+
+test('a merge’s counts are rebuilt: w1 logged both names and held a PR for each', () => {
+  assert.deepEqual(rebuilt(merged(), ['w1', 'w2', 'w3']), { w1: 2, w2: 1, w3: 0 });
+});
+
+test('moving a merge’s counts one step per workout cannot get there', () => {
+  // As `reflagExercisePrs` would be run for it: what the two names held, read
+  // before, and the one history walked after.
+  const before = duplicated();
+  const heldBefore = new Set([
+    ...holders(before, duplicatedCounts, 'bench'),
+    ...holders(before, duplicatedCounts, 'dup'),
+  ]);
+  assert.deepEqual([...heldBefore].sort(), ['w1', 'w2', 'w3']);
+
+  const sessions = prHistories(merged(), new Map(), null).get('bench')!;
+  const counts: Record<string, number> = { ...duplicatedCounts };
+  for (const step of walkPrFlags(sessions)) {
+    const holds = step.deltas.length > 0;
+    if (heldBefore.has(step.sessionId) === holds) continue;
+    counts[step.sessionId] = Math.max(0, counts[step.sessionId] + (holds ? 1 : -1));
+  }
+  // w1 held the exercise twice and holds it once: "held, still holds" moves
+  // nothing, and the count keeps a PR that no longer exists.
+  assert.deepEqual(counts, { w1: 3, w2: 1, w3: 0 });
+  assert.notEqual(counts.w1, rebuilt(merged(), ['w1']).w1);
+});
+
+test('a rebuild answers only for the workouts asked about, and zero for one with no sets', () => {
+  assert.deepEqual(rebuilt(merged(), ['w2', 'gone']), { w2: 1, gone: 0 });
+});
+
+test('a rebuild is what the whole-database pass would write for those workouts', () => {
+  const rows = merged();
+  const p = plan(rows, duplicatedCounts);
+  assert.deepEqual(rebuilt(rows, ['w1', 'w2', 'w3']), apply(rows, duplicatedCounts, p).prCounts);
 });
 
 // --- what the walk is fed ----------------------------------------------------

@@ -153,6 +153,38 @@ export function planPrBackfill(input: {
 }
 
 /**
+ * The count each of `workoutIds` should hold, rebuilt from the walk: the
+ * number of its exercises that set a record there. Zero for a workout no row
+ * mentions.
+ *
+ * For a change that `reflagExercisePrs`' one-step adjustment cannot express.
+ * Merging two exercises is one: a workout that logged both counted each, so
+ * its count may have to fall by two, or by one while the merged exercise goes
+ * on holding a record there — and a count is a bare number that cannot say
+ * which of its PRs were theirs. See the merge tests in prBackfill.test.ts.
+ *
+ * `rows` must hold the whole completed history of every exercise those
+ * workouts list; other exercises' rows are walked and ignored.
+ */
+export function rebuiltPrCounts(
+  input: {
+    rows: readonly PrSetRow[];
+    kinds: ReadonlyMap<string, Kind>;
+    currentBw: number | null;
+    countWarmups: boolean;
+  },
+  workoutIds: Iterable<string>,
+): Map<string, number> {
+  const walked = newPrWalkTally();
+  for (const sessions of prHistories(input.rows, input.kinds, input.currentBw).values()) {
+    tallyPrWalk(walked, sessions, input.countWarmups);
+  }
+  const out = new Map<string, number>();
+  for (const workoutId of workoutIds) out.set(workoutId, walked.counts.get(workoutId) ?? 0);
+  return out;
+}
+
+/**
  * What the walks have decided so far: the sets that are records, and how many
  * exercises set one in each workout.
  *

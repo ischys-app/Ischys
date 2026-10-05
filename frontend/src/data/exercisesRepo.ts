@@ -28,7 +28,13 @@ import {
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
 import { toHistorySession, type ExerciseRow } from './map';
 import { completedSessionsFor, hydrateExercises, loadExercise } from './queries';
-import { currentValues, recomputeForExercise } from './recordStore';
+import {
+  currentValues,
+  prCountHolders,
+  rebuildPrCounts,
+  recomputeForExercise,
+  reflagExercisePrs,
+} from './recordStore';
 
 /** 'Incline Bench Press' -> 'IB' (port of serializers.initials_of). */
 export function initialsOf(name: string): string {
@@ -502,8 +508,9 @@ async function activelyReferenced(ids: string[]): Promise<Set<string>> {
  * Merge duplicates into one survivor. Re-points workout_exercises and
  * routine_exercises to the survivor (sets never move — they hang off
  * workout_exercise_id, so re-pointing the parent carries them), reconciles PRs
- * by recomputing from the survivor's now-combined history, and deletes each
- * discarded exercise plus its secondary-muscle links. Blocks if a live workout
+ * by recomputing from the survivor's now-combined history — the records, the
+ * PR flags on its sets and the PR counts of the workouts involved — and
+ * deletes each discarded exercise plus its secondary-muscle links. Blocks if a live workout
  * references any candidate. Atomic — a crash mid-merge leaves nothing half-done.
  */
 export async function mergeExercises(
@@ -545,6 +552,13 @@ export async function mergeExercises(
     const baseline = await currentValues(survivorId, tx);
     const now = nowMs();
 
+    // Which workouts count the survivor, or a row about to be folded into it,
+    // among their PRs. Read before anything moves, as an edit does.
+    const heldBefore = new Set<string>();
+    for (const eid of [survivorId, ...losers]) {
+      for (const wid of await prCountHolders(eid, tx, currentBw, countWarmups)) heldBefore.add(wid);
+    }
+
     // 1. Re-point workout_exercises → survivor.
     await tx
       .update(schema.workoutExercises)
@@ -569,6 +583,13 @@ export async function mergeExercises(
 
     // 5. Recompute the survivor's PRs across everything it now owns.
     await recomputeForExercise(survivorId, tx, currentBw, countWarmups);
+
+    // 6. Re-decide the stars across the combined history: it has one "first
+    //    ever", not one per row it was split across. Then the counts. A workout
+    //    that logged both rows counted each, which a one-step adjustment cannot
+    //    undo, so the workouts involved have theirs rebuilt from scratch.
+    const steps = await reflagExercisePrs(survivorId, tx, currentBw, countWarmups, heldBefore);
+    await rebuildPrCounts([...new Set([...steps.keys(), ...heldBefore])], tx, currentBw, countWarmups);
 
     // A record the survivor did not have (or beat) before this merge = gained.
     const after = await currentValues(survivorId, tx);

@@ -286,10 +286,8 @@ final class PhoneLink: NSObject, WCSessionDelegate {
     guard let cmd = message["cmd"] as? String else { return false }
     DispatchQueue.main.async {
       WorkoutModel.shared.finishSettled()
-      switch cmd {
-      case "discard": WorkoutManager.shared.discard()
-      default: WorkoutManager.shared.end()
-      }
+      // Also leaves the workout's pages when there is no session to end.
+      WorkoutModel.shared.endSessionOrLeave(discard: cmd == "discard")
     }
     return true
   }

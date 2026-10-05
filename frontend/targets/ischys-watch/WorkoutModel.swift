@@ -308,6 +308,20 @@ final class WorkoutModel: ObservableObject {
     perform(finishHandshake.poll(now: Date()))
   }
 
+  /// Ends the recording, which takes the Watch back to Start when the session
+  /// reports it has ended. With no session running (heart-rate access off)
+  /// nothing would report, and the Watch sat on the finished workout's pages
+  /// until the phone happened to push a new state; so leave here instead.
+  func endSessionOrLeave(discard: Bool = false) {
+    if WorkoutManager.shared.isRunning {
+      if discard { WorkoutManager.shared.discard() } else { WorkoutManager.shared.end() }
+    } else {
+      finishSettled()
+      stopTicking()
+      screen = .start
+    }
+  }
+
   private func perform(_ step: FinishHandshake.Step) {
     switch step {
     case .none:
@@ -315,11 +329,11 @@ final class WorkoutModel: ObservableObject {
     case .endAndSave:
       clearFinishTimer()
       finishing = false
-      WorkoutManager.shared.end()
+      endSessionOrLeave()
     case .endAndQueueRequest:
       clearFinishTimer()
       finishing = false
-      WorkoutManager.shared.end()
+      endSessionOrLeave()
       PhoneLink.shared.queueEndWorkout()
     case .keepRecording:
       clearFinishTimer()

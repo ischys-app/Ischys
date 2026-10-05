@@ -12,7 +12,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 
 import type { SetType, WorkoutSummaryOut } from '../api/types';
-import { db, type Executor } from '../db/client';
+import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
 import { headlinePr, type PRSession } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -178,7 +178,7 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
   const recordsMoved = plan.touchedExerciseIds.length > 0;
   const prs: { exerciseId: string; pr: Omit<SummaryPr, 'exercise_id' | 'exercise_name'> }[] = [];
 
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     // Which workouts count each touched exercise among their PRs, as stored.
     // Read before anything moves; `reflagExercisePrs` replaces that share.
     const heldBefore = new Map<string, Set<string>>();

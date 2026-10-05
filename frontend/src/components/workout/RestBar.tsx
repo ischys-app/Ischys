@@ -1,6 +1,6 @@
 /** Bottom rest bar: idle "tap to start" button, or the active countdown card. */
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import {
   effortAsk,
@@ -41,6 +41,12 @@ type Props = {
   onSkip: () => void;
   /** Absent → the card is exactly the countdown card it always was. */
   effort?: RestBarEffort | null;
+  /**
+   * How tall the effort section is, each time that changes (open, or folded to
+   * "@8 saved"). It is what the card gains over the plain countdown, so the
+   * list under it can keep clear. Never called without `effort`.
+   */
+  onEffortHeight?: (height: number) => void;
 };
 
 export function RestBar({
@@ -52,6 +58,7 @@ export function RestBar({
   onPlus15,
   onSkip,
   effort,
+  onEffortHeight,
 }: Props) {
   const pct = total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
 
@@ -59,7 +66,7 @@ export function RestBar({
     <View style={styles.wrap} pointerEvents="box-none">
       {resting ? (
         <View style={styles.card}>
-          {effort ? <EffortSection effort={effort} /> : null}
+          {effort ? <EffortSection effort={effort} onHeight={onEffortHeight} /> : null}
           <View style={styles.cardRow}>
             <Pressable onPress={onMinus15} style={styles.adjust}>
               <Text style={styles.adjustText}>{'−15'}</Text>
@@ -95,20 +102,29 @@ export function RestBar({
  * The ask line and the scale. Also what the keypad bar shows when its RPE key
  * is tapped, so both places ask the same way.
  */
-export function EffortSection({ effort }: { effort: RestBarEffort }) {
+export function EffortSection({
+  effort,
+  onHeight,
+}: {
+  effort: RestBarEffort;
+  onHeight?: (height: number) => void;
+}) {
   // The value under the thumb, so the prompt can say what it means.
   const [preview, setPreview] = useState<number | null>(null);
+  const onLayout = onHeight
+    ? (e: LayoutChangeEvent) => onHeight(e.nativeEvent.layout.height)
+    : undefined;
 
   if (effort.saved && effort.rpe != null) {
     return (
-      <View style={[styles.effort, styles.effortFolded]}>
+      <View style={[styles.effort, styles.effortFolded]} onLayout={onLayout}>
         <Text style={styles.effortAsk}>{effortSavedLabel(effort.rpe, effort.kind)}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.effort}>
+    <View style={styles.effort} onLayout={onLayout}>
       <View style={styles.effortHead}>
         <Text style={styles.effortAsk} numberOfLines={1}>
           {effortAsk(effort.badge, effort.kind)}

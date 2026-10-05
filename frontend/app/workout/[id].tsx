@@ -247,6 +247,8 @@ export default function ActiveWorkout() {
   // in place, so the keypad stays up. A sheet here would be a Modal, and
   // presenting one drops the keyboard.
   const [keypadEffortSetId, setKeypadEffortSetId] = useState<string | null>(null);
+  // How much taller the effort section makes the rest card, as measured.
+  const [restEffortHeight, setRestEffortHeight] = useState(0);
   const [plateSheetOpen, setPlateSheetOpen] = useState(false);
   const [warmupExId, setWarmupExId] = useState<string | null>(null);
   const [supersetExId, setSupersetExId] = useState<string | null>(null);
@@ -1678,6 +1680,12 @@ export default function ActiveWorkout() {
         }
       : null;
 
+  // The list ends with room for the rest bar. The effort section makes the
+  // card taller, by a height that depends on whether it is open or folded, so
+  // that much is added while it shows. Zero otherwise, and always with the
+  // setting Off.
+  const restEffortClearance = restRemaining > 0 && restBarEffort ? restEffortHeight : 0;
+
   const statusText = status === 'active' ? 'In progress' : status;
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
 
@@ -1813,7 +1821,13 @@ export default function ActiveWorkout() {
             <Text style={styles.addExerciseText}>Add Exercise</Text>
           </PressableScale>
 
-          <View style={styles.spacer} />
+          <View
+            style={
+              restEffortClearance > 0
+                ? [styles.spacer, { height: SPACER_HEIGHT + restEffortClearance }]
+                : styles.spacer
+            }
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1910,6 +1924,7 @@ export default function ActiveWorkout() {
         onPlus15={() => adjustRest(15)}
         onSkip={endRest}
         effort={restBarEffort}
+        onEffortHeight={setRestEffortHeight}
       />
 
       {/* Never mounted until a sheet has been opened, which cannot happen with
@@ -2037,6 +2052,9 @@ export default function ActiveWorkout() {
   );
 }
 
+/** Room under the list for the rest bar's plain card. */
+const SPACER_HEIGHT = 90;
+
 const styles = StyleSheet.create({
   loading: { paddingVertical: 48, alignItems: 'center' },
   root: { flex: 1, backgroundColor: color.bg },
@@ -2129,7 +2147,7 @@ const styles = StyleSheet.create({
   },
   doneAddPressed: { borderColor: color.text3 },
   doneAddText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
-  spacer: { height: 90 },
+  spacer: { height: SPACER_HEIGHT },
   kbdAccessory: {
     position: 'absolute',
     left: 0,

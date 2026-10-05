@@ -80,7 +80,11 @@ import {
   syncFinishedWorkout,
 } from '../../src/lib/healthSync';
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
-import { claimWatchFinish } from '../../src/lib/watchFinish';
+import {
+  claimWatchFinish,
+  finishRequestId,
+  withFinishVerdict,
+} from '../../src/lib/watchFinish';
 import { PlateSheet } from '../../src/components/workout/PlateSheet';
 import { WarmupSheet } from '../../src/components/workout/WarmupSheet';
 import { SupersetSheet } from '../../src/components/workout/SupersetSheet';
@@ -1205,9 +1209,11 @@ export default function ActiveWorkout() {
   const finishStarted = useRef(false);
 
   /**
-   * `fromWatch`: the Watch asked. It has already ended its own session by then.
+   * `fromWatch`: the Watch asked. `watchFinishId` is its request's id when it
+   * is still recording and waiting to hear how this goes (#95); null when it
+   * ended its own session before asking, as older Watch builds always do.
    */
-  const finish = async (fromWatch: boolean) => {
+  const finish = async (fromWatch: boolean, watchFinishId: string | null = null) => {
     if (finishStarted.current) return;
     finishStarted.current = true;
     // The same instant the teardown below used to run at, before the write.
@@ -1231,12 +1237,15 @@ export default function ActiveWorkout() {
         // reopens this screen. Finishing used to take those down first.
         finishStarted.current = false;
         haptics.error();
-        // The Watch closed its session before asking and is back on its Start
-        // screen. Put it back in the workout, as opening this screen does: a
-        // new session if it records, and the state to show either way.
+        // Tell a waiting Watch it failed, so it keeps recording and says so.
+        // One that closed its session before asking (or gave up waiting) is
+        // back on its Start screen: put it back in the workout, as opening
+        // this screen does, with a new session if it records and the state to
+        // show either way. Starting a session the Watch still has does nothing.
         if (fromWatch) {
           void startWatchSession();
-          if (watchStateRef.current) pushWatchState(watchStateRef.current);
+          const push = withFinishVerdict(watchStateRef.current, 'failed', watchFinishId);
+          if (push) pushWatchState(push);
         }
         Alert.alert('Couldn’t finish workout', 'Nothing was changed. Try again.');
         return;
@@ -1246,6 +1255,8 @@ export default function ActiveWorkout() {
     // Not on unmount: leaving the screen with the workout still running is
     // exactly when the card is useful (see the home screen's resume bar).
     void LiveActivity.end();
+    // Also what tells a Watch waiting on this finish that it worked: it ends
+    // its session and saves on this, exactly as when Finish is tapped here.
     stopWatchSession();
     forgetActiveWorkout();
     if (workoutId) clearRest(workoutId);
@@ -1260,6 +1271,7 @@ export default function ActiveWorkout() {
         finishBeganAt,
         watchRecordedRef.current,
         finishBeganAt,
+        watchFinishId != null,
       );
     }
     if (summary && workoutId) {
@@ -1369,7 +1381,7 @@ export default function ActiveWorkout() {
         endRest();
         break;
       case 'end':
-        void finish(true);
+        void finish(true, finishRequestId(a));
         break;
       case 'discard':
         void discardAndLeave();

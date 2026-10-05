@@ -252,7 +252,14 @@ export type WatchAction =
   | { action: 'logSet'; weight: string; reps: string; unit?: 'kg' | 'lb' }
   | { action: 'adjustRest'; seconds: number }
   | { action: 'skipRest' }
-  | { action: 'end' }
+  /**
+   * Finish. `finishId` is present when the Watch is keeping its session running
+   * until the phone says how the finish went, and names the request that answer
+   * must carry (see the handshake in src/lib/watchFinish.ts). Absent when the
+   * Watch has already ended and saved: an older build, or a phone it could not
+   * reach.
+   */
+  | { action: 'end'; finishId?: string }
   | { action: 'discard' }
   | { action: 'addSet' }
   | { action: 'startEmpty' }

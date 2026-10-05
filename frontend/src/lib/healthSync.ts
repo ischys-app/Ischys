@@ -26,6 +26,7 @@ import {
 } from '../domain/healthEntry';
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
+import { watchSaveWaitMs } from './watchFinish';
 
 // Plausible human heart-rate bounds. A stray sample outside this range is
 // dropped rather than persisted.
@@ -67,12 +68,9 @@ export async function connectHealth(): Promise<boolean> {
 const prefOn = (v: string | null): boolean => v !== '0';
 
 // How long the phone waits for the Watch to confirm it saved the HKWorkout
-// before writing the workout itself. The confirmation is a WatchConnectivity
-// message — near-instant while the Watch is reachable, which it is right after
-// the user ends — so this only elapses in full when the Watch genuinely did not
-// save. Erring toward writing on timeout risks a rare duplicate but never a
-// lost workout, which is the trade we want.
-const WATCH_SAVE_TIMEOUT_MS = 10_000;
+// before writing the workout itself is `watchSaveWaitMs` (watchFinish.ts): it
+// depends on whether the Watch has saved already or is waiting to be told the
+// finish worked.
 
 // Epoch ms of the last "Watch saved its HKWorkout" confirmation, plus a hook the
 // active waiter installs so a confirmation wakes it immediately.
@@ -88,8 +86,9 @@ let watchSaveListening = false;
  *
  * A finish calls this before it writes to the database, and only syncs to
  * Health once that write has succeeded. A Watch that ended the session itself
- * confirms its save while the write is still running, and with nothing
- * listening yet that confirmation would be lost.
+ * (it could not reach the phone to ask, gave up waiting for the outcome, or
+ * predates asking) confirms its save while the write is still running, and
+ * with nothing listening yet that confirmation would be lost.
  */
 export function ensureWatchSaveListener(): void {
   if (watchSaveListening) return;
@@ -105,12 +104,12 @@ export function ensureWatchSaveListener(): void {
 
 /**
  * Resolves true once the Watch confirms it saved THIS session's HKWorkout, or
- * false if no confirmation lands within the timeout. `since` is the instant the
- * finish began: a confirmation already recorded at/after it — e.g. a
- * watch-initiated End that saved before the phone processed the intent — counts,
- * closing the race where the confirmation beats the waiter.
+ * false if no confirmation lands within `waitMs`. `since` is the instant the
+ * finish began: a confirmation already recorded at/after it — one that landed
+ * while the finish was being written — counts, closing the race where the
+ * confirmation beats the waiter.
  */
-function awaitWatchSave(since: number): Promise<boolean> {
+function awaitWatchSave(since: number, waitMs: number): Promise<boolean> {
   if (lastWatchSaveAt >= since) return Promise.resolve(true);
   return new Promise((resolve) => {
     let settled = false;
@@ -122,7 +121,7 @@ function awaitWatchSave(since: number): Promise<boolean> {
     };
     const wake = () => done(true);
     notifyWatchSaved = wake;
-    setTimeout(() => done(false), WATCH_SAVE_TIMEOUT_MS);
+    setTimeout(() => done(false), waitMs);
   });
 }
 
@@ -149,6 +148,11 @@ export async function syncFinishedWorkout(
    *  comes first). A Watch confirmation from then on is this session's, so one
    *  that landed during the write still counts. */
   finishBeganAtMs = Date.now(),
+  /** True when the Watch asked for this finish and is keeping its session
+   *  running until it hears the outcome (#95). It then saves later than a
+   *  Watch that was told to stop, or stopped itself, so the wait for its
+   *  confirmation is longer (`watchSaveWaitMs`). */
+  watchAwaitsOutcome = false,
 ): Promise<void> {
   try {
     if (!Health.isAvailable()) return;
@@ -158,7 +162,7 @@ export async function syncFinishedWorkout(
     let watchSavePromise: Promise<boolean> = Promise.resolve(false);
     if (watchWasActive) {
       ensureWatchSaveListener();
-      watchSavePromise = awaitWatchSave(finishedAt);
+      watchSavePromise = awaitWatchSave(finishedAt, watchSaveWaitMs(watchAwaitsOutcome));
     }
 
     const [connected, writePref, hrPref] = await Promise.all([

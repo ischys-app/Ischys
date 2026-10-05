@@ -28,6 +28,16 @@
  * that suffers. A body that gives the thread away is reported through
  * `onYield`, so the mistake shows up in the logs the first time it is made.
  *
+ * NEVER call `atomically` from inside a body, directly or through a function
+ * that opens its own: the inner one queues behind the outer one, which is
+ * waiting for it. Each top-level write opens one transaction and hands the
+ * open connection (`tx`) to whatever it calls. Should one slip through, it is
+ * an error, not a hang: a caller's turn only fails to come within `stallMs`
+ * of timer time when the body ahead has left the thread for that long, and a
+ * body that keeps the rule never leaves it at all (a long one holds the
+ * timers back with everything else). The inner call rejects, which fails the
+ * outer body and rolls it back.
+ *
  * Pure: it is handed the three statements to run, so it is node-tested.
  * db/client.ts binds it to the connection as `atomically`.
  */
@@ -44,6 +54,8 @@ export type Atomic = {
 export function createAtomic(
   run: (statement: TransactionStatement) => void,
   onYield: (message: string) => void = (message) => console.warn(message),
+  /** How long a caller waits its turn, in timer time, before it is taken for a nested call. */
+  stallMs = 10_000,
 ): Atomic {
   let open = false;
   /** Settles when the transaction ahead of the next caller is over. Never rejects. */
@@ -53,7 +65,30 @@ export function createAtomic(
     const ahead = tail;
     let done!: () => void;
     tail = new Promise<void>((resolve) => (done = resolve));
-    await ahead;
+    let stalled: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        stalled = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `[db] a transaction waited ${stallMs} ms for the one ahead of it. It was almost ` +
+                  'certainly started inside another transaction, which then waits on itself: ' +
+                  'a body must not call `atomically`, or a function that does. Hand the open ' +
+                  'connection (`tx`) to the helper instead. See db/atomic.ts.',
+              ),
+            ),
+          stallMs,
+        );
+        void ahead.then(resolve);
+      });
+    } catch (err) {
+      // Out of the queue, but whoever is behind still waits for the one ahead.
+      void ahead.then(done);
+      throw err;
+    } finally {
+      clearTimeout(stalled);
+    }
 
     let yielded = false;
     let watch: ReturnType<typeof setTimeout> | undefined;

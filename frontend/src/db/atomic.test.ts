@@ -160,3 +160,67 @@ test('one that fails does not hold up the next', async () => {
   await second;
   assert.deepEqual(d.stored(), ['b']);
 });
+
+/** A fake whose queue gives up after 20 ms rather than the app's ten seconds. */
+function impatientDb() {
+  const log: string[] = [];
+  let open = false;
+  const atomic = createAtomic(
+    (statement) => {
+      if (statement === 'begin immediate' && open) throw new Error('cannot start a transaction within a transaction');
+      open = statement === 'begin immediate';
+      log.push(statement);
+    },
+    () => {},
+    20,
+  );
+  const insert = async (row: string) => void log.push(`insert ${row}`);
+  return { atomic, insert, log };
+}
+
+test('one started from inside another fails with a reason instead of waiting on itself', async () => {
+  const d = impatientDb();
+  await assert.rejects(
+    d.atomic.atomically(async () => {
+      await d.insert('a');
+      // What a repo function that opens its own transaction does when called from a body.
+      await d.atomic.atomically(async () => void (await d.insert('inner')));
+      await d.insert('b');
+    }),
+    /inside another/,
+  );
+  // The inner body never ran, and the outer one was rolled back whole.
+  assert.deepEqual(d.log, ['begin immediate', 'insert a', 'rollback']);
+  assert.equal(d.atomic.isOpen(), false);
+  await d.atomic.atomically(async () => void (await d.insert('next')));
+  assert.deepEqual(d.log.slice(3), ['begin immediate', 'insert next', 'commit']);
+});
+
+test('one that gave up waiting does not let the next start early', async () => {
+  const d = impatientDb();
+  let next: Promise<void> | undefined;
+  await d.atomic.atomically(async () => {
+    await d.insert('a1');
+    await d.atomic.atomically(async () => {}).catch(() => {});
+    // Queued behind the one that gave up, while this one is still open.
+    next = d.atomic.atomically(async () => void (await d.insert('b')));
+    await d.insert('a2');
+  });
+  await next;
+  assert.deepEqual(d.log, [
+    'begin immediate', 'insert a1', 'insert a2', 'commit',
+    'begin immediate', 'insert b', 'commit',
+  ]);
+});
+
+test('a long body that keeps the rule never makes the one behind it give up', async () => {
+  const d = impatientDb();
+  const first = d.atomic.atomically(async () => {
+    const until = Date.now() + 60;
+    // Three times the patience, without once handing the thread back.
+    while (Date.now() < until) await d.insert('a');
+  });
+  const second = d.atomic.atomically(async () => void (await d.insert('b')));
+  await Promise.all([first, second]);
+  assert.deepEqual(d.log.slice(-3), ['begin immediate', 'insert b', 'commit']);
+});

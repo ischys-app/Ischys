@@ -116,6 +116,10 @@ final class WorkoutManager: NSObject, ObservableObject {
   func resume() { session?.resume() }
 
   /// End and save the session as an HKWorkout.
+  ///
+  /// Not what the Finish button calls: that asks the phone first and ends only
+  /// once the workout is stored there (`WorkoutModel.requestFinish`). This runs
+  /// on the phone's word, or when the phone could not be asked or did not answer.
   func end() {
     pendingDiscard = false
     session?.end()
@@ -154,6 +158,10 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
           // the phone times out waiting and writes the workout itself, so a
           // finished workout is never silently lost.
           //
+          // The phone is usually already waiting when this is sent: it stored
+          // the finish first and then told us to end (#95). How long it waits
+          // is tied to `FinishHandshake.verdictTimeout`.
+          //
           // The UUID goes with it: the phone records which Health entry is this
           // workout's and that the Watch wrote it, so a later edit to the
           // workout's time leaves this recording alone. HealthKit keeps the
@@ -166,6 +174,9 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
     DispatchQueue.main.async {
       self.isRunning = false
       WorkoutModel.shared.stopTicking()
+      // Nothing is waiting on a finish, or reporting a failed one, once the
+      // session it was about has ended.
+      WorkoutModel.shared.finishSettled()
       // Leave the workout UI when our session ends — whether ended here, from the
       // phone, or discarded as an orphan — so the Watch can't stay stuck on the
       // session screen if the phone never pushes the next state.

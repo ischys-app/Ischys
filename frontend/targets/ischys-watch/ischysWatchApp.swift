@@ -89,6 +89,10 @@ struct SessionView: View {
           .padding(.bottom, 20)
           .transition(.move(edge: .bottom))
       }
+
+      // Last, so it sits over the pages and the rest banner alike while a
+      // finish is in flight or has just failed.
+      FinishStatusView()
     }
     .animation(.easeInOut(duration: 0.2), value: model.resting)
   }

@@ -110,6 +110,14 @@ export const workouts = sqliteTable('workouts', {
   // workouts finished before the feature (and pre-feature history); the volume
   // math then falls back to the current bodyweight setting or contributes 0.
   bodyweightKg: real('bodyweight_kg'),
+  // This workout's entry in Apple Health (#90): the HKWorkout's UUID, and who
+  // wrote it — 'phone' (Ischys, which may replace it when the workout's time
+  // is edited) or 'watch' (a recording, which is never altered). Both null
+  // when there is no entry, Health is not connected, or the workout predates
+  // this and has not been looked up yet (see lib/healthSync.ts). A pointer
+  // into this device's Health store, so it is not exported or imported.
+  healthWorkoutUuid: text('health_workout_uuid'),
+  healthWorkoutWriter: text('health_workout_writer'),
   ...sync,
 });
 

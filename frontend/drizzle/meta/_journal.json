@@ -36,6 +36,13 @@
       "when": 1790000200000,
       "tag": "0004_add_set_effort",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790000300000,
+      "tag": "0005_add_workout_health_entry",
+      "breakpoints": true
     }
   ]
 }

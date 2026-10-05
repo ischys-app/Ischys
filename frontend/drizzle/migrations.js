@@ -6,6 +6,7 @@ import m0001 from './0001_add_bodyweight_kg.sql';
 import m0002 from './0002_add_routine_superset_group.sql';
 import m0003 from './0003_add_body_measurements.sql';
 import m0004 from './0004_add_set_effort.sql';
+import m0005 from './0005_add_workout_health_entry.sql';
 
   export default {
     journal,
@@ -14,7 +15,8 @@ import m0004 from './0004_add_set_effort.sql';
 m0001,
 m0002,
 m0003,
-m0004
+m0004,
+m0005
     }
   }
   

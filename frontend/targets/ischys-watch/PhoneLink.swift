@@ -30,6 +30,11 @@ struct PhoneState {
   var resting = false
   var restRemaining = 0
   var restTotal = 0
+  /// When the running rest ends. nil when not resting, or when the phone did
+  /// not say (it pushes 0) — the Watch then has nothing to count down to.
+  var restEndsAt: Date?
+  /// The phone's `rest_timer_alerts` setting. Absent reads as off.
+  var restAlerts = false
   var nextSetLabel = ""
   var volumeKg = 0
   var setsDone = 0
@@ -80,6 +85,11 @@ struct PhoneState {
     resting = d["resting"] as? Bool ?? false
     restRemaining = d["restRemaining"] as? Int ?? 0
     restTotal = d["restTotal"] as? Int ?? 0
+    // Epoch milliseconds, read as a Double for the same reason as `startedAt`.
+    if let ms = (d["restEndsAt"] as? NSNumber)?.doubleValue, ms > 0 {
+      restEndsAt = Date(timeIntervalSince1970: ms / 1000)
+    }
+    restAlerts = d["restAlerts"] as? Bool ?? false
     nextSetLabel = d["nextSetLabel"] as? String ?? ""
     volumeKg = d["volumeKg"] as? Int ?? 0
     setsDone = d["setsDone"] as? Int ?? 0

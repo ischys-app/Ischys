@@ -21,6 +21,7 @@ import type {
 } from '../api/types';
 import { activityMap } from '../domain/activityMap';
 import { uniqueRoutineName } from '../domain/importedRoutines';
+import { normalizeRpe } from '../domain/effort';
 import { latestBefore } from '../domain/previous';
 import { detectPrs, headlinePr } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -95,7 +96,13 @@ export async function getPrevious(_wid: string, weId: string): Promise<PreviousS
   const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, we.workoutId)))[0];
   const before = w ? w.startedAt : nowMs();
   const sets = await previousSets(we.exerciseId, before);
-  return sets.map((s) => ({ position: s.position, type: s.type as SetType, weight: s.weight, reps: s.reps }));
+  return sets.map((s) => ({
+    position: s.position,
+    type: s.type as SetType,
+    weight: s.weight,
+    reps: s.reps,
+    rpe: s.rpe ?? null,
+  }));
 }
 
 /**
@@ -242,9 +249,17 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
 
 export async function patchSet(
   setId: string,
-  body: { type?: SetType; weight?: number | null; reps?: number | null; done?: boolean },
+  body: {
+    type?: SetType;
+    weight?: number | null;
+    reps?: number | null;
+    done?: boolean;
+    /** Effort as RPE; null clears the rating. Anything off the scale is dropped. */
+    rpe?: number | null;
+  },
 ): Promise<WorkoutSetOut> {
   const patch: Record<string, unknown> = { updatedAt: nowMs() };
+  if (body.rpe !== undefined) patch.rpe = normalizeRpe(body.rpe);
   if (body.type !== undefined) patch.type = body.type;
   if (body.weight !== undefined) patch.weight = body.weight;
   if (body.reps !== undefined) patch.reps = body.reps;

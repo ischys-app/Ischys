@@ -134,6 +134,10 @@ export const workoutSets = sqliteTable('workout_sets', {
   done: integer('done').notNull().default(0),
   isPr: integer('is_pr').notNull().default(0),
   completedAt: integer('completed_at'),
+  // How hard the set was (#84). Always RPE, on a half-step grid; RIR is a way
+  // of showing it (10 − RPE), so switching the setting never rewrites history.
+  // Null for an unrated set. See domain/effort.ts.
+  rpe: real('rpe'),
   ...sync,
 });
 
@@ -177,6 +181,8 @@ export const settings = sqliteTable('settings', {
   autoStartRestTimer: integer('auto_start_rest_timer').notNull().default(1),
   restTimerAlerts: integer('rest_timer_alerts').notNull().default(1),
   hapticFeedback: integer('haptic_feedback').notNull().default(1),
+  // 'off' | 'rpe' | 'rir' (#84). Off hides every rating but deletes none.
+  effortMode: text('effort_mode').notNull().default('off'),
   // Legacy, unused (purely on-device — no sync). Kept mapped so the migration
   // snapshot stays consistent; dropping them would rebuild the settings table on
   // live data for no user-facing gain. The API type/repo no longer expose them.

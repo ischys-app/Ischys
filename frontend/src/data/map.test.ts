@@ -8,6 +8,7 @@ import {
   toHistorySession,
   toWorkoutListItem,
   toWorkoutOut,
+  toWorkoutSetOut,
   type ExerciseRow,
   type MuscleRow,
   type WorkoutRow,
@@ -99,6 +100,15 @@ test('toHistorySession flags has_pr and ends null on no PR set', () => {
   const h = toHistorySession('w1', Date.UTC(2026, 6, 10), sets);
   assert.equal(h.has_pr, false);
   assert.equal(h.sets[0].weight, 60);
+});
+
+test('a set carries its effort rating through, null when unrated', () => {
+  const rated: WorkoutSetRow = { id: 's1', position: 0, type: 'normal', weight: 60, reps: 8, done: 1, isPr: 0, rpe: 8.5 };
+  const unrated: WorkoutSetRow = { id: 's2', position: 1, type: 'normal', weight: 60, reps: 8, done: 1, isPr: 0 };
+  assert.equal(toWorkoutSetOut(rated).rpe, 8.5);
+  assert.equal(toWorkoutSetOut(unrated).rpe, null);
+  const h = toHistorySession('w1', Date.UTC(2026, 6, 10), [rated, unrated]);
+  assert.deepEqual(h.sets.map((s) => s.rpe), [8.5, null]);
 });
 
 test('routineDetail lists first 6 then +N', () => {

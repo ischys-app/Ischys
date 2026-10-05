@@ -74,6 +74,8 @@ export type WorkoutSetRow = {
   reps: number | null;
   done: number;
   isPr: number;
+  /** Effort as RPE. Optional so rows read before the column existed still fit. */
+  rpe?: number | null;
 };
 export type RoutineRow = { id: string; name: string; initials: string; position: number };
 export type RoutineExerciseRow = {
@@ -130,6 +132,7 @@ export const toWorkoutSetOut = (s: WorkoutSetRow): WorkoutSetOut => ({
   reps: s.reps,
   done: bool(s.done),
   is_pr: bool(s.isPr),
+  rpe: s.rpe ?? null,
 });
 
 export const toWorkoutExerciseOut = (
@@ -225,5 +228,6 @@ export const toHistorySession = (
     weight: s.weight,
     reps: s.reps,
     is_pr: bool(s.isPr),
+    rpe: s.rpe ?? null,
   })),
 });

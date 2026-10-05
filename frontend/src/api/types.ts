@@ -91,6 +91,8 @@ export type WorkoutSetOut = {
   reps: number | null;
   done: boolean;
   is_pr: boolean;
+  /** Effort, always as RPE (see domain/effort.ts). Null when unrated. */
+  rpe: number | null;
 };
 
 export type WorkoutExerciseOut = {
@@ -128,6 +130,8 @@ export type PreviousSetOut = {
   type: SetType;
   weight: number | null;
   reps: number | null;
+  /** That set's effort, as RPE. Null when it was not rated. */
+  rpe: number | null;
 };
 
 export type WorkoutSummaryOut = {
@@ -160,6 +164,8 @@ export type HistorySetOut = {
   weight: number | null;
   reps: number | null;
   is_pr: boolean;
+  /** Effort, as RPE. Null when unrated. */
+  rpe: number | null;
 };
 
 /** One past session for a single exercise, from its logged history. */
@@ -272,9 +278,13 @@ export type RoutineExerciseIn = {
 
 export type Unit = 'kg' | 'lb';
 
+/** Effort per set: hidden, or shown as RPE or as RIR. */
+export type EffortMode = 'off' | 'rpe' | 'rir';
+
 /** Full locally-persisted settings payload. */
 export type SettingsOut = {
   unit: Unit;
+  effort_mode: EffortMode;
   auto_start_rest_timer: boolean;
   rest_timer_alerts: boolean;
   haptic_feedback: boolean;

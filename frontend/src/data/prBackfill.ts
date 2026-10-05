@@ -31,7 +31,6 @@
  *    it waits, rather than plan from rows that may yet be rolled back.
  */
 import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect } from 'react';
 
 import { db, transactionOpen } from '../db/client';
@@ -49,13 +48,34 @@ import {
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
 import { nowMs } from './ids';
+import { SETTINGS_ID } from './settingsRepo';
 
 /**
- * Holds the version of the pass that last completed on this device (see
- * `PR_BACKFILL_VERSION`). In SecureStore with the app's other small flags, so
- * it needs no schema change.
+ * The version of the pass that last completed (see `PR_BACKFILL_VERSION`) lives
+ * on the settings row, not in SecureStore: the Keychain outlives a reinstall
+ * and knows nothing of a database file restored under it, and a marker stored
+ * with the data commits in the same transaction as the flags it vouches for.
  */
-const KEY = 'ischys.prFlagBackfillVersion';
+function storedVersion(): string | null {
+  const row = db
+    .select({ v: schema.settings.prBackfillVersion })
+    .from(schema.settings)
+    .where(eq(schema.settings.id, SETTINGS_ID))
+    .all()[0];
+  return row ? String(row.v) : null;
+}
+
+/** Records the pass as done. `via` is the transaction to join, or the bare connection. */
+function markDone(via: Pick<typeof db, 'insert'> = db): void {
+  via
+    .insert(schema.settings)
+    .values({ id: SETTINGS_ID, prBackfillVersion: PR_BACKFILL_VERSION })
+    .onConflictDoUpdate({
+      target: schema.settings.id,
+      set: { prBackfillVersion: PR_BACKFILL_VERSION },
+    })
+    .run();
+}
 
 /** Sets read per page: a few milliseconds of work each. */
 const PAGE = 2000;
@@ -149,6 +169,8 @@ function writePlan(plan: PrBackfillPlan): void {
           .run();
       }
     }
+    // In the same commit as the flags: done means these rows, in this file.
+    markDone(tx);
   });
 }
 
@@ -168,10 +190,10 @@ export type PrBackfillOutcome =
  * swallows that.
  */
 export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
-  const decision = decidePrBackfill(await SecureStore.getItemAsync(KEY), hasCompletedWorkout() ? 1 : 0);
+  const decision = decidePrBackfill(storedVersion(), hasCompletedWorkout() ? 1 : 0);
   if (decision === 'skip') return 'skipped';
   if (decision === 'mark') {
-    await SecureStore.setItemAsync(KEY, String(PR_BACKFILL_VERSION));
+    markDone();
     return 'marked';
   }
 
@@ -227,9 +249,6 @@ export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
       continue;
     }
     writePlan(plan);
-    // After the commit: a marker that fails to save only means the pass runs
-    // again next launch and finds nothing to change.
-    await SecureStore.setItemAsync(KEY, String(PR_BACKFILL_VERSION));
     return 'done';
   }
   return 'deferred';

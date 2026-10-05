@@ -191,6 +191,9 @@ export const settings = sqliteTable('settings', {
   hapticFeedback: integer('haptic_feedback').notNull().default(1),
   // 'off' | 'rpe' | 'rir' (#84). Off hides every rating but deletes none.
   effortMode: text('effort_mode').notNull().default('off'),
+  // The version of the one-time PR flag pass (#91) that last completed on this
+  // database. Kept with the data it describes, so a restored file is re-walked.
+  prBackfillVersion: integer('pr_backfill_version').notNull().default(0),
   // Legacy, unused (purely on-device — no sync). Kept mapped so the migration
   // snapshot stays consistent; dropping them would rebuild the settings table on
   // live data for no user-facing gain. The API type/repo no longer expose them.

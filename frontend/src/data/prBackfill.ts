@@ -11,7 +11,9 @@
  * It is best-effort and out of the way by construction:
  *
  *  - It starts after the UI is up and never throws into it. Any failure leaves
- *    the marker unwritten, and the next launch tries again.
+ *    the marker unwritten, and the next launch tries again. A failure, or a
+ *    pass put off, is logged: one that fails the same way at every launch
+ *    would otherwise never be seen.
  *  - Reading is done a page at a time with the JS thread handed back between
  *    pages, so no single stretch is long enough to drop frames.
  *  - Writing is one real transaction. Every statement in it is run
@@ -24,13 +26,15 @@
  *    whole or not at all. If anything at all was written between the first
  *    page and the write, the plan is stale, so it is thrown away and read
  *    again; the check and the write share one synchronous stretch, so nothing
- *    can slip between them.
+ *    can slip between them. An import holds one real transaction open for
+ *    its whole length (db/atomic.ts); should one ever be open when this looks,
+ *    it waits, rather than plan from rows that may yet be rolled back.
  */
 import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect } from 'react';
 
-import { db } from '../db/client';
+import { db, transactionOpen } from '../db/client';
 import * as schema from '../db/schema';
 import {
   PR_BACKFILL_VERSION,
@@ -176,6 +180,11 @@ export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
   const countWarmups = await getCountWarmups();
 
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    // Rows of an open transaction are not history yet.
+    if (transactionOpen()) {
+      await breathe(1000);
+      continue;
+    }
     const before = writesSoFar();
     const rows = await readSets();
     const kinds = new Map(
@@ -213,7 +222,7 @@ export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
 
     // From here to the commit is one synchronous stretch. If nothing has been
     // written since `before`, the plan was made from the database as it is now.
-    if (writesSoFar() !== before) {
+    if (transactionOpen() || writesSoFar() !== before) {
       await breathe(1000);
       continue;
     }
@@ -231,8 +240,8 @@ let started = false;
 
 /**
  * Starts the pass once the local database is ready and the first screen has
- * had its turn. Best-effort: it reports nothing and can fail without anyone
- * noticing, because the next launch simply tries again.
+ * had its turn. Best-effort: it never reaches the UI, because the next launch
+ * simply tries again — but a failure, or a pass put off, goes to the log.
  *
  * Screens that show PR pills read the database when they gain focus, and this
  * is done a few seconds into the first launch after the update, so History
@@ -244,9 +253,17 @@ export function usePrFlagBackfill(ready: boolean): void {
     const timer = setTimeout(() => {
       if (started) return;
       started = true;
-      runPrBackfillIfOwed().catch(() => {
-        // Nothing was written and nothing was recorded; next launch retries.
-      });
+      runPrBackfillIfOwed().then(
+        (outcome) => {
+          if (outcome === 'deferred') {
+            console.warn('[prBackfill] deferred: other writes kept landing while it read; retrying next launch');
+          }
+        },
+        (err) => {
+          // Nothing was written and nothing was recorded; next launch retries.
+          console.warn('[prBackfill] failed; retrying next launch', err);
+        },
+      );
     }, START_DELAY_MS);
     return () => clearTimeout(timer);
   }, [ready]);

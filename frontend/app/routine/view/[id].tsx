@@ -53,16 +53,20 @@ function restText(rest: ViewRest): string {
  */
 function Fade({ id, stops }: { id: string; stops: [number, number][] }) {
   return (
-    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
-      <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          {stops.map(([offset, opacity]) => (
-            <Stop key={offset} offset={offset} stopColor={color.bg} stopOpacity={opacity} />
-          ))}
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
-    </Svg>
+    // The Svg sizes against this View: on its own its 100% height resolved
+    // against the parent's content box and left the bottom inset uncovered.
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            {stops.map(([offset, opacity]) => (
+              <Stop key={offset} offset={offset} stopColor={color.bg} stopOpacity={opacity} />
+            ))}
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
+    </View>
   );
 }
 

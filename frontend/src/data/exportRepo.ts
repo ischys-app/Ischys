@@ -16,7 +16,9 @@ import type { Unit } from '../domain/units';
 import { equipmentFromNameSuffix } from '../domain/exerciseNaming';
 import { parseServerDate } from '../lib/serverTime';
 import { initialsOf } from './exercisesRepo';
-import { recomputeForExercise } from './recordStore';
+import { exerciseKey, planImport, workoutKey } from './importPlan';
+import { prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
+import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
 
 type FullSet = { position: number; type: string; weight: number | null; reps: number | null; done: boolean; isPr: boolean; rpe: number | null };
@@ -82,7 +84,7 @@ async function findOrCreateExercise(
   cache: Map<string, string>,
   exec: Executor = db,
 ): Promise<{ id: string; created: boolean }> {
-  const key = name.trim().toLowerCase();
+  const key = exerciseKey(name);
   const cached = cache.get(key);
   if (cached) return { id: cached, created: false };
   // Match case-insensitively: SQLite's default `=` is case-sensitive, so an exact
@@ -109,9 +111,62 @@ async function findOrCreateExercise(
   return { id, created: true };
 }
 
+/** What an import's record pass carries from before its writes to after them. */
+type RecordStanding = {
+  /** Per touched exercise: the workouts whose `pr_count` holds it, as stored. */
+  held: Map<string, Set<string>>;
+  exercisesCreated: number;
+  currentBw: number | null;
+  countWarmups: boolean;
+};
+
 /**
- * Import a file — an Ischys JSON backup (full fidelity: notes, supersets, PR
- * flags, effort ratings) or a workout CSV. Sniffs the format so the caller doesn't have to.
+ * Before an import writes a workout: resolves every exercise it will touch
+ * (creating the ones the database has never seen) and reads which workouts
+ * already count each among their PRs.
+ *
+ * Read first because `reflagExercisePrs` replaces an exercise's share of those
+ * counts, and can only do that knowing what the share was while the history
+ * still stood as stored. An edit does the same around its own writes.
+ */
+async function recordStandingBefore(
+  exerciseNames: readonly string[],
+  cache: Map<string, string>,
+  tx: Executor,
+  currentBw: number | null,
+  countWarmups: boolean,
+): Promise<RecordStanding> {
+  const held = new Map<string, Set<string>>();
+  let exercisesCreated = 0;
+  for (const name of exerciseNames) {
+    const { id, created } = await findOrCreateExercise(name, cache, tx);
+    if (created) exercisesCreated++;
+    if (!held.has(id)) held.set(id, await prCountHolders(id, tx, currentBw, countWarmups));
+  }
+  return { held, exercisesCreated, currentBw, countWarmups };
+}
+
+/**
+ * After an import's rows are written: for every exercise it touched, the PR
+ * flags across the exercise's whole history, each workout's `pr_count`, and
+ * the materialised records (#91).
+ *
+ * The whole history, not just the new rows: imported sessions are usually
+ * older than what is already logged, and an older best takes the star from the
+ * later set that had it. The flags come from the same walk an edit uses, so
+ * imported history and logged history read as one log kept in date order.
+ */
+async function rederiveRecords(standing: RecordStanding, tx: Executor): Promise<void> {
+  const { held, currentBw, countWarmups } = standing;
+  for (const [exId, heldBefore] of held) {
+    await reflagExercisePrs(exId, tx, currentBw, countWarmups, heldBefore);
+    await recomputeForExercise(exId, tx, currentBw, countWarmups);
+  }
+}
+
+/**
+ * Import a file — an Ischys JSON backup (full fidelity: notes, supersets,
+ * effort ratings) or a workout CSV. Sniffs the format so the caller doesn't have to.
  * `weightUnit` is a fallback for a CSV whose weight column doesn't name its unit;
  * a JSON backup and an explicit `weight_kg` column ignore it.
  */
@@ -134,8 +189,6 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
   let workoutsCreated = 0;
   let exercisesCreated = 0;
   let setsImported = 0;
-  let duplicatesSkipped = 0;
-  const touched = new Set<string>();
   const warnings: string[] = [];
   const importedSessions: ImportedSession[] = [];
 
@@ -145,27 +198,32 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
   // so they always import.
   const seen = new Set(
     (await db.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
-      (w) => `${w.name}@@${w.startedAt}`,
+      (w) => workoutKey(w.name, w.startedAt),
     ),
   );
+  const plan = planImport(
+    parsed.workouts.map((pw) => ({
+      workout: pw,
+      key: pw.startedAt === null ? null : workoutKey(pw.title, pw.startedAt),
+      exerciseNames: pw.exercises.map((pe) => pe.title),
+    })),
+    seen,
+  );
+  const duplicatesSkipped = plan.duplicatesSkipped;
 
   // Resolve BEFORE the transaction — SecureStore inside an expo-sqlite
-  // transaction hangs it. Threads into per-workout volume + the PR recompute.
+  // transaction hangs it. Threads into per-workout volume + the record pass.
   const countWarmups = await getCountWarmups();
+  const currentBw = await getBodyweightKg();
 
   // All-or-nothing: an interrupted import must not leave half-written workouts
   // (which the idempotency check above would then permanently skip on retry).
   await db.transaction(async (tx) => {
-    for (const pw of parsed.workouts) {
+    const standing = await recordStandingBefore(plan.exercises, cache, tx, currentBw, countWarmups);
+    exercisesCreated = standing.exercisesCreated;
+
+    for (const pw of plan.accepted) {
       const startedAt = pw.startedAt ?? nowMs();
-      if (pw.startedAt !== null) {
-        const key = `${pw.title}@@${pw.startedAt}`;
-        if (seen.has(key)) {
-          duplicatesSkipped++;
-          continue;
-        }
-        seen.add(key);
-      }
       const wid = newId();
       // A CSV can state duration either as an end time or as a "24m" column; keep
       // endedAt consistent with whichever we got, and fall back to a zero-length
@@ -180,9 +238,8 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
       const allSets: SetLike[] = [];
       for (let p = 0; p < pw.exercises.length; p++) {
         const pe = pw.exercises[p];
-        const { id: exId, created } = await findOrCreateExercise(pe.title, cache, tx);
-        if (created) exercisesCreated++;
-        touched.add(exId);
+        // Resolved, and created if new, by `recordStandingBefore` above.
+        const { id: exId } = await findOrCreateExercise(pe.title, cache, tx);
         const weId = newId();
         await tx.insert(schema.workoutExercises).values({
           id: weId, workoutId: wid, exerciseId: exId, position: p,
@@ -214,7 +271,7 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
       }
     }
 
-    for (const exId of touched) await recomputeForExercise(exId, tx, null, countWarmups);
+    await rederiveRecords(standing, tx);
   });
 
   if (duplicatesSkipped > 0) {
@@ -246,8 +303,17 @@ type JsonWorkout = {
 
 /**
  * Restore an Ischys JSON backup (the shape `exportData('json')` produces). Unlike
- * the CSV path this is loss-free — it keeps exercise notes, superset groups, PR
- * flags, and each workout's exact structure. Idempotent by (name, started_at).
+ * the CSV path this is loss-free — it keeps exercise notes, superset groups and
+ * each workout's exact structure. Idempotent by (name, started_at).
+ *
+ * The backup's `is_pr` values are read past, not restored: PR flags are
+ * re-derived for every exercise the restore touches (`rederiveRecords`). A
+ * flag says "this was a record when it was logged", which is a statement
+ * about the history it is being restored into, not about the file — a backup
+ * merged into a database with other sessions, written under another warm-up
+ * setting, or exported while its own history was half flagged would carry
+ * stars the surrounding log contradicts. The file never restored `pr_count`
+ * either, so a trusted flag had no count beside it.
  */
 async function importJsonBackup(text: string): Promise<ImportResult> {
   let data: { workouts?: JsonWorkout[] };
@@ -262,9 +328,7 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
   let workoutsCreated = 0;
   let exercisesCreated = 0;
   let setsImported = 0;
-  let duplicatesSkipped = 0;
   let workoutsSkipped = 0;
-  const touched = new Set<string>();
   const warnings: string[] = [];
   // A JSON backup carries workouts only — `exportData` writes no routines — so a
   // restore loses the user's routines exactly as a CSV import does, and the
@@ -273,29 +337,40 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
 
   const seen = new Set(
     (await db.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
-      (w) => `${w.name}@@${w.startedAt}`,
+      (w) => workoutKey(w.name, w.startedAt),
     ),
   );
 
+  // A workout with no readable date cannot be placed in history at all.
+  const dated: { w: JsonWorkout; rawName: string; name: string; startedAt: number }[] = [];
+  for (const w of workoutsIn) {
+    const rawName = (w.name ?? '').trim();
+    const startedAt = parseServerDate(w.started_at ?? '');
+    if (Number.isNaN(startedAt)) {
+      workoutsSkipped++;
+      continue;
+    }
+    dated.push({ w, rawName, name: rawName || 'Workout', startedAt });
+  }
+  const plan = planImport(
+    dated.map((d) => ({
+      workout: d,
+      key: workoutKey(d.name, d.startedAt),
+      exerciseNames: (Array.isArray(d.w.exercises) ? d.w.exercises : []).map((pe) => pe.name ?? ''),
+    })),
+    seen,
+  );
+  const duplicatesSkipped = plan.duplicatesSkipped;
+
   // Resolved before the transaction (SecureStore inside it hangs the transaction).
   const countWarmups = await getCountWarmups();
+  const currentBw = await getBodyweightKg();
 
   await db.transaction(async (tx) => {
-    for (const w of workoutsIn) {
-      const rawName = (w.name ?? '').trim();
-      const name = rawName || 'Workout';
-      const startedAt = parseServerDate(w.started_at ?? '');
-      if (Number.isNaN(startedAt)) {
-        workoutsSkipped++;
-        continue;
-      }
-      const key = `${name}@@${startedAt}`;
-      if (seen.has(key)) {
-        duplicatesSkipped++;
-        continue;
-      }
-      seen.add(key);
+    const standing = await recordStandingBefore(plan.exercises, cache, tx, currentBw, countWarmups);
+    exercisesCreated = standing.exercisesCreated;
 
+    for (const { w, rawName, name, startedAt } of plan.accepted) {
       const endedRaw = w.ended_at ? parseServerDate(w.ended_at) : NaN;
       const endedAt = Number.isNaN(endedRaw) ? startedAt : endedRaw;
       const wid = newId();
@@ -318,9 +393,8 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
         const exName = (pe.name ?? '').trim();
         if (!exName) continue;
         exercisesInWorkout++;
-        const { id: exId, created } = await findOrCreateExercise(exName, cache, tx);
-        if (created) exercisesCreated++;
-        touched.add(exId);
+        // Resolved, and created if new, by `recordStandingBefore` above.
+        const { id: exId } = await findOrCreateExercise(exName, cache, tx);
         const weId = newId();
         await tx.insert(schema.workoutExercises).values({
           id: weId,
@@ -346,7 +420,8 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
             reps,
             rpe: ps.rpe,
             done: done ? 1 : 0,
-            isPr: ps.isPr ? 1 : 0,
+            // Not the backup's `is_pr`: decided below, against this history.
+            isPr: 0,
             completedAt: done ? startedAt : null,
             updatedAt: nowMs(),
           });
@@ -369,7 +444,7 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
       }
     }
 
-    for (const exId of touched) await recomputeForExercise(exId, tx, null, countWarmups);
+    await rederiveRecords(standing, tx);
   });
 
   if (duplicatesSkipped > 0) {

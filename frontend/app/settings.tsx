@@ -12,7 +12,7 @@ import Constants from 'expo-constants';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { SettingsOut, SettingsUpdate, Unit } from '../src/api/types';
+import type { EffortMode, SettingsOut, SettingsUpdate, Unit } from '../src/api/types';
 import {
   countDuplicateGroups,
   exportData,
@@ -50,6 +50,8 @@ import {
 import { getDeloadState, setDeloadState } from '../src/lib/deloadState';
 import { PALETTES, type ThemeId } from '../src/theme/palettes';
 import { getThemeId, setThemeId } from '../src/lib/themePref';
+import { setEffortMode } from '../src/lib/effortMode';
+import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font } from '../src/theme/tokens';
 
 /**
@@ -64,6 +66,7 @@ const APP_VERSION = Constants.nativeAppVersion ?? Constants.expoConfig?.version 
 
 const DEFAULT_SETTINGS: SettingsOut = {
   unit: 'kg',
+  effort_mode: 'off',
   auto_start_rest_timer: true,
   rest_timer_alerts: true,
   haptic_feedback: true,
@@ -73,6 +76,20 @@ const UNIT_OPTIONS: SegmentOption<Unit>[] = [
   { label: 'KG', value: 'kg' },
   { label: 'LB', value: 'lb' },
 ];
+
+/** One control both turns effort ratings on and picks the scale (#84). */
+const EFFORT_OPTIONS: SegmentOption<EffortMode>[] = [
+  { label: 'Off', value: 'off' },
+  { label: 'RPE', value: 'rpe' },
+  { label: 'RIR', value: 'rir' },
+];
+
+/** What the row says under the control, in the words of the scale chosen. */
+const EFFORT_HELP: Record<EffortMode, string> = {
+  off: 'Rate a set while you rest. RPE runs 6 to 10, where 10 means nothing left and 8 means two reps left.',
+  rpe: 'Rate a set while you rest. RPE runs 6 to 10, where 10 means nothing left and 8 means two reps left.',
+  rir: 'Rate a set while you rest. RIR counts the reps you had left, where 0 means nothing left.',
+};
 
 /** Merge glyph: two overlapping circles (icons.tsx is owned by another stream). */
 function MergeIcon({ size = 19, color: strokeColor, strokeWidth = 2 }: { size?: number; color: string; strokeWidth?: number }) {
@@ -175,6 +192,11 @@ export default function Settings() {
   const patch = (delta: SettingsUpdate) => {
     setSettings((s) => ({ ...s, ...delta }));
     if (delta.haptic_feedback !== undefined) setHapticsEnabled(delta.haptic_feedback);
+    // Every screen showing a weight follows this at once — including a workout
+    // left open underneath, which re-reads its sets in the new unit.
+    if (delta.unit !== undefined) setWeightUnit(delta.unit);
+    // Likewise the rating: an open workout shows or hides it straight away.
+    if (delta.effort_mode !== undefined) setEffortMode(delta.effort_mode);
     updateSettings(delta).catch(() => {});
   };
 
@@ -293,7 +315,10 @@ export default function Settings() {
         </Section>
 
         {/* TRAINING */}
-        <Section title="TRAINING">
+        <Section
+          title="TRAINING"
+          footer="Turning this off hides ratings everywhere but keeps them stored. Switching between RPE and RIR converts existing ratings."
+        >
           <SegmentRow
             icon={<UnitsIcon size={20} color={color.text2} />}
             label="Units"
@@ -302,6 +327,7 @@ export default function Settings() {
             onChange={(v) => patch({ unit: v })}
             isLast={false}
           />
+          <EffortRow value={settings.effort_mode} onChange={(v) => patch({ effort_mode: v })} />
           <ToggleRow
             icon={<ClockRowIcon size={20} color={color.text2} strokeWidth={2} />}
             label="Auto-start rest timer"
@@ -614,11 +640,70 @@ function BodyweightIcon({ size = 20, color: c }: { size?: number; color: string 
 
 // --- Section + Rows -------------------------------------------------------
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  footer,
+  children,
+}: {
+  title: string;
+  /** A note under the card, for a consequence that belongs to no single row. */
+  footer?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.card}>{children}</View>
+      {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
+    </View>
+  );
+}
+
+/**
+ * "Effort per set": Off | RPE | RIR, with what the scale means underneath
+ * (board 14a, F1). Its own control rather than the shared `Segment`, because
+ * the board draws this one bordered and 30pt tall. The selected segment is a
+ * surface, not the accent — the same reasoning as the scale it switches on.
+ */
+function EffortRow({
+  value,
+  onChange,
+}: {
+  value: EffortMode;
+  onChange: (next: EffortMode) => void;
+}) {
+  return (
+    <View style={[styles.effortRow, styles.rowDivider]}>
+      <View style={styles.effortTop}>
+        <View style={styles.rowIcon}>
+          <WarmupIcon size={20} color={color.text2} />
+        </View>
+        <Text style={[styles.rowLabel, styles.effortLabel]} numberOfLines={1}>
+          Effort per set
+        </Text>
+        <View style={styles.effortSegment} accessibilityRole="radiogroup">
+          {EFFORT_OPTIONS.map((opt) => {
+            const selected = opt.value === value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => onChange(opt.value)}
+                // 30pt as drawn; the slop brings the target to 44.
+                hitSlop={{ top: 7, bottom: 7 }}
+                style={[styles.effortOption, selected && styles.effortOptionOn]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`Effort per set: ${opt.label}`}
+              >
+                <Text style={[styles.effortOptionText, selected && styles.effortOptionTextOn]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+      <Text style={styles.effortHelp}>{EFFORT_HELP[value]}</Text>
     </View>
   );
 }
@@ -860,6 +945,50 @@ const styles = StyleSheet.create({
     borderColor: color.border,
     borderRadius: 16,
     overflow: 'hidden',
+  },
+  sectionFooter: {
+    fontFamily: font.bodyRegular,
+    fontSize: 12.5,
+    lineHeight: 18.75,
+    color: color.text3,
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+
+  // Effort per set (board 14a, F1)
+  effortRow: { paddingTop: 14, paddingRight: 14, paddingBottom: 14, paddingLeft: 16 },
+  // 13 is `row`'s gap, so this label starts where every other one does.
+  effortTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  effortLabel: { flex: 1, minWidth: 0 },
+  effortSegment: {
+    flexDirection: 'row',
+    padding: 3,
+    borderRadius: 9,
+    backgroundColor: color.surface2,
+    borderWidth: 1,
+    borderColor: color.border,
+    flexShrink: 0,
+  },
+  effortOption: {
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  effortOptionOn: { backgroundColor: color.surface3 },
+  effortOptionText: {
+    fontFamily: font.monoMedium,
+    fontSize: 12.5,
+    color: color.text3,
+  },
+  effortOptionTextOn: { fontFamily: font.monoSemi, color: color.text1 },
+  effortHelp: {
+    fontFamily: font.bodyRegular,
+    fontSize: 12.5,
+    lineHeight: 18.75,
+    color: color.text2,
+    marginTop: 10,
   },
 
   // Row

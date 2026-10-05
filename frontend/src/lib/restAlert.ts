@@ -13,7 +13,7 @@
  */
 import * as Notifications from 'expo-notifications';
 
-import { alertBody } from './restAlertRules';
+import { REST_ALERT_CATEGORY, REST_ALERT_TITLE, alertBody } from './restAlertRules';
 
 export { alertBody, shouldSchedule } from './restAlertRules';
 
@@ -50,8 +50,11 @@ export async function scheduleRestAlert(
   try {
     return await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Rest complete',
+        title: REST_ALERT_TITLE,
         body: alertBody(exerciseName),
+        // No actions are registered for it; it only names the notification so
+        // the Watch can tell it from any other and mute its forwarded copy.
+        categoryIdentifier: REST_ALERT_CATEGORY,
         sound: true,
         interruptionLevel: 'timeSensitive',
       },

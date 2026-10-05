@@ -29,6 +29,13 @@
       "when": 1790000100000,
       "tag": "0003_add_body_measurements",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790000200000,
+      "tag": "0004_add_set_effort",
+      "breakpoints": true
     }
   ]
 }

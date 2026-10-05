@@ -8,11 +8,27 @@
  * (1.25, 2.5, 37.5…), and in floating point 20 + 1.25 * 2 is not reliably 22.5;
  * a calculator that occasionally says a loadable weight isn't loadable is worse
  * than no calculator. Grams are exact for every plate anyone sells.
+ *
+ * The solver itself is unit-blind: it adds and compares numbers and never
+ * converts one. Hand it a pound rack and a pound target and it answers in whole
+ * pound plates (the "grams" are then thousandths of a pound, exact for the same
+ * reason). So the fields named `kg` below hold kilograms on a kg rack and
+ * pounds on a lb one — `setupUnit` says which. The names are kept because the
+ * stored setup uses them, and a rename would be a migration.
+ *
+ * Storage is kilograms regardless. `solvePlatesForKg` and `loadToKg` are the
+ * way in and out for callers holding a stored weight.
  */
+import { toDisplay, toKg, type Unit } from './units.ts';
 
 /** `count` is how many PAIRS the gym has — plates are loaded symmetrically. */
 export type PlatePair = { kg: number; count: number };
-export type BarSetup = { barKg: number; pairs: PlatePair[] };
+/**
+ * `unit` is what the bar and plates are denominated in. Absent means kilograms:
+ * every setup saved before pounds existed has no such field, and must go on
+ * meaning what it meant.
+ */
+export type BarSetup = { barKg: number; pairs: PlatePair[]; unit?: Unit };
 
 /** Plates for ONE side, heaviest first. `n` is how many of that plate per side. */
 export type PlateStack = { kg: number; n: number }[];
@@ -41,6 +57,36 @@ export const DEFAULT_BAR_SETUP: BarSetup = {
   ],
 };
 
+/** A common commercial lb set, with the same never-binding counts. */
+export const DEFAULT_LB_BAR_SETUP: BarSetup = {
+  unit: 'lb',
+  barKg: 45,
+  pairs: [
+    { kg: 45, count: 8 },
+    { kg: 35, count: 8 },
+    { kg: 25, count: 8 },
+    { kg: 10, count: 8 },
+    { kg: 5, count: 8 },
+    { kg: 2.5, count: 8 },
+  ],
+};
+
+/** Bars people actually train on in each unit, heaviest first. */
+export const BAR_OPTIONS: Record<Unit, number[]> = {
+  kg: [20, 15, 10],
+  lb: [45, 35, 15],
+};
+
+/** The standard set for a unit — what a user who has saved nothing gets. */
+export function defaultBarSetup(unit: Unit): BarSetup {
+  return unit === 'lb' ? DEFAULT_LB_BAR_SETUP : DEFAULT_BAR_SETUP;
+}
+
+/** The unit a setup's bar and plates are in. */
+export function setupUnit(setup: BarSetup): Unit {
+  return setup.unit === 'lb' ? 'lb' : 'kg';
+}
+
 const g = (kg: number) => Math.round(kg * 1000);
 const kg = (grams: number) => grams / 1000;
 
@@ -57,12 +103,17 @@ const positive = (v: unknown): v is number => typeof v === 'number' && Number.is
  *
  * A zero `count` survives: that is a plate the gym is known NOT to have, and the
  * settings screen needs the row to stay visible so it can be turned back on.
+ *
+ * `unit` is the slot the blob was read from, and it decides both the fallback
+ * and what the numbers mean — not anything inside the blob. A kg setup is
+ * returned without a `unit` field, exactly as it always was.
  */
-export function parseBarSetup(raw: string | null | undefined): BarSetup {
-  if (!raw) return DEFAULT_BAR_SETUP;
+export function parseBarSetup(raw: string | null | undefined, unit: Unit = 'kg'): BarSetup {
+  const fallback = defaultBarSetup(unit);
+  if (!raw) return fallback;
   try {
     const data = JSON.parse(raw) as Partial<BarSetup>;
-    if (!positive(data.barKg)) return DEFAULT_BAR_SETUP;
+    if (!positive(data.barKg)) return fallback;
     const pairs = (Array.isArray(data.pairs) ? data.pairs : [])
       .filter(
         (p): p is PlatePair =>
@@ -73,9 +124,9 @@ export function parseBarSetup(raw: string | null | undefined): BarSetup {
           (p as PlatePair).count >= 0,
       )
       .map((p) => ({ kg: p.kg, count: Math.floor(p.count) }));
-    return { barKg: data.barKg, pairs };
+    return unit === 'kg' ? { barKg: data.barKg, pairs } : { unit, barKg: data.barKg, pairs };
   } catch {
-    return DEFAULT_BAR_SETUP;
+    return fallback;
   }
 }
 
@@ -185,4 +236,26 @@ export function solvePlates(targetKg: number, setup: BarSetup): PlateSolution {
     above: aboveG === null ? null : toLoad(aboveG, sums.get(aboveG)!, barG),
     stepKg: smallestStepKg(setup),
   };
+}
+
+/**
+ * `solvePlates` for a weight held in kilograms — which is every stored weight.
+ *
+ * The answer is in the rack's unit, not in kg: on a pound rack a stored
+ * 102.0583 kg is the 225 lb it was typed as, and comes back as two 45s a side.
+ * On a kg rack this is `solvePlates` and nothing else.
+ */
+export function solvePlatesForKg(targetKg: number, setup: BarSetup): PlateSolution {
+  const unit = setupUnit(setup);
+  if (unit === 'kg') return solvePlates(targetKg, setup);
+  return solvePlates(toDisplay(targetKg, unit) ?? NaN, setup);
+}
+
+/**
+ * A weight in the rack's unit (a load's total, the bar) -> kilograms for
+ * storage. A pound load becomes the kg value that reads back as exactly that
+ * many pounds, so choosing 225 lb never lands the set on 224.99.
+ */
+export function loadToKg(amount: number, setup: BarSetup): number {
+  return toKg(amount, setupUnit(setup)) ?? amount;
 }

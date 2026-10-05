@@ -13,24 +13,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackChevronIcon } from '../src/components/icons';
 import { SectionLabel } from '../src/components/SectionLabel';
-import { DEFAULT_BAR_SETUP, type BarSetup } from '../src/domain/plateMath';
+import { BAR_OPTIONS, defaultBarSetup, setupUnit, type BarSetup } from '../src/domain/plateMath';
 import { getPlateSetup, setPlateSetup } from '../src/lib/plateSetup';
+import { useWeightUnit } from '../src/lib/weightUnit';
 import { color, font } from '../src/theme/tokens';
-
-/** Bars people actually train on, heaviest first. */
-const BAR_OPTIONS = [20, 15, 10];
 
 const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 
 export default function PlatesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [setup, setSetup] = useState<BarSetup>(DEFAULT_BAR_SETUP);
+  // Each unit has its own rack: a pound user edits pound plates here, and the
+  // kg setup is left exactly as it was for when they switch back.
+  const userUnit = useWeightUnit();
+  const [setup, setSetup] = useState<BarSetup>(() => defaultBarSetup(userUnit));
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    void getPlateSetup().then((s) => {
+    void getPlateSetup(userUnit).then((s) => {
       if (!alive) return;
       setSetup(s);
       setLoaded(true);
@@ -38,7 +39,11 @@ export default function PlatesScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [userUnit]);
+
+  // Labels follow the setup on screen, not the preference, so a number is
+  // never shown under a unit it isn't in while a load is still landing.
+  const unit = setupUnit(setup);
 
   /** Write through on every change — there is no Save button to forget. */
   const commit = (next: BarSetup) => {
@@ -72,7 +77,7 @@ export default function PlatesScreen() {
         <SectionLabel>BAR</SectionLabel>
         <View style={styles.card}>
           <View style={styles.segment}>
-            {BAR_OPTIONS.map((kg) => {
+            {BAR_OPTIONS[unit].map((kg) => {
               const on = setup.barKg === kg;
               return (
                 <Pressable
@@ -82,7 +87,7 @@ export default function PlatesScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                 >
-                  <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{kg} kg</Text>
+                  <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{kg} {unit}</Text>
                 </Pressable>
               );
             })}
@@ -96,14 +101,14 @@ export default function PlatesScreen() {
               key={p.kg}
               style={[styles.plateRow, i === setup.pairs.length - 1 && styles.plateRowLast]}
             >
-              <Text style={styles.plateKg}>{fmt(p.kg)} kg</Text>
+              <Text style={styles.plateKg}>{fmt(p.kg)} {unit}</Text>
               <View style={styles.stepper}>
                 <Pressable
                   onPress={() => setCount(p.kg, p.count - 1)}
                   hitSlop={8}
                   style={styles.stepBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`One fewer pair of ${fmt(p.kg)} kg plates`}
+                  accessibilityLabel={`One fewer pair of ${fmt(p.kg)} ${unit} plates`}
                 >
                   <Text style={styles.stepGlyph}>−</Text>
                 </Pressable>
@@ -115,7 +120,7 @@ export default function PlatesScreen() {
                   hitSlop={8}
                   style={styles.stepBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`One more pair of ${fmt(p.kg)} kg plates`}
+                  accessibilityLabel={`One more pair of ${fmt(p.kg)} ${unit} plates`}
                 >
                   <Text style={styles.stepGlyph}>+</Text>
                 </Pressable>
@@ -127,7 +132,7 @@ export default function PlatesScreen() {
 
         {loaded && (
           <Pressable
-            onPress={() => commit(DEFAULT_BAR_SETUP)}
+            onPress={() => commit(defaultBarSetup(unit))}
             style={styles.reset}
             accessibilityRole="button"
           >

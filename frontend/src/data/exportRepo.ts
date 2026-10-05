@@ -10,6 +10,7 @@ import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
+import { readJsonSet, toJsonSet, type JsonSet } from './backupJson';
 import { toWorkoutCsv, parseWorkoutCsv, type ExportWorkout } from './workoutCsv';
 import type { Unit } from '../domain/units';
 import { equipmentFromNameSuffix } from '../domain/exerciseNaming';
@@ -18,7 +19,7 @@ import { initialsOf } from './exercisesRepo';
 import { recomputeForExercise } from './recordStore';
 import { getCountWarmups } from '../lib/warmupVolume';
 
-type FullSet = { position: number; type: string; weight: number | null; reps: number | null; done: boolean; isPr: boolean };
+type FullSet = { position: number; type: string; weight: number | null; reps: number | null; done: boolean; isPr: boolean; rpe: number | null };
 type FullExercise = { name: string; note: string | null; supersetGroup: number | null; sets: FullSet[] };
 type FullWorkout = {
   id: string;
@@ -47,7 +48,7 @@ async function gatherCompleted(): Promise<FullWorkout[]> {
         name: nameById.get(we.exerciseId) ?? '',
         note: we.note,
         supersetGroup: we.supersetGroup,
-        sets: sets.map((s) => ({ position: s.position, type: s.type, weight: s.weight, reps: s.reps, done: s.done !== 0, isPr: s.isPr !== 0 })),
+        sets: sets.map((s) => ({ position: s.position, type: s.type, weight: s.weight, reps: s.reps, done: s.done !== 0, isPr: s.isPr !== 0, rpe: s.rpe ?? null })),
       });
     }
     out.push({
@@ -70,7 +71,7 @@ export async function exportData(format: 'json' | 'csv'): Promise<string> {
       duration_seconds: w.durationSeconds, total_volume: w.totalVolume, total_sets: w.totalSets, pr_count: w.prCount,
       exercises: w.exercises.map((ex) => ({
         name: ex.name, note: ex.note, superset_group: ex.supersetGroup,
-        sets: ex.sets.map((s) => ({ type: s.type, weight_kg: s.weight, reps: s.reps, done: s.done, is_pr: s.isPr })),
+        sets: ex.sets.map(toJsonSet),
       })),
     })),
   });
@@ -110,7 +111,7 @@ async function findOrCreateExercise(
 
 /**
  * Import a file — an Ischys JSON backup (full fidelity: notes, supersets, PR
- * flags) or a workout CSV. Sniffs the format so the caller doesn't have to.
+ * flags, effort ratings) or a workout CSV. Sniffs the format so the caller doesn't have to.
  * `weightUnit` is a fallback for a CSV whose weight column doesn't name its unit;
  * a JSON backup and an explicit `weight_kg` column ignore it.
  */
@@ -191,7 +192,7 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
           const ps = pe.sets[j];
           await tx.insert(schema.workoutSets).values({
             id: newId(), workoutExerciseId: weId, position: j, type: ps.type,
-            weight: ps.weight, reps: ps.reps, done: 1, completedAt: startedAt, updatedAt: nowMs(),
+            weight: ps.weight, reps: ps.reps, rpe: ps.rpe, done: 1, completedAt: startedAt, updatedAt: nowMs(),
           });
           allSets.push({ type: ps.type as SetType, weight: ps.weight, reps: ps.reps, done: true });
           setsImported++;
@@ -234,7 +235,6 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
   };
 }
 
-type JsonSet = { type?: string; weight_kg?: number | null; reps?: number | null; done?: boolean; is_pr?: boolean };
 type JsonExercise = { name?: string; note?: string | null; superset_group?: number | null; sets?: JsonSet[] };
 type JsonWorkout = {
   name?: string;
@@ -334,11 +334,9 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
         });
         const psets = Array.isArray(pe.sets) ? pe.sets : [];
         for (let j = 0; j < psets.length; j++) {
-          const ps = psets[j];
-          const done = ps.done !== false; // exported workouts are completed
-          const type = (ps.type as SetType) ?? 'normal';
-          const weight = ps.weight_kg ?? null;
-          const reps = ps.reps ?? null;
+          const ps = readJsonSet(psets[j]);
+          const { done, weight, reps } = ps;
+          const type = ps.type as SetType;
           await tx.insert(schema.workoutSets).values({
             id: newId(),
             workoutExerciseId: weId,
@@ -346,8 +344,9 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
             type,
             weight,
             reps,
+            rpe: ps.rpe,
             done: done ? 1 : 0,
-            isPr: ps.is_pr ? 1 : 0,
+            isPr: ps.isPr ? 1 : 0,
             completedAt: done ? startedAt : null,
             updatedAt: nowMs(),
           });

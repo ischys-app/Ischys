@@ -9,6 +9,10 @@
  * EST. 1RM record. Everything here is labelled an estimate and none of it is
  * ever shown as a PR. There is no primary action, so no accent beyond the
  * existing focus border on an input.
+ *
+ * The weight is typed and shown in the user's unit and the sums are done in
+ * kilograms, like everywhere else; the table rounds to loads that exist in
+ * that unit (see `domain/loadRounding`).
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,9 +21,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackChevronIcon } from '../src/components/icons';
 import { estimateTier, percentageTable, type EstimateTier } from '../src/domain/oneRepMax';
-import { DEFAULT_BAR_SETUP, solvePlates, type BarSetup } from '../src/domain/plateMath';
+import { percentageRounder } from '../src/domain/loadRounding';
+import { defaultBarSetup, type BarSetup } from '../src/domain/plateMath';
 import { estimated1rm } from '../src/domain/stats';
+import {
+  WEIGHT_STEPS,
+  convertWeightText,
+  parseWeight,
+  toKg,
+  weightText,
+} from '../src/domain/units';
 import { getPlateSetup } from '../src/lib/plateSetup';
+import { useWeightUnit } from '../src/lib/weightUnit';
 import { color, font } from '../src/theme/tokens';
 
 const TIER_COPY: Record<EstimateTier, { label: string; note: string }> = {
@@ -37,53 +50,55 @@ const TIER_COPY: Record<EstimateTier, { label: string; note: string }> = {
   },
 };
 
-const fmt = (n: number): string => String(Math.round(n * 100) / 100);
-
 export default function OneRepMaxScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // `weight`/`reps` pre-fill from a record card; `from` names its exercise.
+  // The record's weight arrives in kilograms, as stored.
   const params = useLocalSearchParams<{ weight?: string; reps?: string; from?: string }>();
+  const unit = useWeightUnit();
 
-  const [weight, setWeight] = useState(params.weight ?? '');
+  // The field holds text in `typedIn`. That is the user's unit, except for the
+  // one render in which the preference has just changed and the text has not
+  // been re-expressed yet — which is done here, before anything reads it.
+  const [typedIn, setTypedIn] = useState(unit);
+  const [weight, setWeight] = useState(() => weightText(parseWeight(params.weight), unit));
   const [reps, setReps] = useState(params.reps ?? '');
-  const [setup, setSetup] = useState<BarSetup>(DEFAULT_BAR_SETUP);
+  const [setup, setSetup] = useState<BarSetup>(() => defaultBarSetup(unit));
+  if (typedIn !== unit) {
+    setTypedIn(unit);
+    setWeight(convertWeightText(weight, typedIn, unit));
+  }
   // Only an exercise known to be barbell rounds to plates; standalone use and
-  // every other equipment gets a plain 2.5 kg step.
+  // every other equipment gets the unit's plain step (2.5 kg / 5 lb).
   const barbell = params.from != null && params.weight != null;
 
   useEffect(() => {
     let alive = true;
-    void getPlateSetup().then((s) => {
+    void getPlateSetup(unit).then((s) => {
       if (alive) setSetup(s);
     });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [unit]);
 
-  const kgValue = parseFloat(weight.replace(',', '.'));
+  // Epley is a plain multiple of the weight, so it is taken in the unit the
+  // number was typed in and only then turned into kilograms for the table.
+  // Estimating from the stored kilograms instead would round twice, and 135 lb
+  // for a single would come back as 135.01.
+  const typed = parseWeight(weight);
   const repsValue = parseInt(reps, 10);
-  const estimate = estimated1rm(
-    Number.isFinite(kgValue) ? kgValue : null,
-    Number.isFinite(repsValue) ? repsValue : null,
-  );
+  const estimate = estimated1rm(typed, Number.isFinite(repsValue) ? repsValue : null);
+  const estimateKg = toKg(estimate, typedIn);
   const tier = estimateTier(repsValue);
   const rough = tier === 'rough';
 
-  const round = useMemo(() => {
-    if (!barbell) return (kg: number) => Math.round(kg / 2.5) * 2.5;
-    return (kg: number) => {
-      const s = solvePlates(kg, setup);
-      if (s.kind === 'exact') return s.load.totalKg;
-      if (s.kind === 'below-bar') return setup.barKg;
-      return s.below?.totalKg ?? s.above?.totalKg ?? setup.barKg;
-    };
-  }, [barbell, setup]);
+  const round = useMemo(() => percentageRounder(barbell, setup, unit), [barbell, setup, unit]);
 
   const rows = useMemo(
-    () => (estimate ? percentageTable(estimate, { round }) : []),
-    [estimate, round],
+    () => (estimateKg ? percentageTable(estimateKg, { round }) : []),
+    [estimateKg, round],
   );
 
   return (
@@ -110,14 +125,14 @@ export default function OneRepMaxScreen() {
         {!!params.from && <Text style={styles.from}>From {params.from}</Text>}
 
         <View style={styles.inputs}>
-          <Field label="WEIGHT" value={weight} onChange={setWeight} suffix="kg" decimal />
+          <Field label="WEIGHT" value={weight} onChange={setWeight} suffix={unit} decimal />
           <Field label="REPS" value={reps} onChange={setReps} suffix="reps" />
         </View>
 
         <View style={[styles.estimate, rough && styles.estimateRough]}>
           <Text style={styles.estimateLabel}>ESTIMATED 1RM</Text>
           <Text style={styles.estimateValue}>
-            {estimate ? `${rough ? '≈ ' : ''}${fmt(estimate)} kg` : '—'}
+            {estimate ? `${rough ? '≈ ' : ''}${estimate} ${unit}` : '—'}
           </Text>
           {tier && (
             <>
@@ -138,7 +153,7 @@ export default function OneRepMaxScreen() {
             {rows.map((r) => (
               <View key={r.pct} style={styles.row}>
                 <Text style={[styles.cell, styles.colPct]}>{r.pct}%</Text>
-                <Text style={[styles.cell, styles.colLoad, styles.cellStrong]}>{fmt(r.kg)} kg</Text>
+                <Text style={[styles.cell, styles.colLoad, styles.cellStrong]}>{weightText(r.kg, unit)} {unit}</Text>
                 <Text style={[styles.cell, styles.colReps]}>{r.reps ?? ''}</Text>
               </View>
             ))}
@@ -146,7 +161,7 @@ export default function OneRepMaxScreen() {
         )}
 
         <Text style={styles.footnote}>
-          An estimate, never a personal record. {barbell ? 'Loads round to your plates.' : 'Loads round to 2.5 kg.'}
+          An estimate, never a personal record. {barbell ? 'Loads round to your plates.' : `Loads round to ${WEIGHT_STEPS[unit].bar} ${unit}.`}
         </Text>
       </ScrollView>
     </View>

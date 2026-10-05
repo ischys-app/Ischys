@@ -5,10 +5,11 @@
  * pushed from the iPhone"). This builds the snapshot the Watch's `PhoneState`
  * decodes — the current set, the set-progress dots, and the session totals.
  *
- * Pure — the only import is the shared look-ahead, so `node --test` can run it.
- * The carry-forward rule is injected as `resolve` (see setCarry.ts), keeping
- * this self-contained.
+ * Pure — the only imports are the shared look-ahead and the unit maths, so
+ * `node --test` can run it. The carry-forward rule is injected as `resolve`
+ * (see setCarry.ts), keeping this self-contained.
  */
+import { type Unit, inputToKg, volumeToDisplay } from '../domain/units.ts';
 import { locateNextSet } from './nextSet.ts';
 
 export type WatchSetDot = 'done' | 'active' | 'pending';
@@ -61,8 +62,23 @@ export type WatchState = {
   resting: boolean;
   restRemaining: number;
   restTotal: number;
+  /**
+   * Epoch ms the running rest ends, 0 when not resting. The Watch counts down to
+   * this itself and buzzes when it passes: `restRemaining` only moves while the
+   * phone's JS is running, which stops with the phone locked in a pocket (#82).
+   */
+  restEndsAt: number;
+  /** The `rest_timer_alerts` setting. Off means the wrist stays quiet too. */
+  restAlerts: boolean;
   nextSetLabel: string;
-  volumeKg: number;
+  /**
+   * The unit `weight`, `prevWeight` and `volume` are expressed in. The Watch
+   * labels with it, steps the Crown by it, and sends the logged weight back in
+   * it — the phone converts to kilograms on receipt.
+   */
+  unit: Unit;
+  /** Session volume, whole, already in `unit`. */
+  volume: number;
   setsDone: number;
   setsTotal: number;
   /**
@@ -78,21 +94,40 @@ export type WatchState = {
   currentSetId: string;
 };
 
+/** What the caller knows about the rest timer. */
+export type WatchRest = {
+  resting: boolean;
+  remaining: number;
+  total: number;
+  /** Epoch ms the rest ends; null or omitted when unknown or not resting. */
+  endsAt?: number | null;
+  /** The user's `rest_timer_alerts` setting; omitted reads as off. */
+  alerts?: boolean;
+};
+
 /**
- * Parse a typed weight. `decimal-pad` inserts the locale decimal separator, so a
- * comma-locale keyboard yields "24,8" — `parseFloat` would stop at the comma and
- * drop the fraction. Normalise first so the Watch's volume matches the phone's.
+ * The end date the Watch may act on, or 0 for none. Only a running rest has
+ * one: an end date left over beside `resting: false` would let the wrist buzz
+ * for a rest that was skipped, so it is dropped here rather than trusted there.
  */
-const parseWeight = (s: string): number => parseFloat(String(s ?? '').replace(',', '.'));
+export function watchRestEndsAt(rest: WatchRest): number {
+  if (!rest.resting || rest.remaining <= 0) return 0;
+  return rest.endsAt != null && rest.endsAt > 0 ? rest.endsAt : 0;
+}
 
 /** Session totals: volume + set counts over done sets. Warmups are excluded from
  *  volume unless `countWarmups`, but never from the set count (matching the
  *  domain: only VOLUME counts warmups). A bodyweight movement counts
- *  (bodyweight + added) × reps; 0 bodyweight means it adds 0. */
+ *  (bodyweight + added) × reps; 0 bodyweight means it adds 0.
+ *
+ *  Summed in kilograms — each typed weight is converted from `unit` first, so
+ *  it can be added to the (always-kg) bodyweight — and converted to `unit` once
+ *  at the end, the same way the phone's header does it. */
 function totals(
   exercises: readonly (ExerciseLike & { id: string })[],
   bodyweightKg: number,
-  countWarmups = false,
+  countWarmups: boolean,
+  unit: Unit,
 ) {
   let volumeKg = 0;
   let setsDone = 0;
@@ -111,7 +146,7 @@ function totals(
       }
       if (s.done && (s.type !== 'warmup' || countWarmups)) {
         const reps = parseFloat(s.reps) || 0;
-        const added = parseWeight(s.weight) || 0;
+        const added = inputToKg(s.weight, unit) ?? 0;
         if (ex.kind === 'bodyweight') {
           const load = bodyweightKg + added;
           if (load > 0) volumeKg += load * reps;
@@ -121,7 +156,7 @@ function totals(
       }
     }
   }
-  return { volumeKg: Math.round(volumeKg), setsDone, setsTotal };
+  return { volume: Math.round(volumeToDisplay(volumeKg, unit)), setsDone, setsTotal };
 }
 
 /**
@@ -166,12 +201,16 @@ export function buildFinishedWatchState(
   startedAt: number | null = null,
   bodyweightKg = 0,
   countWarmups = false,
+  /** The unit the set strings are in. */
+  unit: Unit = 'kg',
+  /** The `rest_timer_alerts` setting, so every push agrees on it. */
+  restAlerts = false,
 ): WatchState | null {
   const withSets = exercises.filter((e) => e.sets.length > 0);
   const last = withSets[withSets.length - 1];
   if (!last) return null;
   const lastSet = last.sets[last.sets.length - 1];
-  const t = totals(exercises, bodyweightKg, countWarmups);
+  const t = totals(exercises, bodyweightKg, countWarmups, unit);
 
   return {
     screen: 'session',
@@ -190,8 +229,11 @@ export function buildFinishedWatchState(
     resting: false,
     restRemaining: 0,
     restTotal: 0,
+    restEndsAt: 0,
+    restAlerts,
     nextSetLabel: '',
-    volumeKg: t.volumeKg,
+    unit,
+    volume: t.volume,
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,
     currentExerciseId: last.id,
@@ -206,7 +248,7 @@ export function buildFinishedWatchState(
 export function buildWatchState(
   exercises: readonly (ExerciseLike & { id: string })[],
   routineName: string,
-  rest: { resting: boolean; remaining: number; total: number },
+  rest: WatchRest,
   resolve: Resolve,
   /** Epoch ms the workout began; omit (or null) before it is known. */
   startedAt: number | null = null,
@@ -214,6 +256,8 @@ export function buildWatchState(
   bodyweightKg = 0,
   /** Whether warmup sets count toward the live volume; default off. */
   countWarmups = false,
+  /** The unit the set strings are in; the Watch labels and steps by it. */
+  unit: Unit = 'kg',
 ): WatchState | null {
   const current = locateNextSet(exercises);
   if (!current) return null;
@@ -226,7 +270,7 @@ export function buildWatchState(
     s.done ? 'done' : i === index ? 'active' : 'pending',
   );
 
-  const t = totals(exercises, bodyweightKg, countWarmups);
+  const t = totals(exercises, bodyweightKg, countWarmups, unit);
 
   return {
     screen: 'session',
@@ -245,6 +289,8 @@ export function buildWatchState(
     resting: rest.resting,
     restRemaining: rest.remaining,
     restTotal: rest.total,
+    restEndsAt: watchRestEndsAt(rest),
+    restAlerts: rest.alerts === true,
     // The Watch's Rest screen shows only this line, so it must describe the set
     // the rest is *for* — which is the located set: during rest the set just
     // completed is already `done`, so the look-ahead has moved on (crossing into
@@ -253,7 +299,8 @@ export function buildWatchState(
     // clamped inside the current exercise, so the final set of an exercise
     // showed its own number back as "next".
     nextSetLabel: `Next: Set ${index + 1} of ${ex.sets.length}`,
-    volumeKg: t.volumeKg,
+    unit,
+    volume: t.volume,
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,
     currentExerciseId: ex.id,

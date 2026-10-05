@@ -29,7 +29,12 @@ type Input = {
   kind: 'weighted' | 'bodyweight';
   /** Set type — warm-ups and drop sets are not progressed. */
   setType: string;
-  /** The matching set last time, or null on a first session. */
+  /**
+   * The matching set last time, or null on a first session. `weight` is in the
+   * user's unit, and so is the suggestion that comes back: this module rounds
+   * to the steps below and never converts, so a lb user is offered 230 after
+   * 225 rather than the pound-equivalent of a kilogram plate.
+   */
   last: { weight: number | null; reps: number | null } | null;
   /** When that session was. */
   lastSessionAt: number | null;
@@ -38,9 +43,14 @@ type Input = {
   /**
    * Smallest weight change this gym can make on a bar — the smallest plate
    * pair, from the user's plate settings. Guessing a fixed 2.5 would propose
-   * weights they cannot load.
+   * weights they cannot load. In the same unit as `last.weight`.
    */
-  stepKg: number;
+  step: number;
+  /**
+   * The jump to the next dumbbell, in the same unit as `last.weight`. Defaults
+   * to the metric rack; pass `WEIGHT_STEPS[unit].dumbbell` (domain/units.ts).
+   */
+  dumbbellStep?: number;
   now: number;
   /** True while a deload accepted from #70 is running. */
   deloadActive?: boolean;
@@ -58,8 +68,8 @@ const DUMBBELL_STEP_KG = 2;
 /** Equipment whose weight increments we cannot know, so we add a rep instead. */
 const UNREADABLE_STACK = new Set(['machine', 'cable']);
 
-const round = (kg: number, step: number): number =>
-  step > 0 ? Math.round(kg / step) * step : Math.round(kg);
+const round = (weight: number, step: number): number =>
+  step > 0 ? Math.round(weight / step) * step : Math.round(weight);
 
 export function suggestNextSet({
   equipment,
@@ -68,7 +78,8 @@ export function suggestNextSet({
   last,
   lastSessionAt,
   targetReps,
-  stepKg,
+  step: barStep,
+  dumbbellStep = DUMBBELL_STEP_KG,
   now,
   deloadActive = false,
 }: Input): Suggestion | null {
@@ -83,7 +94,7 @@ export function suggestNextSet({
   const lastReps = last.reps;
 
   if (deloadActive) {
-    return { kind: 'down', weight: round(lastWeight * DELOAD_FACTOR, stepKg), reps: lastReps };
+    return { kind: 'down', weight: round(lastWeight * DELOAD_FACTOR, barStep), reps: lastReps };
   }
 
   // "Reached" is the routine's target, or simply matching last time when there
@@ -104,6 +115,6 @@ export function suggestNextSet({
   const addsReps = kind === 'bodyweight' || UNREADABLE_STACK.has(equipment);
   if (addsReps) return { kind: 'up', weight: lastWeight, reps: lastReps + 1 };
 
-  const step = equipment === 'dumbbell' ? DUMBBELL_STEP_KG : stepKg;
+  const step = equipment === 'dumbbell' ? dumbbellStep : barStep;
   return { kind: 'up', weight: round(lastWeight + step, step), reps: target };
 }

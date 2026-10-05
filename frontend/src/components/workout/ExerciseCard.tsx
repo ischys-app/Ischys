@@ -1,11 +1,13 @@
 /** One exercise: header, note, rest-timer row, set grid, + Add Set. */
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { effortRowLine, type EffortScaleKind } from '../../domain/effort';
+import type { Unit } from '../../domain/units';
 import { exerciseArt } from '../../lib/exerciseArt';
 import { color, font } from '../../theme/tokens';
 import { ExerciseArt } from '../ExerciseArt';
 import { PressableScale } from '../PressableScale';
-import { ChevronRightIcon, ClockRowIcon } from '../icons';
+import { ChevronRightIcon, ClockRowIcon, StarIcon } from '../icons';
 import { ExerciseMenu } from './ExerciseMenu';
 import { carryFor } from './setCarry';
 import { SetRow } from './SetRow';
@@ -13,6 +15,8 @@ import { exerciseMeta, restLabel, weightColumnLabel, type Exercise, type SetType
 
 type Props = {
   exercise: Exercise;
+  /** The unit the exercise's weight strings are in — labels the column and PREV. */
+  unit: Unit;
   menuOpen: boolean;
   onToggleMenu: () => void;
   onReplace: () => void;
@@ -30,6 +34,11 @@ type Props = {
   /** Per-set progression proposal, keyed by set id (#69). */
   suggestionFor?: (setId: string) => { kind: 'up' | 'hold' | 'down'; weight: number; reps: number } | null;
   onUseSuggestion?: (setId: string) => void;
+  /**
+   * Effort per set (#84). Absent — the setting is Off — and every row renders
+   * exactly as it does without the feature.
+   */
+  effort?: { kind: EffortScaleKind; onOpen: (setId: string) => void } | null;
   /** Offers the warm-up ramp. Absent → the button isn't shown (see below). */
   onWarmup?: () => void;
   /** e.g. "A1" — this exercise's place in its superset. Absent when solo. */
@@ -49,7 +58,26 @@ type Props = {
   onReorderStart: () => void;
   /** Tap on the avatar or name — routes to Exercise Detail. No-op when omitted. */
   onOpenDetail?: () => void;
+  /**
+   * Editing a finished workout (#83, board 13a): the same card without the
+   * note, the Rest Timer row, the ticks or the done bars, and with PREV as
+   * WAS. Absent → the live card, exactly as it has always been.
+   */
+  edit?: {
+    /** Per set: its WAS label and — for a set left unticked — the tap that
+     *  logs it, or takes that back. */
+    setState: (setId: string) => { was: string; onWasPress?: () => void };
+    onRemoveSet: (setId: string) => void;
+    /** Shown in place of the rows while the exercise has none and cannot be
+     *  saved that way. */
+    emptyHint?: string | null;
+    /** The neutral line shown while this exercise has a record moving. */
+    recordLine?: string | null;
+  };
 };
+
+/** "dumbbell" -> "Dumbbell". Equipment is stored as a lowercase slug. */
+const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** Badge glyph for each set: working-set index for normal, letter otherwise. */
 function badgeFor(type: SetType, workingIndex: number): string {
@@ -61,6 +89,7 @@ function badgeFor(type: SetType, workingIndex: number): string {
 
 export function ExerciseCard({
   exercise,
+  unit,
   menuOpen,
   onToggleMenu,
   onReplace,
@@ -76,6 +105,7 @@ export function ExerciseCard({
   onFieldFocus,
   suggestionFor,
   onUseSuggestion,
+  effort,
   onWarmup,
   supersetTag,
   onSuperset,
@@ -86,6 +116,7 @@ export function ExerciseCard({
   onSetOpenChange,
   onReorderStart,
   onOpenDetail,
+  edit,
 }: Props) {
   const hasDone = exercise.sets.some((s) => s.done);
   const firstUndone = exercise.sets.findIndex((s) => !s.done);
@@ -94,7 +125,7 @@ export function ExerciseCard({
   return (
     <View style={styles.card}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, edit && styles.headerEdit]}>
         <Pressable style={styles.avatar} onPress={onOpenDetail} disabled={!onOpenDetail}>
           {(() => {
             // Line art when we have it for this movement, initials otherwise.
@@ -115,7 +146,8 @@ export function ExerciseCard({
           })()}
         </Pressable>
         <Pressable style={styles.headerText} onPress={onOpenDetail} disabled={!onOpenDetail}>
-          <Text style={styles.name} numberOfLines={1}>
+          {/* A long name wraps to two lines while editing (E7); live keeps one. */}
+          <Text style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : 1}>
             {exercise.name}
           </Text>
           <View style={styles.metaRow}>
@@ -127,7 +159,7 @@ export function ExerciseCard({
               </View>
             ) : null}
             <Text style={styles.meta} numberOfLines={1}>
-              {exerciseMeta(exercise)}
+              {edit ? titleCase(exercise.equipment) : exerciseMeta(exercise)}
             </Text>
           </View>
         </Pressable>
@@ -147,33 +179,48 @@ export function ExerciseCard({
         </View>
       </View>
 
-      {/* Note — warmup-tinted when populated (design source) */}
-      <TextInput
-        value={exercise.note}
-        onChangeText={onNoteChange}
-        placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
-        placeholderTextColor={color.text3}
-        multiline
-        style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
-      />
+      {edit ? (
+        // Neutral on purpose: losing a record that was never lifted is not a
+        // warning, so this is surface2 and text2, never success or error.
+        edit.recordLine ? (
+          <View style={styles.recordLine}>
+            <View style={styles.recordStar}>
+              <StarIcon size={13} color={color.text2} strokeWidth={2.4} />
+            </View>
+            <Text style={styles.recordText}>{edit.recordLine}</Text>
+          </View>
+        ) : null
+      ) : (
+        <>
+          {/* Note — warmup-tinted when populated (design source) */}
+          <TextInput
+            value={exercise.note}
+            onChangeText={onNoteChange}
+            placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
+            placeholderTextColor={color.text3}
+            multiline
+            style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
+          />
 
-      {/* Rest timer row */}
-      <Pressable onPress={onOpenRest} style={styles.restRow}>
-        <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-        <Text style={styles.restLabel}>Rest Timer</Text>
-        <View style={styles.restRight}>
-          <Text style={styles.restValue}>
-            {restOverrideLabel ?? restLabel(exercise.rest)}
-          </Text>
-          <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
-        </View>
-      </Pressable>
+          {/* Rest timer row */}
+          <Pressable onPress={onOpenRest} style={styles.restRow}>
+            <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
+            <Text style={styles.restLabel}>Rest Timer</Text>
+            <View style={styles.restRight}>
+              <Text style={styles.restValue}>
+                {restOverrideLabel ?? restLabel(exercise.rest)}
+              </Text>
+              <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
+            </View>
+          </Pressable>
+        </>
+      )}
 
       {/* Column labels */}
-      <View style={styles.colHeader}>
+      <View style={[styles.colHeader, edit && styles.colHeaderEdit]}>
         <Text style={[styles.colLabel, styles.colSet]}>SET</Text>
-        <Text style={[styles.colLabel, styles.colPrev]}>PREV</Text>
-        <Text style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise)}</Text>
+        <Text style={[styles.colLabel, styles.colPrev]}>{edit ? 'WAS' : 'PREV'}</Text>
+        <Text style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
         <Text style={[styles.colLabel, styles.colReps]}>REPS</Text>
         <View style={styles.colCheck} />
       </View>
@@ -185,12 +232,42 @@ export function ExerciseCard({
         {exercise.sets.map((s, idx) => {
           if (s.type === 'normal') working += 1;
           const carry = carryFor(exercise.sets, idx);
+          if (edit) {
+            const state = edit.setState(s.id);
+            return (
+              <SetRow
+                key={s.id}
+                exercise={exercise}
+                set={s}
+                unit={unit}
+                badge={badgeFor(s.type, working)}
+                onCycleType={() => onCycleType(s.id)}
+                onUsePrev={() => onUsePrev(s.id)}
+                onWeightChange={(t) => onWeightChange(s.id, t)}
+                onRepsChange={(t) => onRepsChange(s.id, t)}
+                onToggleDone={() => onToggleDone(s.id)}
+                onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
+                onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
+                isOpen={openSetId === s.id}
+                onOpenChange={(o) => onSetOpenChange?.(s.id, o)}
+                // No carried placeholders: Save writes what a field holds, so
+                // an empty field has to look empty.
+                edit={{
+                  was: state.was,
+                  onRemove: () => edit.onRemoveSet(s.id),
+                  onWasPress: state.onWasPress,
+                }}
+              />
+            );
+          }
           const active = hasDone && idx === firstUndone;
+          const suggestion = suggestionFor?.(s.id) ?? null;
           return (
             <SetRow
               key={s.id}
               exercise={exercise}
               set={s}
+              unit={unit}
               badge={badgeFor(s.type, working)}
               onCycleType={() => onCycleType(s.id)}
               onUsePrev={() => onUsePrev(s.id)}
@@ -198,8 +275,20 @@ export function ExerciseCard({
               onRepsChange={(t) => onRepsChange(s.id, t)}
               onToggleDone={() => onToggleDone(s.id)}
               onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
-              suggestion={suggestionFor?.(s.id) ?? null}
+              suggestion={suggestion}
               onUseSuggestion={() => onUseSuggestion?.(s.id)}
+              effortLine={
+                effort
+                  ? effortRowLine({
+                      mode: effort.kind,
+                      done: s.done,
+                      rpe: s.rpe,
+                      prevRpe: s.prevRpe,
+                      hasSuggestion: !!suggestion,
+                    })
+                  : undefined
+              }
+              onEffortPress={effort ? () => effort.onOpen(s.id) : undefined}
               onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
               isOpen={openSetId === s.id}
               onOpenChange={(o) => onSetOpenChange?.(s.id, o)}
@@ -209,6 +298,7 @@ export function ExerciseCard({
             />
           );
         })}
+        {edit?.emptyHint ? <Text style={styles.emptyHint}>{edit.emptyHint}</Text> : null}
       </View>
 
       {/* + Add Set, sharing its row with Warm-up when a ramp is on offer. The
@@ -256,6 +346,39 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface3,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Edit mode (13a): the name may wrap, so the avatar and ⋯ sit at the top.
+  headerEdit: { alignItems: 'flex-start' },
+  nameEdit: { lineHeight: 19 },
+  recordLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    marginTop: 12,
+    marginHorizontal: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: color.surface2,
+  },
+  recordStar: { marginTop: 1 },
+  recordText: {
+    flex: 1,
+    fontFamily: font.monoRegular,
+    fontSize: 11,
+    lineHeight: 16.5,
+    color: color.text2,
+    fontVariant: ['tabular-nums'],
+  },
+  colHeaderEdit: { paddingTop: 12 },
+  // The WAS cell's own type, for a card with no row to carry a WAS cell.
+  emptyHint: {
+    fontFamily: font.monoRegular,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: color.text3,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
   },
   avatarText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
   headerText: { flex: 1, minWidth: 0 },

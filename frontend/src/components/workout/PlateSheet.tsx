@@ -4,6 +4,11 @@
  * Barbell only; the caller decides whether to offer it at all. The maths lives
  * in `domain/plateMath`, so this file is only presentation and the choice
  * between two neighbouring weights when the target can't be loaded exactly.
+ *
+ * Kilograms at the edges, the rack's unit inside: `targetKg` comes in and
+ * `onUse` goes out in kg because that is what the workout stores, while every
+ * number on the sheet is in the unit of the bar and plates it describes — a
+ * pound rack reads "225 lb" and "45 lb × 2", never a converted kilogram.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -12,18 +17,25 @@ import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { color, font } from '../../theme/tokens';
 import {
-  solvePlates,
+  loadToKg,
+  setupUnit,
+  solvePlatesForKg,
   type BarSetup,
   type PlateLoad,
   type PlateStack,
 } from '../../domain/plateMath';
+import { toDisplay, type Unit } from '../../domain/units';
 
 type Props = {
   visible: boolean;
   /** The weight currently typed into the set, in kg. NaN/0 when the field is empty. */
   targetKg: number;
   setup: BarSetup;
-  /** Commits the chosen weight to the focused input. Does NOT tick the set. */
+  /**
+   * Commits the chosen weight to the focused input, in kg — for a pound load,
+   * the kg value that reads back as exactly that many pounds. Does NOT tick the
+   * set.
+   */
   onUse: (kg: number) => void;
   /** Opens the bar & plates settings, via the bar chip or "Switch bar". */
   onEditSetup: () => void;
@@ -31,24 +43,31 @@ type Props = {
 };
 
 /** Trim a weight for display: 102.5 stays, 100.0 becomes 100. */
-const fmtKg = (n: number): string => String(Math.round(n * 100) / 100);
+const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 
 /** "25 + 15 + 1.25" — the stack read out the way a lifter would say it. */
 const stackLabel = (plates: PlateStack): string =>
   plates.length === 0
     ? 'bar only'
-    : plates.flatMap((p) => Array<number>(p.n).fill(p.kg)).map(fmtKg).join(' + ');
+    : plates.flatMap((p) => Array<number>(p.n).fill(p.kg)).map(fmt).join(' + ');
 
 /**
  * Plate size on screen. A 25 and a 1.25 differ by 20x in weight but nothing like
  * that on a real bar, so this is a flattened curve between a floor and a ceiling
  * rather than a true proportion — it reads as "big plate, small plate" at a
  * glance, which is all the drawing is for.
+ *
+ * `full` is the plate drawn at the ceiling: the biggest one in a standard set
+ * of that unit, so a 45 lb plate is as tall as a 25 kg one.
  */
-const plateHeight = (kg: number): number => Math.round(Math.min(92, Math.max(34, 92 * (kg / 25) ** 0.42)));
-const plateWidth = (kg: number): number => Math.round(Math.min(18, Math.max(7, 18 * (kg / 25) ** 0.45)));
+const FULL_PLATE: Record<Unit, number> = { kg: 25, lb: 45 };
+const plateHeight = (kg: number, full: number): number =>
+  Math.round(Math.min(92, Math.max(34, 92 * (kg / full) ** 0.42)));
+const plateWidth = (kg: number, full: number): number =>
+  Math.round(Math.min(18, Math.max(7, 18 * (kg / full) ** 0.45)));
 
-function PlateDrawing({ plates }: { plates: PlateStack }) {
+function PlateDrawing({ plates, unit }: { plates: PlateStack; unit: Unit }) {
+  const full = FULL_PLATE[unit];
   const each = plates.flatMap((p) => Array<number>(p.n).fill(p.kg));
   if (each.length === 0) return null;
   return (
@@ -57,28 +76,28 @@ function PlateDrawing({ plates }: { plates: PlateStack }) {
       {each.map((kg, i) => (
         <View
           key={`${kg}-${i}`}
-          style={[styles.plate, { width: plateWidth(kg), height: plateHeight(kg) }]}
+          style={[styles.plate, { width: plateWidth(kg, full), height: plateHeight(kg, full) }]}
         />
       ))}
     </View>
   );
 }
 
-function LoadDetail({ load }: { load: PlateLoad }) {
+function LoadDetail({ load, unit }: { load: PlateLoad; unit: Unit }) {
   return (
     <>
       <View style={styles.eachSideRow}>
         <Text style={styles.eachSideLabel}>EACH SIDE</Text>
-        <Text style={styles.eachSideValue}>{fmtKg(load.perSideKg)} kg</Text>
+        <Text style={styles.eachSideValue}>{fmt(load.perSideKg)} {unit}</Text>
       </View>
-      <PlateDrawing plates={load.plates} />
+      <PlateDrawing plates={load.plates} unit={unit} />
       <View style={styles.plateList}>
         {load.plates.length === 0 ? (
           <Text style={styles.plateRow}>Just the bar</Text>
         ) : (
           load.plates.map((p) => (
             <Text key={p.kg} style={styles.plateRow}>
-              {fmtKg(p.kg)} kg × {p.n}
+              {fmt(p.kg)} {unit} × {p.n}
             </Text>
           ))
         )}
@@ -88,8 +107,10 @@ function LoadDetail({ load }: { load: PlateLoad }) {
 }
 
 export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClose }: Props) {
+  // Everything the solver returns is in the rack's unit, and so is every label.
+  const unit = setupUnit(setup);
   const solution = useMemo(
-    () => (Number.isFinite(targetKg) && targetKg > 0 ? solvePlates(targetKg, setup) : null),
+    () => (Number.isFinite(targetKg) && targetKg > 0 ? solvePlatesForKg(targetKg, setup) : null),
     [targetKg, setup],
   );
 
@@ -118,7 +139,7 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
       <View style={styles.header}>
         <Text style={styles.title}>Plates</Text>
         <Pressable onPress={onEditSetup} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.barChip}>{fmtKg(setup.barKg)} kg bar</Text>
+          <Text style={styles.barChip}>{fmt(setup.barKg)} {unit} bar</Text>
         </Pressable>
       </View>
 
@@ -127,7 +148,7 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
           <View style={styles.belowBar}>
             <Text style={styles.belowBarTitle}>Lighter than the bar</Text>
             <Text style={styles.belowBarBody}>
-              The bar alone is {fmtKg(setup.barKg)} kg.
+              The bar alone is {fmt(setup.barKg)} {unit}.
             </Text>
             <Pressable onPress={onEditSetup} hitSlop={8} accessibilityRole="button">
               <Text style={styles.switchBar}>Switch bar</Text>
@@ -138,9 +159,9 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
         {rounded && (
           <>
             <Text style={styles.warning}>
-              {`${fmtKg(targetKg)} kg can't be loaded exactly. `}
+              {`${fmt(toDisplay(targetKg, unit) ?? 0)} ${unit} can't be loaded exactly. `}
               {rounded.stepKg > 0
-                ? `The smallest plate is ${fmtKg(rounded.stepKg / 2)} kg, so the weight goes up in ${fmtKg(rounded.stepKg)} kg steps.`
+                ? `The smallest plate is ${fmt(rounded.stepKg / 2)} ${unit}, so the weight goes up in ${fmt(rounded.stepKg)} ${unit} steps.`
                 : 'There are no plates set up yet.'}
             </Text>
             <View style={styles.options}>
@@ -159,7 +180,7 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
                     <Text style={styles.optionTag}>
                       {chosen === load ? `${tag} · SELECTED` : tag}
                     </Text>
-                    <Text style={styles.optionKg}>{fmtKg(load.totalKg)} kg</Text>
+                    <Text style={styles.optionKg}>{fmt(load.totalKg)} {unit}</Text>
                     <Text style={styles.optionDetail}>{stackLabel(load.plates)}</Text>
                   </Pressable>
                 ) : null,
@@ -168,16 +189,16 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
           </>
         )}
 
-        {chosen && <LoadDetail load={chosen} />}
+        {chosen && <LoadDetail load={chosen} unit={unit} />}
       </ScrollView>
 
       {chosen && (
         <PressableScale
           style={styles.use}
-          onPress={() => onUse(chosen.totalKg)}
+          onPress={() => onUse(loadToKg(chosen.totalKg, setup))}
           accessibilityRole="button"
         >
-          <Text style={styles.useText}>Use {fmtKg(chosen.totalKg)} kg</Text>
+          <Text style={styles.useText}>Use {fmt(chosen.totalKg)} {unit}</Text>
         </PressableScale>
       )}
     </DraggableSheet>

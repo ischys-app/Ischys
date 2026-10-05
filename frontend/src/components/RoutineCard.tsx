@@ -3,32 +3,46 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { RoutineListItem } from '../api/types';
 import { color, font, TAP_TARGET } from '../theme/tokens';
 import { PressableScale } from './PressableScale';
-import { PlayIcon } from './icons';
+import { PlayFilledIcon } from './icons';
 
-/** A saved routine with avatar, description and an accent "Start Routine" CTA. */
+/**
+ * A saved routine with avatar, description and an accent "Start Routine" CTA.
+ * The avatar, name and description open the read-only view (#85); starting
+ * stays one tap away on the CTA, and editing stays behind the ⋯ menu.
+ */
 export function RoutineCard({
   routine,
+  onOpen,
   onStart,
   onOverflow,
 }: {
   routine: RoutineListItem;
+  onOpen?: () => void;
   onStart?: () => void;
   onOverflow?: () => void;
 }) {
   return (
     <View style={styles.card}>
       <View style={styles.top}>
-        <View style={styles.avatar}>
-          <Text style={styles.initials}>{routine.initials}</Text>
-        </View>
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
-            {routine.name}
-          </Text>
-          <Text style={styles.detail} numberOfLines={2}>
-            {routine.detail}
-          </Text>
-        </View>
+        <Pressable
+          onPress={onOpen}
+          disabled={!onOpen}
+          style={({ pressed }) => [styles.body, pressed && styles.bodyPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${routine.name}`}
+        >
+          <View style={styles.avatar}>
+            <Text style={styles.initials}>{routine.initials}</Text>
+          </View>
+          <View style={styles.info}>
+            <Text style={styles.name} numberOfLines={1}>
+              {routine.name}
+            </Text>
+            <Text style={styles.detail} numberOfLines={2}>
+              {routine.detail}
+            </Text>
+          </View>
+        </Pressable>
         <Pressable
           onPress={onOverflow}
           hitSlop={8}
@@ -38,7 +52,7 @@ export function RoutineCard({
         </Pressable>
       </View>
       <PressableScale onPress={onStart} style={styles.cta}>
-        <PlayIcon size={16} color={color.accentFg} strokeWidth={2.8} />
+        <PlayFilledIcon size={16} color={color.accentFg} />
         <Text style={styles.ctaLabel}>Start Routine</Text>
       </PressableScale>
     </View>
@@ -56,6 +70,19 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  // The tap target reaches 10 past its content on every side (to 6 from the
+  // card edge) without moving anything: the padding is cancelled by the margin.
+  body: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    margin: -10,
+    padding: 10,
+    borderRadius: 12,
+  },
+  bodyPressed: { backgroundColor: color.surface2 },
   avatar: {
     width: 42,
     height: 42,
@@ -107,7 +134,6 @@ const styles = StyleSheet.create({
   ctaLabel: {
     fontFamily: font.displayBold,
     fontSize: 15,
-    letterSpacing: -0.15,
     color: color.accentFg,
   },
 });

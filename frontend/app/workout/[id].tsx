@@ -85,8 +85,25 @@ import { WarmupSheet } from '../../src/components/workout/WarmupSheet';
 import { SupersetSheet } from '../../src/components/workout/SupersetSheet';
 import type { RampRow } from '../../src/domain/warmupRamp';
 import { getPlateSetup } from '../../src/lib/plateSetup';
-import { DEFAULT_BAR_SETUP, smallestStepKg, type BarSetup } from '../../src/domain/plateMath';
+import {
+  DEFAULT_BAR_SETUP,
+  setupUnit,
+  smallestStepKg,
+  type BarSetup,
+} from '../../src/domain/plateMath';
 import { suggestNextSet } from '../../src/domain/progression';
+import {
+  WEIGHT_STEPS,
+  convertWeightText,
+  inputToKg,
+  volumeToDisplay,
+  weightText,
+  type Unit,
+} from '../../src/domain/units';
+import { useWeightUnit } from '../../src/lib/weightUnit';
+import { shouldPromptEffort } from '../../src/domain/effort';
+import { useEffortMode } from '../../src/lib/effortMode';
+import { EffortSheet } from '../../src/components/workout/EffortSheet';
 import { deloadActiveFor, getDeloadState, type DeloadState } from '../../src/lib/deloadState';
 import { groupLabels, restAfterSet, roundOfSet } from '../../src/domain/supersets';
 import { getBodyweightKg } from '../../src/lib/bodyweight';
@@ -97,7 +114,7 @@ import { CheckIcon } from '../../src/components/icons';
 import { EmptyWorkout } from '../../src/components/workout/EmptyWorkout';
 import { ExerciseCard } from '../../src/components/workout/ExerciseCard';
 import { ReorderExercises } from '../../src/components/workout/ReorderExercises';
-import { RestBar } from '../../src/components/workout/RestBar';
+import { EffortSection, RestBar } from '../../src/components/workout/RestBar';
 import { DraggableSheet } from '../../src/components/DraggableSheet';
 import { PressableScale } from '../../src/components/PressableScale';
 import { RestPickerSheet } from '../../src/components/workout/RestPickerSheet';
@@ -114,6 +131,7 @@ import {
   fmtClock,
   makeSet,
   seedWorkout,
+  setBadge,
   TYPE_CYCLE,
   type Exercise,
 } from '../../src/components/workout/types';
@@ -125,19 +143,14 @@ const DEFAULT_REST = 120;
 const numStr = (n: number | null | undefined) => (n == null ? '' : String(n));
 
 /**
- * Parse a user-typed weight. `decimal-pad` inserts the device's locale decimal
- * separator, so on a comma-locale keyboard the field holds "24,8" — and
- * `parseFloat` stops at the comma and silently drops the fraction (you log 24.8
- * and see 24 next time). Normalise the comma before parsing. NaN for empty/blank.
+ * Map a stored WorkoutExerciseOut (+ optional previous-session sets) to the
+ * local model. Stored weights are kilograms; the model's strings are in `unit`.
  */
-const parseWeight = (s: string | null | undefined): number =>
-  parseFloat(String(s ?? '').replace(',', '.'));
-
-/** Map a stored WorkoutExerciseOut (+ optional previous-session sets) to the local model. */
 function mapExercise(
   we: WorkoutExerciseOut,
   prev: PreviousSetOut[],
-  prevNote: string | null = null,
+  prevNote: string | null,
+  unit: Unit,
 ): Exercise {
   const prevByPos = new Map(prev.map((p) => [p.position, p]));
   return {
@@ -156,11 +169,15 @@ function mapExercise(
       return {
         id: s.id,
         type: s.type,
-        weight: numStr(s.weight),
+        weight: weightText(s.weight, unit),
         reps: numStr(s.reps),
-        prevWeight: p?.weight == null ? undefined : String(p.weight),
+        prevWeight: p?.weight == null ? undefined : weightText(p.weight, unit),
         prevReps: p?.reps == null ? undefined : String(p.reps),
         done: s.done,
+        // Loaded whatever the setting says: Off hides ratings, it does not
+        // drop them, and the setting can be switched while this screen is open.
+        rpe: s.rpe ?? null,
+        prevRpe: p?.rpe ?? null,
       };
     }),
   };
@@ -176,6 +193,18 @@ export default function ActiveWorkout() {
   const [exercises, setExercises] = useState<Exercise[]>(() =>
     isDemo ? seedWorkout() : [],
   );
+  // The user's weight unit, and the unit the weight strings in `exercises` are
+  // currently written in. They are separate on purpose: the preference can flip
+  // while this screen sits under Settings, and for a moment the strings are
+  // still in the old unit. Everything below — labels, volume, every write to
+  // storage — reads `entryUnit`, so a number is never shown or stored under a
+  // unit it was not typed in. `entryUnit` only ever changes in the same update
+  // that rewrites the strings (see the unit-switch effect further down). The
+  // demo seed is written in kilograms, hence the initial value.
+  const unit = useWeightUnit();
+  const unitRef = useRef(unit);
+  unitRef.current = unit;
+  const [entryUnit, setEntryUnit] = useState<Unit>('kg');
   const [workoutId, setWorkoutId] = useState<string | null>(isDemo ? null : routeId);
   const [persist, setPersist] = useState(!isDemo);
   const [name, setName] = useState(isDemo ? 'Upper' : '');
@@ -196,7 +225,30 @@ export default function ActiveWorkout() {
   // Which set the keyboard toolbar is acting on. The toolbar is one bar for the
   // whole screen, so it can only offer Plates once it knows whose weight is
   // being typed — and whether that exercise is even loaded with plates.
-  const [focusedSet, setFocusedSet] = useState<{ exerciseId: string; setId: string } | null>(null);
+  const [focusedSet, setFocusedSet] = useState<{
+    exerciseId: string;
+    setId: string;
+    field: 'weight' | 'reps';
+  } | null>(null);
+  // Effort per set (#84). 'off' for most people, and then nothing below that
+  // mentions effort renders or runs: no prompt, no row line, no keypad key.
+  const effortMode = useEffortMode();
+  // The set the rest bar is asking about: the one whose tick started the rest
+  // that is running. `saved` once it was rated from there, which folds the
+  // question away. Gone when the rest ends or another rest starts.
+  const [effortPrompt, setEffortPrompt] = useState<{
+    exerciseId: string;
+    setId: string;
+    saved: boolean;
+  } | null>(null);
+  // The set whose rating sheet is open (from its row).
+  const [effortSheet, setEffortSheet] = useState<{ exerciseId: string; setId: string } | null>(null);
+  // The set the keypad bar is rating: its RPE key swaps the bar for the scale,
+  // in place, so the keypad stays up. A sheet here would be a Modal, and
+  // presenting one drops the keyboard.
+  const [keypadEffortSetId, setKeypadEffortSetId] = useState<string | null>(null);
+  // How much taller the effort section makes the rest card, as measured.
+  const [restEffortHeight, setRestEffortHeight] = useState(0);
   const [plateSheetOpen, setPlateSheetOpen] = useState(false);
   const [warmupExId, setWarmupExId] = useState<string | null>(null);
   const [supersetExId, setSupersetExId] = useState<string | null>(null);
@@ -219,6 +271,10 @@ export default function ActiveWorkout() {
   // The rest alert is a scheduled notification, not an in-app sound: the JS timer
   // stops the moment iOS suspends the app, which is most of a real rest period.
   const [alertsEnabled, setAlertsEnabled] = useState(false);
+  // The bare `rest_timer_alerts` setting, for the Watch. Not `alertsEnabled`:
+  // that also needs notification permission, which the wrist's own haptic does
+  // not — declining the prompt should not silence the Watch.
+  const [restAlertsSetting, setRestAlertsSetting] = useState(false);
   const restAlertId = useRef<string | null>(null);
   const [openSetId, setOpenSetId] = useState<string | null>(null);
 
@@ -270,6 +326,7 @@ export default function ActiveWorkout() {
       } catch {
         if (cancelled) return;
         setExercises(seedWorkout());
+        setEntryUnit('kg'); // the seed is written in kilograms
         setPersist(false); // load failed → offline, don't write back
         setName('Upper');
         setStartedAt(Date.now() - START_ELAPSED * 1000);
@@ -287,7 +344,11 @@ export default function ActiveWorkout() {
       setStatus(w.status);
       setStartedAt(parseServerDate(w.started_at));
       setElapsed(w.duration_seconds);
-      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i])));
+      // Stored kilograms -> strings in the unit preferred right now, and
+      // `entryUnit` moved with them in the same update.
+      const loadedIn = unitRef.current;
+      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i], loadedIn)));
+      setEntryUnit(loadedIn);
       // Restore an in-flight rest countdown if the screen was unmounted (minimise
       // / navigate away) or the app was killed mid-rest. The countdown is derived
       // from the stored absolute end timestamp, so it's correct however long we
@@ -331,7 +392,9 @@ export default function ActiveWorkout() {
       setName(w.name);
       setStatus(w.status);
       setStartedAt(parseServerDate(w.started_at));
-      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i])));
+      const loadedIn = unitRef.current;
+      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i], loadedIn)));
+      setEntryUnit(loadedIn);
     } catch {
       // best-effort refresh — swallow errors so we don't clobber local state
     }
@@ -413,6 +476,36 @@ export default function ActiveWorkout() {
     };
   }, []);
 
+  // The unit was switched while this workout is open (Settings sits on top of
+  // this screen, which stays mounted). Bring the strings over to the new unit.
+  //
+  // A stored workout is simply re-read: `refresh` first lands any pending edits
+  // — each already converted to kilograms when it was typed, under the unit it
+  // was typed in — and then rebuilds every string from those kilograms. Nothing
+  // is rounded twice, so 225 lb comes back as 225 however often the unit flips.
+  // Until that lands the screen goes on showing the old unit, labels and all.
+  //
+  // Only the offline demo, which has no stored copy, converts its text in place.
+  useEffect(() => {
+    if (loading || unit === entryUnit) return;
+    if (!isDemo && persist) {
+      void refresh();
+      return;
+    }
+    setExercises((prev) =>
+      prev.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) => ({
+          ...s,
+          weight: convertWeightText(s.weight, entryUnit, unit),
+          prevWeight:
+            s.prevWeight == null ? undefined : convertWeightText(s.prevWeight, entryUnit, unit),
+        })),
+      })),
+    );
+    setEntryUnit(unit);
+  }, [unit, entryUnit, loading, isDemo, persist, refresh]);
+
   const exercisesRef = useRef(exercises);
   exercisesRef.current = exercises;
   const startedAtRef = useRef(startedAt);
@@ -454,7 +547,10 @@ export default function ActiveWorkout() {
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
     const show = Keyboard.addListener('keyboardWillShow', (e) => setKbHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
+      setKbHeight(0);
+      setKeypadEffortSetId(null); // the next keypad opens on its normal bar
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -468,6 +564,7 @@ export default function ActiveWorkout() {
       setRestStartedAt(null);
       setRestEndsAt(null);
       setRestExId(null);
+      setEffortPrompt(null); // the question goes when the rest does
       if (workoutId) clearRest(workoutId); // the rest is over — don't restore it
       haptics.commit(); // rest's up
     }
@@ -490,10 +587,13 @@ export default function ActiveWorkout() {
   const resting = restRemaining > 0;
   const liveActivity = useMemo(
     () =>
-      buildLiveActivityState(exercises, resting, (sets, i) =>
-        resolveSet(sets[i], carryFor(sets, i)),
+      buildLiveActivityState(
+        exercises,
+        resting,
+        (sets, i) => resolveSet(sets[i], carryFor(sets, i)),
+        entryUnit,
       ),
-    [exercises, resting],
+    [exercises, resting, entryUnit],
   );
 
   const activityRunning = useRef(false);
@@ -630,6 +730,8 @@ export default function ActiveWorkout() {
 
   // Derived stats: volume + set count over done, non-warmup sets. A bodyweight
   // movement counts (bodyweight + added) × reps; with no bodyweight set it adds 0.
+  // Summed in kilograms (typed weights are converted from the unit they are in,
+  // so they can be added to the always-kg bodyweight) and shown in that unit.
   const { volume, doneSets } = useMemo(() => {
     let vol = 0;
     let count = 0;
@@ -641,7 +743,7 @@ export default function ActiveWorkout() {
         // stays working-only (matches the domain: setVolume vs countWorkingSets).
         if (isWarmup && !countWarmups) continue;
         const reps = parseFloat(s.reps) || 0;
-        const added = parseWeight(s.weight) || 0;
+        const added = inputToKg(s.weight, entryUnit) ?? 0;
         if (ex.kind === 'bodyweight') {
           const load = (bwKg ?? 0) + added;
           if (load > 0) vol += load * reps;
@@ -651,8 +753,8 @@ export default function ActiveWorkout() {
         if (!isWarmup) count += 1;
       }
     }
-    return { volume: Math.round(vol), doneSets: count };
-  }, [exercises, bwKg, countWarmups]);
+    return { volume: Math.round(volumeToDisplay(vol, entryUnit)), doneSets: count };
+  }, [exercises, bwKg, countWarmups, entryUnit]);
 
   // Every planned set is logged. `locateNextSet` returns null when nothing is
   // left to log.
@@ -700,6 +802,7 @@ export default function ActiveWorkout() {
         const s = await getSettings();
         setHapticsEnabled(s.haptic_feedback);
         if (cancelled || !s.rest_timer_alerts) return;
+        setRestAlertsSetting(true);
         setAlertsEnabled(await ensureAlertPermission());
       } catch {
         // Unreachable server or a declined prompt: no alerts, no crash.
@@ -736,6 +839,10 @@ export default function ActiveWorkout() {
     exerciseId: string | null = null,
   ) => {
     if (seconds <= 0) return;
+    // A new rest is about a new set — or about none, when it was started by
+    // hand, from the Lock Screen or from the Watch. `toggleDone` asks again
+    // for the set it just ticked.
+    setEffortPrompt(null);
     const now = Date.now();
     setRestTotal(seconds);
     setRestRemaining(seconds);
@@ -778,6 +885,7 @@ export default function ActiveWorkout() {
     setRestStartedAt(null);
     setRestEndsAt(null);
     setRestExId(null);
+    setEffortPrompt(null);
     restEndsRef.current = null;
     if (workoutId) clearRest(workoutId); // skipped — nothing to restore
     const pending = restAlertId.current;
@@ -799,7 +907,13 @@ export default function ActiveWorkout() {
       const { filled, patch } = completionPatch(ex.sets, idx);
       if (Object.keys(patch).length > 0) {
         patchSet(exId, setId, { weight: filled.weight, reps: filled.reps });
-        if (persist) write(patchSetApi(setId, patch));
+        // `completionPatch` works on the strings as typed, so its weight is in
+        // the entry unit; storage takes kilograms.
+        const stored =
+          patch.weight === undefined
+            ? patch
+            : { ...patch, weight: inputToKg(filled.weight, entryUnit) };
+        if (persist) write(patchSetApi(setId, stored));
       }
     }
 
@@ -825,13 +939,26 @@ export default function ActiveWorkout() {
       );
       if (decision.startRest) {
         startRest(decision.seconds, upcomingExerciseName(setId), ex.id);
+        // Ask about this set in the rest that just started. Not when no rest
+        // did (timer off, mid-superset): the row's own slot is the way in then.
+        if (shouldPromptEffort(effortMode, decision)) {
+          setEffortPrompt({ exerciseId: exId, setId, saved: false });
+        }
       } else {
         // No timer — but the active row must move to the partner, or the screen
         // would still be pointing at the exercise you just finished.
         endRest();
       }
     }
+    // Unticked: there is no longer a set to ask about.
+    if (!willBeDone) setEffortPrompt((p) => (p?.setId === setId ? null : p));
     if (persist) write(patchSetApi(setId, { done: willBeDone }));
+  };
+
+  /** Rate a set, or clear its rating with null. Always RPE, whatever is shown. */
+  const rateSet = (exId: string, setId: string, rpe: number | null) => {
+    patchSet(exId, setId, { rpe });
+    if (persist) write(patchSetApi(setId, { rpe }));
   };
 
   const cycleType = (exId: string, setId: string) => {
@@ -852,23 +979,32 @@ export default function ActiveWorkout() {
     const reps = set.prevReps ?? '';
     patchSet(exId, setId, { weight, reps });
     if (persist) {
-      const w = parseWeight(weight);
       const r = parseInt(reps, 10);
       write(
         patchSetApi(setId, {
-          weight: Number.isNaN(w) ? null : w,
+          weight: inputToKg(weight, entryUnit),
           reps: Number.isNaN(r) ? null : r,
         }),
       );
     }
   };
 
-  const editWeight = (exId: string, setId: string, text: string) => {
+  /**
+   * `text` is what the field shows, in the entry unit. It is converted to
+   * kilograms here, once, and the pending write keeps that number — so a unit
+   * switched before the debounce fires cannot reinterpret it.
+   *
+   * Callers that already hold exact kilograms (the plate calculator) pass them
+   * as `kg`, so the value stored is theirs and not a re-conversion of the text.
+   */
+  const editWeight = (
+    exId: string,
+    setId: string,
+    text: string,
+    kg: number | null = inputToKg(text, entryUnit),
+  ) => {
     patchSet(exId, setId, { weight: text });
-    if (persist) {
-      const w = parseWeight(text);
-      debounce(`w:${setId}`, () => patchSetApi(setId, { weight: Number.isNaN(w) ? null : w }));
-    }
+    if (persist) debounce(`w:${setId}`, () => patchSetApi(setId, { weight: kg }));
   };
 
   const editReps = (exId: string, setId: string, text: string) => {
@@ -1090,17 +1226,45 @@ export default function ActiveWorkout() {
       buildWatchState(
         exercises,
         name || 'Workout',
-        { resting: restRemaining > 0, remaining: restRemaining, total: restTotal },
+        {
+          resting: restRemaining > 0,
+          remaining: restRemaining,
+          total: restTotal,
+          // The Watch buzzes off this date on its own clock, so the wrist is
+          // told the rest is up even while this screen's JS is suspended.
+          endsAt: restEndsAt,
+          alerts: restAlertsSetting,
+        },
         (sets, i) => resolveSet(sets[i], carryFor(sets, i)),
         startedAt,
         bwKg ?? 0,
         countWarmups,
+        entryUnit,
       ) ??
       // Every set logged: push a completed snapshot so the Watch can offer its
       // end-of-workout actions. Skipping the push here left the wrist showing a
       // stale mid-workout state (#45 on the watch side).
-      buildFinishedWatchState(exercises, name || 'Workout', startedAt, bwKg ?? 0, countWarmups),
-    [exercises, name, restRemaining, restTotal, startedAt, bwKg, countWarmups],
+      buildFinishedWatchState(
+        exercises,
+        name || 'Workout',
+        startedAt,
+        bwKg ?? 0,
+        countWarmups,
+        entryUnit,
+        restAlertsSetting,
+      ),
+    [
+      exercises,
+      name,
+      restRemaining,
+      restTotal,
+      restEndsAt,
+      restAlertsSetting,
+      startedAt,
+      bwKg,
+      countWarmups,
+      entryUnit,
+    ],
   );
   const watchStateRef = useRef(watchState);
   watchStateRef.current = watchState;
@@ -1120,15 +1284,20 @@ export default function ActiveWorkout() {
         const ex = exercisesRef.current.find((e) => e.id === st.currentExerciseId);
         // The Watch sends the Crown-adjusted values, already carry-forward-filled
         // when they were pushed, so log them straight through and start rest.
+        // Its weight is in the unit the Watch was showing, which it sends along
+        // (older Watch builds don't; then it is the unit we last pushed). That
+        // may not be ours any more, so re-express it for the field, and store
+        // kilograms.
+        const sentIn = a.unit === 'kg' || a.unit === 'lb' ? a.unit : st.unit;
         patchSet(st.currentExerciseId, st.currentSetId, {
-          weight: a.weight,
+          weight: convertWeightText(a.weight, sentIn, entryUnit),
           reps: a.reps,
           done: true,
         });
         if (persist) {
           write(
             patchSetApi(st.currentSetId, {
-              weight: a.weight === '' ? null : Number(a.weight),
+              weight: inputToKg(a.weight, sentIn),
               reps: a.reps === '' ? null : Number(a.reps),
               done: true,
             }),
@@ -1184,19 +1353,23 @@ export default function ActiveWorkout() {
     };
   }, []);
 
-  // Re-read the gym's bar and plates whenever the sheet opens. It is edited on
+  // Read the gym's bar and plates for the unit the workout is typed in, and
+  // re-read them whenever a sheet that uses them opens. They are edited on
   // another screen, and the workout outlives that trip, so loading once would
-  // leave the calculator proposing plates the user has just said they don't have.
+  // leave the calculator proposing plates the user has just said they don't
+  // have. Each unit has its own rack, so a unit switch is a different setup —
+  // and it has to be in hand before a sheet opens, because the warm-up ramp and
+  // the progression suggestion read it too.
+  const warmupSheetOpen = warmupExId != null;
   useEffect(() => {
-    if (!plateSheetOpen) return;
     let alive = true;
-    void getPlateSetup().then((s) => {
+    void getPlateSetup(entryUnit).then((s) => {
       if (alive) setPlateSetupState(s);
     });
     return () => {
       alive = false;
     };
-  }, [plateSheetOpen]);
+  }, [entryUnit, plateSheetOpen, warmupSheetOpen]);
 
   // The exercise whose weight is being typed, when plates apply to it at all.
   const plateExercise = useMemo(() => {
@@ -1207,14 +1380,16 @@ export default function ActiveWorkout() {
 
   // What the user has typed so far, or what the row would log if they ticked it
   // now — so opening Plates on an untouched set still has something to work from.
+  // The plate sheet takes kilograms and solves in the rack's own unit, so the
+  // typed text is converted on the way in (and `onUse` hands kilograms back).
   const plateTargetKg = useMemo(() => {
     if (!plateExercise || !focusedSet) return NaN;
     const sets = plateExercise.sets;
     const i = sets.findIndex((x) => x.id === focusedSet.setId);
     if (i === -1) return NaN;
     const resolved = resolveSet(sets[i], carryFor(sets, i));
-    return parseFloat(String(resolved.weight).replace(',', '.'));
-  }, [plateExercise, focusedSet]);
+    return inputToKg(resolved.weight, entryUnit) ?? NaN;
+  }, [plateExercise, focusedSet, entryUnit]);
 
   /**
    * The first working set of an exercise, when it has a weight to ramp toward.
@@ -1227,9 +1402,11 @@ export default function ActiveWorkout() {
     const i = ex.sets.findIndex((x) => x.type !== 'warmup');
     if (i === -1) return null;
     const resolved = resolveSet(ex.sets[i], carryFor(ex.sets, i));
-    const kgValue = parseFloat(String(resolved.weight).replace(',', '.'));
+    // The ramp is computed in kilograms; the working weight is typed in the
+    // entry unit.
+    const kgValue = inputToKg(resolved.weight, entryUnit);
     const repsValue = parseInt(String(resolved.reps), 10);
-    if (!Number.isFinite(kgValue) || kgValue <= 0) return null;
+    if (kgValue === null || !Number.isFinite(kgValue) || kgValue <= 0) return null;
     return { kg: kgValue, reps: Number.isFinite(repsValue) ? repsValue : 0 };
   };
 
@@ -1237,20 +1414,25 @@ export default function ActiveWorkout() {
   const warmupBase = warmupExercise ? warmupBaseFor(warmupExercise) : null;
 
   const insertWarmups = (exId: string, rows: RampRow[]) => {
+    // Rows arrive in kilograms. The field shows them in the entry unit; storage
+    // gets the kilograms as given (`kg`), not a re-conversion of that text.
     const fresh = rows.map((r) => ({
       ...makeSet(),
       type: 'warmup' as const,
-      weight: String(r.kg),
+      weight: weightText(r.kg, entryUnit),
       reps: String(r.reps),
+      kg: r.kg,
     }));
     setExercises((prev) =>
-      prev.map((e) => (e.id === exId ? { ...e, sets: [...fresh, ...e.sets] } : e)),
+      prev.map((e) =>
+        e.id === exId ? { ...e, sets: [...fresh.map(({ kg: _kg, ...s }) => s), ...e.sets] } : e,
+      ),
     );
     if (persist && workoutId) {
       write(
         insertWarmupSets(
           exId,
-          fresh.map((f) => ({ id: f.id, weight: Number(f.weight), reps: Number(f.reps) })),
+          fresh.map((f) => ({ id: f.id, weight: f.kg, reps: Number(f.reps) })),
         ).catch(() => {
           // Insert failed — take the optimistic rows back out rather than show
           // sets the store doesn't hold.
@@ -1302,13 +1484,22 @@ export default function ActiveWorkout() {
       equipment: ex.equipment,
       kind: ex.kind,
       setType: set.type,
+      // `prevWeight` is in the entry unit, and so is the suggestion that comes
+      // back — the steps below are therefore that unit's own, not conversions.
       last:
         set.prevWeight != null || set.prevReps != null
           ? { weight: Number(set.prevWeight ?? 0), reps: Number(set.prevReps ?? 0) }
           : null,
       lastSessionAt: catalogId ? (lastTrained.get(catalogId) ?? null) : null,
       targetReps: null,
-      stepKg: ex.equipment === 'barbell' ? smallestStepKg(plateSetup) : 2.5,
+      // On a bar the smallest jump is whatever this gym's smallest pair makes,
+      // in the unit the rack is in. That only applies while the rack on hand
+      // is in the unit being typed; until it is, the unit's own bar step.
+      step:
+        ex.equipment === 'barbell' && setupUnit(plateSetup) === entryUnit
+          ? smallestStepKg(plateSetup)
+          : WEIGHT_STEPS[entryUnit].bar,
+      dumbbellStep: WEIGHT_STEPS[entryUnit].dumbbell,
       now: Date.now(),
       // The only route to a downward suggestion: a deload the user accepted on
       // a previous summary. Nothing here decides to back off on its own.
@@ -1408,6 +1599,93 @@ export default function ActiveWorkout() {
     return `SUPERSET ${letter} · ROUND ${current} OF ${rounds}`;
   };
 
+  // --- effort per set (#84) -------------------------------------------
+  // Everything here is null with the setting Off, and the components below
+  // take null to mean "render as you always did".
+  const effortKind = effortMode === 'off' ? null : effortMode;
+
+  /** The set a prompt or sheet points at, while it still exists. */
+  const findSet = (ref: { exerciseId: string; setId: string } | null) => {
+    if (!ref) return null;
+    const ex = exercises.find((e) => e.id === ref.exerciseId);
+    const index = ex ? ex.sets.findIndex((x) => x.id === ref.setId) : -1;
+    return ex && index !== -1 ? { ex, index, set: ex.sets[index] } : null;
+  };
+
+  const promptTarget = effortKind ? findSet(effortPrompt) : null;
+  const restBarEffort =
+    effortKind && effortPrompt && promptTarget
+      ? {
+          kind: effortKind,
+          badge: setBadge(promptTarget.ex.sets, promptTarget.index),
+          rpe: promptTarget.set.rpe ?? null,
+          saved: effortPrompt.saved,
+          onRate: (rpe: number) => {
+            rateSet(effortPrompt.exerciseId, effortPrompt.setId, rpe);
+            setEffortPrompt((p) => (p ? { ...p, saved: true } : p));
+          },
+        }
+      : null;
+
+  const sheetTarget = effortKind ? findSet(effortSheet) : null;
+  // What the row logged, carried values included, so the sheet can name it.
+  const sheetValues = sheetTarget
+    ? resolveSet(sheetTarget.set, carryFor(sheetTarget.ex.sets, sheetTarget.index))
+    : null;
+  // Kept after the sheet closes so it can slide away still showing its set,
+  // rather than vanishing the instant a value is tapped.
+  const effortSheetView = useRef<{
+    kind: 'rpe' | 'rir';
+    exerciseName: string;
+    badge: string;
+    weight: string;
+    reps: string;
+    bodyweight: boolean;
+    rpe: number | null;
+  } | null>(null);
+  if (effortKind && sheetTarget && sheetValues) {
+    effortSheetView.current = {
+      kind: effortKind,
+      exerciseName: sheetTarget.ex.name,
+      badge: setBadge(sheetTarget.ex.sets, sheetTarget.index),
+      // Already in the entry unit: these are the row's own strings.
+      weight: sheetValues.weight,
+      reps: sheetValues.reps,
+      bodyweight: sheetTarget.ex.kind === 'bodyweight',
+      rpe: sheetTarget.set.rpe ?? null,
+    };
+  }
+
+  // The keypad bar's key: only while reps are being typed, where a rating is
+  // the natural next thought. Named for the scale in use.
+  const effortKeySet = effortKind && focusedSet?.field === 'reps' ? focusedSet : null;
+  // Its scale, once the key is tapped. Tied to the set it was opened for, so
+  // moving to another field or another set puts the normal bar back.
+  const keypadTarget =
+    effortKind && effortKeySet && keypadEffortSetId === effortKeySet.setId
+      ? findSet(effortKeySet)
+      : null;
+  const keypadEffort =
+    effortKind && effortKeySet && keypadTarget
+      ? {
+          kind: effortKind,
+          badge: setBadge(keypadTarget.ex.sets, keypadTarget.index),
+          rpe: keypadTarget.set.rpe ?? null,
+          saved: false,
+          /** One tap saves (or clears) and the normal bar is back. */
+          rate: (rpe: number | null) => {
+            rateSet(effortKeySet.exerciseId, effortKeySet.setId, rpe);
+            setKeypadEffortSetId(null);
+          },
+        }
+      : null;
+
+  // The list ends with room for the rest bar. The effort section makes the
+  // card taller, by a height that depends on whether it is open or folded, so
+  // that much is added while it shows. Zero otherwise, and always with the
+  // setting Off.
+  const restEffortClearance = restRemaining > 0 && restBarEffort ? restEffortHeight : 0;
+
   const statusText = status === 'active' ? 'In progress' : status;
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
 
@@ -1419,7 +1697,7 @@ export default function ActiveWorkout() {
         status={`${statusText} · ${fmtClock(elapsed)}`}
         time={fmtClock(elapsed)}
         volume={String(volume)}
-        unit="kg"
+        unit={entryUnit}
         sets={String(doneSets)}
         onBack={() => {
           forgetActiveWorkout();
@@ -1466,6 +1744,7 @@ export default function ActiveWorkout() {
               {ex.supersetGroup != null ? <View style={styles.ssRail} /> : null}
             <ExerciseCard
               exercise={ex}
+              unit={entryUnit}
               onDeleteSet={(setId) => deleteSet(ex.id, setId)}
               openSetId={openSetId}
               onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
@@ -1498,7 +1777,18 @@ export default function ActiveWorkout() {
               onWeightChange={(setId, t) => editWeight(ex.id, setId, t)}
               onRepsChange={(setId, t) => editReps(ex.id, setId, t)}
               onToggleDone={(setId) => toggleDone(ex.id, setId)}
-              onFieldFocus={(setId) => setFocusedSet({ exerciseId: ex.id, setId })}
+              onFieldFocus={(setId, field) => {
+                setFocusedSet({ exerciseId: ex.id, setId, field });
+                setKeypadEffortSetId(null); // a newly focused field gets the normal bar
+              }}
+              effort={
+                effortKind
+                  ? {
+                      kind: effortKind,
+                      onOpen: (setId) => setEffortSheet({ exerciseId: ex.id, setId }),
+                    }
+                  : undefined
+              }
               onWarmup={warmupBaseFor(ex) ? () => setWarmupExId(ex.id) : undefined}
               suggestionFor={(setId) => suggestionFor(ex.id, setId)}
               onUseSuggestion={(setId) => {
@@ -1531,7 +1821,13 @@ export default function ActiveWorkout() {
             <Text style={styles.addExerciseText}>Add Exercise</Text>
           </PressableScale>
 
-          <View style={styles.spacer} />
+          <View
+            style={
+              restEffortClearance > 0
+                ? [styles.spacer, { height: SPACER_HEIGHT + restEffortClearance }]
+                : styles.spacer
+            }
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1539,12 +1835,64 @@ export default function ActiveWorkout() {
           return key, so this is their only dismiss affordance. Positioned by the
           live keyboard height because InputAccessoryView does not render under the
           New Architecture. iOS-only; shown only while the keyboard is up. */}
-      {Platform.OS === 'ios' && kbHeight > 0 && (
+      {Platform.OS === 'ios' && kbHeight > 0 && keypadEffort ? (
+        // The RPE key was tapped: the bar becomes the rest bar's question, in
+        // the tree rather than in a sheet, so the keypad stays open and the
+        // reps field keeps focus. Nothing in here can take focus.
+        <View style={[styles.kbdEffort, { bottom: kbHeight }]}>
+          <EffortSection effort={{ ...keypadEffort, onRate: keypadEffort.rate }} />
+          <View style={styles.kbdEffortKeys}>
+            <Pressable
+              onPress={() => setKeypadEffortSetId(null)}
+              style={styles.kbdEffortKey}
+              accessibilityRole="button"
+              accessibilityLabel="Back to the keypad bar"
+            >
+              <Text style={styles.kbdAccessoryAction}>Back</Text>
+            </Pressable>
+            {/* Nothing to clear on an unrated set, so the key isn't there. */}
+            {keypadEffort.rpe != null ? (
+              <Pressable
+                onPress={() => keypadEffort.rate(null)}
+                style={styles.kbdEffortKey}
+                accessibilityRole="button"
+                accessibilityLabel="Clear rating"
+              >
+                <Text style={styles.kbdAccessoryAction}>Clear rating</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : Platform.OS === 'ios' && kbHeight > 0 ? (
         <View style={[styles.kbdAccessory, { bottom: kbHeight }]}>
           {/* Plates only for barbell work. Dumbbells, machines and cables come in
               whatever increments they come in, so there is nothing to calculate —
               and a disabled button on every other exercise is worse than none. */}
-          {plateExercise ? (
+          {effortKeySet ? (
+            // With effort ratings on and reps being typed, the left side holds
+            // two keys. Otherwise this branch is skipped and the bar is the
+            // one below, untouched.
+            <View style={styles.kbdAccessoryKeys}>
+              {plateExercise ? (
+                <Pressable
+                  onPress={() => setPlateSheetOpen(true)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Plate calculator"
+                >
+                  <Text style={styles.kbdAccessoryAction}>Plates</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={() => setKeypadEffortSetId(effortKeySet.setId)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Rate this set"
+              >
+                <Text style={styles.kbdAccessoryAction}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
+              </Pressable>
+            </View>
+          ) : plateExercise ? (
             <Pressable
               onPress={() => setPlateSheetOpen(true)}
               hitSlop={8}
@@ -1565,7 +1913,7 @@ export default function ActiveWorkout() {
             <Text style={styles.kbdAccessoryDone}>Done</Text>
           </Pressable>
         </View>
-      )}
+      ) : null}
 
       <RestBar
         resting={restRemaining > 0}
@@ -1575,7 +1923,27 @@ export default function ActiveWorkout() {
         onMinus15={() => adjustRest(-15)}
         onPlus15={() => adjustRest(15)}
         onSkip={endRest}
+        effort={restBarEffort}
+        onEffortHeight={setRestEffortHeight}
       />
+
+      {/* Never mounted until a sheet has been opened, which cannot happen with
+          the setting Off. */}
+      {effortSheetView.current ? (
+        <EffortSheet
+          visible={!!(effortKind && sheetTarget)}
+          {...effortSheetView.current}
+          unit={entryUnit}
+          onRate={(rpe) => {
+            if (effortSheet) rateSet(effortSheet.exerciseId, effortSheet.setId, rpe);
+            // Leave showing what was picked. A cleared rating keeps its last
+            // look, so the sheet does not reflow on its way out.
+            if (rpe != null && effortSheetView.current) effortSheetView.current.rpe = rpe;
+            setEffortSheet(null);
+          }}
+          onClose={() => setEffortSheet(null)}
+        />
+      ) : null}
 
       {warmupExercise && warmupBase && (
         <WarmupSheet
@@ -1583,6 +1951,7 @@ export default function ActiveWorkout() {
           exerciseName={warmupExercise.name}
           workingKg={warmupBase.kg}
           workingReps={warmupBase.reps}
+          unit={entryUnit}
           equipment={warmupExercise.equipment}
           setup={plateSetup}
           onInsert={(rows) => insertWarmups(warmupExercise.id, rows)}
@@ -1605,7 +1974,15 @@ export default function ActiveWorkout() {
         targetKg={plateTargetKg}
         setup={plateSetup}
         onUse={(kgValue) => {
-          if (focusedSet) editWeight(focusedSet.exerciseId, focusedSet.setId, String(kgValue));
+          // Kilograms from the calculator: shown in the entry unit, stored as given.
+          if (focusedSet) {
+            editWeight(
+              focusedSet.exerciseId,
+              focusedSet.setId,
+              weightText(kgValue, entryUnit),
+              kgValue,
+            );
+          }
           setPlateSheetOpen(false);
         }}
         onEditSetup={() => {
@@ -1639,7 +2016,7 @@ export default function ActiveWorkout() {
           </View>
           <Text style={styles.doneTitle}>All sets done</Text>
           <Text style={styles.doneStat}>
-            {`${doneSets} ${doneSets === 1 ? 'set' : 'sets'} · ${volume} kg · ${fmtClock(elapsed)}`}
+            {`${doneSets} ${doneSets === 1 ? 'set' : 'sets'} · ${volume} ${entryUnit} · ${fmtClock(elapsed)}`}
           </Text>
           <PressableScale
             style={styles.doneFinish}
@@ -1674,6 +2051,9 @@ export default function ActiveWorkout() {
     </View>
   );
 }
+
+/** Room under the list for the rest bar's plain card. */
+const SPACER_HEIGHT = 90;
 
 const styles = StyleSheet.create({
   loading: { paddingVertical: 48, alignItems: 'center' },
@@ -1767,7 +2147,7 @@ const styles = StyleSheet.create({
   },
   doneAddPressed: { borderColor: color.text3 },
   doneAddText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
-  spacer: { height: 90 },
+  spacer: { height: SPACER_HEIGHT },
   kbdAccessory: {
     position: 'absolute',
     left: 0,
@@ -1785,6 +2165,25 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,
   },
+  kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // The bar while it is rating a set: the rest card's effort section (board
+  // 14a, F2) on the card's own surface, over a row of keys the bar's height.
+  kbdEffort: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: color.surface3,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: color.border,
+  },
+  kbdEffortKeys: {
+    height: 44,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  kbdEffortKey: { height: 44, justifyContent: 'center' },
   // Partners sit 4pt apart and share a rail in the screen margin.
   ssMember: { position: 'relative', marginBottom: 4 },
   ssHeader: {

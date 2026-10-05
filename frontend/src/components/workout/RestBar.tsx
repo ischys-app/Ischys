@@ -1,9 +1,35 @@
 /** Bottom rest bar: idle "tap to start" button, or the active countdown card. */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
+import {
+  effortAsk,
+  effortHint,
+  effortMeaning,
+  effortSavedLabel,
+  type EffortScaleKind,
+} from '../../domain/effort';
 import { color, font } from '../../theme/tokens';
 import { ClockBarIcon } from '../icons';
+import { EffortScale } from './EffortScale';
 import { fmtRest } from './types';
+
+/**
+ * The question the rest bar asks about the set just ticked (#84, board 14a
+ * F2/F4). Rest is the one moment in a set when hands and attention are free,
+ * so the rating lives here rather than in the row or in a sheet: ignoring it
+ * costs nothing, and it goes when the rest does.
+ */
+export type RestBarEffort = {
+  kind: EffortScaleKind;
+  /** The set's badge — "3", "W" — for "SET 3 · HOW HARD?". */
+  badge: string;
+  /** The set's rating, as RPE; null until it has one. */
+  rpe: number | null;
+  /** The set was rated from this prompt: fold to "@8 saved". */
+  saved: boolean;
+  onRate: (rpe: number) => void;
+};
 
 type Props = {
   resting: boolean;
@@ -13,15 +39,34 @@ type Props = {
   onMinus15: () => void;
   onPlus15: () => void;
   onSkip: () => void;
+  /** Absent → the card is exactly the countdown card it always was. */
+  effort?: RestBarEffort | null;
+  /**
+   * How tall the effort section is, each time that changes (open, or folded to
+   * "@8 saved"). It is what the card gains over the plain countdown, so the
+   * list under it can keep clear. Never called without `effort`.
+   */
+  onEffortHeight?: (height: number) => void;
 };
 
-export function RestBar({ resting, remaining, total, onStart, onMinus15, onPlus15, onSkip }: Props) {
+export function RestBar({
+  resting,
+  remaining,
+  total,
+  onStart,
+  onMinus15,
+  onPlus15,
+  onSkip,
+  effort,
+  onEffortHeight,
+}: Props) {
   const pct = total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
 
   return (
     <View style={styles.wrap} pointerEvents="box-none">
       {resting ? (
         <View style={styles.card}>
+          {effort ? <EffortSection effort={effort} onHeight={onEffortHeight} /> : null}
           <View style={styles.cardRow}>
             <Pressable onPress={onMinus15} style={styles.adjust}>
               <Text style={styles.adjustText}>{'−15'}</Text>
@@ -49,6 +94,51 @@ export function RestBar({ resting, remaining, total, onStart, onMinus15, onPlus1
           </Text>
         </Pressable>
       )}
+    </View>
+  );
+}
+
+/**
+ * The ask line and the scale. Also what the keypad bar shows when its RPE key
+ * is tapped, so both places ask the same way.
+ */
+export function EffortSection({
+  effort,
+  onHeight,
+}: {
+  effort: RestBarEffort;
+  onHeight?: (height: number) => void;
+}) {
+  // The value under the thumb, so the prompt can say what it means.
+  const [preview, setPreview] = useState<number | null>(null);
+  const onLayout = onHeight
+    ? (e: LayoutChangeEvent) => onHeight(e.nativeEvent.layout.height)
+    : undefined;
+
+  if (effort.saved && effort.rpe != null) {
+    return (
+      <View style={[styles.effort, styles.effortFolded]} onLayout={onLayout}>
+        <Text style={styles.effortAsk}>{effortSavedLabel(effort.rpe, effort.kind)}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.effort} onLayout={onLayout}>
+      <View style={styles.effortHead}>
+        <Text style={styles.effortAsk} numberOfLines={1}>
+          {effortAsk(effort.badge, effort.kind)}
+        </Text>
+        <Text style={[styles.effortHint, preview != null && styles.effortHintLive]} numberOfLines={1}>
+          {preview != null ? effortMeaning(preview, effort.kind) : effortHint(effort.kind)}
+        </Text>
+      </View>
+      <EffortScale
+        kind={effort.kind}
+        value={effort.rpe}
+        onPreview={setPreview}
+        onCommit={effort.onRate}
+      />
     </View>
   );
 }
@@ -95,6 +185,38 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadow,
   },
+  // Effort section, above the countdown.
+  effort: {
+    paddingTop: 11,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: color.border,
+  },
+  effortFolded: { paddingBottom: 11 },
+  effortHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 9,
+  },
+  effortAsk: {
+    fontFamily: font.monoRegular,
+    fontSize: 9.5,
+    letterSpacing: 1.52,
+    color: color.text2,
+    fontVariant: ['tabular-nums'],
+  },
+  effortHint: {
+    fontFamily: font.monoRegular,
+    fontSize: 9.5,
+    letterSpacing: 1.2,
+    color: color.text3,
+    fontVariant: ['tabular-nums'],
+  },
+  // While scrubbing this is the answer, not a hint: one step brighter.
+  effortHintLive: { color: color.text2 },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
   adjust: {
     width: 40,

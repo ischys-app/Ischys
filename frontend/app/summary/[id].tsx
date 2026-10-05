@@ -6,8 +6,8 @@
  *
  * Source of truth: `export/ischys-app/Workout Summary.dc.html`.
  */
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -30,7 +30,7 @@ import type {
 import { getWorkout, saveAsRoutine } from '../../src/api/workouts';
 import { deleteRoutine, getRoutine, updateRoutine } from '../../src/api/routines';
 import { parseServerDate } from '../../src/lib/serverTime';
-import { CheckIcon, ReorderArrowsIcon, StarIcon } from '../../src/components/icons';
+import { CheckIcon, PencilIcon, ReorderArrowsIcon, StarIcon } from '../../src/components/icons';
 import { PressableScale } from '../../src/components/PressableScale';
 import { ShareWorkoutSheet } from '../../src/components/ShareWorkoutSheet';
 import { buildRoutineDiff } from '../../src/domain/routineDiff';
@@ -45,12 +45,12 @@ import { getDeloadState, setDeloadState } from '../../src/lib/deloadState';
 import { fmtDateOnly, fmtDuration } from '../../src/lib/format';
 import { maybeRequestReviewAfterFinish } from '../../src/lib/reviewPrompt';
 import { getSummary } from '../../src/lib/summaryCache';
+import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
+import { effortLabel, type EffortScaleKind } from '../../src/domain/effort';
+import { type Unit, volumeText, weightText } from '../../src/domain/units';
+import { useEffortMode } from '../../src/lib/effortMode';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
-
-/** Manual thousands grouping — Hermes' Intl may skip separators. */
-function fmtVolumeNoUnit(kg: number): string {
-  return String(Math.round(kg)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -65,8 +65,12 @@ function formatWhen(startedAt: string, endedAt: string | null | undefined): stri
   return `${dateStr} · ${start} – ${hhmm(endedAt)}`;
 }
 
-/** Pick the "best" set for the row subtitle. */
-function bestSetLine(sets: WorkoutSetOut[]): string {
+/**
+ * Pick the "best" set for the row subtitle. Stored kilograms, shown in `unit`.
+ * With effort ratings on, a rated best set carries its rating as a suffix —
+ * "68 × 5 @9" — and an unrated one reads exactly as before.
+ */
+function bestSetLine(sets: WorkoutSetOut[], unit: Unit, effort: EffortScaleKind | null): string {
   const working = sets.filter((s) => s.done && s.type !== 'warmup');
   if (working.length === 0) return `${sets.filter((s) => s.done).length} sets`;
   let best = working[0];
@@ -75,9 +79,10 @@ function bestSetLine(sets: WorkoutSetOut[]): string {
     const bbest = best.weight ?? -Infinity;
     if (bw > bbest) best = s;
   }
-  const w = best.weight == null ? 'BW' : `${best.weight}kg`;
+  const w = best.weight == null ? 'BW' : `${weightText(best.weight, unit)}${unit}`;
   const r = best.reps ?? 0;
-  return `Best set · ${w} × ${r}`;
+  const rated = effort && best.rpe != null ? ` ${effortLabel(best.rpe, effort)}` : '';
+  return `Best set · ${w} × ${r}${rated}`;
 }
 
 /** Compute a degraded volume-by-muscle from a WorkoutOut for the fallback view. */
@@ -164,6 +169,9 @@ export default function WorkoutSummary() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; justFinished?: string }>();
   const workoutId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const unit = useWeightUnit();
+  const effortMode = useEffortMode();
+  const effortKind = effortMode === 'off' ? null : effortMode;
   const justFinished =
     (Array.isArray(params.justFinished) ? params.justFinished[0] : params.justFinished) === '1';
 
@@ -197,6 +205,35 @@ export default function WorkoutSummary() {
       cancelled = true;
     };
   }, [summary, workoutId]);
+
+  // Coming back from Edit (#83): show the workout as it now is. Whichever of
+  // the two sources this screen was already rendering is the one refreshed, so
+  // a workout opened from History stays the plain view it was, and one just
+  // finished keeps its records banner — recomputed by the save.
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      if (!workoutId) return;
+      if (summary) {
+        const cached = getSummary(workoutId);
+        if (cached && cached !== summary) setSummary(cached);
+        return;
+      }
+      let cancelled = false;
+      void getWorkout(workoutId)
+        .then((w) => {
+          if (!cancelled) setFallbackWorkout(w);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, [workoutId, summary]),
+  );
 
   // Unified view model — either the cached summary or the degraded fallback.
   const view = useMemo(() => {
@@ -395,7 +432,9 @@ export default function WorkoutSummary() {
           <Pressable style={styles.headerBtn} onPress={onClose} hitSlop={8}>
             <CloseIcon tint={color.text2} />
           </Pressable>
-          <Text style={styles.headerTitle}>WORKOUT COMPLETE</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            WORKOUT
+          </Text>
           {/* Layout spacer only — no surface fill, no press target. */}
           <View style={styles.headerSpacer} />
         </View>
@@ -475,8 +514,8 @@ export default function WorkoutSummary() {
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>VOLUME</Text>
             <Text style={styles.statValue}>
-              {fmtVolumeNoUnit(workout.total_volume)}
-              <Text style={styles.statUnit}> kg</Text>
+              {volumeText(workout.total_volume, unit)}
+              <Text style={styles.statUnit}> {unit}</Text>
             </Text>
           </View>
           <View style={styles.statCell}>
@@ -501,7 +540,10 @@ export default function WorkoutSummary() {
                     {pr.exercise_name}
                   </Text>
                   <Text style={styles.prValue}>
-                    {pr.display} <Text style={styles.prDelta}>{pr.delta_display}</Text>
+                    {recordDisplay(pr.metric, pr.value, pr.display, unit)}{' '}
+                    <Text style={styles.prDelta}>
+                      {recordDeltaDisplay(pr.metric, pr.delta, unit)}
+                    </Text>
                   </Text>
                 </View>
               ))}
@@ -525,7 +567,7 @@ export default function WorkoutSummary() {
                   <Text style={styles.exerciseName} numberOfLines={1} ellipsizeMode="tail">
                     {we.exercise.name}
                   </Text>
-                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets)}</Text>
+                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets, unit, effortKind)}</Text>
                 </View>
                 {anyPr && <StarIcon size={15} color={color.success} strokeWidth={2.4} />}
                 <Text style={styles.exerciseSetCount}>{`${we.sets.length} sets`}</Text>
@@ -693,11 +735,27 @@ export default function WorkoutSummary() {
         <Pressable style={styles.headerBtn} onPress={onClose} hitSlop={8}>
           <CloseIcon tint={color.text2} />
         </Pressable>
-        <Text style={styles.headerTitle}>WORKOUT COMPLETE</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          WORKOUT
+        </Text>
+        {/* Edit sits before Share and is surface2 like it, so Done stays the
+            screen's only accent. Only a finished workout is history to edit. */}
+        {workout.status === 'completed' ? (
+          <Pressable
+            style={styles.editBtn}
+            onPress={() => router.push(`/workout/edit/${workout.id}`)}
+            hitSlop={HEADER_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="Edit workout"
+          >
+            <PencilIcon size={14} color={color.text1} strokeWidth={2.2} />
+            <Text style={styles.editBtnText}>Edit</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           style={styles.shareBtn}
           onPress={() => setShareOpen(true)}
-          hitSlop={8}
+          hitSlop={HEADER_SLOP}
         >
           <ShareIcon tint={color.text2} />
           <Text style={styles.shareBtnText}>Share</Text>
@@ -724,6 +782,12 @@ export default function WorkoutSummary() {
 
 const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
 
+/**
+ * Edit and Share sit 8pt apart, so the old 8pt slop on every side would make
+ * their touch areas overlap. 5pt above and below still takes 34 to 44.
+ */
+const HEADER_SLOP = { top: 5, bottom: 5, left: 4, right: 4 };
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg },
   flex: { flex: 1 },
@@ -740,7 +804,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10,10,11,0.96)',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   headerBtn: {
     width: 34,
@@ -752,14 +816,31 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 34, height: 34 },
   headerTitle: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
     fontFamily: font.monoRegular,
     fontSize: 11,
     letterSpacing: 1.54,
     color: color.text3,
   },
+  editBtn: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    backgroundColor: color.surface2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editBtnText: {
+    fontFamily: font.titleSemi,
+    fontSize: 13,
+    color: color.text1,
+  },
   shareBtn: {
     height: 34,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: 9,
     backgroundColor: color.surface2,
     flexDirection: 'row',

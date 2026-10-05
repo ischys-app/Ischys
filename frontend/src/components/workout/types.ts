@@ -1,4 +1,12 @@
-/** In-memory data model for the Active Workout screen. */
+/**
+ * In-memory data model for the Active Workout screen.
+ *
+ * Weights here are raw input strings in the *user's unit* — exactly what the
+ * field shows. They are converted to kilograms where they leave for storage
+ * (domain/units.ts `inputToKg`) and from kilograms where they are loaded
+ * (`weightText`); the screen tracks which unit the strings are currently in.
+ */
+import { type Unit, unitLabel } from '../../domain/units';
 import { color } from '../../theme/tokens';
 
 export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -6,15 +14,19 @@ export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
 export interface WorkoutSet {
   id: string;
   type: SetType;
-  /** Current entered weight (kg), as a raw input string. Empty when unlogged. */
+  /** Current entered weight, in the user's unit, as a raw input string. Empty when unlogged. */
   weight: string;
   /** Current entered reps, as a raw input string. Empty when unlogged. */
   reps: string;
-  /** Previous-session weight (kg). Undefined for bodyweight or first-ever set. */
+  /** Previous-session weight, in the user's unit. Undefined for bodyweight or first-ever set. */
   prevWeight?: string;
   /** Previous-session reps. */
   prevReps?: string;
   done: boolean;
+  /** This set's effort, always as RPE (domain/effort.ts). Unset when unrated. */
+  rpe?: number | null;
+  /** The same set's effort last session. */
+  prevRpe?: number | null;
 }
 
 export interface Exercise {
@@ -95,17 +107,26 @@ export function exerciseMeta(ex: Exercise): string {
   return `${ex.equipment} · ${ex.rest}s rest`;
 }
 
-/** Weight-column header label, e.g. "KG" or "+KG" (bodyweight). */
-export function weightColumnLabel(ex: Exercise): string {
-  return ex.kind === 'bodyweight' ? '+KG' : 'KG';
+/** Weight-column header label, e.g. "KG" / "LB", or "+KG" / "+LB" (bodyweight). */
+export function weightColumnLabel(ex: Exercise, unit: Unit): string {
+  return ex.kind === 'bodyweight' ? `+${unitLabel(unit)}` : unitLabel(unit);
 }
 
-/** Previous-set reference string, e.g. "60 kg × 8" or "× 11". */
-export function prevLabel(ex: Exercise, s: WorkoutSet): string {
-  if (ex.kind === 'bodyweight') {
-    return s.prevReps != null ? `× ${s.prevReps}` : '';
-  }
-  return s.prevWeight != null ? `${s.prevWeight} kg × ${s.prevReps ?? ''}` : '';
+export { prevLabel } from './prevLabel';
+
+/**
+ * A set's badge: the working-set number for a normal set, the type's letter
+ * otherwise. The same glyph the row draws, for anything that names a set
+ * ("SET 3").
+ */
+export function setBadge(sets: readonly { type: SetType }[], index: number): string {
+  const type = sets[index]?.type ?? 'normal';
+  if (type === 'warmup') return 'W';
+  if (type === 'drop') return 'D';
+  if (type === 'failure') return 'F';
+  let working = 0;
+  for (let i = 0; i <= index && i < sets.length; i++) if (sets[i].type === 'normal') working += 1;
+  return String(working);
 }
 
 let _seq = 0;

@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { WorkoutListItem } from '../api/types';
-import { fmtDuration, fmtVolumeFull, fmtWorkoutDate } from '../lib/format';
+import { formatVolume } from '../domain/units';
+import { fmtDuration, fmtWorkoutDate } from '../lib/format';
+import { useWeightUnit } from '../lib/weightUnit';
 import { color, font } from '../theme/tokens';
 import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
@@ -11,12 +13,16 @@ export function WorkoutCard({
   workout,
   onPress,
   onLongPress,
+  accessibilityHint,
 }: {
   workout: WorkoutListItem;
   onPress?: () => void;
   /** Long-press the card. Omitted → no long-press affordance. */
   onLongPress?: () => void;
+  /** Replaces the default hint, for a caller that owns the long-press itself. */
+  accessibilityHint?: string;
 }) {
+  const unit = useWeightUnit();
   return (
     <Pressable
       onPress={onPress}
@@ -24,7 +30,9 @@ export function WorkoutCard({
       delayLongPress={400}
       accessibilityRole="button"
       accessibilityLabel={workout.name}
-      accessibilityHint={onLongPress ? 'Long-press to delete this workout.' : undefined}
+      accessibilityHint={
+        accessibilityHint ?? (onLongPress ? 'Long-press to delete this workout.' : undefined)
+      }
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.header}>
@@ -39,7 +47,7 @@ export function WorkoutCard({
 
       <View style={styles.stats}>
         <Stat label="TIME" value={fmtDuration(workout.duration_seconds)} />
-        <Stat label="VOLUME" value={fmtVolumeFull(workout.total_volume)} />
+        <Stat label="VOLUME" value={formatVolume(workout.total_volume, unit)} />
         <Stat label="SETS" value={String(workout.total_sets)} />
       </View>
 

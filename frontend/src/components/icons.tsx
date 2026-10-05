@@ -34,6 +34,15 @@ export function PlayIcon({ size = 16, color, strokeWidth = 2.8 }: IconProps) {
   );
 }
 
+/** The solid triangle on the Start Routine buttons. */
+export function PlayFilledIcon({ size = 16, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7 4.5v15l12-7.5z" fill={color} />
+    </Svg>
+  );
+}
+
 export function StarIcon({ size = 12, color, strokeWidth = 2.4 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -376,6 +385,30 @@ export function CloseIcon({ size = 14, color, strokeWidth = 2.2 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth={strokeWidth} {...common} />
+    </Svg>
+  );
+}
+
+/** Minus in a circle — removes a set while editing a finished workout (13a). */
+export function RemoveCircleIcon({ size = 20, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={strokeWidth} {...common} />
+      <Path d="M8 12h8" stroke={color} strokeWidth={strokeWidth} {...common} />
+    </Svg>
+  );
+}
+
+/** Pencil — the Edit button on the Summary header (13a, E1). */
+export function PencilIcon({ size = 14, color, strokeWidth = 2.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        {...common}
+      />
     </Svg>
   );
 }

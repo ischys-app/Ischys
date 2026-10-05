@@ -2,7 +2,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { fmtHeaderDate, fmtHistoryGroupTitle, parseIso } from './format.ts';
+import {
+  fmtHeaderDate,
+  fmtHistoryGroupTitle,
+  fmtShortDayUpper,
+  fmtVolumeLarge,
+  fmtVolumeShort,
+  parseIso,
+} from './format.ts';
 
 // These assertions hold in ANY timezone: they compare a naive timestamp against
 // its explicit-UTC twin, rather than against a hardcoded local rendering.
@@ -54,6 +61,33 @@ test('history groups a midday workout by the same week either way', () => {
   );
 });
 
+// --- volume in the user's unit (storage is kg) ---
+
+test('fmtVolumeShort keeps kg as it was and names the unit', () => {
+  assert.deepEqual(fmtVolumeShort(850, 'kg'), { value: '850', unit: ' kg' });
+  assert.deepEqual(fmtVolumeShort(9177, 'kg'), { value: '9.2', unit: 'k kg' });
+});
+
+test('fmtVolumeShort converts before it picks the k threshold', () => {
+  // 500 kg is 1,102 lb: under the threshold in kg, over it in lb.
+  assert.deepEqual(fmtVolumeShort(500, 'lb'), { value: '1.1', unit: 'k lb' });
+  assert.deepEqual(fmtVolumeShort(100, 'lb'), { value: '220', unit: ' lb' });
+});
+
+test('fmtVolumeLarge scales through k and M in either unit', () => {
+  assert.deepEqual(fmtVolumeLarge(218, 'kg'), { value: '218', unit: ' kg' });
+  assert.deepEqual(fmtVolumeLarge(12_500, 'kg'), { value: '12.5', unit: 'k kg' });
+  assert.deepEqual(fmtVolumeLarge(1_840_000, 'kg'), { value: '1.84', unit: 'M kg' });
+  assert.deepEqual(fmtVolumeLarge(12_500, 'lb'), { value: '27.6', unit: 'k lb' });
+  assert.deepEqual(fmtVolumeLarge(500_000, 'lb'), { value: '1.10', unit: 'M lb' });
+});
+
 test('garbage does not throw', () => {
   assert.ok(Number.isNaN(parseIso('nonsense').getTime()));
+});
+
+test('the short day reads weekday, day, month in capitals', () => {
+  // Built from local parts, so it holds in any timezone.
+  assert.equal(fmtShortDayUpper(new Date(2025, 8, 30, 18, 4)), 'TUE 30 SEP');
+  assert.equal(fmtShortDayUpper(new Date(2026, 0, 4)), 'SUN 4 JAN');
 });

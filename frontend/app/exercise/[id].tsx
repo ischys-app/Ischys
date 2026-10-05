@@ -42,6 +42,11 @@ import {
   type ChartRangeId,
 } from '../../src/domain/chartRange';
 import { getChartRange, setChartRange } from '../../src/lib/chartRangePref';
+import { recordDisplay } from '../../src/domain/records';
+import { type Unit, formatWeight, volumeToDisplay } from '../../src/domain/units';
+import { effortValue } from '../../src/domain/effort';
+import { useEffortMode } from '../../src/lib/effortMode';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { PressableScale } from '../../src/components/PressableScale';
 import { pickerIsActive, pickerIsSelected, pickerToggle } from '../../src/lib/exercisePicker';
 
@@ -58,13 +63,9 @@ const RECORD_LABELS: Record<RecordMetric, string> = {
 const CHART_METRICS: RecordMetric[] = ['best_set', 'est_1rm', 'best_volume', 'max_reps'];
 
 
-/** Unit shown in a point's tooltip; reps for max_reps, kilograms otherwise. */
-const CHART_UNIT: Record<RecordMetric, string> = {
-  best_set: 'kg',
-  est_1rm: 'kg',
-  best_volume: 'kg',
-  max_reps: 'reps',
-};
+/** Unit shown in a point's tooltip; reps for max_reps, the user's weight unit otherwise. */
+const chartUnit = (metric: RecordMetric, unit: Unit): string =>
+  metric === 'max_reps' ? 'reps' : unit;
 
 export default function ExerciseDetail() {
   const router = useRouter();
@@ -349,23 +350,42 @@ function setIndex(sets: HistorySetOut[], i: number): string {
   return String(n);
 }
 
-function fmtSetValue(s: HistorySetOut): string {
+function fmtSetValue(s: HistorySetOut, unit: Unit): string {
   const reps = s.reps ?? 0;
   if (s.weight == null) return `BW × ${reps}`;
-  return `${s.weight} kg × ${reps}`;
+  return `${formatWeight(s.weight, unit)} × ${reps}`;
 }
 
 function HistoryTab({ history }: { history: HistorySessionOut[] }) {
+  const unit = useWeightUnit();
+  // Effort per set (#84): a column on the right, blank for an unrated set and
+  // absent altogether with the setting Off or in a session nobody rated.
+  const effortMode = useEffortMode();
+  const effortKind = effortMode === 'off' ? null : effortMode;
   if (history.length === 0) {
     return <Text style={styles.emptyHistory}>No history yet.</Text>;
   }
   return (
     <View style={styles.historyCol}>
-      {history.map((session) => (
+      {history.map((session) => {
+        const rated = effortKind != null && session.sets.some((s) => s.rpe != null);
+        return (
         <View key={session.workout_id} style={styles.sessionCard}>
           <View style={styles.sessionHeader}>
             <Text style={styles.sessionDate}>{fmtDateOnly(session.date)}</Text>
-            {session.has_pr ? (
+            {rated ? (
+              // The scale's name heads the column below it, so the rows can
+              // hold bare numbers; a PR pill keeps its place just before it.
+              <View style={styles.sessionRight}>
+                {session.has_pr ? (
+                  <View style={styles.prPill}>
+                    <StarIcon size={13} color={color.success} strokeWidth={2.4} />
+                    <Text style={styles.prText}>PR</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.effortHead}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
+              </View>
+            ) : session.has_pr ? (
               <View style={styles.prPill}>
                 <StarIcon size={13} color={color.success} strokeWidth={2.4} />
                 <Text style={styles.prText}>PR</Text>
@@ -376,17 +396,21 @@ function HistoryTab({ history }: { history: HistorySessionOut[] }) {
             {session.sets.map((s, i) => (
               <View key={`${s.position}-${i}`} style={styles.setRow}>
                 <Text style={styles.setIdx}>{setIndex(session.sets, i)}</Text>
-                <Text style={styles.setValue}>{fmtSetValue(s)}</Text>
+                <Text style={styles.setValue}>{fmtSetValue(s, unit)}</Text>
                 {s.is_pr ? (
                   <View style={styles.bestPill}>
                     <Text style={styles.bestText}>BEST</Text>
                   </View>
                 ) : null}
+                {rated && effortKind && s.rpe != null ? (
+                  <Text style={styles.effortCell}>{effortValue(s.rpe, effortKind)}</Text>
+                ) : null}
               </View>
             ))}
           </View>
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -409,6 +433,7 @@ function ChartsTab({
   onRangeChange: (r: ChartRangeId) => void;
 }) {
   const router = useRouter();
+  const unit = useWeightUnit();
   const byMetric = useMemo(() => {
     const m: Partial<Record<RecordMetric, RecordOut>> = {};
     for (const r of records) m[r.metric] = r;
@@ -483,7 +508,11 @@ function ChartsTab({
       {CHART_METRICS.map((metric) => {
         const series = chartFor[metric];
         const times = series?.times ?? [];
-        const values = series?.values ?? [];
+        // Series are stored in kilograms (weight or volume); reps are reps.
+        // Converted before the trend, so "per month" is in the unit shown too.
+        const stored = series?.values ?? [];
+        const values =
+          metric === 'max_reps' ? stored : stored.map((v) => volumeToDisplay(v, unit));
         const trend =
           times.length === values.length
             ? trendPerMonth(times.map((t, i) => ({ t, value: values[i] })))
@@ -499,12 +528,12 @@ function ChartsTab({
                     ? '→ flat'
                     : `${trend > 0 ? '↑' : '↓'} ${trend > 0 ? '+' : ''}${
                         Math.round(trend * 10) / 10
-                      } ${CHART_UNIT[metric]} / mo`}
+                      } ${chartUnit(metric, unit)} / mo`}
               </Text>
             </View>
             <View style={styles.chartCard}>
               <View style={styles.chartRegion}>
-                <MiniChart values={values} labels={series?.labels ?? []} times={times} unit={CHART_UNIT[metric]} />
+                <MiniChart values={values} labels={series?.labels ?? []} times={times} unit={chartUnit(metric, unit)} />
               </View>
               {/* Month (or year) ticks, placed where they fall in time. One
                   label per session stopped working once points were spaced by
@@ -537,10 +566,13 @@ function RecordCard({
   record?: RecordOut;
   onPress?: () => void;
 }) {
+  const unit = useWeightUnit();
   const body = (
     <>
       <Text style={styles.recordLabel}>{RECORD_LABELS[metric]}</Text>
-      <Text style={styles.recordValue}>{record?.display ?? '—'}</Text>
+      <Text style={styles.recordValue}>
+        {record ? recordDisplay(metric, record.value, record.display, unit) : '—'}
+      </Text>
     </>
   );
   if (!onPress) return <View style={styles.recordCard}>{body}</View>;
@@ -918,6 +950,20 @@ const styles = StyleSheet.create({
     fontFamily: font.monoRegular,
     fontSize: 10,
     color: color.accent,
+  },
+  // Effort column (board 14a, decision D): right-aligned, text3.
+  sessionRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  effortHead: {
+    fontFamily: font.monoRegular,
+    fontSize: 11,
+    color: color.text3,
+  },
+  effortCell: {
+    marginLeft: 'auto',
+    fontFamily: font.monoRegular,
+    fontSize: 13,
+    color: color.text3,
+    fontVariant: ['tabular-nums'],
   },
 
   // Charts ------------------------------------------------------------

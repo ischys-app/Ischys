@@ -12,6 +12,7 @@
  * two stats helpers are inlined here — kept in step with domain/stats.ts).
  */
 import type { RecordMetric } from '../api/types.ts';
+import { type Unit, formatVolume, toDisplay, volumeToDisplay, weightText } from './units.ts';
 
 type SetLike = {
   type: string;
@@ -193,6 +194,48 @@ function deltaDisplay(metric: RecordMetric, delta: number): string {
   return `▲ ${g(delta)} kg`;
 }
 
+/** "68 × 5": a weight, the times sign, then whatever followed it. */
+const _WEIGHT_BY_REPS = /^(\d+(?:\.\d+)?) × (.*)$/;
+
+/**
+ * A record's stored prose, in the user's unit.
+ *
+ * `display` is written once, in kilograms, into `personal_records` — and
+ * storage stays canonical, so it is re-expressed here on the way out rather
+ * than rewritten on a unit change. The two metrics whose whole content is their
+ * value are rebuilt from it; the two "weight × reps" ones have their leading
+ * weight converted in place, because the reps (and for max_reps, the weight)
+ * live only in the prose. Anything unrecognised — "BW × 11", an empty string —
+ * is returned as stored.
+ */
+export function recordDisplay(
+  metric: RecordMetric,
+  value: number,
+  display: string,
+  unit: Unit,
+): string {
+  if (metric === 'est_1rm') return `${Math.round(volumeToDisplay(value, unit))} ${unit}`;
+  if (metric === 'best_volume') return formatVolume(value, unit);
+  const m = _WEIGHT_BY_REPS.exec(display);
+  return m ? `${weightText(Number(m[1]), unit)} × ${m[2]}` : display;
+}
+
+/**
+ * How much a record improved by, in the user's unit. `delta` is in the
+ * metric's stored unit (kg, kg of volume, or reps); null means a first-ever
+ * record. In kg this is exactly what `detectPrs` writes as `deltaDisplay`.
+ */
+export function recordDeltaDisplay(
+  metric: RecordMetric,
+  delta: number | null,
+  unit: Unit,
+): string {
+  if (delta === null) return 'NEW';
+  if (REP_METRICS.has(metric)) return deltaDisplay(metric, delta);
+  if (metric === 'best_volume' && unit !== 'kg') return `▲ ${formatVolume(delta, unit)}`;
+  return `▲ ${g(toDisplay(delta, unit) as number)} ${unit}`;
+}
+
 /** Metrics that strictly improved over `previous` (absent metric = first-ever PR). */
 export function detectPrs(
   previous: Partial<Record<RecordMetric, number>>,
@@ -221,4 +264,68 @@ export function headlinePr(deltas: PRDelta[]): PRDelta | null {
     if (d) return d;
   }
   return null;
+}
+
+/** One session of an exercise as `walkPrFlags` decided it. */
+export type PrWalkStep = {
+  sessionId: string;
+  /** The sets of this session that set a record when it was logged. */
+  flaggedSetIds: string[];
+  /** Every metric the session improved; empty when it set no record. */
+  deltas: PRDelta[];
+};
+
+/**
+ * Re-decides one exercise's records session by session, oldest first.
+ *
+ * Finishing a workout compares it with the records as they stood, flags the
+ * sets that hold a new one, and counts the exercise toward the workout's PR
+ * count. This replays exactly that for a whole history: each session is
+ * compared with a running baseline of everything before it, through the same
+ * `computeRecords` and `detectPrs`, with the session itself listed first as
+ * the finish path lists it. So a past session that changes — or moves in time
+ * — re-decides every session after it, not just itself.
+ *
+ * `best_volume` belongs to a session, not a set, so it appears in `deltas`
+ * and flags nothing, as at finish.
+ */
+export function walkPrFlags(sessions: readonly PRSession[], countWarmups = false): PrWalkStep[] {
+  const oldestFirst = sessions.slice().sort((a, b) => a.achievedAt - b.achievedAt);
+  const out: PrWalkStep[] = [];
+  /** Newest first, the order `computeRecords` is always handed. */
+  const seen: PRSession[] = [];
+  let baseline: Partial<Record<RecordMetric, number>> = {};
+  for (const sess of oldestFirst) {
+    seen.unshift(sess);
+    const computed = computeRecords(seen, countWarmups);
+    const deltas = detectPrs(baseline, computed);
+    const own = new Set(sess.sets.map((s) => s.id));
+    const flagged = new Set<string>();
+    for (const d of deltas) {
+      if (d.value.workoutSetId && own.has(d.value.workoutSetId)) flagged.add(d.value.workoutSetId);
+    }
+    out.push({ sessionId: sess.id, flaggedSetIds: [...flagged], deltas });
+    baseline = {};
+    for (const rv of Object.values(computed) as RecordValue[]) baseline[rv.metric] = rv.value;
+  }
+  return out;
+}
+
+/**
+ * Whether an exercise is, as stored, one of the PRs a workout's count holds.
+ *
+ * The count is a bare number, so this is read off what is beside it: a flagged
+ * set says yes. With none flagged, only a volume record — which has no set to
+ * flag — can have counted, and only where the count has room for it. History
+ * that was imported without flags has a count of zero and so holds nothing,
+ * whatever a walk over it would find.
+ */
+export function countsTowardPrCount(
+  step: PrWalkStep | undefined,
+  hasFlaggedSet: boolean,
+  prCount: number,
+): boolean {
+  if (prCount <= 0) return false;
+  if (hasFlaggedSet) return true;
+  return !!step && step.deltas.length > 0 && step.flaggedSetIds.length === 0;
 }

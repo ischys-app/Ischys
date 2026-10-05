@@ -19,6 +19,7 @@ import { WeekBars } from '../../src/components/WeekBars';
 import { WorkoutCard } from '../../src/components/WorkoutCard';
 import { fmtDuration, fmtHeaderDate, fmtVolumeShort } from '../../src/lib/format';
 import { onWatchFinished } from '../../src/lib/watchFinish';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
 
 /** Home / dashboard — reads the local dashboard, laid out from Home.dc.html. */
@@ -205,7 +206,8 @@ function Populated({
   onOverflow: (r: RoutineListItem) => void;
 }) {
   const router = useRouter();
-  const vol = fmtVolumeShort(data.stats.volume);
+  const unit = useWeightUnit();
+  const vol = fmtVolumeShort(data.stats.volume, unit);
   return (
     <View>
       {/* Weekly summary heading */}
@@ -274,6 +276,7 @@ function Populated({
           <RoutineCard
             key={r.id}
             routine={r}
+            onOpen={() => router.push(`/routine/view/${r.id}`)}
             onStart={() => onStartRoutine(r)}
             onOverflow={() => onOverflow(r)}
           />

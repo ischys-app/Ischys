@@ -1,6 +1,6 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ActivityDay, ActivityMapOut, WorkoutListItem } from '../../src/api/types';
@@ -98,7 +98,7 @@ export default function History() {
     }, [reload]),
   );
 
-  /** Long-press a card. Destroys logged sets, so it confirms first. */
+  /** Delete, from a card's menu. Destroys logged sets, so it confirms first. */
   const confirmDelete = (w: WorkoutListItem) => {
     Alert.alert(
       'Delete workout?',
@@ -177,14 +177,48 @@ export default function History() {
               <View key={g.title} style={styles.group}>
                 <Text style={styles.groupTitle}>{g.title}</Text>
                 <View style={styles.groupItems}>
-                  {g.items.map((w) => (
-                    <WorkoutCard
-                      key={w.id}
-                      workout={w}
-                      onPress={() => router.push(`/summary/${w.id}`)}
-                      onLongPress={() => confirmDelete(w)}
-                    />
-                  ))}
+                  {g.items.map((w) =>
+                    Platform.OS === 'ios' ? (
+                      // Long-press opens the system context menu (13a, E1).
+                      // The row is a Link so the menu is expo-router's own —
+                      // no extra native dependency — and a tap still goes to
+                      // the Summary, as before. Delete keeps its place here:
+                      // long-press used to mean only that.
+                      // The wrapping View keeps the list's gap per row: the
+                      // Link renders its menu as a second, empty sibling, which
+                      // otherwise took a gap of its own under every card.
+                      <View key={w.id}>
+                        <Link href={`/summary/${w.id}`} asChild>
+                          <Link.Trigger>
+                            <WorkoutCard
+                              workout={w}
+                              accessibilityHint="Long-press for more actions."
+                            />
+                          </Link.Trigger>
+                          <Link.Menu>
+                            <Link.MenuAction
+                              icon="pencil"
+                              onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
+                            >
+                              Edit workout
+                            </Link.MenuAction>
+                            <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
+                              Delete workout
+                            </Link.MenuAction>
+                          </Link.Menu>
+                        </Link>
+                      </View>
+                    ) : (
+                      // The context menu is iOS-only; elsewhere long-press
+                      // keeps doing what it did. Editing is on the Summary.
+                      <WorkoutCard
+                        key={w.id}
+                        workout={w}
+                        onPress={() => router.push(`/summary/${w.id}`)}
+                        onLongPress={() => confirmDelete(w)}
+                      />
+                    ),
+                  )}
                 </View>
               </View>
             ))}

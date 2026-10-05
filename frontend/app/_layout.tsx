@@ -33,6 +33,8 @@ import {
 } from '../src/api/workouts';
 import { setHapticsEnabled } from '../src/lib/haptics';
 import { getThemeId } from '../src/lib/themePref';
+import { setEffortMode } from '../src/lib/effortMode';
+import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { applyPendingCardActions } from '../src/lib/liveActivityBridge';
 import {
@@ -197,7 +199,15 @@ export default function RootLayout() {
 
   useEffect(() => {
     getSettings()
-      .then((s) => setHapticsEnabled(s.haptic_feedback))
+      .then((s) => {
+        setHapticsEnabled(s.haptic_feedback);
+        // Same reason: the first screen to show a weight should already know
+        // the unit, rather than paint kilograms and correct itself.
+        setWeightUnit(s.unit);
+        // And whether sets are rated: off by default, so priming it late can
+        // only ever add a rating to the screen, never flash one that is hidden.
+        setEffortMode(s.effort_mode);
+      })
       .catch(() => {});
   }, []);
 
@@ -260,10 +270,26 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="workout/edit/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_bottom',
+              contentStyle: { backgroundColor: color.bg },
+            }}
+          />
+          <Stack.Screen
             name="routine/[id]"
             options={{
               headerShown: false,
               animation: 'slide_from_bottom',
+              contentStyle: { backgroundColor: color.bg },
+            }}
+          />
+          <Stack.Screen
+            name="routine/view/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
               contentStyle: { backgroundColor: color.bg },
             }}
           />

@@ -39,7 +39,7 @@ struct MetricsView: View {
               .foregroundStyle(Ischys.warning)
           }
           statCard(label: "VOLUME", color: Ischys.text1) {
-            Text("\(fmtVolume(model.volumeKg)) kg")
+            Text("\(fmtVolume(model.volume)) \(model.unit)")
               .font(Ischys.mono(26, .semibold)).monospacedDigit()
               .foregroundStyle(Ischys.text1)
           }
@@ -93,8 +93,8 @@ struct MetricsView: View {
 
   /// 9200 → "9.2k"; small values stay plain. Keeps wide totals from overflowing
   /// the tile at `Ischys.mono(26)`.
-  private func fmtVolume(_ kg: Int) -> String {
-    if kg >= 1000 { return String(format: "%.1fk", Double(kg) / 1000) }
-    return String(kg)
+  private func fmtVolume(_ v: Int) -> String {
+    if v >= 1000 { return String(format: "%.1fk", Double(v) / 1000) }
+    return String(v)
   }
 }

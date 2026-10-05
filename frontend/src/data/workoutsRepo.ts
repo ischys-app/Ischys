@@ -11,6 +11,7 @@ import { db } from '../db/client';
 import * as schema from '../db/schema';
 import type {
   PreviousSetOut,
+  RecordMetric,
   SetType,
   WorkoutExerciseOut,
   WorkoutListItem,
@@ -20,6 +21,7 @@ import type {
 } from '../api/types';
 import { activityMap } from '../domain/activityMap';
 import { uniqueRoutineName } from '../domain/importedRoutines';
+import { normalizeRpe } from '../domain/effort';
 import { latestBefore } from '../domain/previous';
 import { detectPrs, headlinePr } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -94,7 +96,13 @@ export async function getPrevious(_wid: string, weId: string): Promise<PreviousS
   const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, we.workoutId)))[0];
   const before = w ? w.startedAt : nowMs();
   const sets = await previousSets(we.exerciseId, before);
-  return sets.map((s) => ({ position: s.position, type: s.type as SetType, weight: s.weight, reps: s.reps }));
+  return sets.map((s) => ({
+    position: s.position,
+    type: s.type as SetType,
+    weight: s.weight,
+    reps: s.reps,
+    rpe: s.rpe ?? null,
+  }));
 }
 
 /**
@@ -241,9 +249,17 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
 
 export async function patchSet(
   setId: string,
-  body: { type?: SetType; weight?: number | null; reps?: number | null; done?: boolean },
+  body: {
+    type?: SetType;
+    weight?: number | null;
+    reps?: number | null;
+    done?: boolean;
+    /** Effort as RPE; null clears the rating. Anything off the scale is dropped. */
+    rpe?: number | null;
+  },
 ): Promise<WorkoutSetOut> {
   const patch: Record<string, unknown> = { updatedAt: nowMs() };
+  if (body.rpe !== undefined) patch.rpe = normalizeRpe(body.rpe);
   if (body.type !== undefined) patch.type = body.type;
   if (body.weight !== undefined) patch.weight = body.weight;
   if (body.reps !== undefined) patch.reps = body.reps;
@@ -510,7 +526,14 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   const setLike = (s: WorkoutSetRow): SetLike => asSetLike(s, kindByWeId.get(s.workoutExerciseId));
 
   const setIds = new Set(allSets.map((s) => s.id));
-  const prs: { exerciseId: string; metric: string; display: string; deltaDisplay: string }[] = [];
+  const prs: {
+    exerciseId: string;
+    metric: RecordMetric;
+    value: number;
+    delta: number | null;
+    display: string;
+    deltaDisplay: string;
+  }[] = [];
   // Atomic: mark completed, materialise PRs, flag PR sets, and write prCount as one
   // unit. Otherwise a crash mid-finish leaves a completed workout with wrong/zero
   // prCount that the `status !== 'active'` guard makes unrepairable.
@@ -542,7 +565,18 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
         }
       }
       const head = headlinePr(deltas);
-      if (head) prs.push({ exerciseId: eid, metric: head.metric, display: head.value.display, deltaDisplay: head.deltaDisplay });
+      if (head) {
+        prs.push({
+          exerciseId: eid,
+          metric: head.metric,
+          // The numbers travel with the prose so the summary can show both in
+          // the user's unit; a first-ever record has no delta to convert.
+          value: head.value.value,
+          delta: head.previous === null ? null : head.delta,
+          display: head.value.display,
+          deltaDisplay: head.deltaDisplay,
+        });
+      }
     }
     await tx.update(schema.workouts).set({ prCount: prs.length, updatedAt: nowMs() }).where(eq(schema.workouts.id, wid));
   });
@@ -574,6 +608,8 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
       exercise_id: p.exerciseId,
       exercise_name: exNameById.get(p.exerciseId) ?? '',
       metric: p.metric,
+      value: p.value,
+      delta: p.delta,
       display: p.display,
       delta_display: p.deltaDisplay,
     })),

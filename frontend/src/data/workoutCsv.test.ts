@@ -54,9 +54,60 @@ test('export -> import round-trips a workout', () => {
   assert.equal(w.startedAt, workouts[0].startedAt);
   assert.equal(w.exercises[0].title, 'Bench Press');
   assert.deepEqual(w.exercises[0].sets, [
-    { type: 'warmup', weight: 40, reps: 10 },
-    { type: 'normal', weight: 60, reps: 8 },
+    { type: 'warmup', weight: 40, reps: 10, rpe: null },
+    { type: 'normal', weight: 60, reps: 8, rpe: null },
   ]);
+});
+
+const ratedWorkout = (sets: ExportWorkout['exercises'][number]['sets']): ExportWorkout[] => [
+  {
+    name: 'Push',
+    startedAt: new Date(2026, 6, 10, 9, 0).getTime(),
+    endedAt: new Date(2026, 6, 10, 10, 0).getTime(),
+    notes: null,
+    exercises: [{ name: 'Bench Press', note: null, supersetGroup: null, sets }],
+  },
+];
+
+test('export -> import round-trips a set\'s effort rating', () => {
+  const csv = toWorkoutCsv(
+    ratedWorkout([
+      { position: 0, type: 'normal', weight: 60, reps: 8, rpe: 8.5 },
+      { position: 1, type: 'normal', weight: 60, reps: 8, rpe: 10 },
+      { position: 2, type: 'normal', weight: 60, reps: 6, rpe: null },
+      { position: 3, type: 'normal', weight: 60, reps: 6 },
+    ]),
+  );
+  const lines = csv.trim().split('\n');
+  assert.equal(lines[0].split(',').at(-1), 'rpe');
+  assert.deepEqual(lines.slice(1).map((l) => l.split(',').at(-1)), ['8.5', '10', '', '']);
+  assert.deepEqual(
+    parseWorkoutCsv(csv).workouts[0].exercises[0].sets.map((s) => s.rpe),
+    [8.5, 10, null, null],
+  );
+});
+
+test('an export written before ratings were stored still imports', () => {
+  // The column was always in the header; its cells were always empty.
+  const old =
+    'title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe\n' +
+    'Push,"10 Jul 2026, 09:00","10 Jul 2026, 10:00",,Bench Press,,,0,normal,60,8,,,\n';
+  const parsed = parseWorkoutCsv(old);
+  assert.equal(parsed.unmapped, false);
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets, [{ type: 'normal', weight: 60, reps: 8, rpe: null }]);
+});
+
+test('a CSV with no rpe column imports unrated', () => {
+  const parsed = parseWorkoutCsv('exercise_title,weight_kg,reps\nSquat,100,5\n');
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets, [{ type: 'normal', weight: 100, reps: 5, rpe: null }]);
+});
+
+test('an imported rating is kept on the half-step grid, junk is dropped', () => {
+  const parsed = parseWorkoutCsv('exercise_title,weight_kg,reps,RPE\nSquat,100,5,9\nSquat,100,5,7.5\nSquat,100,5,hard\nSquat,100,5,0\nSquat,100,5,4\n');
+  assert.deepEqual(
+    parsed.workouts[0].exercises[0].sets.map((s) => s.rpe),
+    [9, 7.5, null, null, 4],
+  );
 });
 
 test('rows missing title/exercise are skipped', () => {

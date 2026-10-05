@@ -30,8 +30,19 @@ struct PhoneState {
   var resting = false
   var restRemaining = 0
   var restTotal = 0
+  /// When the running rest ends. nil when not resting, or when the phone did
+  /// not say (it pushes 0) — the Watch then has nothing to count down to.
+  var restEndsAt: Date?
+  /// The phone's `rest_timer_alerts` setting. Absent reads as off.
+  var restAlerts = false
   var nextSetLabel = ""
-  var volumeKg = 0
+  /// "kg" or "lb": the unit `weight`, `prevWeight` and `volume` are already
+  /// expressed in. The phone converts; the Watch only labels, steps the Crown
+  /// by it, and says which it was showing when it logs a set. nil when the push
+  /// didn't carry one (a Start-screen push), so the last known unit stands.
+  var unit: String?
+  /// Session volume, already in `unit`.
+  var volume = 0
   var setsDone = 0
   var setsTotal = 0
   var summary: SessionSummary?
@@ -80,8 +91,15 @@ struct PhoneState {
     resting = d["resting"] as? Bool ?? false
     restRemaining = d["restRemaining"] as? Int ?? 0
     restTotal = d["restTotal"] as? Int ?? 0
+    // Epoch milliseconds, read as a Double for the same reason as `startedAt`.
+    if let ms = (d["restEndsAt"] as? NSNumber)?.doubleValue, ms > 0 {
+      restEndsAt = Date(timeIntervalSince1970: ms / 1000)
+    }
+    restAlerts = d["restAlerts"] as? Bool ?? false
     nextSetLabel = d["nextSetLabel"] as? String ?? ""
-    volumeKg = d["volumeKg"] as? Int ?? 0
+    // Anything but the two known units is ignored rather than shown.
+    if let u = d["unit"] as? String, u == "kg" || u == "lb" { unit = u }
+    volume = d["volume"] as? Int ?? 0
     setsDone = d["setsDone"] as? Int ?? 0
     setsTotal = d["setsTotal"] as? Int ?? 0
     if let s = d["summary"] as? [String: Any] {
@@ -89,7 +107,8 @@ struct PhoneState {
         routineName: s["routineName"] as? String ?? "",
         dateLabel: s["dateLabel"] as? String ?? "",
         timeLabel: s["timeLabel"] as? String ?? "",
-        volumeKg: s["volumeKg"] as? Int ?? 0,
+        volume: s["volume"] as? Int ?? 0,
+        unit: unit ?? "kg",
         sets: s["sets"] as? Int ?? 0,
         avgHr: s["avgHr"] as? Int ?? 0,
         activeCal: s["activeCal"] as? Int ?? 0,
@@ -125,8 +144,11 @@ final class PhoneLink: NSObject, WCSessionDelegate {
     }
   }
 
-  func logSet(weight: String, reps: String) {
-    send(["action": "logSet", "weight": weight, "reps": reps])
+  /// `unit` is the unit `weight` is in — the one the Watch was showing. Sent
+  /// with the set so the phone converts the right way even if the preference
+  /// changed while this message was in flight.
+  func logSet(weight: String, reps: String, unit: String) {
+    send(["action": "logSet", "weight": weight, "reps": reps, "unit": unit])
   }
   func adjustRest(_ seconds: Int) { send(["action": "adjustRest", "seconds": seconds]) }
   func skipRest() { send(["action": "skipRest"]) }

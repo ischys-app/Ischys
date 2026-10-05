@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildFinishedWatchState, buildWatchState } from './watchState.ts';
+import { buildFinishedWatchState, buildWatchState, watchRestEndsAt } from './watchState.ts';
 
 const set = (id: string, weight: string, reps: string, done = false, type = 'normal') => ({
   id,
@@ -72,12 +72,74 @@ test('volume excludes warmups, but the set counts include them', () => {
     rest,
     resolve,
   );
-  assert.equal(s?.volumeKg, 1000); // 2 working sets × 100 × 5; warmup excluded
+  assert.equal(s?.volume, 1000); // 2 working sets × 100 × 5; warmup excluded
+  assert.equal(s?.unit, 'kg');
   // Both counters count warmups. The Watch derives "nothing left to log" from
   // setsDone >= setsTotal, so counting one side and not the other made that
   // impossible to reach.
   assert.equal(s?.setsDone, 3);
   assert.equal(s?.setsTotal, 4);
+});
+
+// --- the user's unit (#80): set strings arrive in it, volume is sent in it ---
+
+test('in lb the Watch gets the unit, the lb strings as typed, and lb volume', () => {
+  const s = buildWatchState(
+    legPress(set('a', '225', '5', true), set('b', '225', '5', true), set('c', '225', '5')),
+    'R',
+    rest,
+    resolve,
+    null,
+    0,
+    false,
+    'lb',
+  );
+  assert.equal(s?.unit, 'lb');
+  assert.equal(s?.weight, '225');
+  assert.equal(s?.volume, 2250); // 2 × 225 lb × 5, not the kg behind it
+});
+
+test('lb volume adds a kg bodyweight to lb added load correctly', () => {
+  const s = buildWatchState(
+    [
+      {
+        id: 'e1',
+        name: 'Pull Up',
+        equipment: 'Bodyweight',
+        rest: 90,
+        kind: 'bodyweight' as const,
+        sets: [set('a', '45', '5', true), set('b', '', '5')],
+      },
+    ],
+    'R',
+    rest,
+    resolve,
+    null,
+    80, // kg, as stored
+    false,
+    'lb',
+  );
+  // (80 kg = 176.37 lb) + 45 lb, × 5
+  assert.equal(s?.volume, Math.round((80 / 0.45359237 + 45) * 5));
+});
+
+test('the finished snapshot carries the unit and lb volume too', () => {
+  const s = buildFinishedWatchState(
+    legPress(set('a', '225', '5', true), set('b', '225', '5', true)),
+    'R',
+    null,
+    0,
+    false,
+    'lb',
+  );
+  assert.equal(s?.unit, 'lb');
+  assert.equal(s?.volume, 2250);
+});
+
+test('the finished snapshot defaults to kg', () => {
+  const s = buildFinishedWatchState(legPress(set('a', '100', '5', true)), 'R');
+  assert.equal(s?.unit, 'kg');
+  assert.equal(s?.volume, 500);
 });
 
 test('a workout with warmups can actually reach done on the Watch', () => {
@@ -158,6 +220,51 @@ test('rest state passes through', () => {
   assert.equal(s?.resting, true);
   assert.equal(s?.restRemaining, 45);
   assert.equal(s?.restTotal, 90);
+});
+
+/**
+ * The Watch buzzes off the end date, not off `restRemaining` — the latter only
+ * moves while the phone's JS runs, so a locked phone froze the wrist (#82).
+ */
+test('a running rest carries its end date and the alerts setting', () => {
+  const s = buildWatchState(
+    legPress(set('a', '1', '1', true), set('b', '1', '1')),
+    'R',
+    { resting: true, remaining: 45, total: 90, endsAt: 1_700_000_045_000, alerts: true },
+    resolve,
+  );
+  assert.equal(s?.restEndsAt, 1_700_000_045_000);
+  assert.equal(s?.restAlerts, true);
+});
+
+test('alerts read as off unless the caller says they are on', () => {
+  const s = buildWatchState(
+    legPress(set('a', '1', '1', true), set('b', '1', '1')),
+    'R',
+    { resting: true, remaining: 45, total: 90, endsAt: 1_700_000_045_000 },
+    resolve,
+  );
+  assert.equal(s?.restAlerts, false);
+});
+
+test('no end date reaches the Watch once the rest is over', () => {
+  // The screen clears its end date one render after `remaining` hits 0, and a
+  // skip zeroes `remaining` first. Either way a stale date must not go out.
+  assert.equal(watchRestEndsAt({ resting: false, remaining: 0, total: 90, endsAt: 5_000 }), 0);
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 0, total: 90, endsAt: 5_000 }), 0);
+});
+
+test('an unknown end date pushes 0, not a 1970 deadline', () => {
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 45, total: 90 }), 0);
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 45, total: 90, endsAt: null }), 0);
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 45, total: 90, endsAt: 0 }), 0);
+});
+
+test('the finished state has no rest to buzz for but keeps the setting', () => {
+  const allDone = legPress(set('a', '1', '1', true));
+  const s = buildFinishedWatchState(allDone, 'R', null, 0, false, 'kg', true);
+  assert.equal(s?.restEndsAt, 0);
+  assert.equal(s?.restAlerts, true);
 });
 
 test('the next exercise becomes current once one is fully done', () => {

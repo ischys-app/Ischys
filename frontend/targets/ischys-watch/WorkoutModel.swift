@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import WatchKit
 
 /// The single source of UI state for the Watch app. Everything the six screens
 /// render reads from here.
@@ -36,7 +37,9 @@ struct SessionSummary: Equatable {
   var routineName: String
   var dateLabel: String
   var timeLabel: String
-  var volumeKg: Int
+  /// Already in `unit`.
+  var volume: Int
+  var unit: String
   var sets: Int
   var avgHr: Int
   var activeCal: Int
@@ -78,13 +81,25 @@ final class WorkoutModel: ObservableObject {
   @Published var prevReps = ""
   @Published var setDots: [SetDot] = []
 
+  /// "kg" or "lb" — the unit `weight`, `prevWeight` and `volume` are in. The
+  /// phone owns the preference and does every conversion; the numbers arrive
+  /// ready to show. The Watch uses this for the labels, for the size of a Crown
+  /// notch, and to tell the phone which unit a logged weight is in.
+  @Published var unit = "kg"
+
+  /// One Crown step for the weight field: 0.5 kg, or 2.5 lb — the smallest
+  /// change a lb plate set or dumbbell rack can make, rather than the 1.1 lb
+  /// that half a kilogram converts to.
+  var weightStep: Double { unit == "lb" ? 2.5 : 0.5 }
+
   /// Bumped whenever `weight`/`reps` were replaced by the phone. The Crown keeps
   /// its own Double, so the Active Set view has to be told to re-seed it —
   /// without that, the display would show the new number while the next notch
   /// wrote the old one straight back.
   @Published var valueSeed = 0
 
-  // S3 — Rest. `restRemaining` ticks locally; the phone owns start/total.
+  // S3 — Rest. The phone owns the rest; `restRemaining` is counted down here to
+  // the end date it pushed (see "Rest countdown" below).
   @Published var resting = false
   @Published var restRemaining = 0
   @Published var restTotal = 0
@@ -95,7 +110,7 @@ final class WorkoutModel: ObservableObject {
   @Published var routineName = ""
   @Published var heartRate = 0
   @Published var activeCal = 0
-  @Published var volumeKg = 0
+  @Published var volume = 0
   @Published var setsDone = 0
   @Published var setsTotal = 0
   @Published var elapsedSec = 0
@@ -117,8 +132,19 @@ final class WorkoutModel: ObservableObject {
 
   // MARK: Local ticks
 
-  private var restTimer: AnyCancellable?
+  private var restTimer: Timer?
   private var elapsedTimer: AnyCancellable?
+
+  // MARK: Rest countdown
+
+  /// When the running rest ends, as pushed by the phone. nil when not resting,
+  /// or when the phone gave no end date (then the pushed seconds are shown).
+  private var restEndsAt: Date?
+  private var restAlarm = RestAlarm()
+
+  /// Whether a rest-complete notification arriving now would repeat a buzz this
+  /// app has just played or is about to. Read by `RestAlertMute`.
+  var ownsRestBuzz: Bool { restAlarm.owns(now: Date()) }
 
   /// Where the elapsed clock counts from.
   ///
@@ -162,15 +188,59 @@ final class WorkoutModel: ObservableObject {
     elapsedTimer?.cancel()
     elapsedTimer = nil
     elapsedOrigin = nil
+    // The session is over, so nothing keeps us running to the end of a rest —
+    // and a buzz for a rest in a workout that has ended would be wrong anyway.
+    restAlarm.cancel()
+    restEndsAt = nil
+    scheduleRestTimer()
   }
 
   private func tick() {
-    // Only elapsed ticks locally. Rest is NOT decremented here: the phone pushes
-    // restRemaining every second, and ticking it too would run it down twice as
-    // fast. The elapsed clock is local because the phone doesn't push it.
     if let start = elapsedOrigin {
       elapsedSec = max(0, Int(Date().timeIntervalSince(start)))
     }
+    // A second chance for the rest's end, should its own timer be held back.
+    restTick()
+  }
+
+  /// Derive the countdown from the end date and buzz if the rest just ran out.
+  ///
+  /// Derived, never decremented: a counter loses however long the app was not
+  /// running, and the phone's pushed `restRemaining` stops arriving once its JS
+  /// is suspended — the wrist used to freeze mid-countdown with the phone locked.
+  private func restTick() {
+    let now = Date()
+    if let end = restEndsAt {
+      // Rounds up, as the phone does, so the two read the same second.
+      let remaining = max(0, Int(end.timeIntervalSince(now).rounded(.up)))
+      if restRemaining != remaining { restRemaining = remaining }
+      if resting != (remaining > 0) { resting = remaining > 0 }
+      if remaining == 0 { restEndsAt = nil }
+    }
+    if restAlarm.poll(now: now) { playRestHaptic() }
+    if restEndsAt == nil { scheduleRestTimer() }
+  }
+
+  /// One repeating timer while a rest runs, phased so that a tick lands on the
+  /// end date itself: the countdown changes on the second and the buzz is not up
+  /// to a second late. The active `HKWorkoutSession` keeps it firing with the
+  /// wrist down.
+  private func scheduleRestTimer() {
+    restTimer?.invalidate()
+    restTimer = nil
+    guard let end = restEndsAt else { return }
+    let left = end.timeIntervalSinceNow
+    guard left > 0 else { return }
+    let first = end.addingTimeInterval(-left.rounded(.down))
+    let timer = Timer(fire: first, interval: 1, repeats: true) { [weak self] _ in
+      Task { @MainActor in self?.restTick() }
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    restTimer = timer
+  }
+
+  private func playRestHaptic() {
+    WKInterfaceDevice.current().play(.notification)
   }
 
   // MARK: Mirroring — apply the phone's pushed state
@@ -202,7 +272,7 @@ final class WorkoutModel: ObservableObject {
     setDots = s.setDots
     nextSetLabel = s.nextSetLabel
     restTotal = s.restTotal
-    volumeKg = s.volumeKg
+    volume = s.volume
     setsDone = s.setsDone
     setsTotal = s.setsTotal
     summary = s.summary
@@ -216,17 +286,37 @@ final class WorkoutModel: ObservableObject {
     // that outranks the phone is a wrist mid-turn; that edit lands once the
     // Crown goes quiet, or when the set changes.
     let pushedEdit = !setChanged && !crownIsBusy && (s.weight != weight || s.reps != reps)
-    if setChanged || pushedEdit {
+    // A unit switch replaces the number outright, Crown or no Crown: the weight
+    // on screen is in the old unit, and relabelling it without replacing it
+    // would show (and log) pounds as kilograms.
+    let unitChanged = s.unit != nil && s.unit != unit
+    if let pushedUnit = s.unit { unit = pushedUnit }
+    if setChanged || pushedEdit || unitChanged {
       weight = s.weight
       reps = s.reps
-      if setChanged { lastCrownEdit = nil }
+      if setChanged || unitChanged { lastCrownEdit = nil }
       valueSeed &+= 1
     }
     exerciseName = s.exerciseName
     setNum = s.setNum
 
-    // Rest is fully phone-authoritative — pushed every second, displayed as-is.
-    resting = s.resting
-    restRemaining = s.restRemaining
+    // Rest is phone-authoritative: it says whether one is running and when it
+    // ends. With an end date the countdown is derived from it here; without one
+    // (nothing to count down to) the pushed seconds are displayed as-is.
+    let now = Date()
+    let end = s.resting ? s.restEndsAt : nil
+    let retimed = end != restEndsAt
+    restEndsAt = end
+    if end == nil {
+      resting = s.resting
+      restRemaining = s.restRemaining
+    }
+    // Every push goes through the alarm, which is what makes a repeated push
+    // harmless, a skip silent, and an adjusted rest buzz at its new end.
+    if restAlarm.update(resting: s.resting, endsAt: s.restEndsAt, alertsOn: s.restAlerts, now: now) {
+      playRestHaptic()
+    }
+    if end != nil { restTick() }
+    if retimed { scheduleRestTimer() }
   }
 }

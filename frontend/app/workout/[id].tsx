@@ -219,6 +219,10 @@ export default function ActiveWorkout() {
   // The rest alert is a scheduled notification, not an in-app sound: the JS timer
   // stops the moment iOS suspends the app, which is most of a real rest period.
   const [alertsEnabled, setAlertsEnabled] = useState(false);
+  // The bare `rest_timer_alerts` setting, for the Watch. Not `alertsEnabled`:
+  // that also needs notification permission, which the wrist's own haptic does
+  // not — declining the prompt should not silence the Watch.
+  const [restAlertsSetting, setRestAlertsSetting] = useState(false);
   const restAlertId = useRef<string | null>(null);
   const [openSetId, setOpenSetId] = useState<string | null>(null);
 
@@ -700,6 +704,7 @@ export default function ActiveWorkout() {
         const s = await getSettings();
         setHapticsEnabled(s.haptic_feedback);
         if (cancelled || !s.rest_timer_alerts) return;
+        setRestAlertsSetting(true);
         setAlertsEnabled(await ensureAlertPermission());
       } catch {
         // Unreachable server or a declined prompt: no alerts, no crash.
@@ -1090,7 +1095,15 @@ export default function ActiveWorkout() {
       buildWatchState(
         exercises,
         name || 'Workout',
-        { resting: restRemaining > 0, remaining: restRemaining, total: restTotal },
+        {
+          resting: restRemaining > 0,
+          remaining: restRemaining,
+          total: restTotal,
+          // The Watch buzzes off this date on its own clock, so the wrist is
+          // told the rest is up even while this screen's JS is suspended.
+          endsAt: restEndsAt,
+          alerts: restAlertsSetting,
+        },
         (sets, i) => resolveSet(sets[i], carryFor(sets, i)),
         startedAt,
         bwKg ?? 0,
@@ -1099,8 +1112,25 @@ export default function ActiveWorkout() {
       // Every set logged: push a completed snapshot so the Watch can offer its
       // end-of-workout actions. Skipping the push here left the wrist showing a
       // stale mid-workout state (#45 on the watch side).
-      buildFinishedWatchState(exercises, name || 'Workout', startedAt, bwKg ?? 0, countWarmups),
-    [exercises, name, restRemaining, restTotal, startedAt, bwKg, countWarmups],
+      buildFinishedWatchState(
+        exercises,
+        name || 'Workout',
+        startedAt,
+        bwKg ?? 0,
+        countWarmups,
+        restAlertsSetting,
+      ),
+    [
+      exercises,
+      name,
+      restRemaining,
+      restTotal,
+      restEndsAt,
+      restAlertsSetting,
+      startedAt,
+      bwKg,
+      countWarmups,
+    ],
   );
   const watchStateRef = useRef(watchState);
   watchStateRef.current = watchState;

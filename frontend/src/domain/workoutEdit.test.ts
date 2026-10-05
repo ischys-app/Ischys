@@ -10,6 +10,7 @@ import {
   buildPlan,
   canSave,
   clampWhen,
+  clampWhileTurning,
   cycleSetType,
   durationFromParts,
   durationParts,
@@ -430,6 +431,16 @@ test('a workout cannot end in the future either', () => {
   assert.equal(w.startedAt, start);
   assert.equal(w.durationSeconds, 30 * 60);
   assert.ok(endsAt(w.startedAt, w.durationSeconds) <= NOW);
+});
+
+test('a turning wheel holds the start back but never eats the duration', () => {
+  // Noon. Scrolling the day to today passes through "today at 18:00".
+  const sixPm = new Date(2026, 9, 5, 18, 0).getTime();
+  const w = clampWhileTurning({ startedAt: sixPm, durationSeconds: 6120 }, NOW);
+  assert.equal(w.startedAt, NOW);
+  assert.equal(w.durationSeconds, 6120);
+  // Confirming is where the end is checked.
+  assert.equal(clampWhen(w, NOW).durationSeconds, 60);
 });
 
 test('a duration is at least a minute and under a day', () => {

@@ -23,6 +23,7 @@ import type { Unit } from '../../domain/units';
 import {
   MONTH_NAMES,
   clampWhen,
+  clampWhileTurning,
   daysInMonth,
   durationFromParts,
   durationParts,
@@ -223,13 +224,17 @@ export function WhenSheet({ field, when, stored, onDone, onClose }: WhenSheetPro
   const [active, setActive] = useState<WhenField>(field ?? 'duration');
   const [draft, setDraft] = useState<When>(when);
 
-  // A fresh open starts from the working values and the tapped cell.
-  useEffect(() => {
-    if (field == null) return;
-    setActive(field);
-    setDraft(when);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field]);
+  // A fresh open starts from the working values and the tapped cell. Adjusted
+  // during render, not in an effect, so the wheels mount already in place
+  // instead of mounting on the last open's values and then scrolling.
+  const [seen, setSeen] = useState<WhenField | null>(field);
+  if (field !== seen) {
+    setSeen(field);
+    if (field != null) {
+      setActive(field);
+      setDraft(when);
+    }
+  }
 
   const parts = startParts(draft.startedAt);
   const length = durationParts(draft.durationSeconds);
@@ -242,8 +247,15 @@ export function WhenSheet({ field, when, stored, onDone, onClose }: WhenSheetPro
     [parts.year, parts.month],
   );
 
-  /** Every wheel change goes through the same rule: nothing in the future. */
-  const apply = (next: When) => setDraft(clampWhen(next, Date.now(), stored.durationSeconds));
+  /** Every wheel change goes through the same rule: no start in the future. */
+  const apply = (next: When) =>
+    setDraft(clampWhileTurning(next, Date.now(), stored.durationSeconds));
+  /** And on Done the end is held to now as well, by shortening the duration. */
+  const confirm = () => {
+    const untouched =
+      draft.startedAt === when.startedAt && draft.durationSeconds === when.durationSeconds;
+    onDone(untouched ? when : clampWhen(draft, Date.now(), stored.durationSeconds));
+  };
   const setStart = (patch: Partial<typeof parts>) =>
     apply({
       startedAt: startFromParts({ ...parts, ...patch }, stored.startedAt),
@@ -271,7 +283,7 @@ export function WhenSheet({ field, when, stored, onDone, onClose }: WhenSheetPro
       onClose={onClose}
       title="Date & time"
       body="Changing the date moves this workout in History."
-      primary={{ label: 'Done', onPress: () => onDone(draft) }}
+      primary={{ label: 'Done', onPress: confirm }}
       secondary={{ label: 'Cancel', onPress: onClose }}
     >
       <View style={styles.rows}>

@@ -692,6 +692,24 @@ export function clampWhen(when: When, now: number, storedDuration?: number): Whe
   return { startedAt, durationSeconds };
 }
 
+/**
+ * The rule while a wheel is still turning: only the start is held back.
+ *
+ * `clampWhen` also shortens a duration that would run past now, and doing that
+ * on every step would be destructive — scrolling the day to today passes
+ * through "today at 18:00", which at noon is the future, and the duration
+ * would be cut to a minute before the hour wheel was ever touched. So the
+ * duration is only kept inside the wheel's own range here, and the end is
+ * checked once, when the picker is confirmed.
+ */
+export function clampWhileTurning(when: When, now: number, storedDuration?: number): When {
+  const cap = when.durationSeconds === storedDuration ? Infinity : MAX_DURATION_SECONDS;
+  return {
+    startedAt: Math.min(when.startedAt, now),
+    durationSeconds: Math.min(cap, Math.max(MIN_DURATION_SECONDS, when.durationSeconds)),
+  };
+}
+
 export type StartParts = { year: number; month: number; day: number; hour: number; minute: number };
 
 /** A start as the wheels show it, in local time. `month` is 0-based. */

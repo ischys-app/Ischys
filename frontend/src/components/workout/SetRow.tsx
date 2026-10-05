@@ -178,25 +178,28 @@ export function SetRow({
             fit the 50pt height — so nothing reflows when one appears. */}
         {edit ? (
           // WAS, in PREV's own 1fr cell, so nothing reflows when it fills in.
-          <View style={styles.wasCell}>
-            {edit.onWasPress ? (
-              <Pressable
-                onPress={edit.onWasPress}
-                hitSlop={{ top: 14, bottom: 14 }}
-                accessibilityRole="button"
-                accessibilityLabel={`Set ${badge} was not ticked`}
-                accessibilityHint="Logs this set"
-              >
-                <Text style={styles.wasText} numberOfLines={1}>
-                  {edit.was}
-                </Text>
-              </Pressable>
-            ) : (
+          edit.onWasPress ? (
+            // The whole cell at the row's full height, as the live row does
+            // for its effort line: an 11.5px label is too small to aim at.
+            <Pressable
+              style={[styles.wasCell, styles.prevCellTap]}
+              onPress={edit.onWasPress}
+              hitSlop={PREV_TAP_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={`Set ${badge} was not ticked`}
+              accessibilityHint="Logs this set"
+            >
               <Text style={styles.wasText} numberOfLines={1}>
                 {edit.was}
               </Text>
-            )}
-          </View>
+            </Pressable>
+          ) : (
+            <View style={styles.wasCell}>
+              <Text style={styles.wasText} numberOfLines={1}>
+                {edit.was}
+              </Text>
+            </View>
+          )
         ) : effortTap ? (
           // A done row with ratings on: the whole cell, at the row's full
           // height, is the way in. Its two lines are 11-12px, far too small to

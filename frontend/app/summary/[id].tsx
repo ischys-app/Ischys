@@ -46,7 +46,9 @@ import { fmtDateOnly, fmtDuration } from '../../src/lib/format';
 import { maybeRequestReviewAfterFinish } from '../../src/lib/reviewPrompt';
 import { getSummary } from '../../src/lib/summaryCache';
 import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
+import { effortLabel, type EffortScaleKind } from '../../src/domain/effort';
 import { type Unit, volumeText, weightText } from '../../src/domain/units';
+import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
 
@@ -63,8 +65,12 @@ function formatWhen(startedAt: string, endedAt: string | null | undefined): stri
   return `${dateStr} · ${start} – ${hhmm(endedAt)}`;
 }
 
-/** Pick the "best" set for the row subtitle. Stored kilograms, shown in `unit`. */
-function bestSetLine(sets: WorkoutSetOut[], unit: Unit): string {
+/**
+ * Pick the "best" set for the row subtitle. Stored kilograms, shown in `unit`.
+ * With effort ratings on, a rated best set carries its rating as a suffix —
+ * "68 × 5 @9" — and an unrated one reads exactly as before.
+ */
+function bestSetLine(sets: WorkoutSetOut[], unit: Unit, effort: EffortScaleKind | null): string {
   const working = sets.filter((s) => s.done && s.type !== 'warmup');
   if (working.length === 0) return `${sets.filter((s) => s.done).length} sets`;
   let best = working[0];
@@ -75,7 +81,8 @@ function bestSetLine(sets: WorkoutSetOut[], unit: Unit): string {
   }
   const w = best.weight == null ? 'BW' : `${weightText(best.weight, unit)}${unit}`;
   const r = best.reps ?? 0;
-  return `Best set · ${w} × ${r}`;
+  const rated = effort && best.rpe != null ? ` ${effortLabel(best.rpe, effort)}` : '';
+  return `Best set · ${w} × ${r}${rated}`;
 }
 
 /** Compute a degraded volume-by-muscle from a WorkoutOut for the fallback view. */
@@ -163,6 +170,8 @@ export default function WorkoutSummary() {
   const params = useLocalSearchParams<{ id: string; justFinished?: string }>();
   const workoutId = Array.isArray(params.id) ? params.id[0] : params.id;
   const unit = useWeightUnit();
+  const effortMode = useEffortMode();
+  const effortKind = effortMode === 'off' ? null : effortMode;
   const justFinished =
     (Array.isArray(params.justFinished) ? params.justFinished[0] : params.justFinished) === '1';
 
@@ -527,7 +536,7 @@ export default function WorkoutSummary() {
                   <Text style={styles.exerciseName} numberOfLines={1} ellipsizeMode="tail">
                     {we.exercise.name}
                   </Text>
-                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets, unit)}</Text>
+                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets, unit, effortKind)}</Text>
                 </View>
                 {anyPr && <StarIcon size={15} color={color.success} strokeWidth={2.4} />}
                 <Text style={styles.exerciseSetCount}>{`${we.sets.length} sets`}</Text>

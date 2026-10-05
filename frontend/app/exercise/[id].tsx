@@ -44,6 +44,8 @@ import {
 import { getChartRange, setChartRange } from '../../src/lib/chartRangePref';
 import { recordDisplay } from '../../src/domain/records';
 import { type Unit, formatWeight, volumeToDisplay } from '../../src/domain/units';
+import { effortValue } from '../../src/domain/effort';
+import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { PressableScale } from '../../src/components/PressableScale';
 import { pickerIsActive, pickerIsSelected, pickerToggle } from '../../src/lib/exercisePicker';
@@ -356,16 +358,34 @@ function fmtSetValue(s: HistorySetOut, unit: Unit): string {
 
 function HistoryTab({ history }: { history: HistorySessionOut[] }) {
   const unit = useWeightUnit();
+  // Effort per set (#84): a column on the right, blank for an unrated set and
+  // absent altogether with the setting Off or in a session nobody rated.
+  const effortMode = useEffortMode();
+  const effortKind = effortMode === 'off' ? null : effortMode;
   if (history.length === 0) {
     return <Text style={styles.emptyHistory}>No history yet.</Text>;
   }
   return (
     <View style={styles.historyCol}>
-      {history.map((session) => (
+      {history.map((session) => {
+        const rated = effortKind != null && session.sets.some((s) => s.rpe != null);
+        return (
         <View key={session.workout_id} style={styles.sessionCard}>
           <View style={styles.sessionHeader}>
             <Text style={styles.sessionDate}>{fmtDateOnly(session.date)}</Text>
-            {session.has_pr ? (
+            {rated ? (
+              // The scale's name heads the column below it, so the rows can
+              // hold bare numbers; a PR pill keeps its place just before it.
+              <View style={styles.sessionRight}>
+                {session.has_pr ? (
+                  <View style={styles.prPill}>
+                    <StarIcon size={13} color={color.success} strokeWidth={2.4} />
+                    <Text style={styles.prText}>PR</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.effortHead}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
+              </View>
+            ) : session.has_pr ? (
               <View style={styles.prPill}>
                 <StarIcon size={13} color={color.success} strokeWidth={2.4} />
                 <Text style={styles.prText}>PR</Text>
@@ -382,11 +402,15 @@ function HistoryTab({ history }: { history: HistorySessionOut[] }) {
                     <Text style={styles.bestText}>BEST</Text>
                   </View>
                 ) : null}
+                {rated && effortKind && s.rpe != null ? (
+                  <Text style={styles.effortCell}>{effortValue(s.rpe, effortKind)}</Text>
+                ) : null}
               </View>
             ))}
           </View>
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -926,6 +950,20 @@ const styles = StyleSheet.create({
     fontFamily: font.monoRegular,
     fontSize: 10,
     color: color.accent,
+  },
+  // Effort column (board 14a, decision D): right-aligned, text3.
+  sessionRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  effortHead: {
+    fontFamily: font.monoRegular,
+    fontSize: 11,
+    color: color.text3,
+  },
+  effortCell: {
+    marginLeft: 'auto',
+    fontFamily: font.monoRegular,
+    fontSize: 13,
+    color: color.text3,
+    fontVariant: ['tabular-nums'],
   },
 
   // Charts ------------------------------------------------------------

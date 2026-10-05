@@ -4,7 +4,7 @@
  */
 import { and, eq, inArray, like, sql } from 'drizzle-orm';
 
-import { atomically, db } from '../db/client';
+import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
 import type {
   CategoryOut,
@@ -496,9 +496,9 @@ export async function buildManualGroup(ids: string[]): Promise<MergeGroupView | 
 }
 
 /** Ids referenced by a live (active) workout, among the given set. */
-async function activelyReferenced(ids: string[]): Promise<Set<string>> {
+async function activelyReferenced(ids: string[], ex: Executor = db): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
-  const rows = await db
+  const rows = await ex
     .select({ exerciseId: schema.workoutExercises.exerciseId })
     .from(schema.workoutExercises)
     .innerJoin(schema.workouts, eq(schema.workouts.id, schema.workoutExercises.workoutId))
@@ -527,10 +527,6 @@ export async function mergeExercises(
   )[0];
   if (!survivorRow) throw new Error('survivor not found');
 
-  // Mid-workout guard — never re-point rows underneath a live session.
-  const active = await activelyReferenced([survivorId, ...losers]);
-  if (active.size > 0) throw new ActiveSessionError();
-
   // How many logged sets belong to the discarded rows (for the receipt).
   const loserStats = await exerciseStats(losers);
   const setsMoved = losers.reduce((sum, id) => sum + (loserStats.get(id)?.setCount ?? 0), 0);
@@ -551,6 +547,12 @@ export async function mergeExercises(
   const countWarmups = await getCountWarmups();
 
   await atomically(async (tx) => {
+    // Mid-workout guard — never re-point rows underneath a live session. Asked
+    // inside the unit that re-points them: asked before it, a workout started
+    // during the SecureStore waits above went unseen.
+    const active = await activelyReferenced([survivorId, ...losers], tx);
+    if (active.size > 0) throw new ActiveSessionError();
+
     const baseline = await currentValues(survivorId, tx);
     const now = nowMs();
 

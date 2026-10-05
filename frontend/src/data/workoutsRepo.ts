@@ -522,34 +522,16 @@ export async function uploadHeartRate(
 // --- Finish (aggregates + PR detection + summary) ---
 
 export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
-  const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, wid)))[0];
-  if (!w) throw new Error('workout not found');
-  // Only an active session can be finished — guards both an already-completed
-  // workout and a discarded one (whose ended_at would skew the duration).
-  if (w.status !== 'active') throw new Error(`workout not active (${w.status})`);
-
-  const wes = await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
-  const exerciseIds = [...new Set(wes.map((we) => we.exerciseId))];
-  const weIds = wes.map((we) => we.id);
-  const allSets = (weIds.length
-    ? ((await db.select().from(schema.workoutSets).where(inArray(schema.workoutSets.workoutExerciseId, weIds))) as WorkoutSetRow[])
-    : []);
-
   // Bodyweight movements count their mover's mass toward volume. Snapshot the
   // current bodyweight onto the workout so its volume is fixed at the mass it was
   // performed at, and use it for this finish's totals + PR recompute.
+  //
+  // Read first, with whether warmups count toward volume: the transaction's
+  // body may await nothing but database statements (db/atomic.ts), and
+  // SecureStore really waits.
   const currentBw = await getBodyweightKg();
-  // Whether warmups count toward volume — resolved BEFORE the transaction (a
-  // SecureStore read inside an expo-sqlite transaction hangs it), threaded down.
   const countWarmups = await getCountWarmups();
-  const kindRows = exerciseIds.length
-    ? await db.select({ id: schema.exercises.id, kind: schema.exercises.kind }).from(schema.exercises).where(inArray(schema.exercises.id, exerciseIds))
-    : [];
-  const kindByExerciseId = new Map(kindRows.map((e) => [e.id, e.kind as 'weighted' | 'bodyweight']));
-  const kindByWeId = new Map(wes.map((we) => [we.id, kindByExerciseId.get(we.exerciseId)]));
-  const setLike = (s: WorkoutSetRow): SetLike => asSetLike(s, kindByWeId.get(s.workoutExerciseId));
 
-  const setIds = new Set(allSets.map((s) => s.id));
   const prs: {
     exerciseId: string;
     metric: RecordMetric;
@@ -561,7 +543,34 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   // Atomic: mark completed, materialise PRs, flag PR sets, and write prCount as one
   // unit. Otherwise a crash mid-finish leaves a completed workout with wrong/zero
   // prCount that the `status !== 'active'` guard makes unrepairable.
-  await atomically(async (tx) => {
+  //
+  // The status check and the reads of what was logged are in the same unit.
+  // Outside it, with the waits above in between, two finishes both saw
+  // `active` (the second found no new records and wrote prCount 0 over the
+  // first's), and a set changed during the wait was missing from the totals.
+  const { wes, exerciseIds, allSets, kindByWeId } = await atomically(async (tx) => {
+    const w = (await tx.select().from(schema.workouts).where(eq(schema.workouts.id, wid)))[0];
+    if (!w) throw new Error('workout not found');
+    // Only an active session can be finished — guards both an already-completed
+    // workout and a discarded one (whose ended_at would skew the duration).
+    if (w.status !== 'active') throw new Error(`workout not active (${w.status})`);
+
+    const wes = await tx.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
+    const exerciseIds = [...new Set(wes.map((we) => we.exerciseId))];
+    const weIds = wes.map((we) => we.id);
+    const allSets = (weIds.length
+      ? ((await tx.select().from(schema.workoutSets).where(inArray(schema.workoutSets.workoutExerciseId, weIds))) as WorkoutSetRow[])
+      : []);
+
+    const kindRows = exerciseIds.length
+      ? await tx.select({ id: schema.exercises.id, kind: schema.exercises.kind }).from(schema.exercises).where(inArray(schema.exercises.id, exerciseIds))
+      : [];
+    const kindByExerciseId = new Map(kindRows.map((e) => [e.id, e.kind as 'weighted' | 'bodyweight']));
+    const kindByWeId = new Map(wes.map((we) => [we.id, kindByExerciseId.get(we.exerciseId)]));
+    const setLike = (s: WorkoutSetRow): SetLike => asSetLike(s, kindByWeId.get(s.workoutExerciseId));
+
+    const setIds = new Set(allSets.map((s) => s.id));
+
     // Snapshot each exercise's PR baseline BEFORE this workout counts as completed.
     const baselines = new Map<string, Awaited<ReturnType<typeof currentValues>>>();
     for (const eid of exerciseIds) baselines.set(eid, await currentValues(eid, tx));
@@ -603,6 +612,7 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
       }
     }
     await tx.update(schema.workouts).set({ prCount: prs.length, updatedAt: nowMs() }).where(eq(schema.workouts.id, wid));
+    return { wes, exerciseIds, allSets, kindByWeId };
   });
 
   // Assemble the summary.

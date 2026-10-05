@@ -18,7 +18,7 @@ import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { AppState, View } from 'react-native';
+import { Alert, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -40,6 +40,7 @@ import { usePrFlagBackfill } from '../src/data/prBackfill';
 import { applyPendingCardActions } from '../src/lib/liveActivityBridge';
 import {
   consumeWatchActions,
+  ensureWatchSaveListener,
   onWatchAction,
   pushWatchState,
   setWatchThemeId,
@@ -48,7 +49,7 @@ import {
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
-import { notifyWatchFinished, routeWatchFinish } from '../src/lib/watchFinish';
+import { completesWorkout, notifyWatchFinished, routeWatchFinish } from '../src/lib/watchFinish';
 import { parseServerDate } from '../src/lib/serverTime';
 import { color } from '../src/theme/tokens';
 
@@ -145,31 +146,67 @@ function useWatchStart() {
  */
 function useWatchFinish() {
   useEffect(() => {
+    // One finish at a time: the queue drained at launch and a live message can
+    // both carry the same one. Only finishes take the turn, so the Watch's
+    // other messages, which all arrive here too, cannot make one be dropped.
+    let applying = false;
     const apply = async (action: string) => {
+      if (!completesWorkout(action)) return;
+      if (applying) return;
+      applying = true;
       try {
         const [active] = await listWorkouts({ status: 'active', limit: 1 });
         if (routeWatchFinish(action, active?.id ?? null) !== 'fallback' || !active) return;
 
-        void LiveActivity.end();
-        forgetActiveWorkout();
-        clearRest(active.id);
-
         if (action === 'discard') {
+          void LiveActivity.end();
+          forgetActiveWorkout();
+          clearRest(active.id);
           await discardWorkout(active.id);
           notifyWatchFinished(active.id);
           return;
         }
+
+        // The write first. Everything after it belongs to a workout that is
+        // over, and until the write has succeeded this one is not: taking the
+        // Live Activity, the rest timer and the reopen pointer away before it
+        // left a workout that failed to finish running without them.
+        const finishBeganAt = Date.now();
+        // The one step ahead of the write: listen for the Watch's "saved"
+        // message, which it sends about now and which the Health sync below
+        // would otherwise start listening for too late.
+        ensureWatchSaveListener();
+        let summary: Awaited<ReturnType<typeof finishWorkout>>;
+        try {
+          summary = await finishWorkout(active.id);
+        } catch {
+          // Still active on the phone, with all of the above in place, and
+          // resumable from Home. The Watch cannot be told from here: it ended
+          // its session and went to its Start screen when Finish was tapped,
+          // and only a mounted workout screen has the state to send it back
+          // (it does so, and restarts the session, when the workout is opened).
+          Alert.alert(
+            'Couldn’t finish workout',
+            'Nothing was changed. Open the workout and try again.',
+          );
+          return;
+        }
+        void LiveActivity.end();
+        forgetActiveWorkout();
+        clearRest(active.id);
         // The Watch ran the session, so it is the primary writer of the
         // HKWorkout; this verifies that save rather than duplicating it.
         const startedAt = parseServerDate(active.started_at);
         if (!Number.isNaN(startedAt)) {
-          void syncFinishedWorkout(active.id, startedAt, Date.now(), true);
+          void syncFinishedWorkout(active.id, startedAt, finishBeganAt, true, finishBeganAt);
         }
-        saveSummary(active.id, await finishWorkout(active.id));
+        saveSummary(active.id, summary);
         notifyWatchFinished(active.id);
       } catch {
         // Best-effort: a finish we couldn't apply leaves the workout active and
         // resumable, which is the state the user was already in.
+      } finally {
+        applying = false;
       }
     };
 

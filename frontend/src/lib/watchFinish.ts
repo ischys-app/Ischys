@@ -35,6 +35,11 @@ export type WatchFinishRoute = 'screen' | 'fallback' | 'ignore';
  *  mounted workout screen, so the fallback must never act on it. */
 const COMPLETING_ACTIONS = new Set(['end', 'discard']);
 
+/** Whether a Watch action ends the workout (Finish or Discard) rather than acting within it. */
+export function completesWorkout(action: string): boolean {
+  return COMPLETING_ACTIONS.has(action);
+}
+
 /**
  * Called by the workout screen while it is mounted. The returned release is
  * unmount-safe: it only clears the claim if this claim is still the current one,

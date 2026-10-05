@@ -83,8 +83,15 @@ let lastWatchSaveUuid: string | null = null;
 let notifyWatchSaved: (() => void) | null = null;
 let watchSaveListening = false;
 
-/** Subscribe once (app-lifetime) to the Watch's save confirmation. */
-function ensureWatchSaveListener(): void {
+/**
+ * Subscribe once (app-lifetime) to the Watch's save confirmation.
+ *
+ * A finish calls this before it writes to the database, and only syncs to
+ * Health once that write has succeeded. A Watch that ended the session itself
+ * confirms its save while the write is still running, and with nothing
+ * listening yet that confirmation would be lost.
+ */
+export function ensureWatchSaveListener(): void {
   if (watchSaveListening) return;
   watchSaveListening = true;
   Health.addWatchActionListener((a) => {
@@ -138,12 +145,16 @@ export async function syncFinishedWorkout(
    *  writes the workout itself if the Watch never confirms, so a finished workout
    *  is never silently lost. */
   watchWasActive = false,
+  /** When the finish began, if that was before this call (the database write
+   *  comes first). A Watch confirmation from then on is this session's, so one
+   *  that landed during the write still counts. */
+  finishBeganAtMs = Date.now(),
 ): Promise<void> {
   try {
     if (!Health.isAvailable()) return;
     // Begin listening for the Watch's save confirmation immediately, before any
     // await, so a fast confirmation can't slip past while we read prefs/metrics.
-    const finishedAt = Date.now();
+    const finishedAt = finishBeganAtMs;
     let watchSavePromise: Promise<boolean> = Promise.resolve(false);
     if (watchWasActive) {
       ensureWatchSaveListener();

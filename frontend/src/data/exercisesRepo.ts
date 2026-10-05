@@ -4,7 +4,7 @@
  */
 import { and, eq, inArray, like, sql } from 'drizzle-orm';
 
-import { db } from '../db/client';
+import { atomically, db } from '../db/client';
 import * as schema from '../db/schema';
 import type {
   CategoryOut,
@@ -91,25 +91,27 @@ export async function createExercise(body: {
   how_to_steps?: string[] | null;
 }): Promise<ExerciseOut> {
   const id = newId();
-  await db.insert(schema.exercises).values({
-    id,
-    userId: LOCAL_USER_ID,
-    name: body.name,
-    initials: initialsOf(body.name),
-    kind: body.kind,
-    equipment: body.equipment,
-    categoryId: body.category_id ?? null,
-    primaryMuscleId: body.primary_muscle_id ?? null,
-    howToSteps: body.how_to_steps ?? null,
-    isCustom: 1,
-    updatedAt: nowMs(),
+  await atomically(async () => {
+    await db.insert(schema.exercises).values({
+      id,
+      userId: LOCAL_USER_ID,
+      name: body.name,
+      initials: initialsOf(body.name),
+      kind: body.kind,
+      equipment: body.equipment,
+      categoryId: body.category_id ?? null,
+      primaryMuscleId: body.primary_muscle_id ?? null,
+      howToSteps: body.how_to_steps ?? null,
+      isCustom: 1,
+      updatedAt: nowMs(),
+    });
+    const secondary = body.secondary_muscle_ids ?? [];
+    if (secondary.length) {
+      await db
+        .insert(schema.exerciseSecondaryMuscles)
+        .values(secondary.map((muscleId) => ({ exerciseId: id, muscleId })));
+    }
   });
-  const secondary = body.secondary_muscle_ids ?? [];
-  if (secondary.length) {
-    await db
-      .insert(schema.exerciseSecondaryMuscles)
-      .values(secondary.map((muscleId) => ({ exerciseId: id, muscleId })));
-  }
   return getExercise(id);
 }
 
@@ -548,7 +550,7 @@ export async function mergeExercises(
   const currentBw = await getBodyweightKg();
   const countWarmups = await getCountWarmups();
 
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     const baseline = await currentValues(survivorId, tx);
     const now = nowMs();
 

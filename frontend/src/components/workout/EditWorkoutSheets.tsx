@@ -189,7 +189,16 @@ function Wheel({ items, index, onChange, width, accessibilityLabel }: WheelProps
             ref.current?.scrollTo({ y: i * WHEEL_ITEM, animated: true });
           }}
         >
-          <Text style={i === shown ? styles.wheelSelected : styles.wheelText}>{label}</Text>
+          {/* The board shows the selection and one row either side; further
+              rows would be cut in half by the wheel's edge, over the ENDS line. */}
+          <Text
+            style={[
+              i === shown ? styles.wheelSelected : styles.wheelText,
+              Math.abs(i - shown) > 1 && styles.wheelFar,
+            ]}
+          >
+            {label}
+          </Text>
         </Pressable>
       ))}
     </ScrollView>
@@ -567,6 +576,7 @@ const styles = StyleSheet.create({
     color: color.text3,
     fontVariant: tabular,
   },
+  wheelFar: { opacity: 0 },
   wheelSelected: {
     fontFamily: font.monoSemi,
     fontSize: 20,

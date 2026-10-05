@@ -36,6 +36,7 @@ import { getThemeId } from '../src/lib/themePref';
 import { setEffortMode } from '../src/lib/effortMode';
 import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
+import { usePrFlagBackfill } from '../src/data/prBackfill';
 import { applyPendingCardActions } from '../src/lib/liveActivityBridge';
 import {
   consumeWatchActions,
@@ -189,6 +190,7 @@ export default function RootLayout() {
   // Phase 0: build + seed the on-device DB at startup. Nothing reads from it
   // yet (the app is still server-backed); this only guarantees it exists.
   const dbBootstrap = useLocalDbBootstrap();
+  usePrFlagBackfill(dbBootstrap.ready);
 
   // Cache the haptic preference at startup; screens fire haptics before the
   // workout or settings screen would sync it.

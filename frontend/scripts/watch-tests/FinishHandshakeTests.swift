@@ -161,6 +161,53 @@ check("a delivery failure after the answer is ignored") {
   return h.undeliverable(id: "a") == .none
 }
 
+check("a delivery failure after the timeout queues the request") {
+  // Reachability was stale as the phone went out of range, and the error came
+  // back after the Watch had given up, ended and saved. The phone never heard
+  // of the finish, so the request is queued. Nothing is ended twice.
+  var h = waiting()
+  _ = h.poll(now: at(timeout))
+  return h.undeliverable(id: "a") == .queueRequest && !h.isWaiting
+}
+
+check("a delivery failure after the timeout queues the request once") {
+  var h = waiting()
+  _ = h.poll(now: at(timeout))
+  _ = h.undeliverable(id: "a")
+  return h.undeliverable(id: "a") == .none
+}
+
+check("the session ending after the timeout does not forget the request") {
+  // Giving up ends the session, and the session ending settles the handshake
+  // (`cancel`). The delivery failure arrives after both.
+  var h = waiting()
+  _ = h.poll(now: at(timeout))
+  h.cancel()
+  return h.undeliverable(id: "a") == .queueRequest
+}
+
+check("a delivery failure after the timeout for another request is ignored") {
+  var h = waiting()
+  _ = h.poll(now: at(timeout))
+  return h.undeliverable(id: "old") == .none
+    // And the one given up on is still remembered.
+    && h.undeliverable(id: "a") == .queueRequest
+}
+
+check("an answer after the timeout means the request was delivered") {
+  // The phone answered, late: it has the request. A delivery failure reported
+  // for it afterwards must not queue a second one.
+  var h = waiting()
+  _ = h.poll(now: at(timeout))
+  return h.verdict(.finished, id: "a") == .none && h.undeliverable(id: "a") == .none
+}
+
+check("a request that was answered in time is not queued by a late failure") {
+  var h = waiting()
+  _ = h.verdict(.finished, id: "a")
+  return h.undeliverable(id: "a") == .none
+}
+
 // MARK: The session ended some other way
 
 check("the phone ending the workout settles the wait") {
@@ -171,6 +218,29 @@ check("the phone ending the workout settles the wait") {
     && h.poll(now: at(timeout)) == .none
     && h.verdict(.finished, id: "a") == .none
     && h.verdict(.failed, id: "a") == .none
+}
+
+check("begin after cancel") {
+  // The next workout's Finish, after the phone closed the last one mid-wait.
+  var h = waiting()
+  h.cancel()
+  return h.begin(id: "b", now: at(60), phoneReachable: true) == .ask
+    && h.isWaiting
+    && h.deadline == at(60 + timeout)
+    // The cancelled request is gone for good: nothing about it acts.
+    && h.verdict(.finished, id: "a") == .none
+    && h.undeliverable(id: "a") == .none
+    && h.verdict(.finished, id: "b") == .endAndSave
+}
+
+check("a new request forgets the one given up on") {
+  // Its delivery failure, arriving during the next workout's finish, must not
+  // queue a finish that would land on that workout.
+  var h = waiting()
+  _ = h.poll(now: at(timeout))
+  h.cancel()
+  _ = h.begin(id: "b", now: at(600), phoneReachable: true)
+  return h.undeliverable(id: "a") == .none && h.isWaiting
 }
 
 if failures > 0 {

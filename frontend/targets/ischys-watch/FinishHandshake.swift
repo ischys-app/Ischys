@@ -60,12 +60,22 @@ struct FinishHandshake {
     case endAndQueueRequest
     /// The finish failed on the phone. Leave the session running and say so.
     case keepRecording
+    /// Queue the finish request and nothing else: the session was already
+    /// ended and saved when the wait ran out, and only now is it known that
+    /// the phone never got the request.
+    case queueRequest
   }
 
   /// The request being waited on, if any.
   private var pending: String?
   /// When to stop waiting. nil when not waiting.
   private(set) var deadline: Date?
+  /// The request the wait ran out on, until it is known whether the phone got
+  /// it. A delivery failure can be reported after the timeout (reachability
+  /// was stale as the phone went out of range), and by then the Watch has
+  /// ended and saved with nothing queued: without this the phone would never
+  /// hear of the finish and would keep the workout running.
+  private var gaveUpOn: String?
 
   var isWaiting: Bool { pending != nil }
 
@@ -78,11 +88,16 @@ struct FinishHandshake {
     guard phoneReachable else { return .endNow }
     pending = id
     deadline = now.addingTimeInterval(Self.verdictTimeout)
+    // A new request: the last one's delivery is no longer of interest, and a
+    // finish queued for it now would land on this workout.
+    gaveUpOn = nil
     return .ask
   }
 
   /// The phone answered request `id`.
   mutating func verdict(_ verdict: Verdict, id: String) -> Step {
+    // An answer, however late, means the phone has the request.
+    if id == gaveUpOn { gaveUpOn = nil }
     guard id == pending else { return .none }
     settle()
     switch verdict {
@@ -93,13 +108,19 @@ struct FinishHandshake {
 
   /// Feed a clock tick. Ends the wait once the deadline has passed.
   mutating func poll(now: Date) -> Step {
-    guard let deadline, now >= deadline else { return .none }
+    guard let pending, let deadline else { return .none }
+    guard now >= deadline else { return .none }
     settle()
+    gaveUpOn = pending
     return .endAndSave
   }
 
   /// Request `id` could not be delivered after all, so no answer is coming.
   mutating func undeliverable(id: String) -> Step {
+    if id == gaveUpOn {
+      gaveUpOn = nil
+      return .queueRequest
+    }
     guard id == pending else { return .none }
     settle()
     return .endAndQueueRequest
@@ -107,6 +128,9 @@ struct FinishHandshake {
 
   /// The session ended some other way — the phone finished or discarded the
   /// workout itself — so there is nothing left to wait for.
+  ///
+  /// A request already given up on is kept: giving up ends the session, which
+  /// is what calls this, and its delivery failure may still be on the way.
   mutating func cancel() { settle() }
 
   private mutating func settle() {

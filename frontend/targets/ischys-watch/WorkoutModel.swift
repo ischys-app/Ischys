@@ -326,6 +326,10 @@ final class WorkoutModel: ObservableObject {
       finishing = false
       finishFailed = true
       WKInterfaceDevice.current().play(.failure)
+    case .queueRequest:
+      // The session was ended and saved when the wait ran out. Only the
+      // request is still owed to the phone.
+      PhoneLink.shared.queueEndWorkout()
     }
   }
 

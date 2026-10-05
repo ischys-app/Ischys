@@ -19,6 +19,7 @@ import {
   BackHandler,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
@@ -39,6 +40,10 @@ import {
   type WhenField,
 } from '../../../src/components/workout/EditWorkoutSheets';
 import { ExerciseCard } from '../../../src/components/workout/ExerciseCard';
+import {
+  REMOVED_ROW_HEIGHT,
+  RemovedExerciseRow,
+} from '../../../src/components/workout/RemovedExerciseRow';
 import { ReorderExercises } from '../../../src/components/workout/ReorderExercises';
 import { SupersetSheet } from '../../../src/components/workout/SupersetSheet';
 import { newId } from '../../../src/data/ids';
@@ -47,9 +52,7 @@ import {
   loadWorkoutForEdit,
   saveWorkoutEdit,
 } from '../../../src/data/workoutEditRepo';
-import { groupLabels } from '../../../src/domain/supersets';
 import {
-  activeExercises,
   addExercise,
   addSet,
   buildPlan,
@@ -58,6 +61,7 @@ import {
   editSetReps,
   editSetWeight,
   exerciseHint,
+  exerciseRows,
   fmtCellDate,
   fmtClock,
   fmtHoursMinutes,
@@ -70,7 +74,6 @@ import {
   recordsPending,
   removeExercise,
   removeSet,
-  removedExercises,
   reorderExercises,
   replaceExercise,
   setWhen,
@@ -109,6 +112,20 @@ function HeaderFade() {
 }
 
 const noop = () => {};
+
+/**
+ * Where a superset's rail starts and stops on each partner (E11): beside the
+ * label on the first, across the 10pt gap between partners, and 6pt short of
+ * the last one's foot.
+ */
+const RAIL = { underLabel: 9, fromAbove: -10, intoBelow: -14, end: 6 };
+
+/** A card folding down to its removed row, or back: the list below slides. */
+const COLLAPSE = LayoutAnimation.create(
+  220,
+  LayoutAnimation.Types.easeInEaseOut,
+  LayoutAnimation.Properties.opacity,
+);
 
 export default function EditWorkout() {
   const router = useRouter();
@@ -179,8 +196,9 @@ export default function EditWorkout() {
   // Also false while a set is half-typed or an exercise has no sets: the row
   // or the card says what is missing.
   const savable = !!plan && planCanSave(plan);
-  const cards = useMemo(() => (session ? activeExercises(session) : []), [session]);
-  const removed = useMemo(() => (session ? removedExercises(session) : []), [session]);
+  // The list top to bottom: cards, and the rows removed ones left in place.
+  const rows = useMemo(() => (session ? exerciseRows(session) : []), [session]);
+  const cards = useMemo(() => rows.filter((r) => !r.removed).map((r) => r.exercise), [rows]);
   const impact = useMemo(
     () => (session && records ? recordImpact(session, records) : []),
     [session, records],
@@ -341,33 +359,41 @@ export default function EditWorkout() {
     router.push('/exercise-library?pick=1');
   };
 
-  // --- supersets --------------------------------------------------------------
+  // --- removing an exercise, in place (13b) -----------------------------------
 
-  const ssLabels = useMemo(
-    () =>
-      groupLabels(
-        cards.map((e) => ({ id: e.id, supersetGroup: e.supersetGroup, rest: e.rest, sets: [] })),
-      ),
-    [cards],
-  );
-  const partnersOf = (exId: string) => {
-    const me = cards.find((e) => e.id === exId);
-    if (!me || me.supersetGroup == null) return [];
-    return cards.filter((e) => e.supersetGroup === me.supersetGroup);
+  /** Where the list is scrolled to, and how much of it there is. */
+  const scroll = useRef({ y: 0, viewport: 0, content: 0 });
+  const cardHeights = useRef(new Map<string, number>());
+  /**
+   * Extra room under the list. A card collapsing near the bottom leaves the
+   * list too short for where it is scrolled to; the scroll view would pull
+   * everything down to fit, and the row would jump away from the thumb that
+   * just tapped Remove. This holds the scroll position valid instead, so the
+   * row's top edge stays put, and is let go once the user scrolls on.
+   */
+  const [tail, setTail] = useState(0);
+
+  const collapse = (exId: string) => {
+    setOpenMenuId(null);
+    const { y, viewport, content } = scroll.current;
+    const lost = Math.max(0, (cardHeights.current.get(exId) ?? 0) - REMOVED_ROW_HEIGHT);
+    const over = y - Math.max(0, content - lost - viewport);
+    LayoutAnimation.configureNext(COLLAPSE);
+    if (over > 0) setTail((t) => t + over);
+    edit((s) => removeExercise(s, exId));
   };
-  /** "A1" / "A2" — letter of the group, index within it. */
-  const supersetTagFor = (exId: string): string | null => {
-    const partners = partnersOf(exId);
-    const letter = partners.length ? ssLabels.get(partners[0].supersetGroup as number) : null;
-    return letter ? `${letter}${partners.findIndex((e) => e.id === exId) + 1}` : null;
+
+  const restore = (exId: string) => {
+    LayoutAnimation.configureNext(COLLAPSE);
+    edit((s) => undoRemoveExercise(s, exId));
   };
-  /** One header per group. Rounds are a count here: every one of them is done. */
-  const supersetHeaderFor = (exId: string): string | null => {
-    const partners = partnersOf(exId);
-    if (partners.length < 2 || partners[0].id !== exId) return null;
-    const letter = ssLabels.get(partners[0].supersetGroup as number);
-    const rounds = Math.max(...partners.map((p) => p.sets.filter((x) => x.type === 'normal').length));
-    return `SUPERSET ${letter} · ${rounds} ${rounds === 1 ? 'ROUND' : 'ROUNDS'}`;
+
+  /** Once scrolling settles, keep only as much of the tail as still holds it there. */
+  const releaseTail = () => {
+    if (tail === 0) return;
+    const { y, viewport, content } = scroll.current;
+    const needed = Math.max(0, y - Math.max(0, content - tail - viewport));
+    if (needed < tail) setTail(needed);
   };
 
   // --- render ----------------------------------------------------------------
@@ -397,12 +423,27 @@ export default function EditWorkout() {
             styles.content,
             {
               paddingTop: headerHeight + CONTENT_GAP,
-              paddingBottom: 40 + insets.bottom,
+              paddingBottom: 40 + insets.bottom + tail,
             },
           ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            scroll.current.y = e.nativeEvent.contentOffset.y;
+          }}
+          onLayout={(e) => {
+            scroll.current.viewport = e.nativeEvent.layout.height;
+          }}
+          onContentSizeChange={(_, height) => {
+            scroll.current.content = height;
+          }}
+          onScrollEndDrag={(e) => {
+            // No fling: there will be no momentum event to settle on.
+            if (Math.abs(e.nativeEvent.velocity?.y ?? 0) < 0.05) releaseTail();
+          }}
+          onMomentumScrollEnd={releaseTail}
         >
           {!session && !missing && (
             <View style={styles.loading}>
@@ -444,100 +485,122 @@ export default function EditWorkout() {
               </View>
 
               <View style={styles.list}>
-                {cards.map((ex) => (
-                  <View key={ex.id} style={ex.supersetGroup != null ? styles.ssMember : undefined}>
-                    {supersetHeaderFor(ex.id) ? (
-                      <Text style={styles.ssHeader}>{supersetHeaderFor(ex.id)}</Text>
-                    ) : null}
-                    {ex.supersetGroup != null ? <View style={styles.ssRail} /> : null}
-                    <ExerciseCard
-                      exercise={ex}
-                      unit={session.unit}
-                      menuOpen={openMenuId === ex.id}
-                      onToggleMenu={() => setOpenMenuId((id) => (id === ex.id ? null : ex.id))}
-                      onReorderStart={() => {
-                        setOpenMenuId(null);
-                        Keyboard.dismiss();
-                        setReordering(true);
-                      }}
-                      onReplace={() => openLibrary(ex.id)}
-                      onSuperset={
-                        cards.length < 2
-                          ? undefined
-                          : () => {
+                {rows.map((row) => {
+                  const ex = row.exercise;
+                  const grouped = ex.supersetGroup != null;
+                  return (
+                    <View key={ex.id} style={grouped ? styles.ssMember : undefined}>
+                      {row.header ? (
+                        <View
+                          style={styles.ssHeader}
+                          accessible
+                          accessibilityLabel={`${row.header.label} ${row.header.note}`}
+                        >
+                          <Text style={styles.ssLabel} numberOfLines={1}>
+                            {row.header.label}
+                          </Text>
+                          <Text style={styles.ssNote} numberOfLines={1}>
+                            {row.header.note}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {/* One rail down the group, across the gaps between
+                          partners, a removed one included (E11). */}
+                      {grouped ? (
+                        <View
+                          style={[
+                            styles.ssRail,
+                            {
+                              top: row.header ? RAIL.underLabel : row.railAbove ? RAIL.fromAbove : 0,
+                              bottom: row.railBelow ? RAIL.intoBelow : RAIL.end,
+                            },
+                          ]}
+                        />
+                      ) : null}
+                      {row.removed ? (
+                        <RemovedExerciseRow
+                          name={ex.name}
+                          label={row.removedLabel ?? ''}
+                          tag={row.tag}
+                          onUndo={() => restore(ex.id)}
+                        />
+                      ) : (
+                        <View
+                          onLayout={(e) => {
+                            cardHeights.current.set(ex.id, e.nativeEvent.layout.height);
+                          }}
+                        >
+                          <ExerciseCard
+                            exercise={ex}
+                            unit={session.unit}
+                            menuOpen={openMenuId === ex.id}
+                            onToggleMenu={() => setOpenMenuId((id) => (id === ex.id ? null : ex.id))}
+                            onReorderStart={() => {
                               setOpenMenuId(null);
-                              if (ex.supersetGroup != null) edit((s) => leaveSuperset(s, ex.id));
-                              else setSupersetExId(ex.id);
+                              Keyboard.dismiss();
+                              setReordering(true);
+                            }}
+                            onReplace={() => openLibrary(ex.id)}
+                            onSuperset={
+                              cards.length < 2
+                                ? undefined
+                                : () => {
+                                    setOpenMenuId(null);
+                                    if (ex.supersetGroup != null) edit((s) => leaveSuperset(s, ex.id));
+                                    else setSupersetExId(ex.id);
+                                  }
                             }
-                      }
-                      inSuperset={ex.supersetGroup != null}
-                      supersetTag={supersetTagFor(ex.id)}
-                      onRemove={() => {
-                        setOpenMenuId(null);
-                        edit((s) => removeExercise(s, ex.id));
-                      }}
-                      onAddSet={() => {
-                        const setId = newId();
-                        edit((s) => addSet(s, ex.id, setId));
-                      }}
-                      onCycleType={(setId) => {
-                        haptics.select();
-                        edit((s) => cycleSetType(s, ex.id, setId));
-                      }}
-                      onWeightChange={(setId, t) => edit((s) => editSetWeight(s, ex.id, setId, t))}
-                      onRepsChange={(setId, t) => edit((s) => editSetReps(s, ex.id, setId, t))}
-                      onDeleteSet={(setId) => {
-                        setOpenSetId(null);
-                        edit((s) => removeSet(s, ex.id, setId));
-                      }}
-                      openSetId={openSetId}
-                      onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
-                      // Live-only: there is no note field, rest row, PREV or
-                      // tick in edit mode, so nothing can reach these.
-                      onNoteChange={noop}
-                      onOpenRest={noop}
-                      onUsePrev={noop}
-                      onToggleDone={noop}
-                      edit={{
-                        setState: (setId) => ({
-                          was: wasLabel(session, ex.id, setId),
-                          onWasPress: canToggleDone(session, setId)
-                            ? () => {
-                                haptics.select();
-                                edit((s) => toggleSetDone(s, ex.id, setId));
-                              }
-                            : undefined,
-                        }),
-                        emptyHint: exerciseHint(session, ex.id),
-                        onRemoveSet: (setId) => {
-                          setOpenSetId(null);
-                          edit((s) => removeSet(s, ex.id, setId));
-                        },
-                        recordLine: recordLine(
-                          impact.filter((c) => c.exerciseId === ex.exerciseCatalogId),
-                          session.unit,
-                        ),
-                      }}
-                    />
-                  </View>
-                ))}
-
-                {removed.map((ex) => (
-                  <View key={ex.id} style={styles.removedRow}>
-                    <Text style={styles.removedName} numberOfLines={1}>
-                      {ex.name}
-                      <Text style={styles.removedTag}>{' · REMOVED'}</Text>
-                    </Text>
-                    <Pressable
-                      onPress={() => edit((s) => undoRemoveExercise(s, ex.id))}
-                      style={styles.undo}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Undo removing ${ex.name}`}
-                    >
-                      <Text style={styles.undoText}>Undo</Text>
-                    </Pressable>
-                  </View>
-                ))}
+                            inSuperset={ex.supersetGroup != null}
+                            supersetTag={row.tag}
+                            onRemove={() => collapse(ex.id)}
+                            onAddSet={() => {
+                              const setId = newId();
+                              edit((s) => addSet(s, ex.id, setId));
+                            }}
+                            onCycleType={(setId) => {
+                              haptics.select();
+                              edit((s) => cycleSetType(s, ex.id, setId));
+                            }}
+                            onWeightChange={(setId, t) => edit((s) => editSetWeight(s, ex.id, setId, t))}
+                            onRepsChange={(setId, t) => edit((s) => editSetReps(s, ex.id, setId, t))}
+                            onDeleteSet={(setId) => {
+                              setOpenSetId(null);
+                              edit((s) => removeSet(s, ex.id, setId));
+                            }}
+                            openSetId={openSetId}
+                            onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
+                            // Live-only: there is no note field, rest row, PREV or
+                            // tick in edit mode, so nothing can reach these.
+                            onNoteChange={noop}
+                            onOpenRest={noop}
+                            onUsePrev={noop}
+                            onToggleDone={noop}
+                            edit={{
+                              setState: (setId) => ({
+                                was: wasLabel(session, ex.id, setId),
+                                onWasPress: canToggleDone(session, setId)
+                                  ? () => {
+                                      haptics.select();
+                                      edit((s) => toggleSetDone(s, ex.id, setId));
+                                    }
+                                  : undefined,
+                              }),
+                              emptyHint: exerciseHint(session, ex.id),
+                              onRemoveSet: (setId) => {
+                                setOpenSetId(null);
+                                edit((s) => removeSet(s, ex.id, setId));
+                              },
+                              recordLine: recordLine(
+                                impact.filter((c) => c.exerciseId === ex.exerciseCatalogId),
+                                session.unit,
+                              ),
+                            }}
+                          />
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
 
                 {/* Editing never deletes a workout: with nothing left to save,
                     Save stays inert and this says why. */}
@@ -806,48 +869,38 @@ const styles = StyleSheet.create({
 
   // Cards --------------------------------------------------------------
   list: { gap: 10, marginTop: 14 },
-  // Supersets keep their rail and tags, as on the live workout (11a).
+  // Supersets keep their rail and tags (11a), drawn as board 13b's E11 has
+  // them: the label over the group, the rail in the page margin.
   ssMember: { position: 'relative' },
   ssHeader: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 22,
+    marginBottom: 6,
+    paddingHorizontal: 2,
+  },
+  ssLabel: {
+    flexShrink: 0,
+    fontFamily: font.monoSemi,
+    fontSize: 11,
+    letterSpacing: 1.54,
+    color: color.text2,
+  },
+  ssNote: {
+    flexShrink: 1,
+    fontFamily: font.monoRegular,
+    fontSize: 11,
+    letterSpacing: 1.54,
     color: color.text3,
-    paddingTop: 10,
-    paddingBottom: 6,
-    paddingLeft: 7,
   },
   ssRail: {
     position: 'absolute',
-    left: 7,
-    top: 0,
-    bottom: 0,
+    left: -9,
     width: 2,
-    borderRadius: 1,
+    borderRadius: 2,
     backgroundColor: color.text3,
   },
-  removedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 52,
-    paddingLeft: 16,
-    paddingRight: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-  },
-  removedName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    color: color.text3,
-  },
-  removedTag: { fontFamily: font.monoRegular, fontSize: 11 },
-  undo: { height: 44, paddingHorizontal: 12, justifyContent: 'center' },
-  undoText: { fontFamily: font.titleSemi, fontSize: 13.5, color: color.text1 },
   emptyCard: {
     backgroundColor: color.surface1,
     borderWidth: 1,

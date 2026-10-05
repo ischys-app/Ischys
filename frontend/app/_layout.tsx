@@ -274,6 +274,14 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="routine/view/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              contentStyle: { backgroundColor: color.bg },
+            }}
+          />
+          <Stack.Screen
             name="settings"
             options={{
               headerShown: false,

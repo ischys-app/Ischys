@@ -184,25 +184,30 @@ export default function History() {
                       // no extra native dependency — and a tap still goes to
                       // the Summary, as before. Delete keeps its place here:
                       // long-press used to mean only that.
-                      <Link key={w.id} href={`/summary/${w.id}`} asChild>
-                        <Link.Trigger>
-                          <WorkoutCard
-                            workout={w}
-                            accessibilityHint="Long-press for more actions."
-                          />
-                        </Link.Trigger>
-                        <Link.Menu>
-                          <Link.MenuAction
-                            icon="pencil"
-                            onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
-                          >
-                            Edit workout
-                          </Link.MenuAction>
-                          <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
-                            Delete workout
-                          </Link.MenuAction>
-                        </Link.Menu>
-                      </Link>
+                      // The wrapping View keeps the list's gap per row: the
+                      // Link renders its menu as a second, empty sibling, which
+                      // otherwise took a gap of its own under every card.
+                      <View key={w.id}>
+                        <Link href={`/summary/${w.id}`} asChild>
+                          <Link.Trigger>
+                            <WorkoutCard
+                              workout={w}
+                              accessibilityHint="Long-press for more actions."
+                            />
+                          </Link.Trigger>
+                          <Link.Menu>
+                            <Link.MenuAction
+                              icon="pencil"
+                              onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
+                            >
+                              Edit workout
+                            </Link.MenuAction>
+                            <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
+                              Delete workout
+                            </Link.MenuAction>
+                          </Link.Menu>
+                        </Link>
+                      </View>
                     ) : (
                       // The context menu is iOS-only; elsewhere long-press
                       // keeps doing what it did. Editing is on the Summary.

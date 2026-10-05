@@ -276,6 +276,7 @@ function Populated({
           <RoutineCard
             key={r.id}
             routine={r}
+            onOpen={() => router.push(`/routine/view/${r.id}`)}
             onStart={() => onStartRoutine(r)}
             onOverflow={() => onOverflow(r)}
           />

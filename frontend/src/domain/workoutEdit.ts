@@ -19,6 +19,7 @@
  */
 import type { RecordMetric } from '../api/types.ts';
 import { computeRecords, recordDisplay, type PRSession, type PRSet, type RecordValue } from './records.ts';
+import { groupLabels } from './supersets.ts';
 import { parseWeight, toDisplay, toKg, weightText, type Unit } from './units.ts';
 
 export type EditSetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -102,7 +103,7 @@ export type EditExercise = {
   note: string;
   supersetGroup: number | null;
   sets: EditSet[];
-  /** Collapsed to a dashed row with Undo. Gone on Save. */
+  /** Collapsed, where it stands, to a dashed row with Undo. Gone on Save. */
   removed: boolean;
 };
 
@@ -239,8 +240,10 @@ export function removeSet(s: EditSession, exId: string, setId: string): EditSess
 }
 
 /**
- * Collapses an exercise to its Undo row. One that was only added in this
- * session has nothing to undo back to, so it is simply forgotten.
+ * Collapses an exercise to its Undo row, in the place its card had (13b). Its
+ * sets stay as they were edited, so Undo brings back exactly that card. One
+ * that was only added in this session has nothing to undo back to, so it is
+ * simply forgotten.
  */
 export function removeExercise(s: EditSession, exId: string): EditSession {
   if (!s.original.exercises.some((e) => e.id === exId)) {
@@ -272,10 +275,9 @@ export function addExercise(
     sets: [blankSet(newSetId)],
     removed: false,
   };
-  // After the last card, ahead of the removed rows, which is where it shows.
-  const live = s.exercises.filter((e) => !e.removed);
-  const gone = s.exercises.filter((e) => e.removed);
-  return { ...s, exercises: [...live, added, ...gone] };
+  // Under everything on screen, a removed row included: that row is holding
+  // the place its card comes back to.
+  return { ...s, exercises: [...s.exercises, added] };
 }
 
 /**
@@ -300,15 +302,20 @@ export function replaceExercise(
   }));
 }
 
-/** `order` lists the cards top to bottom. Removed rows keep their place after them. */
+/**
+ * `order` lists the cards top to bottom. A removed row is not one of them and
+ * does not move: the cards are dealt, in their new order, into the places
+ * cards already hold.
+ */
 export function reorderExercises(s: EditSession, order: readonly string[]): EditSession {
   const byId = new Map(s.exercises.map((e) => [e.id, e]));
   const moved = order.flatMap((id) => {
     const e = byId.get(id);
     return e && !e.removed ? [e] : [];
   });
-  const rest = s.exercises.filter((e) => e.removed || !order.includes(e.id));
-  return { ...s, exercises: [...moved, ...rest] };
+  const cards = [...moved, ...s.exercises.filter((e) => !e.removed && !order.includes(e.id))];
+  let next = 0;
+  return { ...s, exercises: s.exercises.map((e) => (e.removed ? e : cards[next++])) };
 }
 
 /**
@@ -350,9 +357,13 @@ export function setWhen(s: EditSession, when: When): EditSession {
 // --- reading the working copy ------------------------------------------------
 
 /**
- * The cards on screen, in order. A group left holding one exercise is not a
- * superset, so it reads as none — unless the workout was stored that way and
- * nobody touched it, in which case it is left exactly as it was.
+ * The exercises still in the workout, in order, grouped as Save will store
+ * them. A group left holding one exercise is not a superset, so it reads as
+ * none — unless the workout was stored that way and nobody touched it, in
+ * which case it is left exactly as it was.
+ *
+ * The screen draws `exerciseRows` instead, which keeps a removed partner's
+ * group in view until Save.
  */
 export function activeExercises(s: EditSession): EditExercise[] {
   return withoutLoneGroups(s, s.exercises.filter((e) => !e.removed));
@@ -372,11 +383,6 @@ function withoutLoneGroups(s: EditSession, live: EditExercise[]): EditExercise[]
     if (stored && stored.supersetGroup === g && storedSize(g) < 2) return e;
     return { ...e, supersetGroup: null };
   });
-}
-
-/** The exercises collapsed to an Undo row. */
-export function removedExercises(s: EditSession): EditExercise[] {
-  return s.exercises.filter((e) => e.removed);
 }
 
 function originalSets(s: EditSession): Map<string, { set: OriginalSet; ex: OriginalExercise; index: number }> {
@@ -495,6 +501,104 @@ export function exerciseHint(s: EditSession, exId: string): string | null {
   const ex = s.exercises.find((e) => e.id === exId);
   if (!ex || ex.removed || ex.sets.length > 0) return null;
   return blockers(s).exercises.has(exId) ? 'Add a set, or remove this exercise.' : null;
+}
+
+// --- the list on screen (13b) ------------------------------------------------
+
+/** One entry of the list, top to bottom: a card, or the row a removed one left. */
+export type ExerciseRow = {
+  /**
+   * The exercise as the screen shows it. Its `supersetGroup` is the rail it
+   * sits in, which a removed partner still holds open — `activeExercises` has
+   * the grouping that will be saved.
+   */
+  exercise: EditExercise;
+  removed: boolean;
+  /** "REMOVED · 4 SETS" on a removed row, else null. */
+  removedLabel: string | null;
+  /** "A1" / "A2": the group's letter and this exercise's place in it. */
+  tag: string | null;
+  /** Over the first exercise of a group: "SUPERSET A" and what follows it. */
+  header: { label: string; note: string } | null;
+  /** The row above / below is a partner, so the rail runs on across the gap. */
+  railAbove: boolean;
+  railBelow: boolean;
+};
+
+/**
+ * Everything the list draws, in order. A removed exercise stays where its
+ * card was, and a superset it belonged to keeps its rail, its letter and
+ * every tag until Save: letters and numbers shifting under the user mid-edit
+ * make the list hard to follow. What Save will do to the group is said on its
+ * label instead.
+ */
+export function exerciseRows(s: EditSession): ExerciseRow[] {
+  const stored = originalSets(s);
+  const storedEx = new Map(s.original.exercises.map((e) => [e.id, e]));
+  // Removed rows count as members here, which is all that keeps a group whose
+  // partner was removed from reading as none.
+  const shown = withoutLoneGroups(s, s.exercises);
+  const letters = groupLabels(
+    shown.map((e) => ({ id: e.id, supersetGroup: e.supersetGroup, rest: e.rest, sets: [] })),
+  );
+
+  const noteFor = (group: EditExercise[]): string => {
+    const cards = group.filter((e) => !e.removed);
+    if (cards.length === group.length) {
+      // Rounds are a count here: every one of them is done.
+      const rounds = Math.max(...cards.map((e) => e.sets.filter((x) => x.type === 'normal').length));
+      return `· ${rounds} ${rounds === 1 ? 'ROUND' : 'ROUNDS'}`;
+    }
+    // As `buildPlan` decides it: an addition with nothing logged is not saved.
+    const left = cards.filter((e) => storedEx.has(e.id) || finalSets(s, e, stored).length > 0).length;
+    return left < 2 ? '· ENDS WHEN SAVED' : `· ${left} AFTER SAVE`;
+  };
+
+  return shown.map((e, i) => {
+    const g = e.supersetGroup;
+    const group = g == null ? [] : shown.filter((x) => x.supersetGroup === g);
+    const letter = g == null ? null : (letters.get(g) ?? null);
+    // What Save deletes is the exercise as stored, whatever its card showed.
+    const setCount = storedEx.get(e.id)?.sets.length ?? e.sets.length;
+    return {
+      exercise: e,
+      removed: e.removed,
+      removedLabel: e.removed ? `REMOVED · ${setCount} ${setCount === 1 ? 'SET' : 'SETS'}` : null,
+      tag: letter ? `${letter}${group.findIndex((x) => x.id === e.id) + 1}` : null,
+      header:
+        letter && group.length >= 2 && group[0].id === e.id
+          ? { label: `SUPERSET ${letter}`, note: noteFor(group) }
+          : null,
+      railAbove: g != null && shown[i - 1]?.supersetGroup === g,
+      railBelow: g != null && shown[i + 1]?.supersetGroup === g,
+    };
+  });
+}
+
+/** What Remove does to the list's layout, for whoever keeps the scroll steady. */
+export type CollapseEffect = {
+  /**
+   * True when the card folds down to a removed row in its place. False when
+   * it leaves the list altogether, gap and all: an exercise only added in
+   * this edit has nothing to undo back to.
+   */
+  leavesRow: boolean;
+  /**
+   * How many "SUPERSET A" labels the list is shorter by afterwards. Zero when
+   * a row is left, since a removed partner holds its group open. A card that
+   * vanishes can take its own label with it (unless the next partner inherits
+   * it), or end a pair and with it the label over its partner.
+   */
+  headersLost: number;
+};
+
+export function collapseEffect(s: EditSession, exId: string): CollapseEffect {
+  const after = exerciseRows(removeExercise(s, exId));
+  const headers = (rows: ExerciseRow[]) => rows.filter((r) => r.header).length;
+  return {
+    leavesRow: after.some((r) => r.exercise.id === exId),
+    headersLost: headers(exerciseRows(s)) - headers(after),
+  };
 }
 
 /** "60 × 6", "BW × 11", "+10 × 8" — no unit, like the PREV cell it replaces. */

@@ -337,6 +337,35 @@ test('the walk reads sessions oldest first whatever order they arrive in', () =>
   assert.deepEqual(walkPrFlags(shuffled).map((s) => s.sessionId), ['w1', 'w2', 'w3', 'w4', 'w5']);
 });
 
+test('two sessions at the same instant are walked in id order, whichever is handed in first', () => {
+  // The same lift twice at one instant: only the first walked can be the record.
+  const a = session('wa', 2, [wset('a1', 'normal', 80, 5)]);
+  const b = session('wb', 2, [wset('b1', 'normal', 80, 5)]);
+  const later = session('wc', 4, [wset('c1', 'normal', 70, 5)]);
+  const expected = { wa: ['a1'], wb: [], wc: [] };
+  for (const given of [[a, b, later], [b, a, later], [later, b, a]]) {
+    const steps = walkPrFlags(given);
+    assert.deepEqual(steps.map((s) => s.sessionId), ['wa', 'wb', 'wc']);
+    assert.deepEqual(flagsOf(steps), expected);
+    // Counted once: the second of the pair improved nothing.
+    assert.deepEqual(steps.map((s) => s.deltas.length > 0), [true, false, false]);
+  }
+});
+
+test('deleting the session that held a record hands its star to the next best', () => {
+  const history = [
+    session('w1', 1, [wset('a1', 'normal', 60, 5)]),
+    session('w2', 3, [wset('b1', 'normal', 80, 5)]),
+    session('w3', 5, [wset('c1', 'normal', 70, 5)]),
+  ];
+  // As logged, w3 beat nothing: w2 was heavier.
+  assert.deepEqual(flagsOf(walkPrFlags(history)), { w1: ['a1'], w2: ['b1'], w3: [] });
+  // With w2 gone, w3 is the best since w1 and is a record after all.
+  const left = walkPrFlags(history.filter((s) => s.id !== 'w2'));
+  assert.deepEqual(flagsOf(left), { w1: ['a1'], w3: ['c1'] });
+  assert.equal(left[1].deltas.length > 0, true);
+});
+
 test('the walk honours the warm-up setting and each session’s bodyweight, as finish does', () => {
   const dips: PRSession[] = [
     { id: 'w1', achievedAt: at(1), bodyweightKg: 80, sets: [bwset('a1', null, 10), bwset('a2', 10, 6)] },
@@ -400,4 +429,91 @@ test('a workout’s PR count holds an exercise only where the stored data says s
   assert.equal(countsTowardPrCount(first, false, 2), false);
   // An exercise the workout no longer has a session for.
   assert.equal(countsTowardPrCount(undefined, false, 1), false);
+});
+
+/**
+ * The walk as it was first written: every session compared with records
+ * recomputed over the whole history before it. Quadratic in the number of
+ * sessions, and plainly the finish path; kept here as the definition the
+ * single-pass walk has to meet.
+ */
+function walkByRecomputing(sessions: readonly PRSession[], countWarmups = false) {
+  // Same-instant sessions in id order: the order the walk itself now fixes.
+  const oldestFirst = sessions
+    .slice()
+    .sort((a, b) => a.achievedAt - b.achievedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const out: ReturnType<typeof walkPrFlags> = [];
+  const seen: PRSession[] = [];
+  let baseline: Record<string, number> = {};
+  for (const sess of oldestFirst) {
+    seen.unshift(sess);
+    const computed = computeRecords(seen, countWarmups);
+    const deltas = detectPrs(baseline, computed);
+    const own = new Set(sess.sets.map((s) => s.id));
+    const flagged = new Set<string>();
+    for (const d of deltas) {
+      if (d.value.workoutSetId && own.has(d.value.workoutSetId)) flagged.add(d.value.workoutSetId);
+    }
+    out.push({ sessionId: sess.id, flaggedSetIds: [...flagged], deltas });
+    baseline = {};
+    for (const rv of Object.values(computed)) baseline[rv.metric] = rv.value;
+  }
+  return out;
+}
+
+test('the walk decides every session exactly as recomputing the whole history before it would', () => {
+  // Deterministic noise: plateaus, ties, sessions sharing an instant, missing numbers.
+  let seed = 20260705;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const pick = <T>(xs: T[]): T => xs[Math.floor(rnd() * xs.length)];
+  let records = 0;
+  for (let round = 0; round < 2000; round++) {
+    const bodyweight = rnd() < 0.3;
+    const sessions: PRSession[] = [];
+    const n = 1 + Math.floor(rnd() * 14);
+    for (let i = 0; i < n; i++) {
+      const sets: PRSet[] = [];
+      const m = Math.floor(rnd() * 5);
+      for (let j = 0; j < m; j++) {
+        sets.push({
+          id: `r${round}-s${i}-${j}`,
+          type: pick(['warmup', 'normal', 'normal', 'drop', 'failure']),
+          weight: rnd() < 0.15 ? null : pick([20, 40, 60, 60, 62.5, 65, 80]),
+          reps: rnd() < 0.1 ? null : pick([1, 3, 5, 5, 8, 10, 12, 15]),
+          done: rnd() < 0.9,
+          kind: bodyweight ? 'bodyweight' : 'weighted',
+        });
+      }
+      sessions.push({
+        id: `r${round}-w${i}`,
+        achievedAt: at(1 + Math.floor(rnd() * 10)),
+        bodyweightKg: bodyweight ? pick([0, 70, 80]) : undefined,
+        sets,
+      });
+    }
+    const countWarmups = rnd() < 0.5;
+    const walked = walkPrFlags(sessions, countWarmups);
+    assert.deepEqual(walked, walkByRecomputing(sessions, countWarmups), `round ${round}`);
+    records += walked.reduce((sum, s) => sum + s.deltas.length, 0);
+  }
+  // The histories are not so sparse that there was nothing to compare.
+  assert.ok(records > 5000, `only ${records} records across all rounds`);
+});
+
+test('a long history is walked in one pass, not once per session', () => {
+  // 8,000 sessions: recomputing the history before each would be 32 million
+  // session visits. One pass is 8,000, and finishes far inside the budget.
+  const sessions: PRSession[] = [];
+  for (let i = 0; i < 8000; i++) {
+    sessions.push({
+      id: `w${i}`,
+      achievedAt: at(1) + i * 86_400_000,
+      sets: [wset(`s${i}a`, 'normal', 40 + (i % 50), 5), wset(`s${i}b`, 'normal', 40, 8 + (i % 7))],
+    });
+  }
+  const t0 = performance.now();
+  const steps = walkPrFlags(sessions);
+  const elapsed = performance.now() - t0;
+  assert.equal(steps.length, 8000);
+  assert.ok(elapsed < 250, `walk took ${elapsed.toFixed(0)} ms`);
 });

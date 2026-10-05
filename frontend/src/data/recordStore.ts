@@ -16,6 +16,7 @@ import {
   type PrWalkStep,
   type RecordValue,
 } from '../domain/records';
+import { rebuiltPrCounts, type PrSetRow } from '../domain/prBackfill';
 import { resolveWorkoutBodyweight } from '../lib/bodyweight';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
 import { completedSessionsFor } from './queries';
@@ -214,4 +215,83 @@ export async function reflagExercisePrs(
       .where(eq(schema.workouts.id, wid));
   }
   return steps;
+}
+
+/** Ids per statement, well inside SQLite's bound-parameter limit. */
+const SLICE = 400;
+
+/**
+ * Sets each of `workoutIds`' `pr_count` to the number of its exercises that
+ * set a record there, from scratch (domain `rebuiltPrCounts`), writing only
+ * the completed workouts whose stored count differs.
+ *
+ * For after a merge, where `reflagExercisePrs`' one step per workout is not
+ * enough: a workout that logged both merged exercises counted each. It reads
+ * the whole history of every exercise those workouts list, so it is for rare,
+ * deliberate changes, not for a finish or an edit.
+ *
+ * As the rest of this file, `currentBw` and `countWarmups` come from the
+ * caller, resolved before its transaction opened.
+ */
+export async function rebuildPrCounts(
+  workoutIds: readonly string[],
+  exec: Executor,
+  currentBw: number | null,
+  countWarmups: boolean,
+): Promise<void> {
+  const ids = [...new Set(workoutIds)];
+  const stored = new Map<string, number>();
+  const exerciseIds = new Set<string>();
+  for (let i = 0; i < ids.length; i += SLICE) {
+    const slice = ids.slice(i, i + SLICE);
+    const ws = await exec
+      .select({ id: schema.workouts.id, prCount: schema.workouts.prCount })
+      .from(schema.workouts)
+      .where(and(inArray(schema.workouts.id, slice), eq(schema.workouts.status, 'completed')));
+    for (const w of ws) stored.set(w.id, w.prCount);
+    const wes = await exec
+      .select({ exerciseId: schema.workoutExercises.exerciseId })
+      .from(schema.workoutExercises)
+      .where(inArray(schema.workoutExercises.workoutId, slice));
+    for (const we of wes) exerciseIds.add(we.exerciseId);
+  }
+  if (stored.size === 0) return;
+
+  const rows: PrSetRow[] = [];
+  const kinds = new Map<string, 'weighted' | 'bodyweight'>();
+  const allExercises = [...exerciseIds];
+  for (let i = 0; i < allExercises.length; i += SLICE) {
+    const slice = allExercises.slice(i, i + SLICE);
+    const page = await exec
+      .select({
+        setId: schema.workoutSets.id,
+        workoutId: schema.workouts.id,
+        exerciseId: schema.workoutExercises.exerciseId,
+        startedAt: schema.workouts.startedAt,
+        bodyweightKg: schema.workouts.bodyweightKg,
+        exercisePosition: schema.workoutExercises.position,
+        position: schema.workoutSets.position,
+        type: schema.workoutSets.type,
+        weight: schema.workoutSets.weight,
+        reps: schema.workoutSets.reps,
+        done: schema.workoutSets.done,
+        isPr: schema.workoutSets.isPr,
+      })
+      .from(schema.workoutSets)
+      .innerJoin(schema.workoutExercises, eq(schema.workoutExercises.id, schema.workoutSets.workoutExerciseId))
+      .innerJoin(schema.workouts, eq(schema.workouts.id, schema.workoutExercises.workoutId))
+      .where(and(eq(schema.workouts.status, 'completed'), inArray(schema.workoutExercises.exerciseId, slice)));
+    for (const r of page) rows.push({ ...r, done: r.done !== 0, isPr: r.isPr !== 0 });
+    const exs = await exec
+      .select({ id: schema.exercises.id, kind: schema.exercises.kind })
+      .from(schema.exercises)
+      .where(inArray(schema.exercises.id, slice));
+    for (const e of exs) kinds.set(e.id, e.kind as 'weighted' | 'bodyweight');
+  }
+
+  const counts = rebuiltPrCounts({ rows, kinds, currentBw, countWarmups }, stored.keys());
+  for (const [wid, prCount] of counts) {
+    if (prCount === stored.get(wid)) continue;
+    await exec.update(schema.workouts).set({ prCount, updatedAt: nowMs() }).where(eq(schema.workouts.id, wid));
+  }
 }

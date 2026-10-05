@@ -3,6 +3,9 @@
  * duration picker (E4), the save confirmation shown only when a record moves
  * (E5), and the discard confirmation (E6). One shell, drawn once.
  *
+ * Board 13b adds one line to the picker (E12–E14): what Save does to the
+ * workout's Apple Health entry. Which line, if any, is domain/healthEntry.ts.
+ *
  * The pickers are wheels built on a plain ScrollView: the project has no
  * native date picker, and a duration in hours and minutes is not something a
  * system date picker offers anyway.
@@ -41,7 +44,7 @@ import { haptics } from '../../lib/haptics';
 import { color, font } from '../../theme/tokens';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
-import { StarIcon } from '../icons';
+import { HeartFilledIcon, StarIcon } from '../icons';
 
 // --- shell -------------------------------------------------------------------
 
@@ -53,9 +56,20 @@ type ShellProps = {
   children?: ReactNode;
   primary: { label: string; onPress: () => void; tone?: 'accent' | 'error'; disabled?: boolean };
   secondary: { label: string; onPress: () => void };
+  /** The content ends in a footnote of its own, which sits 16pt over the buttons (E12). */
+  footnoted?: boolean;
 };
 
-function EditSheet({ visible, onClose, title, body, children, primary, secondary }: ShellProps) {
+function EditSheet({
+  visible,
+  onClose,
+  title,
+  body,
+  children,
+  primary,
+  secondary,
+  footnoted,
+}: ShellProps) {
   const insets = useSafeAreaInsets();
   return (
     <DraggableSheet
@@ -72,7 +86,7 @@ function EditSheet({ visible, onClose, title, body, children, primary, secondary
         <Text style={styles.body}>{body}</Text>
       </View>
       {children}
-      <View style={styles.actions}>
+      <View style={[styles.actions, footnoted && styles.actionsFootnoted]}>
         <PressableScale
           onPress={primary.onPress}
           disabled={primary.disabled}
@@ -225,11 +239,16 @@ type WhenSheetProps = {
   when: When;
   /** The workout as stored, for "WAS" and so untouched wheels change nothing. */
   stored: When & { endedAt: number | null };
+  /**
+   * What Save does to this workout's Apple Health entry, or null for no line
+   * and no space kept for one: Health is not connected, or there is no entry.
+   */
+  healthLine?: string | null;
   onDone: (when: When) => void;
   onClose: () => void;
 };
 
-export function WhenSheet({ field, when, stored, onDone, onClose }: WhenSheetProps) {
+export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: WhenSheetProps) {
   const [active, setActive] = useState<WhenField>(field ?? 'duration');
   const [draft, setDraft] = useState<When>(when);
 
@@ -294,6 +313,7 @@ export function WhenSheet({ field, when, stored, onDone, onClose }: WhenSheetPro
       body="Changing the date moves this workout in History."
       primary={{ label: 'Done', onPress: confirm }}
       secondary={{ label: 'Cancel', onPress: onClose }}
+      footnoted={!!healthLine}
     >
       <View style={styles.rows}>
         {rows.map((r) => (
@@ -387,9 +407,21 @@ export function WhenSheet({ field, when, stored, onDone, onClose }: WhenSheetPro
       </View>
 
       {/* Derived, never edited: the three fields above cannot contradict it. */}
-      <Text style={styles.ends}>
+      <Text style={[styles.ends, !!healthLine && styles.endsFootnoted]}>
         {endMoved ? `ENDS ${fmtClock(end)} · WAS ${fmtClock(storedEnd)}` : `ENDS ${fmtClock(end)}`}
       </Text>
+
+      {/* There from the moment the sheet opens, and the same before and after
+          a change: a fact about Save, so Done never moves under the thumb. The
+          heart is text3, not Health's red — this is not a warning. */}
+      {healthLine ? (
+        <View style={styles.health}>
+          <View style={styles.healthIcon}>
+            <HeartFilledIcon size={13} color={color.text3} />
+          </View>
+          <Text style={styles.healthText}>{healthLine}</Text>
+        </View>
+      ) : null}
     </EditSheet>
   );
 }
@@ -503,6 +535,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   actions: { gap: 10, marginTop: 18 },
+  actionsFootnoted: { marginTop: 16 },
   primary: {
     height: 50,
     borderRadius: 12,
@@ -591,6 +624,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 14,
     fontVariant: tabular,
+  },
+  // E12–E14: the Health line takes over the space under the end time.
+  endsFootnoted: { marginBottom: 0 },
+  health: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    marginTop: 14,
+    paddingTop: 12,
+    paddingHorizontal: 2,
+    borderTopWidth: 1,
+    borderTopColor: color.hair,
+  },
+  healthIcon: { flexShrink: 0, marginTop: 3 },
+  healthText: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: font.bodyRegular,
+    fontSize: 13,
+    lineHeight: 18.85,
+    color: color.text2,
   },
 
   // E5

@@ -74,12 +74,24 @@ export async function completedSessionsFor(
       workoutId: schema.workouts.id,
       startedAt: schema.workouts.startedAt,
       bodyweightKg: schema.workouts.bodyweightKg,
+      exercisePosition: schema.workoutExercises.position,
       set: schema.workoutSets,
     })
     .from(schema.workouts)
     .innerJoin(schema.workoutExercises, eq(schema.workoutExercises.workoutId, schema.workouts.id))
     .innerJoin(schema.workoutSets, eq(schema.workoutSets.workoutExerciseId, schema.workoutExercises.id))
     .where(and(eq(schema.workoutExercises.exerciseId, exerciseId), eq(schema.workouts.status, 'completed')));
+
+  // Sets in workout order, and sessions sharing an instant in id order. The
+  // records give a tie to whichever comes first, so the order has to be the
+  // same every time — and the same one the whole-database PR pass uses
+  // (domain/prBackfill.ts), or the two would star different sets of a tie.
+  rows.sort(
+    (a, b) =>
+      a.exercisePosition - b.exercisePosition ||
+      a.set.position - b.set.position ||
+      (a.set.id < b.set.id ? -1 : 1),
+  );
 
   const byWorkout = new Map<string, { workoutId: string; startedAt: number; bodyweightKg: number | null; sets: WorkoutSetRow[] }>();
   for (const r of rows) {
@@ -90,7 +102,9 @@ export async function completedSessionsFor(
     }
     s.sets.push(r.set as WorkoutSetRow);
   }
-  return [...byWorkout.values()].sort((a, b) => b.startedAt - a.startedAt);
+  return [...byWorkout.values()].sort(
+    (a, b) => b.startedAt - a.startedAt || (a.workoutId < b.workoutId ? -1 : 1),
+  );
 }
 
 /** Assemble one workout (with ordered exercises + sets) into a WorkoutOut, or null. */

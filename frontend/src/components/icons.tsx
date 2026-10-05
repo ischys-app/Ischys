@@ -399,6 +399,21 @@ export function RemoveCircleIcon({ size = 20, color, strokeWidth = 2 }: IconProp
   );
 }
 
+/** Arrow turning back — Undo on a removed exercise's row (13b, E9). */
+export function UndoIcon({ size = 14, color, strokeWidth = 2.4 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M9 14L4 9l5-5" stroke={color} strokeWidth={strokeWidth} {...common} />
+      <Path
+        d="M4 9h10.5a5.5 5.5 0 010 11H11"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        {...common}
+      />
+    </Svg>
+  );
+}
+
 /** Pencil — the Edit button on the Summary header (13a, E1). */
 export function PencilIcon({ size = 14, color, strokeWidth = 2.2 }: IconProps) {
   return (

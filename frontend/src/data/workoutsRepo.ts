@@ -35,7 +35,7 @@ import {
   muscleLabel,
   muscleTagsByWorkout,
 } from './queries';
-import { currentValues, recomputeForExercise } from './recordStore';
+import { currentValues, prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
 
@@ -476,12 +476,20 @@ export async function deleteWorkout(wid: string): Promise<void> {
   const wes = await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
   const touched = [...new Set(wes.map((we) => we.exerciseId))];
   const weIds = wes.map((we) => we.id);
+  const currentBw = await getBodyweightKg();
+  const countWarmups = await getCountWarmups();
+  // Which workouts count each exercise among their PRs, read while this one
+  // still stands (as an edit does).
+  const heldBefore = new Map<string, Set<string>>();
+  for (const eid of touched) heldBefore.set(eid, await prCountHolders(eid, db, currentBw, countWarmups));
   if (weIds.length) await db.delete(schema.workoutSets).where(inArray(schema.workoutSets.workoutExerciseId, weIds));
   await db.delete(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
   await db.delete(schema.workouts).where(eq(schema.workouts.id, wid));
-  const currentBw = await getBodyweightKg();
-  const countWarmups = await getCountWarmups();
-  for (const eid of touched) await recomputeForExercise(eid, db, currentBw, countWarmups); // PRs lose this evidence
+  for (const eid of touched) {
+    // A record this workout held passes to the next-best set, and to its workout's count.
+    await reflagExercisePrs(eid, db, currentBw, countWarmups, heldBefore.get(eid) ?? new Set());
+    await recomputeForExercise(eid, db, currentBw, countWarmups); // PRs lose this evidence
+  }
 }
 
 export async function uploadHeartRate(

@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy to signing.local.json (untracked) to archive with manual signing. Without it, prebuild leaves signing on automatic, which is what you want for ordinary development.",
+  "identity": "Apple Distribution: YOUR NAME (TEAMID)",
+  "teamId": "TEAMID",
+  "profiles": {
+    "app.ischys.mobile": "Ischys AppStore",
+    "app.ischys.mobile.watch": "Ischys Watch AppStore",
+    "app.ischys.mobile.widget": "Ischys Widget AppStore"
+  }
+}

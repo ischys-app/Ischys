@@ -52,8 +52,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint:la": "bash scripts/lint-live-activity.sh",
-    "test": "npm run lint:la && node --test \"src/**/*.test.ts\"",
-    "test:watch": "bash scripts/test-watch-rest-alarm.sh"
+    "test": "npm run lint:la && node --test \"src/**/*.test.ts\" \"scripts/**/*.test.js\"",
+    "test:watch": "bash scripts/test-watch-rest-alarm.sh",
+    "release:ios": "node scripts/prepare-ios-release.mjs"
   },
   "private": true
 }

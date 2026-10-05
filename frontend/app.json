@@ -3,7 +3,7 @@
     "name": "Ischys",
     "slug": "ischys",
     "scheme": "ischys",
-    "version": "4.1",
+    "version": "4.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,7 +13,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.ischys.mobile",
       "appleTeamId": "L3T79ZQ685",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "infoPlist": {
         "NSSupportsLiveActivities": true,
         "ITSAppUsesNonExemptEncryption": false,

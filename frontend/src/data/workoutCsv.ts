@@ -2,6 +2,7 @@
  * Pure workout-CSV helpers (parse + serialize) — no DB, node --test-runnable.
  * A flat, one-row-per-set CSV that round-trips a full training history.
  */
+import { normalizeRpe } from '../domain/effort.ts';
 import { toKg, type Unit } from '../domain/units.ts';
 
 export const CSV_COLUMNS = [
@@ -102,7 +103,14 @@ export type ExportWorkout = {
     name: string;
     note: string | null;
     supersetGroup: number | null;
-    sets: { position: number; type: string; weight: number | null; reps: number | null }[];
+    sets: {
+      position: number;
+      type: string;
+      weight: number | null;
+      reps: number | null;
+      /** Effort as RPE; written to the `rpe` column, blank when unrated. */
+      rpe?: number | null;
+    }[];
   }[];
 };
 
@@ -117,7 +125,7 @@ export function toWorkoutCsv(workouts: ExportWorkout[]): string {
         lines.push([
           w.name, start, end, w.notes ?? '', ex.name,
           ex.supersetGroup ?? '', ex.note ?? '', s.position, SET_TYPE_OUT[s.type] ?? 'normal',
-          s.weight ?? '', s.reps ?? '', '', '', '',
+          s.weight ?? '', s.reps ?? '', '', '', s.rpe ?? '',
         ].map(csvCell).join(','));
       }
     }
@@ -141,7 +149,8 @@ export type ParsedWorkoutCsv = {
     exercises: {
       title: string;
       superset: number | null;
-      sets: { type: string; weight: number | null; reps: number | null }[];
+      /** `rpe` is the set's effort rating, null when the file gave none. */
+      sets: { type: string; weight: number | null; reps: number | null; rpe: number | null }[];
     }[];
   }[];
   rowsSkipped: number;
@@ -168,6 +177,7 @@ const COLUMN_ALIASES = {
   superset: ['supersetid', 'superset'],
   type: ['settype'],
   reps: ['reps'],
+  rpe: ['rpe'],
 } as const;
 
 /** Weight columns, most specific first: a header that names its unit beats a bare `weight`. */
@@ -210,6 +220,7 @@ function resolveColumns(header: string[]) {
     superset: find(COLUMN_ALIASES.superset),
     type: find(COLUMN_ALIASES.type),
     reps: find(COLUMN_ALIASES.reps),
+    rpe: find(COLUMN_ALIASES.rpe),
     weight,
     statedUnit,
   };
@@ -282,6 +293,7 @@ export function parseWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Par
       type: SET_TYPE_IN[(r[idx.type] ?? '').trim()] ?? 'normal',
       weight: toKg(num(r[idx.weight]), unit),
       reps: num(r[idx.reps]),
+      rpe: normalizeRpe(num(r[idx.rpe])),
     });
   }
   return { workouts: [...byWorkout.values()], rowsSkipped, weightUnitKnown, unmapped: false };

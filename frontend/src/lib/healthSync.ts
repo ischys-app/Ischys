@@ -8,13 +8,18 @@ import * as SecureStore from 'expo-secure-store';
 
 import * as Health from '../../modules/health';
 import { uploadHeartRate } from '../api/workouts';
-import { getWorkoutHealthEntry, setWorkoutHealthEntry } from '../data/healthEntryRepo';
+import {
+  getWorkoutHealthEntry,
+  healthEntryHeldByAnother,
+  setWorkoutHealthEntry,
+} from '../data/healthEntryRepo';
 import {
   entryAfterLookup,
   entryAfterReplace,
   entryAtFinish,
   healthReplacement,
   healthWindow,
+  lookupAccepted,
   needsLookup,
   type HealthEditState,
   type PlannedWhen,
@@ -232,6 +237,19 @@ type StoredWhen = { startedAt: number; durationSeconds: number; endedAt: number 
 
 const NO_HEALTH: HealthEditState = { connected: false, entry: null, canWrite: false };
 
+// Everything that reads or writes a workout's Health entry for an edit runs
+// one at a time, in the order it was asked for. A second save must see the
+// UUID the first one stored, not the entry it has just deleted; and a lookup
+// started when the edit screen opened must not finish after a save's replace
+// and write the replaced entry's UUID back.
+let healthEdits: Promise<unknown> = Promise.resolve();
+
+function inTurn<T>(job: () => Promise<T>): Promise<T> {
+  const run = healthEdits.then(job);
+  healthEdits = run.catch(() => {});
+  return run;
+}
+
 /**
  * What an edit needs to know about a workout's Health entry: whether Health is
  * connected, which entry is the workout's and who wrote it, and whether Ischys
@@ -240,13 +258,25 @@ const NO_HEALTH: HealthEditState = { connected: false, entry: null, canWrite: fa
  *
  * A workout finished before entries were recorded has nothing stored. Health
  * is then asked for Ischys's entry over the workout's stored window, and what
- * it holds is stored, so the question is asked once. `stored` must be the time
- * as it was BEFORE any edit: that is where the entry is.
+ * it holds is stored — if it can only be this workout's (`lookupAccepted`) —
+ * so the question is asked once. `stored` must be the time as it was BEFORE
+ * any edit: that is where the entry is.
+ *
+ * Takes its turn behind any replace still running, and reads what is stored
+ * only then, so the newest stored value is the one it sees and keeps.
  *
  * Never throws; on any failure the answer is "no entry", which shows no line
  * and changes nothing.
  */
-export async function loadHealthEditState(
+export function loadHealthEditState(
+  workoutId: string,
+  stored: StoredWhen,
+): Promise<HealthEditState> {
+  return inTurn(() => readHealthEditState(workoutId, stored));
+}
+
+/** `loadHealthEditState` itself. Only ever called from inside a turn. */
+async function readHealthEditState(
   workoutId: string,
   stored: StoredWhen,
 ): Promise<HealthEditState> {
@@ -262,7 +292,16 @@ export async function loadHealthEditState(
     if (needsLookup(entry)) {
       const window = healthWindow(stored);
       const found = window ? await Health.findWorkout(window.startedAt, window.endedAt) : null;
-      if (found) {
+      // Overlapping the window is not enough to call an entry this workout's:
+      // what is stored here is what a later edit moves.
+      if (
+        found &&
+        lookupAccepted({
+          workoutStartedAt: stored.startedAt,
+          found,
+          heldByAnother: await healthEntryHeldByAnother(found.uuid, workoutId),
+        })
+      ) {
         entry = entryAfterLookup(entry, found);
         await setWorkoutHealthEntry(workoutId, entry).catch(() => {});
       }
@@ -274,10 +313,6 @@ export async function loadHealthEditState(
   }
 }
 
-// One at a time: a second save must see the UUID the first one stored, not the
-// entry it has just deleted.
-let editedSync: Promise<void> = Promise.resolve();
-
 /**
  * Brings Apple Health in step with an edit that has ALREADY been committed.
  *
@@ -285,6 +320,9 @@ let editedSync: Promise<void> = Promise.resolve();
  * one the phone wrote, and writing is allowed: that entry is replaced with one
  * over the new start and end, and its new UUID stored. A Watch recording, a
  * denied write, and every edit to sets alone leave Health exactly as it is.
+ * So does a replace that could not be carried out — Health not answering on a
+ * locked phone, say: the entry stays on record and the next edit to the
+ * workout's time tries again.
  *
  * Best-effort, like the finish path: it never throws, and nothing it does or
  * fails to do can undo the save that came before it.
@@ -298,9 +336,9 @@ export function syncEditedWorkout(
 ): Promise<void> {
   // Set edits never touch Health, and never ask it anything either.
   if (plan.endedAt == null) return Promise.resolve();
-  editedSync = editedSync.then(async () => {
+  return inTurn(async () => {
     try {
-      const state = await loadHealthEditState(workoutId, stored);
+      const state = await readHealthEditState(workoutId, stored);
       const target = healthReplacement(state, plan, stored);
       if (!target || !state.entry) return;
       const outcome = await Health.replaceWorkout(target.uuid, target.startedAt, target.endedAt);
@@ -312,7 +350,6 @@ export function syncEditedWorkout(
       // A Health failure must not surface as a failed edit.
     }
   });
-  return editedSync;
 }
 
 /**

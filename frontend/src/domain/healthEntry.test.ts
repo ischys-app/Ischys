@@ -11,7 +11,9 @@ import {
   healthEntryFromRow,
   healthReplacement,
   healthWindow,
+  lookupAccepted,
   needsLookup,
+  PHONE_START_TOLERANCE_MS,
   type HealthEditState,
   type HealthEntry,
 } from './healthEntry.ts';
@@ -206,6 +208,99 @@ test('what Health holds is what gets stored; finding nothing keeps what was know
 });
 
 // --- after a replace ---------------------------------------------------------
+
+// --- whose entry a lookup found ----------------------------------------------
+
+const MINUTE = 60_000;
+
+test('a phone entry starting when the workout starts is that workout’s', () => {
+  const found = { uuid: 'P-1', writer: 'phone' as const, startedAt: START };
+  assert.equal(lookupAccepted({ workoutStartedAt: START, found, heldByAnother: false }), true);
+  // The phone writes the exact window; a few seconds is rounding.
+  for (const off of [-PHONE_START_TOLERANCE_MS, -4_000, 900, PHONE_START_TOLERANCE_MS]) {
+    assert.equal(
+      lookupAccepted({
+        workoutStartedAt: START,
+        found: { ...found, startedAt: START + off },
+        heldByAnother: false,
+      }),
+      true,
+      `${off} ms off`,
+    );
+  }
+});
+
+test('a phone entry starting at another time is not adopted', () => {
+  for (const off of [-10 * MINUTE, -(PHONE_START_TOLERANCE_MS + 1), PHONE_START_TOLERANCE_MS + 1]) {
+    assert.equal(
+      lookupAccepted({
+        workoutStartedAt: START,
+        found: { uuid: 'P-1', writer: 'phone', startedAt: START + off },
+        heldByAnother: false,
+      }),
+      false,
+      `${off} ms off`,
+    );
+  }
+});
+
+test('an entry another workout already holds is never adopted, whoever wrote it', () => {
+  for (const writer of ['phone', 'watch'] as const) {
+    assert.equal(
+      lookupAccepted({
+        workoutStartedAt: START,
+        found: { uuid: 'X-1', writer, startedAt: START },
+        heldByAnother: true,
+      }),
+      false,
+    );
+  }
+});
+
+test('a Watch recording starts a moment late and is still the workout’s', () => {
+  assert.equal(
+    lookupAccepted({
+      workoutStartedAt: START,
+      found: { uuid: 'W-1', writer: 'watch', startedAt: START + 3 * MINUTE },
+      heldByAnother: false,
+    }),
+    true,
+  );
+});
+
+test('a workout moved on an older build does not adopt its neighbour’s entry', () => {
+  // A was moved to Tuesday 18:00–19:00 by a build that left Health alone, so
+  // its entry is still on Monday. B really happened Tuesday 18:10–19:05.
+  // Looking over A's window finds B's entry: most of both spans overlap.
+  const aStart = START;
+  const bEntry = { uuid: 'B-1', writer: 'phone' as const, startedAt: START + 10 * MINUTE };
+
+  // B finished on a build that records entries: its row holds the UUID.
+  assert.equal(
+    lookupAccepted({ workoutStartedAt: aStart, found: bEntry, heldByAnother: true }),
+    false,
+  );
+  // B has nothing recorded either: the start alone still rules it out.
+  assert.equal(
+    lookupAccepted({ workoutStartedAt: aStart, found: bEntry, heldByAnother: false }),
+    false,
+  );
+  // So A keeps having no entry, and an edit to A's time has nothing to move.
+  const stateOfA = state({ entry: entryAfterLookup(null, null) });
+  assert.equal(
+    healthReplacement(
+      stateOfA,
+      { startedAt: aStart + HOUR, durationSeconds: null, endedAt: aStart + 2 * HOUR },
+      { startedAt: aStart },
+    ),
+    null,
+  );
+  // B, opened itself, is found where it started.
+  assert.equal(
+    lookupAccepted({ workoutStartedAt: bEntry.startedAt, found: bEntry, heldByAnother: false }),
+    true,
+  );
+});
 
 test('a replaced entry is stored under its new UUID', () => {
   assert.deepEqual(entryAfterReplace(phone, { status: 'replaced', uuid: 'P-2' }), {

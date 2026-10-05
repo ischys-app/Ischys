@@ -29,6 +29,9 @@ export type HealthEntry = { uuid: string | null; writer: HealthWriter };
 /** An entry as a lookup in Health returns it: there, so it has a UUID. */
 export type FoundHealthEntry = { uuid: string; writer: HealthWriter };
 
+/** A looked-up entry with where Health has it starting (epoch ms). */
+export type LocatedHealthEntry = FoundHealthEntry & { startedAt: number };
+
 /** The two nullable columns on `workouts`, read back. */
 export function healthEntryFromRow(uuid: string | null, writer: string | null): HealthEntry | null {
   if (writer !== 'phone' && writer !== 'watch') return null;
@@ -112,12 +115,16 @@ export function healthReplacement(
 
 export type ReplaceOutcome =
   | { status: 'replaced'; uuid: string }
-  /** No such entry any more: it was deleted in Health. */
+  /** Health answered, and has no such entry any more: it was deleted there. */
   | { status: 'missing' }
   /** The entry is not one the phone wrote. Nothing was done to it. */
   | { status: 'notOurs' }
   /** iOS does not let Ischys write workouts. */
   | { status: 'denied' }
+  /**
+   * Nothing changed. Includes Health not answering at all, as it does on a
+   * locked phone: that is not "missing", and the entry stays on record.
+   */
   | { status: 'failed' }
   /** No Health here, or a native module that cannot replace. */
   | { status: 'unavailable' };
@@ -158,6 +165,39 @@ export function healthWindow(w: {
  */
 export function needsLookup(entry: HealthEntry | null): boolean {
   return !entry || entry.uuid == null;
+}
+
+/**
+ * How far a phone-written entry's start may sit from the workout's stored
+ * start and still be that workout's. The phone writes the exact window, so
+ * this only has to absorb rounding.
+ */
+export const PHONE_START_TOLERANCE_MS = 60_000;
+
+/**
+ * Whether an entry found by looking over a workout's window may be recorded
+ * as that workout's. The window match alone is loose — most of both spans
+ * overlapping — and what is recorded here is what a later edit moves, so a
+ * neighbour's entry must not get through:
+ *
+ * - an entry another workout already holds is that workout's;
+ * - an entry the phone wrote starts when its workout starts. One that does
+ *   not was written for another workout, or for this one before its time was
+ *   edited on a build that left Health alone.
+ *
+ * A Watch recording starts a moment after the workout does, so it is held to
+ * the first rule only; recording one wrongly could not move it anyway.
+ */
+export function lookupAccepted(i: {
+  /** The workout's start as stored, before any edit. */
+  workoutStartedAt: number;
+  found: LocatedHealthEntry;
+  /** Another `workouts` row already records this UUID. */
+  heldByAnother: boolean;
+}): boolean {
+  if (i.heldByAnother) return false;
+  if (i.found.writer !== 'phone') return true;
+  return Math.abs(i.found.startedAt - i.workoutStartedAt) <= PHONE_START_TOLERANCE_MS;
 }
 
 /** Health is the authority when it answers; silence changes nothing. */

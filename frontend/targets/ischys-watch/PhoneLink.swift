@@ -164,7 +164,8 @@ final class PhoneLink: NSObject, WCSessionDelegate {
   /// Confirms the Watch saved this session as an HKWorkout, so the phone won't
   /// write a duplicate. The phone reads the absence of this (a timeout) as "the
   /// Watch didn't save" and writes the workout itself — no finished workout lost.
-  func workoutSaved() { send(["action": "workoutSaved"]) }
+  /// `uuid` is the saved HKWorkout's, which the phone stores against the workout.
+  func workoutSaved(uuid: String) { send(["action": "workoutSaved", "uuid": uuid]) }
 
   /// Live sensor metrics, pushed frequently. Sent live when the phone app is
   /// reachable; otherwise coalesced into the application context so the newest HR

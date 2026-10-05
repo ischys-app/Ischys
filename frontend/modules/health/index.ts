@@ -7,12 +7,42 @@ export type WorkoutMetrics = {
   energyKcal: number | null;
 };
 
+/** Which half of Ischys wrote an entry: the phone app, or the Watch's session. */
+export type WorkoutWriter = 'phone' | 'watch';
+
+/** Ischys's strength workout in Health over a window. Times are epoch ms. */
+export type FoundWorkout = {
+  uuid: string;
+  startedAt: number;
+  endedAt: number;
+  energyKcal: number;
+  writer: WorkoutWriter;
+  /** The bundle id HealthKit names as the entry's source. */
+  bundleId: string;
+};
+
+export type ReplaceWorkoutResult =
+  | { status: 'replaced'; uuid: string }
+  /** No entry with that UUID any more. */
+  | { status: 'missing' }
+  /** Not an entry the phone wrote (a Watch recording). Nothing was done to it. */
+  | { status: 'notOurs' }
+  /** iOS does not let Ischys write workouts. */
+  | { status: 'denied' }
+  | { status: 'failed' }
+  /** No Health here, or a native module that predates replacing. */
+  | { status: 'unavailable' };
+
 type HealthNativeModule = {
   isAvailable(): boolean;
   requestAuthorization(): Promise<boolean>;
   /** `startedAt`/`endedAt` are epoch ms; `energyKcal` 0 to attach no energy. */
-  saveWorkout(startedAt: number, endedAt: number, energyKcal: number): Promise<boolean>;
+  /** Resolves the saved HKWorkout's UUID. (A module from before #90: a boolean.) */
+  saveWorkout(startedAt: number, endedAt: number, energyKcal: number): Promise<string | boolean | null>;
   hasWorkout(startedAt: number, endedAt: number): Promise<boolean>;
+  findWorkout?(startedAt: number, endedAt: number): Promise<Record<string, unknown> | null>;
+  canWriteWorkouts?(): boolean;
+  replaceWorkout?(uuid: string, startedAt: number, endedAt: number): Promise<Record<string, unknown>>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -44,14 +74,23 @@ export const requestAuthorization = async (): Promise<boolean> =>
 
 /**
  * Saves a finished workout to Apple Health as a strength-training HKWorkout,
- * attaching `energyKcal` when a Watch measured it (pass 0 for none). Returns
+ * attaching `energyKcal` when a Watch measured it (pass 0 for none). `saved` is
  * false when Health is unavailable or the range is bad.
+ *
+ * `uuid` is the new entry's, kept so an edit to the workout's time can find it
+ * again. Null with `saved` true only on a native module from before #90, which
+ * reported the save as a bare boolean.
  */
 export const saveWorkout = async (
   startedAt: number,
   endedAt: number,
   energyKcal = 0,
-): Promise<boolean> => (native ? native.saveWorkout(startedAt, endedAt, energyKcal) : false);
+): Promise<{ saved: boolean; uuid: string | null }> => {
+  if (!native) return { saved: false, uuid: null };
+  const result = await native.saveWorkout(startedAt, endedAt, energyKcal);
+  if (typeof result === 'string' && result.length > 0) return { saved: true, uuid: result };
+  return { saved: result === true, uuid: null };
+};
 
 /**
  * Whether Ischys — the phone app or its Watch companion — has already written a
@@ -67,6 +106,84 @@ export const hasWorkout = async (startedAt: number, endedAt: number): Promise<bo
     return await native.hasWorkout(startedAt, endedAt);
   } catch {
     return false;
+  }
+};
+
+/**
+ * Ischys's own strength HKWorkout covering this window — by the same rules as
+ * `hasWorkout` — with its UUID and which half of Ischys wrote it. When both did,
+ * the Watch's recording is the one returned.
+ *
+ * Null when there is none, when workout-read access was refused (HealthKit
+ * reports that as no data), and on an older native module.
+ */
+export const findWorkout = async (
+  startedAt: number,
+  endedAt: number,
+): Promise<FoundWorkout | null> => {
+  if (!native || typeof native.findWorkout !== 'function') return null;
+  try {
+    const found = await native.findWorkout(startedAt, endedAt);
+    if (!found || typeof found.uuid !== 'string') return null;
+    if (found.writer !== 'phone' && found.writer !== 'watch') return null;
+    return {
+      uuid: found.uuid,
+      startedAt: Number(found.startedAt),
+      endedAt: Number(found.endedAt),
+      energyKcal: Number(found.energyKcal) || 0,
+      writer: found.writer,
+      bundleId: typeof found.bundleId === 'string' ? found.bundleId : '',
+    };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Whether iOS lets Ischys write workouts. Unlike read access, HealthKit
+ * discloses this one, so false is a real "no" — and also the answer on an older
+ * native module, which could not replace an entry anyway.
+ */
+export const canWriteWorkouts = (): boolean => {
+  if (!native || typeof native.canWriteWorkouts !== 'function') return false;
+  try {
+    return native.canWriteWorkouts();
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Moves an entry the PHONE wrote to a new start and end: HealthKit entries
+ * cannot be edited, so it is deleted by UUID and saved again over the new
+ * window, keeping its energy. An entry the Watch recorded is never touched —
+ * that comes back as `notOurs`.
+ *
+ * Never throws: every way it can go wrong is a status.
+ */
+export const replaceWorkout = async (
+  uuid: string,
+  startedAt: number,
+  endedAt: number,
+): Promise<ReplaceWorkoutResult> => {
+  if (!native || typeof native.replaceWorkout !== 'function') return { status: 'unavailable' };
+  try {
+    const result = await native.replaceWorkout(uuid, startedAt, endedAt);
+    switch (result?.status) {
+      case 'replaced':
+        return typeof result.uuid === 'string'
+          ? { status: 'replaced', uuid: result.uuid }
+          : { status: 'failed' };
+      case 'missing':
+      case 'notOurs':
+      case 'denied':
+      case 'unavailable':
+        return { status: result.status };
+      default:
+        return { status: 'failed' };
+    }
+  } catch {
+    return { status: 'failed' };
   }
 };
 
@@ -140,8 +257,11 @@ export type WatchAction =
   | { action: 'startEmpty' }
   | { action: 'startRoutine'; routineId: string }
   | { action: 'requestState' }
-  /** The Watch confirming it saved this session's HKWorkout (see healthSync). */
-  | { action: 'workoutSaved' };
+  /**
+   * The Watch confirming it saved this session's HKWorkout (see healthSync).
+   * `uuid` is that HKWorkout's; absent from a Watch build that predates #90.
+   */
+  | { action: 'workoutSaved'; uuid?: string };
 
 /** The workout state pushed to the Watch. Mirrors PhoneState in the watch target. */
 export type WatchState = Record<string, unknown>;

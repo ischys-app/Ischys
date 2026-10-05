@@ -153,7 +153,12 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
           // this never arrives — the save failed, auth was missing, we crashed —
           // the phone times out waiting and writes the workout itself, so a
           // finished workout is never silently lost.
-          if workout != nil { PhoneLink.shared.workoutSaved() }
+          //
+          // The UUID goes with it: the phone records which Health entry is this
+          // workout's and that the Watch wrote it, so a later edit to the
+          // workout's time leaves this recording alone. HealthKit keeps the
+          // UUID when the workout syncs to the phone.
+          if let workout { PhoneLink.shared.workoutSaved(uuid: workout.uuid.uuidString) }
         }
       }
     }

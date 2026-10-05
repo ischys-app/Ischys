@@ -4,7 +4,9 @@ import WatchConnectivity
 
 /// Bridges Ischys and Apple Health.
 ///
-/// Writing: saves a finished workout as an HKWorkout so it shows in Fitness.
+/// Writing: saves a finished workout as an HKWorkout so it shows in Fitness, and
+/// replaces that entry when the workout's date or duration is edited later
+/// (`WorkoutEntries`). An entry the Watch recorded is never altered.
 ///
 /// Reading: the iPhone has no heart-rate sensor, so live HR comes from an Apple
 /// Watch running a workout session and streaming samples into HealthKit. This
@@ -16,6 +18,8 @@ import WatchConnectivity
 /// WatchConnectivity when they finish on the phone.
 public class HealthModule: Module {
   private let store = HKHealthStore()
+  /// Ischys's own workouts in Health: saving, finding and replacing them.
+  private lazy var entries = WorkoutEntries(store: store)
   private var hrQuery: HKQuery?
 
   private var hrType: HKQuantityType? { HKObjectType.quantityType(forIdentifier: .heartRate) }
@@ -87,67 +91,27 @@ public class HealthModule: Module {
 
     /// Saves one strength-training workout spanning [startMs, endMs], optionally
     /// with the active energy read for that window. JS passes epoch milliseconds.
+    ///
+    /// Resolves the saved HKWorkout's UUID, which is what lets an edit to the
+    /// workout's time find this entry again (`replaceWorkout`), or null when
+    /// nothing was saved.
     AsyncFunction("saveWorkout") { (startMs: Double, endMs: Double, energyKcal: Double, promise: Promise) in
       guard HKHealthStore.isHealthDataAvailable() else {
-        promise.resolve(false)
+        promise.resolve(nil)
         return
       }
       let start = Date(timeIntervalSince1970: startMs / 1000)
       let end = Date(timeIntervalSince1970: endMs / 1000)
       guard end > start else {
-        promise.resolve(false)
+        promise.resolve(nil)
         return
       }
-
-      let config = HKWorkoutConfiguration()
-      // Traditional = weights/machines (what Ischys logs). Functional would be
-      // kettlebell/bodyweight movement work; wrong for a barbell app.
-      config.activityType = .traditionalStrengthTraining
-
-      let builder = HKWorkoutBuilder(healthStore: self.store, configuration: config, device: .local())
-      builder.beginCollection(withStart: start) { began, error in
-        if let error {
+      Task {
+        do {
+          let workout = try await self.entries.save(start: start, end: end, energyKcal: energyKcal)
+          promise.resolve(workout?.uuid.uuidString as Any?)
+        } catch {
           promise.reject("E_HEALTH_SAVE", error.localizedDescription)
-          return
-        }
-        guard began else {
-          promise.resolve(false)
-          return
-        }
-
-        // Attach energy the Watch measured, so Fitness shows calories rather
-        // than a blank. Nothing is fabricated — energyKcal is a HealthKit sum,
-        // and a zero (no Watch) simply adds no sample.
-        let addEnergy: (@escaping () -> Void) -> Void = { done in
-          guard energyKcal > 0, let energyType = self.energyType else {
-            done()
-            return
-          }
-          let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: energyKcal)
-          let sample = HKCumulativeQuantitySample(
-            type: energyType, quantity: quantity, start: start, end: end
-          )
-          builder.add([sample]) { _, _ in done() }
-        }
-
-        addEnergy {
-          builder.endCollection(withEnd: end) { ended, error in
-            if let error {
-              promise.reject("E_HEALTH_SAVE", error.localizedDescription)
-              return
-            }
-            guard ended else {
-              promise.resolve(false)
-              return
-            }
-            builder.finishWorkout { workout, error in
-              if let error {
-                promise.reject("E_HEALTH_SAVE", error.localizedDescription)
-              } else {
-                promise.resolve(workout != nil)
-              }
-            }
-          }
         }
       }
     }
@@ -161,59 +125,68 @@ public class HealthModule: Module {
     /// queued for the phone's next run — long after the phone has given up
     /// waiting and written its own copy. Asking HealthKit is authoritative.
     ///
-    /// Only workouts written by Ischys count. Another app's strength session
-    /// overlapping this window must not make us drop the user's workout, so the
-    /// source is matched against our own bundle id — with a prefix, because the
-    /// Watch companion's id is the phone app's plus a suffix and either half of
-    /// the pair may have been the writer.
+    /// The matching rules — only Ischys's own entries, from either half of the
+    /// pair, covering most of the window — are `WorkoutEntries.find`. Finding
+    /// nothing resolves false, so the caller writes: erring toward a rare
+    /// duplicate beats losing a finished workout.
     AsyncFunction("hasWorkout") { (startMs: Double, endMs: Double, promise: Promise) in
       guard HKHealthStore.isHealthDataAvailable() else {
         promise.resolve(false)
         return
       }
-      let ours = Bundle.main.bundleIdentifier ?? ""
-      guard !ours.isEmpty else {
-        promise.resolve(false)
+      let start = Date(timeIntervalSince1970: startMs / 1000)
+      let end = Date(timeIntervalSince1970: endMs / 1000)
+      Task {
+        let entry = await self.entries.find(start: start, end: end)
+        promise.resolve(entry != nil)
+      }
+    }
+
+    /// Ischys's strength HKWorkout over [startMs, endMs], by the same rules as
+    /// `hasWorkout`: its uuid, start and end (epoch ms), energy (kcal), the
+    /// bundle id that wrote it, and `writer` — "phone" or "watch". Null when
+    /// there is none.
+    AsyncFunction("findWorkout") { (startMs: Double, endMs: Double, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(nil)
         return
       }
       let start = Date(timeIntervalSince1970: startMs / 1000)
       let end = Date(timeIntervalSince1970: endMs / 1000)
-
-      // Overlap, not containment: the Watch's session begins a moment after the
-      // workout does and its HKWorkout is stamped from the session, so a strict
-      // match would miss exactly the copy we are looking for.
-      let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
-        HKQuery.predicateForSamples(withStart: start, end: end, options: []),
-        HKQuery.predicateForWorkouts(with: .traditionalStrengthTraining),
-      ])
-
-      let query = HKSampleQuery(
-        sampleType: HKObjectType.workoutType(),
-        predicate: predicate,
-        limit: HKObjectQueryNoLimit,
-        sortDescriptors: nil
-      ) { _, samples, _ in
-        // A query error (including workout-read access being denied, which
-        // HealthKit reports as no data rather than an error) resolves false, so
-        // the caller writes. Erring toward a rare duplicate beats losing a
-        // finished workout.
-        let sessionLength = end.timeIntervalSince(start)
-        let found = (samples ?? []).contains { sample in
-          let id = sample.sourceRevision.source.bundleIdentifier
-          guard id == ours || id.hasPrefix(ours + ".") else { return false }
-
-          // Back-to-back sessions touch at an endpoint and would otherwise match
-          // on overlap alone, suppressing a workout that is genuinely new. A
-          // real duplicate covers most of both intervals, so require that of it.
-          let overlap = min(end, sample.endDate)
-            .timeIntervalSince(max(start, sample.startDate))
-          guard overlap > 0 else { return false }
-          let sampleLength = sample.endDate.timeIntervalSince(sample.startDate)
-          return overlap >= sampleLength / 2 && overlap >= sessionLength / 2
-        }
-        promise.resolve(found)
+      Task {
+        let entry = await self.entries.find(start: start, end: end)
+        promise.resolve(entry?.payload as Any?)
       }
-      self.store.execute(query)
+    }
+
+    /// Whether iOS lets Ischys write workouts. Write access is the one grant
+    /// HealthKit discloses, so false here is a real "no".
+    Function("canWriteWorkouts") { () -> Bool in
+      HKHealthStore.isHealthDataAvailable() && self.entries.canWriteWorkouts
+    }
+
+    /// Moves an entry the PHONE wrote to [startMs, endMs]: deletes it by UUID
+    /// and saves a new one over the new window, carrying its energy over.
+    ///
+    /// Resolves `{ status }`: "replaced" (with the new `uuid`), "missing" (no
+    /// such entry any more), "notOurs" (the entry is not one the phone wrote —
+    /// a Watch recording is never deleted or altered), "denied" (not authorised
+    /// to write workouts), "failed", or "unavailable". Never rejects.
+    AsyncFunction("replaceWorkout") { (uuid: String, startMs: Double, endMs: Double, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(["status": "unavailable"])
+        return
+      }
+      guard let id = UUID(uuidString: uuid) else {
+        promise.resolve(["status": "missing"])
+        return
+      }
+      let start = Date(timeIntervalSince1970: startMs / 1000)
+      let end = Date(timeIntervalSince1970: endMs / 1000)
+      Task {
+        let outcome = await self.entries.replace(uuid: id, start: start, end: end)
+        promise.resolve(outcome.payload)
+      }
     }
 
     /// Aggregates for a finished workout: average and max heart rate (bpm) and

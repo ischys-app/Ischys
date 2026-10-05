@@ -94,7 +94,7 @@ export function SetRow({
     !(Number(set.weight) === suggestion.weight && Number(set.reps) === suggestion.reps);
 
   const meta = typeMeta[set.type];
-  const prev = prevLabel(exercise, set, unit);
+  const prev = prevLabel(exercise, set);
   // This session's carried values beat last session's reference, which is only
   // a hint. Bodyweight has no weight column to carry.
   const phWeight =

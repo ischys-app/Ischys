@@ -108,16 +108,7 @@ export function weightColumnLabel(ex: Exercise, unit: Unit): string {
   return ex.kind === 'bodyweight' ? `+${unitLabel(unit)}` : unitLabel(unit);
 }
 
-/**
- * Previous-set reference string, e.g. "60 kg × 8", "135 lb × 8" or "× 11".
- * `prevWeight` is already in `unit`; this only names it.
- */
-export function prevLabel(ex: Exercise, s: WorkoutSet, unit: Unit): string {
-  if (ex.kind === 'bodyweight') {
-    return s.prevReps != null ? `× ${s.prevReps}` : '';
-  }
-  return s.prevWeight != null ? `${s.prevWeight} ${unit} × ${s.prevReps ?? ''}` : '';
-}
+export { prevLabel } from './prevLabel';
 
 let _seq = 0;
 const uid = (p: string) => `${p}-${_seq++}`;

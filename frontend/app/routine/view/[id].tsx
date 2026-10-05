@@ -16,7 +16,7 @@ import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { getRoutine, getRoutineHistory, type RoutineHistory } from '../../../src/api/routines';
 import type { RoutineOut } from '../../../src/api/types';
 import { startWorkout } from '../../../src/api/workouts';
-import { PlusIcon } from '../../../src/components/icons';
+import { PlayFilledIcon, PlusIcon } from '../../../src/components/icons';
 import { PressableScale } from '../../../src/components/PressableScale';
 import { fmtRest, typeMeta } from '../../../src/components/workout/types';
 import {
@@ -43,7 +43,7 @@ const CTA_HEIGHT = 52;
 function restText(rest: ViewRest): string {
   if (rest.kind === 'then') return `then ${rest.tag}`;
   const clock = fmtRest(rest.seconds);
-  if (rest.kind === 'afterRound') return `Rest after round ${clock}`;
+  if (rest.kind === 'afterRound') return rest.seconds > 0 ? `Rest after round ${clock}` : 'Rest off';
   return rest.seconds > 0 ? `Rest ${clock}` : 'Rest off';
 }
 
@@ -288,9 +288,7 @@ export default function RoutineView() {
             {isEmpty ? (
               <PlusIcon size={16} color={color.accentFg} strokeWidth={2.6} />
             ) : (
-              <Svg width={16} height={16} viewBox="0 0 24 24">
-                <Path d="M7 4.5v15l12-7.5z" fill={color.accentFg} />
-              </Svg>
+              <PlayFilledIcon size={16} color={color.accentFg} />
             )}
             <Text style={styles.ctaLabel}>{isEmpty ? 'Add exercises' : 'Start Routine'}</Text>
           </PressableScale>

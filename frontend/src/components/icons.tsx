@@ -34,6 +34,15 @@ export function PlayIcon({ size = 16, color, strokeWidth = 2.8 }: IconProps) {
   );
 }
 
+/** The solid triangle on the Start Routine buttons. */
+export function PlayFilledIcon({ size = 16, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7 4.5v15l12-7.5z" fill={color} />
+    </Svg>
+  );
+}
+
 export function StarIcon({ size = 12, color, strokeWidth = 2.4 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

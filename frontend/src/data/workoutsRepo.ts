@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
 
-import { db } from '../db/client';
+import { atomically, db } from '../db/client';
 import * as schema from '../db/schema';
 import type {
   PreviousSetOut,
@@ -187,63 +187,67 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
   if (body.routine_id && !routine) throw new Error('routine not found');
   if (routine) name = body.name || routine.name;
 
-  await db.insert(schema.workouts).values({
-    id,
-    userId: LOCAL_USER_ID,
-    routineId: body.routine_id ?? null,
-    name,
-    status: 'active',
-    startedAt,
-    updatedAt: nowMs(),
-  });
+  // One unit: a start cut short would leave a live workout holding only some
+  // of its routine, with nothing to say the rest is missing.
+  await atomically(async () => {
+    await db.insert(schema.workouts).values({
+      id,
+      userId: LOCAL_USER_ID,
+      routineId: body.routine_id ?? null,
+      name,
+      status: 'active',
+      startedAt,
+      updatedAt: nowMs(),
+    });
 
-  if (routine) {
-    const res = await db
-      .select()
-      .from(schema.routineExercises)
-      .where(eq(schema.routineExercises.routineId, routine.id))
-      .orderBy(asc(schema.routineExercises.position));
-    for (const re of res) {
-      const weId = newId();
-      await db.insert(schema.workoutExercises).values({
-        id: weId,
-        workoutId: id,
-        exerciseId: re.exerciseId,
-        position: re.position,
-        restSeconds: re.restSeconds,
-        // Carry the grouping, or starting a routine would silently break its
-        // supersets apart.
-        supersetGroup: re.supersetGroup ?? null,
-        // The routine's note is a template hint, surfaced via getPreviousNote as a
-        // placeholder — not frozen onto the session as a value. Freezing it meant a
-        // routine's note (e.g. inherited from an imported sample) reappeared every
-        // workout and edits never stuck, since they never wrote back to the routine.
-        note: null,
-        updatedAt: nowMs(),
-      });
-      const rsets = await db
+    if (routine) {
+      const res = await db
         .select()
-        .from(schema.routineSets)
-        .where(eq(schema.routineSets.routineExerciseId, re.id))
-        .orderBy(asc(schema.routineSets.position));
-      // Prefill from the last completed session (by position), else the target.
-      const prev = await previousSets(re.exerciseId, startedAt);
-      const prevByPos = new Map(prev.map((s) => [s.position, s]));
-      for (const rs of rsets) {
-        const p = prevByPos.get(rs.position);
-        await db.insert(schema.workoutSets).values({
-          id: newId(),
-          workoutExerciseId: weId,
-          position: rs.position,
-          type: rs.type,
-          weight: p && p.weight !== null ? p.weight : rs.targetWeight,
-          reps: p && p.reps !== null ? p.reps : rs.targetReps,
-          done: 0,
+        .from(schema.routineExercises)
+        .where(eq(schema.routineExercises.routineId, routine.id))
+        .orderBy(asc(schema.routineExercises.position));
+      for (const re of res) {
+        const weId = newId();
+        await db.insert(schema.workoutExercises).values({
+          id: weId,
+          workoutId: id,
+          exerciseId: re.exerciseId,
+          position: re.position,
+          restSeconds: re.restSeconds,
+          // Carry the grouping, or starting a routine would silently break its
+          // supersets apart.
+          supersetGroup: re.supersetGroup ?? null,
+          // The routine's note is a template hint, surfaced via getPreviousNote as a
+          // placeholder — not frozen onto the session as a value. Freezing it meant a
+          // routine's note (e.g. inherited from an imported sample) reappeared every
+          // workout and edits never stuck, since they never wrote back to the routine.
+          note: null,
           updatedAt: nowMs(),
         });
+        const rsets = await db
+          .select()
+          .from(schema.routineSets)
+          .where(eq(schema.routineSets.routineExerciseId, re.id))
+          .orderBy(asc(schema.routineSets.position));
+        // Prefill from the last completed session (by position), else the target.
+        const prev = await previousSets(re.exerciseId, startedAt);
+        const prevByPos = new Map(prev.map((s) => [s.position, s]));
+        for (const rs of rsets) {
+          const p = prevByPos.get(rs.position);
+          await db.insert(schema.workoutSets).values({
+            id: newId(),
+            workoutExerciseId: weId,
+            position: rs.position,
+            type: rs.type,
+            weight: p && p.weight !== null ? p.weight : rs.targetWeight,
+            reps: p && p.reps !== null ? p.reps : rs.targetReps,
+            done: 0,
+            updatedAt: nowMs(),
+          });
+        }
       }
     }
-  }
+  });
   return getWorkout(id);
 }
 
@@ -285,7 +289,7 @@ export async function addSetApi(
   const id = body.id ?? newId();
   // Read the max position and insert atomically: two rapid taps must not both read
   // the same position and collide.
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     const existing = await tx.select().from(schema.workoutSets).where(eq(schema.workoutSets.workoutExerciseId, weId));
     const position = existing.reduce((max, s) => Math.max(max, s.position + 1), 0);
     await tx.insert(schema.workoutSets).values({
@@ -319,7 +323,7 @@ export async function insertWarmupSets(
   rows: { id?: string; weight: number | null; reps: number | null }[],
 ): Promise<void> {
   if (rows.length === 0) return;
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     const existing = await tx
       .select()
       .from(schema.workoutSets)
@@ -361,7 +365,7 @@ export async function insertWarmupSets(
  */
 export async function setSupersetGroup(weIds: string[], group: number | null): Promise<void> {
   if (weIds.length === 0) return;
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     for (const id of weIds) {
       await tx
         .update(schema.workoutExercises)
@@ -382,31 +386,38 @@ export async function nextSupersetGroup(workoutId: string): Promise<number> {
 }
 
 export async function deleteSet(setId: string): Promise<void> {
-  const set = (await db.select().from(schema.workoutSets).where(eq(schema.workoutSets.id, setId)))[0];
-  if (!set) return;
-  await db.delete(schema.workoutSets).where(eq(schema.workoutSets.id, setId));
-  // Renumber the remaining sets of that exercise contiguously.
-  const rest = await db
-    .select()
-    .from(schema.workoutSets)
-    .where(eq(schema.workoutSets.workoutExerciseId, set.workoutExerciseId))
-    .orderBy(asc(schema.workoutSets.position));
-  for (let i = 0; i < rest.length; i++) {
-    if (rest[i].position !== i) {
-      await db.update(schema.workoutSets).set({ position: i, updatedAt: nowMs() }).where(eq(schema.workoutSets.id, rest[i].id));
+  // One unit: the delete and the renumbering it leaves the others owing.
+  await atomically(async () => {
+    const set = (await db.select().from(schema.workoutSets).where(eq(schema.workoutSets.id, setId)))[0];
+    if (!set) return;
+    await db.delete(schema.workoutSets).where(eq(schema.workoutSets.id, setId));
+    // Renumber the remaining sets of that exercise contiguously.
+    const rest = await db
+      .select()
+      .from(schema.workoutSets)
+      .where(eq(schema.workoutSets.workoutExerciseId, set.workoutExerciseId))
+      .orderBy(asc(schema.workoutSets.position));
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i].position !== i) {
+        await db.update(schema.workoutSets).set({ position: i, updatedAt: nowMs() }).where(eq(schema.workoutSets.id, rest[i].id));
+      }
     }
-  }
+  });
 }
 
 export async function removeWorkoutExercise(_wid: string, weId: string): Promise<void> {
-  await db.delete(schema.workoutSets).where(eq(schema.workoutSets.workoutExerciseId, weId));
-  await db.delete(schema.workoutExercises).where(eq(schema.workoutExercises.id, weId));
+  await atomically(async () => {
+    await db.delete(schema.workoutSets).where(eq(schema.workoutSets.workoutExerciseId, weId));
+    await db.delete(schema.workoutExercises).where(eq(schema.workoutExercises.id, weId));
+  });
 }
 
 export async function reorderExercises(wid: string, order: string[]): Promise<WorkoutOut> {
-  for (let i = 0; i < order.length; i++) {
-    await db.update(schema.workoutExercises).set({ position: i, updatedAt: nowMs() }).where(eq(schema.workoutExercises.id, order[i]));
-  }
+  await atomically(async () => {
+    for (let i = 0; i < order.length; i++) {
+      await db.update(schema.workoutExercises).set({ position: i, updatedAt: nowMs() }).where(eq(schema.workoutExercises.id, order[i]));
+    }
+  });
   return getWorkout(wid);
 }
 
@@ -434,7 +445,7 @@ export async function addWorkoutExercise(
   }
   // Position read + inserts atomic: two rapid adds must not read the same
   // position and collide, and the exercise's sets must land as one unit.
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     const existing = await tx.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, workoutId));
     const position = existing.reduce((max, we) => Math.max(max, we.position + 1), 0);
     await tx.insert(schema.workoutExercises).values({
@@ -473,23 +484,28 @@ export async function discardWorkout(wid: string): Promise<WorkoutOut> {
 }
 
 export async function deleteWorkout(wid: string): Promise<void> {
-  const wes = await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
-  const touched = [...new Set(wes.map((we) => we.exerciseId))];
-  const weIds = wes.map((we) => we.id);
+  // Read before the transaction: its body may await nothing but database
+  // statements (db/atomic.ts), and SecureStore really waits.
   const currentBw = await getBodyweightKg();
   const countWarmups = await getCountWarmups();
-  // Which workouts count each exercise among their PRs, read while this one
-  // still stands (as an edit does).
-  const heldBefore = new Map<string, Set<string>>();
-  for (const eid of touched) heldBefore.set(eid, await prCountHolders(eid, db, currentBw, countWarmups));
-  if (weIds.length) await db.delete(schema.workoutSets).where(inArray(schema.workoutSets.workoutExerciseId, weIds));
-  await db.delete(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
-  await db.delete(schema.workouts).where(eq(schema.workouts.id, wid));
-  for (const eid of touched) {
-    // A record this workout held passes to the next-best set, and to its workout's count.
-    await reflagExercisePrs(eid, db, currentBw, countWarmups, heldBefore.get(eid) ?? new Set());
-    await recomputeForExercise(eid, db, currentBw, countWarmups); // PRs lose this evidence
-  }
+  // One unit: the rows, and the records and PR flags re-derived without them.
+  await atomically(async () => {
+    const wes = await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
+    const touched = [...new Set(wes.map((we) => we.exerciseId))];
+    const weIds = wes.map((we) => we.id);
+    // Which workouts count each exercise among their PRs, read while this one
+    // still stands (as an edit does).
+    const heldBefore = new Map<string, Set<string>>();
+    for (const eid of touched) heldBefore.set(eid, await prCountHolders(eid, db, currentBw, countWarmups));
+    if (weIds.length) await db.delete(schema.workoutSets).where(inArray(schema.workoutSets.workoutExerciseId, weIds));
+    await db.delete(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, wid));
+    await db.delete(schema.workouts).where(eq(schema.workouts.id, wid));
+    for (const eid of touched) {
+      // A record this workout held passes to the next-best set, and to its workout's count.
+      await reflagExercisePrs(eid, db, currentBw, countWarmups, heldBefore.get(eid) ?? new Set());
+      await recomputeForExercise(eid, db, currentBw, countWarmups); // PRs lose this evidence
+    }
+  });
 }
 
 export async function uploadHeartRate(
@@ -545,7 +561,7 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   // Atomic: mark completed, materialise PRs, flag PR sets, and write prCount as one
   // unit. Otherwise a crash mid-finish leaves a completed workout with wrong/zero
   // prCount that the `status !== 'active'` guard makes unrepairable.
-  await db.transaction(async (tx) => {
+  await atomically(async (tx) => {
     // Snapshot each exercise's PR baseline BEFORE this workout counts as completed.
     const baselines = new Map<string, Awaited<ReturnType<typeof currentValues>>>();
     for (const eid of exerciseIds) baselines.set(eid, await currentValues(eid, tx));
@@ -643,42 +659,45 @@ export async function saveAsRoutine(wid: string): Promise<{ id: string; name: st
   // import, but "Save as new" from a routine-backed summary always clashes too.
   const name = uniqueRoutineName(w.name, existing.map((r) => r.name));
   const routineId = newId();
-  await db.insert(schema.routines).values({
-    id: routineId,
-    userId: LOCAL_USER_ID,
-    name,
-    initials: initialsOf(name),
-    position: lastPos,
-    updatedAt: nowMs(),
-  });
-  for (const we of wes) {
-    const reId = newId();
-    await db.insert(schema.routineExercises).values({
-      id: reId,
-      routineId,
-      exerciseId: we.exerciseId,
-      position: we.position,
-      restSeconds: we.restSeconds,
-      supersetGroup: we.supersetGroup ?? null,
-      note: we.note,
+  // One unit: a routine is its exercises and their sets, not the first few.
+  await atomically(async () => {
+    await db.insert(schema.routines).values({
+      id: routineId,
+      userId: LOCAL_USER_ID,
+      name,
+      initials: initialsOf(name),
+      position: lastPos,
       updatedAt: nowMs(),
     });
-    const sets = await db
-      .select()
-      .from(schema.workoutSets)
-      .where(eq(schema.workoutSets.workoutExerciseId, we.id))
-      .orderBy(asc(schema.workoutSets.position));
-    for (const s of sets) {
-      await db.insert(schema.routineSets).values({
-        id: newId(),
-        routineExerciseId: reId,
-        position: s.position,
-        type: s.type,
-        targetWeight: s.weight,
-        targetReps: s.reps,
+    for (const we of wes) {
+      const reId = newId();
+      await db.insert(schema.routineExercises).values({
+        id: reId,
+        routineId,
+        exerciseId: we.exerciseId,
+        position: we.position,
+        restSeconds: we.restSeconds,
+        supersetGroup: we.supersetGroup ?? null,
+        note: we.note,
         updatedAt: nowMs(),
       });
+      const sets = await db
+        .select()
+        .from(schema.workoutSets)
+        .where(eq(schema.workoutSets.workoutExerciseId, we.id))
+        .orderBy(asc(schema.workoutSets.position));
+      for (const s of sets) {
+        await db.insert(schema.routineSets).values({
+          id: newId(),
+          routineExerciseId: reId,
+          position: s.position,
+          type: s.type,
+          targetWeight: s.weight,
+          targetReps: s.reps,
+          updatedAt: nowMs(),
+        });
+      }
     }
-  }
+  });
   return { id: routineId, name };
 }

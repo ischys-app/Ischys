@@ -114,7 +114,7 @@ import { CheckIcon } from '../../src/components/icons';
 import { EmptyWorkout } from '../../src/components/workout/EmptyWorkout';
 import { ExerciseCard } from '../../src/components/workout/ExerciseCard';
 import { ReorderExercises } from '../../src/components/workout/ReorderExercises';
-import { RestBar } from '../../src/components/workout/RestBar';
+import { EffortSection, RestBar } from '../../src/components/workout/RestBar';
 import { DraggableSheet } from '../../src/components/DraggableSheet';
 import { PressableScale } from '../../src/components/PressableScale';
 import { RestPickerSheet } from '../../src/components/workout/RestPickerSheet';
@@ -241,8 +241,12 @@ export default function ActiveWorkout() {
     setId: string;
     saved: boolean;
   } | null>(null);
-  // The set whose rating sheet is open (from its row, or the keypad's key).
+  // The set whose rating sheet is open (from its row).
   const [effortSheet, setEffortSheet] = useState<{ exerciseId: string; setId: string } | null>(null);
+  // The set the keypad bar is rating: its RPE key swaps the bar for the scale,
+  // in place, so the keypad stays up. A sheet here would be a Modal, and
+  // presenting one drops the keyboard.
+  const [keypadEffortSetId, setKeypadEffortSetId] = useState<string | null>(null);
   const [plateSheetOpen, setPlateSheetOpen] = useState(false);
   const [warmupExId, setWarmupExId] = useState<string | null>(null);
   const [supersetExId, setSupersetExId] = useState<string | null>(null);
@@ -541,7 +545,10 @@ export default function ActiveWorkout() {
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
     const show = Keyboard.addListener('keyboardWillShow', (e) => setKbHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
+      setKbHeight(0);
+      setKeypadEffortSetId(null); // the next keypad opens on its normal bar
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -1619,8 +1626,7 @@ export default function ActiveWorkout() {
       : null;
 
   const sheetTarget = effortKind ? findSet(effortSheet) : null;
-  // What the row would log, so the sheet can name a set that was opened from
-  // the keypad before anything was typed into it.
+  // What the row logged, carried values included, so the sheet can name it.
   const sheetValues = sheetTarget
     ? resolveSet(sheetTarget.set, carryFor(sheetTarget.ex.sets, sheetTarget.index))
     : null;
@@ -1651,6 +1657,26 @@ export default function ActiveWorkout() {
   // The keypad bar's key: only while reps are being typed, where a rating is
   // the natural next thought. Named for the scale in use.
   const effortKeySet = effortKind && focusedSet?.field === 'reps' ? focusedSet : null;
+  // Its scale, once the key is tapped. Tied to the set it was opened for, so
+  // moving to another field or another set puts the normal bar back.
+  const keypadTarget =
+    effortKind && effortKeySet && keypadEffortSetId === effortKeySet.setId
+      ? findSet(effortKeySet)
+      : null;
+  const keypadEffort =
+    effortKind && effortKeySet && keypadTarget
+      ? {
+          kind: effortKind,
+          badge: setBadge(keypadTarget.ex.sets, keypadTarget.index),
+          rpe: keypadTarget.set.rpe ?? null,
+          saved: false,
+          /** One tap saves (or clears) and the normal bar is back. */
+          rate: (rpe: number | null) => {
+            rateSet(effortKeySet.exerciseId, effortKeySet.setId, rpe);
+            setKeypadEffortSetId(null);
+          },
+        }
+      : null;
 
   const statusText = status === 'active' ? 'In progress' : status;
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
@@ -1743,7 +1769,10 @@ export default function ActiveWorkout() {
               onWeightChange={(setId, t) => editWeight(ex.id, setId, t)}
               onRepsChange={(setId, t) => editReps(ex.id, setId, t)}
               onToggleDone={(setId) => toggleDone(ex.id, setId)}
-              onFieldFocus={(setId, field) => setFocusedSet({ exerciseId: ex.id, setId, field })}
+              onFieldFocus={(setId, field) => {
+                setFocusedSet({ exerciseId: ex.id, setId, field });
+                setKeypadEffortSetId(null); // a newly focused field gets the normal bar
+              }}
               effort={
                 effortKind
                   ? {
@@ -1792,7 +1821,35 @@ export default function ActiveWorkout() {
           return key, so this is their only dismiss affordance. Positioned by the
           live keyboard height because InputAccessoryView does not render under the
           New Architecture. iOS-only; shown only while the keyboard is up. */}
-      {Platform.OS === 'ios' && kbHeight > 0 && (
+      {Platform.OS === 'ios' && kbHeight > 0 && keypadEffort ? (
+        // The RPE key was tapped: the bar becomes the rest bar's question, in
+        // the tree rather than in a sheet, so the keypad stays open and the
+        // reps field keeps focus. Nothing in here can take focus.
+        <View style={[styles.kbdEffort, { bottom: kbHeight }]}>
+          <EffortSection effort={{ ...keypadEffort, onRate: keypadEffort.rate }} />
+          <View style={styles.kbdEffortKeys}>
+            <Pressable
+              onPress={() => setKeypadEffortSetId(null)}
+              style={styles.kbdEffortKey}
+              accessibilityRole="button"
+              accessibilityLabel="Back to the keypad bar"
+            >
+              <Text style={styles.kbdAccessoryAction}>Back</Text>
+            </Pressable>
+            {/* Nothing to clear on an unrated set, so the key isn't there. */}
+            {keypadEffort.rpe != null ? (
+              <Pressable
+                onPress={() => keypadEffort.rate(null)}
+                style={styles.kbdEffortKey}
+                accessibilityRole="button"
+                accessibilityLabel="Clear rating"
+              >
+                <Text style={styles.kbdAccessoryAction}>Clear rating</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : Platform.OS === 'ios' && kbHeight > 0 ? (
         <View style={[styles.kbdAccessory, { bottom: kbHeight }]}>
           {/* Plates only for barbell work. Dumbbells, machines and cables come in
               whatever increments they come in, so there is nothing to calculate —
@@ -1813,12 +1870,7 @@ export default function ActiveWorkout() {
                 </Pressable>
               ) : null}
               <Pressable
-                onPress={() =>
-                  setEffortSheet({
-                    exerciseId: effortKeySet.exerciseId,
-                    setId: effortKeySet.setId,
-                  })
-                }
+                onPress={() => setKeypadEffortSetId(effortKeySet.setId)}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Rate this set"
@@ -1847,7 +1899,7 @@ export default function ActiveWorkout() {
             <Text style={styles.kbdAccessoryDone}>Done</Text>
           </Pressable>
         </View>
-      )}
+      ) : null}
 
       <RestBar
         resting={restRemaining > 0}
@@ -2096,6 +2148,24 @@ const styles = StyleSheet.create({
     borderTopColor: color.border,
   },
   kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // The bar while it is rating a set: the rest card's effort section (board
+  // 14a, F2) on the card's own surface, over a row of keys the bar's height.
+  kbdEffort: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: color.surface3,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: color.border,
+  },
+  kbdEffortKeys: {
+    height: 44,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  kbdEffortKey: { height: 44, justifyContent: 'center' },
   // Partners sit 4pt apart and share a rail in the screen margin.
   ssMember: { position: 'relative', marginBottom: 4 },
   ssHeader: {

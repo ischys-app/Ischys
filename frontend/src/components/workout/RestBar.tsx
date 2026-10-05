@@ -91,7 +91,11 @@ export function RestBar({
   );
 }
 
-function EffortSection({ effort }: { effort: RestBarEffort }) {
+/**
+ * The ask line and the scale. Also what the keypad bar shows when its RPE key
+ * is tapped, so both places ask the same way.
+ */
+export function EffortSection({ effort }: { effort: RestBarEffort }) {
   // The value under the thumb, so the prompt can say what it means.
   const [preview, setPreview] = useState<number | null>(null);
 

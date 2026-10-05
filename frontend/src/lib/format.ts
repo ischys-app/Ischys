@@ -1,4 +1,5 @@
 /** Presentation formatters for dashboard data. No external date libs. */
+import { type Unit, volumeToDisplay } from '../domain/units.ts';
 
 const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const WEEKDAY_TITLE = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -16,8 +17,9 @@ function parse(iso: string): Date {
   }
   // Some timestamps arrive without an offset, and ECMAScript reads an
   // offset-less date-time as *local* — three hours out in Athens. Treat it as
-  // UTC, the instant it denotes. Kept in step with lib/serverTime.ts;
-  // this module stays import-free so `node --test` can run it.
+  // UTC, the instant it denotes. Kept in step with lib/serverTime.ts rather
+  // than imported from it; this module's only import is the pure units.ts,
+  // so `node --test` can run it.
   return new Date(HAS_OFFSET.test(iso) ? iso : `${iso}Z`);
 }
 
@@ -27,10 +29,14 @@ export function fmtHeaderDate(iso: string): string {
   return `${WEEKDAY_UPPER[d.getDay()]} · ${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/** value + unit pair for the compact VOLUME stat. */
-export function fmtVolumeShort(kg: number): { value: string; unit: string } {
-  if (kg >= 1000) return { value: (kg / 1000).toFixed(1), unit: 'k kg' };
-  return { value: String(Math.round(kg)), unit: ' kg' };
+/**
+ * value + unit pair for the compact VOLUME stat. Takes stored kilograms and
+ * converts first, so the "k" threshold is judged on the number actually shown.
+ */
+export function fmtVolumeShort(kg: number, unit: Unit): { value: string; unit: string } {
+  const v = volumeToDisplay(kg, unit);
+  if (v >= 1000) return { value: (v / 1000).toFixed(1), unit: `k ${unit}` };
+  return { value: String(Math.round(v)), unit: ` ${unit}` };
 }
 
 /** seconds → "H:MM" (e.g. 10080 → "2:48") */
@@ -38,13 +44,6 @@ export function fmtDuration(sec: number): string {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   return `${h}:${String(m).padStart(2, '0')}`;
-}
-
-/** thousands-separated kg (e.g. 9177 → "9,177 kg"). Manual grouping — Hermes'
- * Intl may omit the separator, so we don't rely on toLocaleString. */
-export function fmtVolumeFull(kg: number): string {
-  const grouped = String(Math.round(kg)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return `${grouped} kg`;
 }
 
 /** e.g. "Tue, 7 Jul · 09:06" */
@@ -98,11 +97,13 @@ export function fmtMonthYear(iso?: string | null): string {
  *   ≥ 1_000_000 → "1.84" / "M kg"
  *   ≥ 10_000    → "12.5" / "k kg"
  *   else        → "218"  / " kg"
+ * Takes stored kilograms; the thresholds apply to the converted number.
  */
-export function fmtVolumeLarge(kg: number): { value: string; unit: string } {
-  if (kg >= 1_000_000) return { value: (kg / 1_000_000).toFixed(2), unit: 'M kg' };
-  if (kg >= 10_000) return { value: (kg / 1000).toFixed(1), unit: 'k kg' };
-  return { value: String(Math.round(kg)), unit: ' kg' };
+export function fmtVolumeLarge(kg: number, unit: Unit): { value: string; unit: string } {
+  const v = volumeToDisplay(kg, unit);
+  if (v >= 1_000_000) return { value: (v / 1_000_000).toFixed(2), unit: `M ${unit}` };
+  if (v >= 10_000) return { value: (v / 1000).toFixed(1), unit: `k ${unit}` };
+  return { value: String(Math.round(v)), unit: ` ${unit}` };
 }
 
 /** Human label for a `RecordMetric` (records list on Profile / summary chips). */

@@ -2,7 +2,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { computeRecords, detectPrs, headlinePr, type PRSet, type PRSession } from './records.ts';
+import {
+  computeRecords,
+  detectPrs,
+  headlinePr,
+  recordDeltaDisplay,
+  recordDisplay,
+  type PRSet,
+  type PRSession,
+} from './records.ts';
 
 const at = (day: number) => Date.UTC(2026, 6, day, 9);
 const wset = (id: string, type: string, weight: number | null, reps: number | null, done = true): PRSet => ({
@@ -154,6 +162,61 @@ test('max_reps delta uses rep units', () => {
   const newRecs = computeRecords([session('w', 1, [wset('a', 'normal', 25, 13)])]);
   const pr = detectPrs({ max_reps: 12 }, { max_reps: newRecs.max_reps })[0];
   assert.equal(pr.deltaDisplay, '▲ 1 rep');
+});
+
+// --- recordDisplay / recordDeltaDisplay: stored kg prose in the user's unit ---
+
+test('recordDisplay leaves a kg record reading as it was stored', () => {
+  const recs = computeRecords(benchHistory());
+  for (const r of Object.values(recs)) {
+    assert.equal(recordDisplay(r.metric, r.value, r.display, 'kg'), r.display);
+  }
+  assert.equal(recordDisplay('max_reps', 11, 'BW × 11', 'kg'), 'BW × 11');
+});
+
+test('recordDisplay converts each weight-bearing metric to lb', () => {
+  assert.equal(recordDisplay('best_set', 68, '68 × 5', 'lb'), '149.91 × 5');
+  assert.equal(recordDisplay('est_1rm', 79.33, '79 kg', 'lb'), '175 lb');
+  assert.equal(recordDisplay('best_volume', 1300, '1,300 kg', 'lb'), '2,866 lb');
+  assert.equal(recordDisplay('max_reps', 15, '40 × 15', 'lb'), '88.18 × 15');
+});
+
+test('recordDisplay keeps a bodyweight rep record free of units', () => {
+  assert.equal(recordDisplay('max_reps', 11, 'BW × 11', 'lb'), 'BW × 11');
+});
+
+test('a set logged in lb reads back as the lb that was typed', () => {
+  // 225 lb x 5 is stored as 102.0583 kg, so the kg prose carries four decimals.
+  const recs = computeRecords([session('w', 1, [wset('a', 'normal', 102.0583, 5)])]);
+  const best = recs.best_set!;
+  assert.equal(recordDisplay('best_set', best.value, best.display, 'lb'), '225 × 5');
+  // ...and a kg reader gets it at display precision, not storage precision.
+  assert.equal(recordDisplay('best_set', best.value, best.display, 'kg'), '102.06 × 5');
+});
+
+test('recordDisplay passes through prose it does not recognise', () => {
+  assert.equal(recordDisplay('best_set', 68, '', 'lb'), '');
+  assert.equal(recordDisplay('best_set', 68, 'n/a', 'lb'), 'n/a');
+});
+
+test('recordDeltaDisplay names the gain in the user unit', () => {
+  assert.equal(recordDeltaDisplay('best_set', 3, 'kg'), '▲ 3 kg');
+  assert.equal(recordDeltaDisplay('best_set', 3, 'lb'), '▲ 6.61 lb');
+  assert.equal(recordDeltaDisplay('best_set', 2.268, 'lb'), '▲ 5 lb');
+  assert.equal(recordDeltaDisplay('best_volume', 1000, 'lb'), '▲ 2,205 lb');
+});
+
+test('recordDeltaDisplay keeps reps as reps and a first record as NEW', () => {
+  assert.equal(recordDeltaDisplay('max_reps', 1, 'lb'), '▲ 1 rep');
+  assert.equal(recordDeltaDisplay('max_reps', 3, 'kg'), '▲ 3 reps');
+  assert.equal(recordDeltaDisplay('best_set', null, 'lb'), 'NEW');
+});
+
+test('recordDeltaDisplay in kg matches what detectPrs writes', () => {
+  const old = { best_set: 65, est_1rm: 75.83, best_volume: 1253, max_reps: 10 } as const;
+  for (const p of detectPrs(old, computeRecords(benchHistory()))) {
+    assert.equal(recordDeltaDisplay(p.metric, p.delta, 'kg'), p.deltaDisplay);
+  }
 });
 
 // --- headlinePr ---

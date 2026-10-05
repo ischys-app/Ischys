@@ -15,6 +15,8 @@ import { aggregateMuscleWork, isNeglected } from '../../src/domain/muscleMap';
 import { muscleWorkEntries } from '../../src/data/muscleMapRepo';
 import { latestMeasurements, type MeasurementRow } from '../../src/data/measurementsRepo';
 import { formatMeasurement, type MetricId } from '../../src/domain/measurements';
+import { recordDisplay } from '../../src/domain/records';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
 
 const BAR_MAX_HEIGHT = 56;
@@ -28,6 +30,7 @@ export default function Profile() {
   // Measure it so the scroll content clears it on every device, rather than
   // trusting a hardcoded padding that only happened to fit one inset.
   const [headerH, setHeaderH] = useState(0);
+  const unit = useWeightUnit();
 
   const [profile, setProfile] = useState<ProfileOut | null>(null);
   const [records, setRecords] = useState<RecordOut[] | null>(null);
@@ -113,7 +116,7 @@ export default function Profile() {
   }, [workouts]);
 
   const stats = profile?.stats;
-  const vol = stats ? fmtVolumeLarge(stats.volume_lifted) : { value: '—', unit: '' };
+  const vol = stats ? fmtVolumeLarge(stats.volume_lifted, unit) : { value: '—', unit: '' };
   const trainingSince = fmtMonthYear(profile?.training_since);
   const location = profile?.location ?? '';
   const subtitle = location && trainingSince
@@ -247,7 +250,7 @@ export default function Profile() {
                     ? 'Waist, arms, body fat and more'
                     : [...measurements.entries()]
                         .slice(0, 3)
-                        .map(([m, r]) => formatMeasurement(r.value, m, { weightUnit: 'kg' }))
+                        .map(([m, r]) => formatMeasurement(r.value, m, { weightUnit: unit }))
                         .join('  ·  ')}
                 </Text>
               </View>
@@ -293,7 +296,9 @@ export default function Profile() {
                   <Text style={styles.recordName} numberOfLines={1}>
                     {r.exercise_name || metricLabel(r.metric)}
                   </Text>
-                  <Text style={styles.recordValue}>{r.display}</Text>
+                  <Text style={styles.recordValue}>
+                    {recordDisplay(r.metric, r.value, r.display, unit)}
+                  </Text>
                 </View>
               ))}
             </View>

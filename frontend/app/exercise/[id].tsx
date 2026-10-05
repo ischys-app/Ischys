@@ -42,6 +42,9 @@ import {
   type ChartRangeId,
 } from '../../src/domain/chartRange';
 import { getChartRange, setChartRange } from '../../src/lib/chartRangePref';
+import { recordDisplay } from '../../src/domain/records';
+import { type Unit, formatWeight, volumeToDisplay } from '../../src/domain/units';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { PressableScale } from '../../src/components/PressableScale';
 import { pickerIsActive, pickerIsSelected, pickerToggle } from '../../src/lib/exercisePicker';
 
@@ -58,13 +61,9 @@ const RECORD_LABELS: Record<RecordMetric, string> = {
 const CHART_METRICS: RecordMetric[] = ['best_set', 'est_1rm', 'best_volume', 'max_reps'];
 
 
-/** Unit shown in a point's tooltip; reps for max_reps, kilograms otherwise. */
-const CHART_UNIT: Record<RecordMetric, string> = {
-  best_set: 'kg',
-  est_1rm: 'kg',
-  best_volume: 'kg',
-  max_reps: 'reps',
-};
+/** Unit shown in a point's tooltip; reps for max_reps, the user's weight unit otherwise. */
+const chartUnit = (metric: RecordMetric, unit: Unit): string =>
+  metric === 'max_reps' ? 'reps' : unit;
 
 export default function ExerciseDetail() {
   const router = useRouter();
@@ -349,13 +348,14 @@ function setIndex(sets: HistorySetOut[], i: number): string {
   return String(n);
 }
 
-function fmtSetValue(s: HistorySetOut): string {
+function fmtSetValue(s: HistorySetOut, unit: Unit): string {
   const reps = s.reps ?? 0;
   if (s.weight == null) return `BW × ${reps}`;
-  return `${s.weight} kg × ${reps}`;
+  return `${formatWeight(s.weight, unit)} × ${reps}`;
 }
 
 function HistoryTab({ history }: { history: HistorySessionOut[] }) {
+  const unit = useWeightUnit();
   if (history.length === 0) {
     return <Text style={styles.emptyHistory}>No history yet.</Text>;
   }
@@ -376,7 +376,7 @@ function HistoryTab({ history }: { history: HistorySessionOut[] }) {
             {session.sets.map((s, i) => (
               <View key={`${s.position}-${i}`} style={styles.setRow}>
                 <Text style={styles.setIdx}>{setIndex(session.sets, i)}</Text>
-                <Text style={styles.setValue}>{fmtSetValue(s)}</Text>
+                <Text style={styles.setValue}>{fmtSetValue(s, unit)}</Text>
                 {s.is_pr ? (
                   <View style={styles.bestPill}>
                     <Text style={styles.bestText}>BEST</Text>
@@ -409,6 +409,7 @@ function ChartsTab({
   onRangeChange: (r: ChartRangeId) => void;
 }) {
   const router = useRouter();
+  const unit = useWeightUnit();
   const byMetric = useMemo(() => {
     const m: Partial<Record<RecordMetric, RecordOut>> = {};
     for (const r of records) m[r.metric] = r;
@@ -483,7 +484,11 @@ function ChartsTab({
       {CHART_METRICS.map((metric) => {
         const series = chartFor[metric];
         const times = series?.times ?? [];
-        const values = series?.values ?? [];
+        // Series are stored in kilograms (weight or volume); reps are reps.
+        // Converted before the trend, so "per month" is in the unit shown too.
+        const stored = series?.values ?? [];
+        const values =
+          metric === 'max_reps' ? stored : stored.map((v) => volumeToDisplay(v, unit));
         const trend =
           times.length === values.length
             ? trendPerMonth(times.map((t, i) => ({ t, value: values[i] })))
@@ -499,12 +504,12 @@ function ChartsTab({
                     ? '→ flat'
                     : `${trend > 0 ? '↑' : '↓'} ${trend > 0 ? '+' : ''}${
                         Math.round(trend * 10) / 10
-                      } ${CHART_UNIT[metric]} / mo`}
+                      } ${chartUnit(metric, unit)} / mo`}
               </Text>
             </View>
             <View style={styles.chartCard}>
               <View style={styles.chartRegion}>
-                <MiniChart values={values} labels={series?.labels ?? []} times={times} unit={CHART_UNIT[metric]} />
+                <MiniChart values={values} labels={series?.labels ?? []} times={times} unit={chartUnit(metric, unit)} />
               </View>
               {/* Month (or year) ticks, placed where they fall in time. One
                   label per session stopped working once points were spaced by
@@ -537,10 +542,13 @@ function RecordCard({
   record?: RecordOut;
   onPress?: () => void;
 }) {
+  const unit = useWeightUnit();
   const body = (
     <>
       <Text style={styles.recordLabel}>{RECORD_LABELS[metric]}</Text>
-      <Text style={styles.recordValue}>{record?.display ?? '—'}</Text>
+      <Text style={styles.recordValue}>
+        {record ? recordDisplay(metric, record.value, record.display, unit) : '—'}
+      </Text>
     </>
   );
   if (!onPress) return <View style={styles.recordCard}>{body}</View>;

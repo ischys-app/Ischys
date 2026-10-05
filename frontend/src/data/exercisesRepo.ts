@@ -278,7 +278,7 @@ export type MergeResult = {
   /** Survivor's logged-set total after the merge. */
   totalSets: number;
   /** A record the survivor gained from a discarded row, if any. */
-  gainedPr: { metric: RecordMetric; display: string } | null;
+  gainedPr: { metric: RecordMetric; value: number; display: string } | null;
 };
 
 /** Thrown when a live workout references a candidate — the merge is blocked. */
@@ -533,7 +533,7 @@ export async function mergeExercises(
     .where(inArray(schema.routineExercises.exerciseId, losers));
   const routinesUpdated = new Set(routineRows.map((r) => r.routineId)).size;
 
-  let gainedPr: { metric: RecordMetric; display: string } | null = null;
+  let gainedPr: { metric: RecordMetric; value: number; display: string } | null = null;
 
   // Resolve the bodyweight and warmup-volume flag BEFORE the transaction — a
   // SecureStore read inside an expo-sqlite transaction hangs it (that froze the
@@ -582,7 +582,7 @@ export async function mergeExercises(
       const before = baseline[metric];
       const now2 = after[metric];
       if (now2 !== undefined && (before === undefined || now2 > before)) {
-        gainedPr = { metric, display: displayByMetric.get(metric) ?? '' };
+        gainedPr = { metric, value: now2, display: displayByMetric.get(metric) ?? '' };
         break;
       }
     }

@@ -25,8 +25,10 @@ import * as Sharing from 'expo-sharing';
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import type { WorkoutSummaryOut } from '../api/types';
+import { type Unit, volumeText, weightText } from '../domain/units';
 import { fmtDuration } from '../lib/format';
 import { parseServerDate } from '../lib/serverTime';
+import { useWeightUnit } from '../lib/weightUnit';
 import { accentA, color, font } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { PressableScale } from './PressableScale';
@@ -55,13 +57,14 @@ function fmtCardDate(iso: string): string {
   return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/** thousands-separated integer (no unit) — manual grouping (Hermes Intl gap). */
-function fmtVolumeNoUnit(kg: number): string {
-  return String(Math.round(kg)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-/** Best-set string for the detailed layout row (mirrors summary screen logic). */
-function bestLine(sets: WorkoutSummaryOut['workout']['exercises'][number]['sets']): string {
+/**
+ * Best-set string for the detailed layout row (mirrors summary screen logic).
+ * The row has no room for a unit; the card's VOLUME stat names it.
+ */
+function bestLine(
+  sets: WorkoutSummaryOut['workout']['exercises'][number]['sets'],
+  unit: Unit,
+): string {
   const working = sets.filter((s) => s.done && s.type !== 'warmup');
   if (working.length === 0) return '—';
   let best = working[0];
@@ -70,7 +73,7 @@ function bestLine(sets: WorkoutSummaryOut['workout']['exercises'][number]['sets'
     const bb = best.weight ?? -Infinity;
     if (bw > bb) best = s;
   }
-  const w = best.weight == null ? 'BW' : `${best.weight}`;
+  const w = best.weight == null ? 'BW' : weightText(best.weight, unit);
   return `${w} × ${best.reps ?? 0}`;
 }
 
@@ -298,7 +301,8 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
   const { workout, prs } = summary;
   const dateStr = fmtCardDate(workout.started_at);
   const duration = fmtDuration(workout.duration_seconds);
-  const volume = fmtVolumeNoUnit(workout.total_volume);
+  const unit = useWeightUnit();
+  const volume = volumeText(workout.total_volume, unit);
   const sets = String(workout.total_sets);
 
   const nameSize = layout === 'compact' ? 34 : layout === 'detailed' ? 22 : 26;
@@ -324,13 +328,13 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
             <Text style={cardStyles.compactStatLabel}>VOLUME</Text>
             <Text style={cardStyles.compactStatValue}>
               {volume}
-              <Text style={cardStyles.compactStatUnit}> kg</Text>
+              <Text style={cardStyles.compactStatUnit}> {unit}</Text>
             </Text>
           </View>
         ) : (
           <View style={cardStyles.statRow}>
             <StatCell label="DURATION" value={duration} />
-            <StatCell label="VOLUME" value={volume} unit=" kg" />
+            <StatCell label="VOLUME" value={volume} unit={` ${unit}`} />
             <StatCell label="SETS" value={sets} />
           </View>
         )}
@@ -352,7 +356,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
                 <Text style={cardStyles.detailedName} numberOfLines={1}>
                   {we.exercise.name}
                 </Text>
-                <Text style={cardStyles.detailedBest}>{bestLine(we.sets)}</Text>
+                <Text style={cardStyles.detailedBest}>{bestLine(we.sets, unit)}</Text>
               </View>
             ))}
           </View>

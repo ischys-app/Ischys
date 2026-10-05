@@ -45,12 +45,10 @@ import { getDeloadState, setDeloadState } from '../../src/lib/deloadState';
 import { fmtDateOnly, fmtDuration } from '../../src/lib/format';
 import { maybeRequestReviewAfterFinish } from '../../src/lib/reviewPrompt';
 import { getSummary } from '../../src/lib/summaryCache';
+import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
+import { type Unit, volumeText, weightText } from '../../src/domain/units';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
-
-/** Manual thousands grouping — Hermes' Intl may skip separators. */
-function fmtVolumeNoUnit(kg: number): string {
-  return String(Math.round(kg)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -65,8 +63,8 @@ function formatWhen(startedAt: string, endedAt: string | null | undefined): stri
   return `${dateStr} · ${start} – ${hhmm(endedAt)}`;
 }
 
-/** Pick the "best" set for the row subtitle. */
-function bestSetLine(sets: WorkoutSetOut[]): string {
+/** Pick the "best" set for the row subtitle. Stored kilograms, shown in `unit`. */
+function bestSetLine(sets: WorkoutSetOut[], unit: Unit): string {
   const working = sets.filter((s) => s.done && s.type !== 'warmup');
   if (working.length === 0) return `${sets.filter((s) => s.done).length} sets`;
   let best = working[0];
@@ -75,7 +73,7 @@ function bestSetLine(sets: WorkoutSetOut[]): string {
     const bbest = best.weight ?? -Infinity;
     if (bw > bbest) best = s;
   }
-  const w = best.weight == null ? 'BW' : `${best.weight}kg`;
+  const w = best.weight == null ? 'BW' : `${weightText(best.weight, unit)}${unit}`;
   const r = best.reps ?? 0;
   return `Best set · ${w} × ${r}`;
 }
@@ -164,6 +162,7 @@ export default function WorkoutSummary() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; justFinished?: string }>();
   const workoutId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const unit = useWeightUnit();
   const justFinished =
     (Array.isArray(params.justFinished) ? params.justFinished[0] : params.justFinished) === '1';
 
@@ -475,8 +474,8 @@ export default function WorkoutSummary() {
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>VOLUME</Text>
             <Text style={styles.statValue}>
-              {fmtVolumeNoUnit(workout.total_volume)}
-              <Text style={styles.statUnit}> kg</Text>
+              {volumeText(workout.total_volume, unit)}
+              <Text style={styles.statUnit}> {unit}</Text>
             </Text>
           </View>
           <View style={styles.statCell}>
@@ -501,7 +500,10 @@ export default function WorkoutSummary() {
                     {pr.exercise_name}
                   </Text>
                   <Text style={styles.prValue}>
-                    {pr.display} <Text style={styles.prDelta}>{pr.delta_display}</Text>
+                    {recordDisplay(pr.metric, pr.value, pr.display, unit)}{' '}
+                    <Text style={styles.prDelta}>
+                      {recordDeltaDisplay(pr.metric, pr.delta, unit)}
+                    </Text>
                   </Text>
                 </View>
               ))}
@@ -525,7 +527,7 @@ export default function WorkoutSummary() {
                   <Text style={styles.exerciseName} numberOfLines={1} ellipsizeMode="tail">
                     {we.exercise.name}
                   </Text>
-                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets)}</Text>
+                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets, unit)}</Text>
                 </View>
                 {anyPr && <StarIcon size={15} color={color.success} strokeWidth={2.4} />}
                 <Text style={styles.exerciseSetCount}>{`${we.sets.length} sets`}</Text>

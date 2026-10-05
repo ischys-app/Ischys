@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { WorkoutListItem } from '../api/types';
-import { fmtDuration, fmtVolumeFull, fmtWorkoutDate } from '../lib/format';
+import { formatVolume } from '../domain/units';
+import { fmtDuration, fmtWorkoutDate } from '../lib/format';
+import { useWeightUnit } from '../lib/weightUnit';
 import { color, font } from '../theme/tokens';
 import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
@@ -17,6 +19,7 @@ export function WorkoutCard({
   /** Long-press the card. Omitted → no long-press affordance. */
   onLongPress?: () => void;
 }) {
+  const unit = useWeightUnit();
   return (
     <Pressable
       onPress={onPress}
@@ -39,7 +42,7 @@ export function WorkoutCard({
 
       <View style={styles.stats}>
         <Stat label="TIME" value={fmtDuration(workout.duration_seconds)} />
-        <Stat label="VOLUME" value={fmtVolumeFull(workout.total_volume)} />
+        <Stat label="VOLUME" value={formatVolume(workout.total_volume, unit)} />
         <Stat label="SETS" value={String(workout.total_sets)} />
       </View>
 

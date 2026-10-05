@@ -11,6 +11,7 @@ import { db } from '../db/client';
 import * as schema from '../db/schema';
 import type {
   PreviousSetOut,
+  RecordMetric,
   SetType,
   WorkoutExerciseOut,
   WorkoutListItem,
@@ -510,7 +511,14 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   const setLike = (s: WorkoutSetRow): SetLike => asSetLike(s, kindByWeId.get(s.workoutExerciseId));
 
   const setIds = new Set(allSets.map((s) => s.id));
-  const prs: { exerciseId: string; metric: string; display: string; deltaDisplay: string }[] = [];
+  const prs: {
+    exerciseId: string;
+    metric: RecordMetric;
+    value: number;
+    delta: number | null;
+    display: string;
+    deltaDisplay: string;
+  }[] = [];
   // Atomic: mark completed, materialise PRs, flag PR sets, and write prCount as one
   // unit. Otherwise a crash mid-finish leaves a completed workout with wrong/zero
   // prCount that the `status !== 'active'` guard makes unrepairable.
@@ -542,7 +550,18 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
         }
       }
       const head = headlinePr(deltas);
-      if (head) prs.push({ exerciseId: eid, metric: head.metric, display: head.value.display, deltaDisplay: head.deltaDisplay });
+      if (head) {
+        prs.push({
+          exerciseId: eid,
+          metric: head.metric,
+          // The numbers travel with the prose so the summary can show both in
+          // the user's unit; a first-ever record has no delta to convert.
+          value: head.value.value,
+          delta: head.previous === null ? null : head.delta,
+          display: head.value.display,
+          deltaDisplay: head.deltaDisplay,
+        });
+      }
     }
     await tx.update(schema.workouts).set({ prCount: prs.length, updatedAt: nowMs() }).where(eq(schema.workouts.id, wid));
   });
@@ -574,6 +593,8 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
       exercise_id: p.exerciseId,
       exercise_name: exNameById.get(p.exerciseId) ?? '',
       metric: p.metric,
+      value: p.value,
+      delta: p.delta,
       display: p.display,
       delta_display: p.deltaDisplay,
     })),

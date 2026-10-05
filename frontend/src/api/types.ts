@@ -135,7 +135,16 @@ export type WorkoutSummaryOut = {
   prs: {
     exercise_id: string;
     exercise_name: string;
-    metric: string;
+    metric: RecordMetric;
+    /** The record's value in its stored unit (kg, kg of volume, or reps). */
+    value: number;
+    /** The improvement, in that same unit; null for a first-ever record. */
+    delta: number | null;
+    /**
+     * Kilogram prose, as stored. Not for the screen as-is: render both through
+     * `recordDisplay` / `recordDeltaDisplay` (domain/records.ts) with the
+     * user's unit.
+     */
     display: string;
     delta_display: string;
   }[];

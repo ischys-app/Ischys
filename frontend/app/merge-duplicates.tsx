@@ -38,6 +38,8 @@ import { DraggableSheet } from '../src/components/DraggableSheet';
 import { PressableScale } from '../src/components/PressableScale';
 import { reconcilePrs, prMetricLabel, type MergeReason } from '../src/lib/mergeDuplicates';
 import { haptics } from '../src/lib/haptics';
+import { recordDisplay } from '../src/domain/records';
+import { useWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font } from '../src/theme/tokens';
 
 // --- Local glyphs (icons.tsx is owned by another stream) ------------------
@@ -113,6 +115,7 @@ type Step = 'loading' | 'list' | 'detail' | 'success';
 export default function MergeDuplicates() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const unit = useWeightUnit();
   const params = useLocalSearchParams<{ ids?: string }>();
   const manualIds = (Array.isArray(params.ids) ? params.ids[0] : params.ids)?.split(',').filter(Boolean);
 
@@ -271,7 +274,9 @@ export default function MergeDuplicates() {
                   {prRows.map((r) => (
                     <View key={r.metric} style={styles.prRow}>
                       <Text style={styles.prMetric}>{prMetricLabel(r.metric)}</Text>
-                      <Text style={[styles.prValue, r.fromDup && { color: color.success }]}>{r.display}</Text>
+                      <Text style={[styles.prValue, r.fromDup && { color: color.success }]}>
+                        {recordDisplay(r.metric, r.value, r.display, unit)}
+                      </Text>
                       <Text style={[styles.prTag, r.fromDup && { color: color.success }]}>
                         {r.fromDup ? 'from dup' : 'kept'}
                       </Text>
@@ -417,6 +422,8 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
 // --- Merged receipt (M5) --------------------------------------------------
 
 function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: () => void }) {
+  const unit = useWeightUnit();
+  const gained = result.gainedPr;
   return (
     <View style={styles.receipt}>
       <View style={styles.receiptTop}>
@@ -431,8 +438,12 @@ function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: ()
       <View style={styles.receiptRows}>
         <ReceiptRow label="Sets moved" value={String(result.setsMoved)} />
         <ReceiptRow label="Routines updated" value={String(result.routinesUpdated)} />
-        {result.gainedPr ? (
-          <ReceiptRow label="New PR gained" value={`${prMetricLabel(result.gainedPr.metric)} · ${result.gainedPr.display}`} success />
+        {gained ? (
+          <ReceiptRow
+            label="New PR gained"
+            value={`${prMetricLabel(gained.metric)} · ${recordDisplay(gained.metric, gained.value, gained.display, unit)}`}
+            success
+          />
         ) : null}
       </View>
       <Pressable style={styles.renameBtn} onPress={onRename} accessibilityRole="button">

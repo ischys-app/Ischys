@@ -12,6 +12,7 @@
  * two stats helpers are inlined here — kept in step with domain/stats.ts).
  */
 import type { RecordMetric } from '../api/types.ts';
+import { type Unit, formatVolume, toDisplay, volumeToDisplay, weightText } from './units.ts';
 
 type SetLike = {
   type: string;
@@ -191,6 +192,48 @@ const REP_METRICS = new Set<RecordMetric>(['max_reps']);
 function deltaDisplay(metric: RecordMetric, delta: number): string {
   if (REP_METRICS.has(metric)) return `▲ ${g(delta)} ${delta === 1 ? 'rep' : 'reps'}`;
   return `▲ ${g(delta)} kg`;
+}
+
+/** "68 × 5": a weight, the times sign, then whatever followed it. */
+const _WEIGHT_BY_REPS = /^(\d+(?:\.\d+)?) × (.*)$/;
+
+/**
+ * A record's stored prose, in the user's unit.
+ *
+ * `display` is written once, in kilograms, into `personal_records` — and
+ * storage stays canonical, so it is re-expressed here on the way out rather
+ * than rewritten on a unit change. The two metrics whose whole content is their
+ * value are rebuilt from it; the two "weight × reps" ones have their leading
+ * weight converted in place, because the reps (and for max_reps, the weight)
+ * live only in the prose. Anything unrecognised — "BW × 11", an empty string —
+ * is returned as stored.
+ */
+export function recordDisplay(
+  metric: RecordMetric,
+  value: number,
+  display: string,
+  unit: Unit,
+): string {
+  if (metric === 'est_1rm') return `${Math.round(volumeToDisplay(value, unit))} ${unit}`;
+  if (metric === 'best_volume') return formatVolume(value, unit);
+  const m = _WEIGHT_BY_REPS.exec(display);
+  return m ? `${weightText(Number(m[1]), unit)} × ${m[2]}` : display;
+}
+
+/**
+ * How much a record improved by, in the user's unit. `delta` is in the
+ * metric's stored unit (kg, kg of volume, or reps); null means a first-ever
+ * record. In kg this is exactly what `detectPrs` writes as `deltaDisplay`.
+ */
+export function recordDeltaDisplay(
+  metric: RecordMetric,
+  delta: number | null,
+  unit: Unit,
+): string {
+  if (delta === null) return 'NEW';
+  if (REP_METRICS.has(metric)) return deltaDisplay(metric, delta);
+  if (metric === 'best_volume' && unit !== 'kg') return `▲ ${formatVolume(delta, unit)}`;
+  return `▲ ${g(toDisplay(delta, unit) as number)} ${unit}`;
 }
 
 /** Metrics that strictly improved over `previous` (absent metric = first-ever PR). */

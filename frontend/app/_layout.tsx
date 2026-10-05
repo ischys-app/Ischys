@@ -33,6 +33,7 @@ import {
 } from '../src/api/workouts';
 import { setHapticsEnabled } from '../src/lib/haptics';
 import { getThemeId } from '../src/lib/themePref';
+import { setEffortMode } from '../src/lib/effortMode';
 import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { applyPendingCardActions } from '../src/lib/liveActivityBridge';
@@ -203,6 +204,9 @@ export default function RootLayout() {
         // Same reason: the first screen to show a weight should already know
         // the unit, rather than paint kilograms and correct itself.
         setWeightUnit(s.unit);
+        // And whether sets are rated: off by default, so priming it late can
+        // only ever add a rating to the screen, never flash one that is hidden.
+        setEffortMode(s.effort_mode);
       })
       .catch(() => {});
   }, []);

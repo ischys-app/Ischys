@@ -339,10 +339,20 @@ final class WorkoutModel: ObservableObject {
     clearFinishTimer()
     guard let deadline = finishHandshake.deadline else { return }
     let timer = Timer(fire: deadline, interval: 0, repeats: false) { [weak self] _ in
-      Task { @MainActor in self?.pollFinish() }
+      Task { @MainActor in self?.finishTimerFired() }
     }
     RunLoop.main.add(timer, forMode: .common)
     finishTimer = timer
+  }
+
+  /// The timer is spent once it fires, and it can fire with the wait not over:
+  /// the deadline is a wall-clock time, and a clock set back puts it in the
+  /// future again (`FinishHandshake.poll` then moves it to at most a timeout
+  /// away). With no session there is no elapsed tick to poll later, so arm it
+  /// again for wherever the deadline now is, or "Finishing…" never comes down.
+  private func finishTimerFired() {
+    pollFinish()
+    if finishHandshake.isWaiting { scheduleFinishTimer() }
   }
 
   private func clearFinishTimer() {

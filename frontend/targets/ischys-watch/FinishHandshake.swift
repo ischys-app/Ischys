@@ -109,7 +109,14 @@ struct FinishHandshake {
   /// Feed a clock tick. Ends the wait once the deadline has passed.
   mutating func poll(now: Date) -> Step {
     guard let pending, let deadline else { return .none }
-    guard now >= deadline else { return .none }
+    guard now >= deadline else {
+      // The deadline is a wall-clock time, and the clock can be set back while
+      // waiting. It is never more than the timeout away; if it is, wait the
+      // timeout again from here rather than for as long as the clock moved.
+      let latest = now.addingTimeInterval(Self.verdictTimeout)
+      if deadline > latest { self.deadline = latest }
+      return .none
+    }
     settle()
     gaveUpOn = pending
     return .endAndSave

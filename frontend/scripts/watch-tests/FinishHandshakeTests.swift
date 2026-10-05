@@ -138,6 +138,32 @@ check("an answer after the timeout is ignored") {
   return late.verdict(.finished, id: "a") == .none && lateFail.verdict(.failed, id: "a") == .none
 }
 
+check("a clock set back cannot stretch the wait past the timeout") {
+  // The deadline is a wall-clock time. If the clock is stepped back while
+  // waiting, the deadline is suddenly further off than the whole timeout, and
+  // "Finishing…" would stay up for as long as the step was.
+  var h = waiting()
+  // An hour back, a second into the wait: not due, and the wait restarts.
+  let back = at(1 - 3600)
+  return h.poll(now: back) == .none
+    && h.isWaiting
+    && h.deadline == back.addingTimeInterval(timeout)
+    && h.poll(now: back.addingTimeInterval(timeout - 0.1)) == .none
+    && h.poll(now: back.addingTimeInterval(timeout)) == .endAndSave
+}
+
+check("a clock set forward ends the wait early, never late") {
+  var h = waiting()
+  return h.poll(now: at(3600)) == .endAndSave
+}
+
+check("an ordinary tick leaves the deadline where it was") {
+  var h = waiting()
+  _ = h.poll(now: at(1))
+  _ = h.poll(now: at(5))
+  return h.deadline == at(timeout)
+}
+
 check("a timer tick with nothing waiting does nothing") {
   var h = FinishHandshake()
   return h.poll(now: at(1000)) == .none

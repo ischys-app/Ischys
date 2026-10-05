@@ -5,7 +5,7 @@
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { readAsStringAsync } from 'expo-file-system/legacy';
 
-import { db, type Executor } from '../db/client';
+import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -192,33 +192,38 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
   const warnings: string[] = [];
   const importedSessions: ImportedSession[] = [];
 
-  // Idempotency: a completed workout is identified by (name, startedAt) — the key
-  // parseWorkoutCsv groups on. Re-importing the same export, or a later overlapping one,
-  // must not duplicate history. Timeless rows (no parseable start) can't be keyed,
-  // so they always import.
-  const seen = new Set(
-    (await db.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
-      (w) => workoutKey(w.name, w.startedAt),
-    ),
-  );
-  const plan = planImport(
-    parsed.workouts.map((pw) => ({
-      workout: pw,
-      key: pw.startedAt === null ? null : workoutKey(pw.title, pw.startedAt),
-      exerciseNames: pw.exercises.map((pe) => pe.title),
-    })),
-    seen,
-  );
-  const duplicatesSkipped = plan.duplicatesSkipped;
-
-  // Resolve BEFORE the transaction — SecureStore inside an expo-sqlite
-  // transaction hangs it. Threads into per-workout volume + the record pass.
+  // Resolved BEFORE the transaction: its body may await nothing but database
+  // statements (db/atomic.ts), and SecureStore really waits. Threads into
+  // per-workout volume + the record pass.
   const countWarmups = await getCountWarmups();
   const currentBw = await getBodyweightKg();
+  let duplicatesSkipped = 0;
 
-  // All-or-nothing: an interrupted import must not leave half-written workouts
-  // (which the idempotency check above would then permanently skip on retry).
-  await db.transaction(async (tx) => {
+  // All-or-nothing, in one real transaction: an import that fails or is
+  // force-quit halfway stores nothing, so there are no half-imported workouts
+  // for the idempotency check below to skip, flagless, on the retry. What is
+  // already stored is read inside it too, so the plan is made from the same
+  // database it is written to.
+  await atomically(async (tx) => {
+    // Idempotency: a completed workout is identified by (name, startedAt) — the key
+    // parseWorkoutCsv groups on. Re-importing the same export, or a later overlapping one,
+    // must not duplicate history. Timeless rows (no parseable start) can't be keyed,
+    // so they always import.
+    const seen = new Set(
+      (await tx.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
+        (w) => workoutKey(w.name, w.startedAt),
+      ),
+    );
+    const plan = planImport(
+      parsed.workouts.map((pw) => ({
+        workout: pw,
+        key: pw.startedAt === null ? null : workoutKey(pw.title, pw.startedAt),
+        exerciseNames: pw.exercises.map((pe) => pe.title),
+      })),
+      seen,
+    );
+    duplicatesSkipped = plan.duplicatesSkipped;
+
     const standing = await recordStandingBefore(plan.exercises, cache, tx, currentBw, countWarmups);
     exercisesCreated = standing.exercisesCreated;
 
@@ -335,12 +340,6 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
   // success screen gets the same offer to rebuild them.
   const importedSessions: ImportedSession[] = [];
 
-  const seen = new Set(
-    (await db.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
-      (w) => workoutKey(w.name, w.startedAt),
-    ),
-  );
-
   // A workout with no readable date cannot be placed in history at all.
   const dated: { w: JsonWorkout; rawName: string; name: string; startedAt: number }[] = [];
   for (const w of workoutsIn) {
@@ -352,21 +351,30 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
     }
     dated.push({ w, rawName, name: rawName || 'Workout', startedAt });
   }
-  const plan = planImport(
-    dated.map((d) => ({
-      workout: d,
-      key: workoutKey(d.name, d.startedAt),
-      exerciseNames: (Array.isArray(d.w.exercises) ? d.w.exercises : []).map((pe) => pe.name ?? ''),
-    })),
-    seen,
-  );
-  const duplicatesSkipped = plan.duplicatesSkipped;
 
-  // Resolved before the transaction (SecureStore inside it hangs the transaction).
+  // Resolved before the transaction, whose body may await only database
+  // statements (db/atomic.ts).
   const countWarmups = await getCountWarmups();
   const currentBw = await getBodyweightKg();
+  let duplicatesSkipped = 0;
 
-  await db.transaction(async (tx) => {
+  // One real transaction, as the CSV import: all of the restore, or none.
+  await atomically(async (tx) => {
+    const seen = new Set(
+      (await tx.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed'))).map(
+        (w) => workoutKey(w.name, w.startedAt),
+      ),
+    );
+    const plan = planImport(
+      dated.map((d) => ({
+        workout: d,
+        key: workoutKey(d.name, d.startedAt),
+        exerciseNames: (Array.isArray(d.w.exercises) ? d.w.exercises : []).map((pe) => pe.name ?? ''),
+      })),
+      seen,
+    );
+    duplicatesSkipped = plan.duplicatesSkipped;
+
     const standing = await recordStandingBefore(plan.exercises, cache, tx, currentBw, countWarmups);
     exercisesCreated = standing.exercisesCreated;
 

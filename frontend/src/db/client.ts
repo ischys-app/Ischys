@@ -14,11 +14,40 @@ import * as schema from './schema';
 const expo = openDatabaseSync('ischys.db', { enableChangeListener: false });
 expo.execSync('PRAGMA foreign_keys = ON;');
 
-export const db = drizzle(expo, { schema });
+const connection = drizzle(expo, { schema });
+
+/** The handle a `db.transaction` callback is given. */
+type Transaction = Parameters<Parameters<typeof connection.transaction>[0]>[0];
+
+/**
+ * What a `db.transaction` callback may return: anything that is not a promise.
+ * (`then?: never` is what a promise, or any thenable, cannot satisfy.)
+ */
+type Settled = (object & { then?: never }) | string | number | boolean | bigint | symbol | null | undefined | void;
+
+/**
+ * The connection, with `transaction` narrowed to a synchronous callback.
+ *
+ * The driver commits when the callback returns, so one that returns a promise
+ * (an `async` arrow, an async function passed by name, a plain arrow handing
+ * back a chain) has committed before its statements run. That used to
+ * type-check; typed like this, `tsc` rejects it wherever it is written. Use
+ * `atomically` below for a body that awaits. src/db/syncTransaction.typecheck.ts
+ * holds the cases, and db/atomicCallSites.test.ts reads the source for the
+ * commonest one as well.
+ */
+type Db = Omit<typeof connection, 'transaction'> & {
+  transaction<T extends Settled>(
+    body: (tx: Transaction) => T,
+    config?: Parameters<typeof connection.transaction>[1],
+  ): T;
+};
+
+export const db: Db = connection;
 
 /** Either the db handle or a transaction handle — lets helpers run inside a
  * caller's transaction so multi-row writes stay atomic. */
-export type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Executor = Db | Transaction;
 
 const atomic = createAtomic((statement) => expo.execSync(statement));
 
@@ -40,5 +69,5 @@ export const transactionOpen = (): boolean => atomic.isOpen();
 
 /** Runs pending migrations; the app renders a splash until success is true. */
 export function useDbReady() {
-  return useMigrations(db, migrations);
+  return useMigrations(connection, migrations);
 }

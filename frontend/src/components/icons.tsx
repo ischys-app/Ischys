@@ -388,3 +388,27 @@ export function CloseIcon({ size = 14, color, strokeWidth = 2.2 }: IconProps) {
     </Svg>
   );
 }
+
+/** Minus in a circle — removes a set while editing a finished workout (13a). */
+export function RemoveCircleIcon({ size = 20, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={strokeWidth} {...common} />
+      <Path d="M8 12h8" stroke={color} strokeWidth={strokeWidth} {...common} />
+    </Svg>
+  );
+}
+
+/** Pencil — the Edit button on the Summary header (13a, E1). */
+export function PencilIcon({ size = 14, color, strokeWidth = 2.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        {...common}
+      />
+    </Svg>
+  );
+}

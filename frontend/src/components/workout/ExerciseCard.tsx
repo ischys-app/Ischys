@@ -7,7 +7,7 @@ import { exerciseArt } from '../../lib/exerciseArt';
 import { color, font } from '../../theme/tokens';
 import { ExerciseArt } from '../ExerciseArt';
 import { PressableScale } from '../PressableScale';
-import { ChevronRightIcon, ClockRowIcon } from '../icons';
+import { ChevronRightIcon, ClockRowIcon, StarIcon } from '../icons';
 import { ExerciseMenu } from './ExerciseMenu';
 import { carryFor } from './setCarry';
 import { SetRow } from './SetRow';
@@ -58,7 +58,23 @@ type Props = {
   onReorderStart: () => void;
   /** Tap on the avatar or name — routes to Exercise Detail. No-op when omitted. */
   onOpenDetail?: () => void;
+  /**
+   * Editing a finished workout (#83, board 13a): the same card without the
+   * note, the Rest Timer row, the ticks or the done bars, and with PREV as
+   * WAS. Absent → the live card, exactly as it has always been.
+   */
+  edit?: {
+    /** Per set: its WAS label, whether it was added here, and — for a set
+     *  left unticked — the tap that logs it. */
+    setState: (setId: string) => { was: string; isNew: boolean; onWasPress?: () => void };
+    onRemoveSet: (setId: string) => void;
+    /** The neutral line shown while this exercise has a record moving. */
+    recordLine?: string | null;
+  };
 };
+
+/** "dumbbell" -> "Dumbbell". Equipment is stored as a lowercase slug. */
+const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** Badge glyph for each set: working-set index for normal, letter otherwise. */
 function badgeFor(type: SetType, workingIndex: number): string {
@@ -97,6 +113,7 @@ export function ExerciseCard({
   onSetOpenChange,
   onReorderStart,
   onOpenDetail,
+  edit,
 }: Props) {
   const hasDone = exercise.sets.some((s) => s.done);
   const firstUndone = exercise.sets.findIndex((s) => !s.done);
@@ -105,7 +122,7 @@ export function ExerciseCard({
   return (
     <View style={styles.card}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, edit && styles.headerEdit]}>
         <Pressable style={styles.avatar} onPress={onOpenDetail} disabled={!onOpenDetail}>
           {(() => {
             // Line art when we have it for this movement, initials otherwise.
@@ -126,7 +143,8 @@ export function ExerciseCard({
           })()}
         </Pressable>
         <Pressable style={styles.headerText} onPress={onOpenDetail} disabled={!onOpenDetail}>
-          <Text style={styles.name} numberOfLines={1}>
+          {/* A long name wraps to two lines while editing (E7); live keeps one. */}
+          <Text style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : 1}>
             {exercise.name}
           </Text>
           <View style={styles.metaRow}>
@@ -138,7 +156,7 @@ export function ExerciseCard({
               </View>
             ) : null}
             <Text style={styles.meta} numberOfLines={1}>
-              {exerciseMeta(exercise)}
+              {edit ? titleCase(exercise.equipment) : exerciseMeta(exercise)}
             </Text>
           </View>
         </Pressable>
@@ -158,32 +176,47 @@ export function ExerciseCard({
         </View>
       </View>
 
-      {/* Note — warmup-tinted when populated (design source) */}
-      <TextInput
-        value={exercise.note}
-        onChangeText={onNoteChange}
-        placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
-        placeholderTextColor={color.text3}
-        multiline
-        style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
-      />
+      {edit ? (
+        // Neutral on purpose: losing a record that was never lifted is not a
+        // warning, so this is surface2 and text2, never success or error.
+        edit.recordLine ? (
+          <View style={styles.recordLine}>
+            <View style={styles.recordStar}>
+              <StarIcon size={13} color={color.text2} strokeWidth={2.4} />
+            </View>
+            <Text style={styles.recordText}>{edit.recordLine}</Text>
+          </View>
+        ) : null
+      ) : (
+        <>
+          {/* Note — warmup-tinted when populated (design source) */}
+          <TextInput
+            value={exercise.note}
+            onChangeText={onNoteChange}
+            placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
+            placeholderTextColor={color.text3}
+            multiline
+            style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
+          />
 
-      {/* Rest timer row */}
-      <Pressable onPress={onOpenRest} style={styles.restRow}>
-        <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-        <Text style={styles.restLabel}>Rest Timer</Text>
-        <View style={styles.restRight}>
-          <Text style={styles.restValue}>
-            {restOverrideLabel ?? restLabel(exercise.rest)}
-          </Text>
-          <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
-        </View>
-      </Pressable>
+          {/* Rest timer row */}
+          <Pressable onPress={onOpenRest} style={styles.restRow}>
+            <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
+            <Text style={styles.restLabel}>Rest Timer</Text>
+            <View style={styles.restRight}>
+              <Text style={styles.restValue}>
+                {restOverrideLabel ?? restLabel(exercise.rest)}
+              </Text>
+              <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
+            </View>
+          </Pressable>
+        </>
+      )}
 
       {/* Column labels */}
-      <View style={styles.colHeader}>
+      <View style={[styles.colHeader, edit && styles.colHeaderEdit]}>
         <Text style={[styles.colLabel, styles.colSet]}>SET</Text>
-        <Text style={[styles.colLabel, styles.colPrev]}>PREV</Text>
+        <Text style={[styles.colLabel, styles.colPrev]}>{edit ? 'WAS' : 'PREV'}</Text>
         <Text style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
         <Text style={[styles.colLabel, styles.colReps]}>REPS</Text>
         <View style={styles.colCheck} />
@@ -196,6 +229,36 @@ export function ExerciseCard({
         {exercise.sets.map((s, idx) => {
           if (s.type === 'normal') working += 1;
           const carry = carryFor(exercise.sets, idx);
+          if (edit) {
+            const state = edit.setState(s.id);
+            return (
+              <SetRow
+                key={s.id}
+                exercise={exercise}
+                set={s}
+                unit={unit}
+                badge={badgeFor(s.type, working)}
+                onCycleType={() => onCycleType(s.id)}
+                onUsePrev={() => onUsePrev(s.id)}
+                onWeightChange={(t) => onWeightChange(s.id, t)}
+                onRepsChange={(t) => onRepsChange(s.id, t)}
+                onToggleDone={() => onToggleDone(s.id)}
+                onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
+                onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
+                isOpen={openSetId === s.id}
+                onOpenChange={(o) => onSetOpenChange?.(s.id, o)}
+                // Only a set added here logs what its blank fields show; a
+                // stored set with an empty field is saved as empty.
+                carryWeight={state.isNew ? carry.weight : undefined}
+                carryReps={state.isNew ? carry.reps : undefined}
+                edit={{
+                  was: state.was,
+                  onRemove: () => edit.onRemoveSet(s.id),
+                  onWasPress: state.onWasPress,
+                }}
+              />
+            );
+          }
           const active = hasDone && idx === firstUndone;
           const suggestion = suggestionFor?.(s.id) ?? null;
           return (
@@ -282,6 +345,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Edit mode (13a): the name may wrap, so the avatar and ⋯ sit at the top.
+  headerEdit: { alignItems: 'flex-start' },
+  nameEdit: { lineHeight: 19 },
+  recordLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    marginTop: 12,
+    marginHorizontal: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: color.surface2,
+  },
+  recordStar: { marginTop: 1 },
+  recordText: {
+    flex: 1,
+    fontFamily: font.monoRegular,
+    fontSize: 11,
+    lineHeight: 16.5,
+    color: color.text2,
+    fontVariant: ['tabular-nums'],
+  },
+  colHeaderEdit: { paddingTop: 12 },
   avatarText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
   headerText: { flex: 1, minWidth: 0 },
   name: {

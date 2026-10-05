@@ -21,7 +21,7 @@ import { color, font } from '../../theme/tokens';
  */
 export const KEYBOARD_ACCESSORY_ID = 'ischys-workout-keyboard';
 const accessoryId = Platform.OS === 'ios' ? KEYBOARD_ACCESSORY_ID : undefined;
-import { CheckIcon } from '../icons';
+import { CheckIcon, RemoveCircleIcon } from '../icons';
 import { SwipeToDelete } from './SwipeToDelete';
 import { prevLabel, typeMeta, type Exercise, type WorkoutSet } from './types';
 
@@ -63,6 +63,19 @@ type Props = {
   /** Values carried down from the nearest filled set above; shown as placeholders. */
   carryWeight?: string;
   carryReps?: string;
+  /**
+   * Editing a finished workout (#83, board 13a). The same row with everything
+   * that says "in progress" taken away: no done or active bar, no tick, and
+   * PREV becomes WAS. Absent → the live row, exactly as it has always been.
+   */
+  edit?: {
+    /** What the set was before this edit, "new", or empty while unchanged. */
+    was: string;
+    /** The tick column's replacement. Swipe-to-delete still works beside it. */
+    onRemove: () => void;
+    /** Present on a set that was left unticked: tapping WAS logs it. */
+    onWasPress?: () => void;
+  };
 };
 
 /** The row's own 5pt of padding above and below the PREV cell: 40 + 10 = the full 50. */
@@ -95,6 +108,7 @@ export function SetRow({
   active = false,
   carryWeight,
   carryReps,
+  edit,
 }: Props) {
   const [weightFocused, setWeightFocused] = useState(false);
   const [repsFocused, setRepsFocused] = useState(false);
@@ -129,12 +143,20 @@ export function SetRow({
       rowStyle={[
         styles.row,
         // Opaque, and state-driven: the red delete panel sits behind this row.
-        { backgroundColor: set.done ? color.setRowDone : active ? color.setRowActive : color.surface1 },
+        {
+          backgroundColor: edit
+            ? color.surface1
+            : set.done
+              ? color.setRowDone
+              : active
+                ? color.setRowActive
+                : color.surface1,
+        },
       ]}
     >
       <>
-        {set.done && <View style={styles.doneBar} />}
-        {active && <View style={[styles.doneBar, styles.activeBar]} />}
+        {!edit && set.done && <View style={styles.doneBar} />}
+        {!edit && active && <View style={[styles.doneBar, styles.activeBar]} />}
 
         {/* Type badge */}
         <View style={styles.badgeCell}>
@@ -154,7 +176,28 @@ export function SetRow({
         {/* PREV, and under it the suggestion. This is the only flexible column
             in the row's [34 | 1fr | 74 | 56 | 40] grid, and two 11-12px lines
             fit the 50pt height — so nothing reflows when one appears. */}
-        {effortTap ? (
+        {edit ? (
+          // WAS, in PREV's own 1fr cell, so nothing reflows when it fills in.
+          <View style={styles.wasCell}>
+            {edit.onWasPress ? (
+              <Pressable
+                onPress={edit.onWasPress}
+                hitSlop={{ top: 14, bottom: 14 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Set ${badge} was not ticked`}
+                accessibilityHint="Logs this set"
+              >
+                <Text style={styles.wasText} numberOfLines={1}>
+                  {edit.was}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.wasText} numberOfLines={1}>
+                {edit.was}
+              </Text>
+            )}
+          </View>
+        ) : effortTap ? (
           // A done row with ratings on: the whole cell, at the row's full
           // height, is the way in. Its two lines are 11-12px, far too small to
           // aim at, and with the rest timer off this is the only way to rate.
@@ -271,19 +314,32 @@ export function SetRow({
           style={[styles.input, styles.repsInput, repsFocused && styles.inputFocused]}
         />
 
-        {/* Done toggle */}
-        <View style={styles.checkCell}>
+        {edit ? (
+          // In a finished workout every set is done, so a column of accent
+          // ticks would only compete with Save. It removes the set instead.
           <Pressable
-            onPress={onToggleDone}
-            style={[styles.check, set.done ? styles.checkDone : styles.checkIdle]}
+            onPress={edit.onRemove}
+            style={styles.removeCell}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove set ${badge}`}
           >
-            <CheckIcon
-              size={18}
-              color={set.done ? color.accentFg : color.text3}
-              strokeWidth={set.done ? 3.2 : 3}
-            />
+            <RemoveCircleIcon size={20} color={color.text3} strokeWidth={2} />
           </Pressable>
-        </View>
+        ) : (
+          /* Done toggle */
+          <View style={styles.checkCell}>
+            <Pressable
+              onPress={onToggleDone}
+              style={[styles.check, set.done ? styles.checkDone : styles.checkIdle]}
+            >
+              <CheckIcon
+                size={18}
+                color={set.done ? color.accentFg : color.text3}
+                strokeWidth={set.done ? 3.2 : 3}
+              />
+            </Pressable>
+          </View>
+        )}
       </>
     </SwipeToDelete>
   );
@@ -372,6 +428,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Edit mode (13a). WAS sits flush in the cell, under its column label.
+  wasCell: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  wasText: {
+    fontFamily: font.monoRegular,
+    fontSize: 11.5,
+    color: color.text3,
+    fontVariant: ['tabular-nums'],
+  },
+  // 40 wide like the tick column it replaces, and a full 44 tall: the row's
+  // own padding leaves 40, so it reaches 2pt into it on each side.
+  removeCell: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
   checkDone: { backgroundColor: color.accent },
   checkIdle: { backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border },
 });

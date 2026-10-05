@@ -270,6 +270,14 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="workout/edit/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_bottom',
+              contentStyle: { backgroundColor: color.bg },
+            }}
+          />
+          <Stack.Screen
             name="routine/[id]"
             options={{
               headerShown: false,

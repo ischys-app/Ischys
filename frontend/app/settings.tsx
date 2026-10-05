@@ -957,7 +957,8 @@ const styles = StyleSheet.create({
 
   // Effort per set (board 14a, F1)
   effortRow: { paddingTop: 14, paddingRight: 14, paddingBottom: 14, paddingLeft: 16 },
-  effortTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // 13 is `row`'s gap, so this label starts where every other one does.
+  effortTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   effortLabel: { flex: 1, minWidth: 0 },
   effortSegment: {
     flexDirection: 'row',

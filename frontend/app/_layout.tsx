@@ -56,6 +56,7 @@ import {
   finishVerdict,
   notifyWatchFinished,
   routeWatchFinish,
+  screenHoldsWatchFinish,
 } from '../src/lib/watchFinish';
 import { parseServerDate } from '../src/lib/serverTime';
 import { color } from '../src/theme/tokens';
@@ -240,7 +241,11 @@ function useWatchFinish() {
         // Best-effort: a finish we couldn't apply leaves the workout active and
         // resumable, which is the state the user was already in. A Watch still
         // waiting on it keeps recording.
-        tellWatch('failed');
+        //
+        // Unless a workout screen is mounted. Reading the active workout is
+        // what failed here, so this never learned the finish was the screen's
+        // to complete, and the screen is completing it: it answers the Watch.
+        if (!screenHoldsWatchFinish()) tellWatch('failed');
       } finally {
         applying = false;
       }

@@ -53,6 +53,18 @@ export function claimWatchFinish(workoutId: string): () => void {
   };
 }
 
+/**
+ * Whether a workout screen is mounted and holding the Watch's Finish.
+ *
+ * For the fallback when it cannot tell which workout is active (reading it
+ * failed), and so cannot route: a mounted screen answers the Watch itself, and
+ * a "failed" sent over its head would show "Couldn't finish" on the wrist for
+ * a finish that is about to work.
+ */
+export function screenHoldsWatchFinish(): boolean {
+  return claimedWorkoutId !== null;
+}
+
 /** Drops every claim. Test seam — production code releases via `claimWatchFinish`. */
 export function releaseAllWatchFinishClaims(): void {
   claimedWorkoutId = null;

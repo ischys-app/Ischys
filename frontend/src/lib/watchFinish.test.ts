@@ -11,6 +11,7 @@ import {
   onWatchFinished,
   releaseAllWatchFinishClaims,
   routeWatchFinish,
+  screenHoldsWatchFinish,
   WATCH_VERDICT_TIMEOUT_MS,
   watchSaveWaitMs,
   withFinishVerdict,
@@ -156,4 +157,14 @@ test('the phone outwaits a Watch that is itself waiting for the outcome', () => 
   // phone writes a second Health entry.
   assert.equal(watchSaveWaitMs(false), 10_000);
   assert.ok(watchSaveWaitMs(true) >= WATCH_VERDICT_TIMEOUT_MS + 10_000);
+});
+
+test('a mounted workout screen holds the Watch finish; none does once it is gone', () => {
+  // What the fallback checks before answering a Watch when it could not even
+  // read which workout is active: a mounted screen answers for itself.
+  assert.equal(screenHoldsWatchFinish(), false);
+  const release = claimWatchFinish('w1');
+  assert.equal(screenHoldsWatchFinish(), true);
+  release();
+  assert.equal(screenHoldsWatchFinish(), false);
 });

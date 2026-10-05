@@ -33,6 +33,7 @@ import {
 } from '../src/api/workouts';
 import { setHapticsEnabled } from '../src/lib/haptics';
 import { getThemeId } from '../src/lib/themePref';
+import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { applyPendingCardActions } from '../src/lib/liveActivityBridge';
 import {
@@ -197,7 +198,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     getSettings()
-      .then((s) => setHapticsEnabled(s.haptic_feedback))
+      .then((s) => {
+        setHapticsEnabled(s.haptic_feedback);
+        // Same reason: the first screen to show a weight should already know
+        // the unit, rather than paint kilograms and correct itself.
+        setWeightUnit(s.unit);
+      })
       .catch(() => {});
   }, []);
 

@@ -50,6 +50,7 @@ import {
 import { getDeloadState, setDeloadState } from '../src/lib/deloadState';
 import { PALETTES, type ThemeId } from '../src/theme/palettes';
 import { getThemeId, setThemeId } from '../src/lib/themePref';
+import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font } from '../src/theme/tokens';
 
 /**
@@ -175,6 +176,9 @@ export default function Settings() {
   const patch = (delta: SettingsUpdate) => {
     setSettings((s) => ({ ...s, ...delta }));
     if (delta.haptic_feedback !== undefined) setHapticsEnabled(delta.haptic_feedback);
+    // Every screen showing a weight follows this at once — including a workout
+    // left open underneath, which re-reads its sets in the new unit.
+    if (delta.unit !== undefined) setWeightUnit(delta.unit);
     updateSettings(delta).catch(() => {});
   };
 

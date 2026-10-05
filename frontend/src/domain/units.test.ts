@@ -12,6 +12,7 @@ import {
   toDisplay,
   toKg,
   unitLabel,
+  volumeText,
   volumeToDisplay,
   weightText,
 } from './units.ts';
@@ -160,6 +161,8 @@ test('formatVolume groups thousands and names the unit', () => {
   assert.equal(formatVolume(218.4, 'kg'), '218 kg');
   assert.equal(formatVolume(1000, 'lb'), '2,205 lb');
   assert.equal(formatVolume(0, 'lb'), '0 lb');
+  assert.equal(volumeText(9177, 'kg'), '9,177');
+  assert.equal(volumeText(1000, 'lb'), '2,205');
 });
 
 test('unitLabel upper-cases for column headers', () => {

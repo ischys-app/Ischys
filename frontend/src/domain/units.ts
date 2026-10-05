@@ -87,15 +87,20 @@ export function volumeToDisplay(volumeKg: number, unit: Unit): number {
 }
 
 /**
- * Thousands-separated volume with its unit, e.g. "9,177 kg". Manual grouping —
- * Hermes' Intl may omit the separator, so this doesn't rely on toLocaleString.
+ * Thousands-separated volume as a bare number, e.g. "9,177" — for layouts that
+ * style the unit separately. Manual grouping: Hermes' Intl may omit the
+ * separator, so this doesn't rely on toLocaleString.
  */
-export function formatVolume(volumeKg: number, unit: Unit): string {
-  const grouped = String(Math.round(volumeToDisplay(volumeKg, unit))).replace(
+export function volumeText(volumeKg: number, unit: Unit): string {
+  return String(Math.round(volumeToDisplay(volumeKg, unit))).replace(
     /\B(?=(\d{3})+(?!\d))/g,
     ',',
   );
-  return `${grouped} ${unit}`;
+}
+
+/** Thousands-separated volume with its unit, e.g. "9,177 kg". */
+export function formatVolume(volumeKg: number, unit: Unit): string {
+  return `${volumeText(volumeKg, unit)} ${unit}`;
 }
 
 /**

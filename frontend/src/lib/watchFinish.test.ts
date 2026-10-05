@@ -12,6 +12,7 @@ import {
   releaseAllWatchFinishClaims,
   routeWatchFinish,
   screenHoldsWatchFinish,
+  watchAwaitingFinish,
   WATCH_VERDICT_TIMEOUT_MS,
   watchSaveWaitMs,
   withFinishVerdict,
@@ -167,4 +168,30 @@ test('a mounted workout screen holds the Watch finish; none does once it is gone
   assert.equal(screenHoldsWatchFinish(), true);
   release();
   assert.equal(screenHoldsWatchFinish(), false);
+});
+
+test('a finish the Watch asked for answers that request', () => {
+  assert.deepEqual(watchAwaitingFinish(true, 'f1', null), { involved: true, finishId: 'f1' });
+});
+
+test('a finish from a Watch that is not waiting involves it, with no one to answer', () => {
+  // It ended its own session before asking: it is put back in the workout
+  // when the finish fails, but there is no request to answer.
+  assert.deepEqual(watchAwaitingFinish(true, null, null), { involved: true, finishId: null });
+});
+
+test('a finish started on the phone involves no Watch', () => {
+  assert.deepEqual(watchAwaitingFinish(false, null, null), { involved: false, finishId: null });
+});
+
+test('a Watch that asked while a phone finish was in flight is answered', () => {
+  // Finish tapped on the phone, then on the Watch during the write. The second
+  // call is turned away, but the Watch is waiting on it all the same.
+  assert.deepEqual(watchAwaitingFinish(false, null, 'f2'), { involved: true, finishId: 'f2' });
+});
+
+test('the request that arrived last is the one the Watch is waiting on', () => {
+  // The Watch waits on one request at a time, so a second id means it gave up
+  // on the first and asked again.
+  assert.deepEqual(watchAwaitingFinish(true, 'f1', 'f2'), { involved: true, finishId: 'f2' });
 });

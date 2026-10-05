@@ -200,3 +200,26 @@ export function withFinishVerdict<S extends Record<string, unknown>>(
   if (!verdict) return state;
   return { ...state, ...verdict };
 }
+
+/**
+ * Which Watch, if any, a finish on the workout screen has to deal with.
+ *
+ * `fromWatch` and `requestId` describe the call that started the finish.
+ * `joinedId` is the id of a Watch request that arrived while that finish was
+ * already in flight and was turned away: Finish tapped on the phone and then on
+ * the Watch during the write. That Watch is waiting just the same, and with
+ * nothing sent it would time out, save and go back to Start while a failed
+ * finish left the workout running on the phone.
+ *
+ * `involved`: the Watch has to be put back in the workout if the finish fails.
+ * `finishId`: the request it is waiting on, to answer; null when it is not
+ * waiting. The Watch waits on one request at a time, so a later id replaces an
+ * earlier one.
+ */
+export function watchAwaitingFinish(
+  fromWatch: boolean,
+  requestId: string | null,
+  joinedId: string | null,
+): { involved: boolean; finishId: string | null } {
+  return { involved: fromWatch || joinedId != null, finishId: joinedId ?? requestId };
+}

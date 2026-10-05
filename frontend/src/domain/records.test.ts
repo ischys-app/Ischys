@@ -337,6 +337,35 @@ test('the walk reads sessions oldest first whatever order they arrive in', () =>
   assert.deepEqual(walkPrFlags(shuffled).map((s) => s.sessionId), ['w1', 'w2', 'w3', 'w4', 'w5']);
 });
 
+test('two sessions at the same instant are walked in id order, whichever is handed in first', () => {
+  // The same lift twice at one instant: only the first walked can be the record.
+  const a = session('wa', 2, [wset('a1', 'normal', 80, 5)]);
+  const b = session('wb', 2, [wset('b1', 'normal', 80, 5)]);
+  const later = session('wc', 4, [wset('c1', 'normal', 70, 5)]);
+  const expected = { wa: ['a1'], wb: [], wc: [] };
+  for (const given of [[a, b, later], [b, a, later], [later, b, a]]) {
+    const steps = walkPrFlags(given);
+    assert.deepEqual(steps.map((s) => s.sessionId), ['wa', 'wb', 'wc']);
+    assert.deepEqual(flagsOf(steps), expected);
+    // Counted once: the second of the pair improved nothing.
+    assert.deepEqual(steps.map((s) => s.deltas.length > 0), [true, false, false]);
+  }
+});
+
+test('deleting the session that held a record hands its star to the next best', () => {
+  const history = [
+    session('w1', 1, [wset('a1', 'normal', 60, 5)]),
+    session('w2', 3, [wset('b1', 'normal', 80, 5)]),
+    session('w3', 5, [wset('c1', 'normal', 70, 5)]),
+  ];
+  // As logged, w3 beat nothing: w2 was heavier.
+  assert.deepEqual(flagsOf(walkPrFlags(history)), { w1: ['a1'], w2: ['b1'], w3: [] });
+  // With w2 gone, w3 is the best since w1 and is a record after all.
+  const left = walkPrFlags(history.filter((s) => s.id !== 'w2'));
+  assert.deepEqual(flagsOf(left), { w1: ['a1'], w3: ['c1'] });
+  assert.equal(left[1].deltas.length > 0, true);
+});
+
 test('the walk honours the warm-up setting and each session’s bodyweight, as finish does', () => {
   const dips: PRSession[] = [
     { id: 'w1', achievedAt: at(1), bodyweightKg: 80, sets: [bwset('a1', null, 10), bwset('a2', 10, 6)] },
@@ -409,7 +438,10 @@ test('a workout’s PR count holds an exercise only where the stored data says s
  * single-pass walk has to meet.
  */
 function walkByRecomputing(sessions: readonly PRSession[], countWarmups = false) {
-  const oldestFirst = sessions.slice().sort((a, b) => a.achievedAt - b.achievedAt);
+  // Same-instant sessions in id order: the order the walk itself now fixes.
+  const oldestFirst = sessions
+    .slice()
+    .sort((a, b) => a.achievedAt - b.achievedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const out: ReturnType<typeof walkPrFlags> = [];
   const seen: PRSession[] = [];
   let baseline: Record<string, number> = {};

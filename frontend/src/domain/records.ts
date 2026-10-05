@@ -305,7 +305,11 @@ export type PrWalkStep = {
  * and flags nothing, as at finish.
  */
 export function walkPrFlags(sessions: readonly PRSession[], countWarmups = false): PrWalkStep[] {
-  const oldestFirst = sessions.slice().sort((a, b) => a.achievedAt - b.achievedAt);
+  // Two sessions at one instant are walked in id order. A tie goes to whichever
+  // comes first, so the order is fixed here, not left to how a caller read them.
+  const oldestFirst = sessions
+    .slice()
+    .sort((a, b) => a.achievedAt - b.achievedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const out: PrWalkStep[] = [];
   const baseline: Partial<Record<RecordMetric, number>> = {};
   let anyWorking = false;

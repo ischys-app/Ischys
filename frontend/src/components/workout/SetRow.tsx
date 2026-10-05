@@ -65,6 +65,9 @@ type Props = {
   carryReps?: string;
 };
 
+/** The row's own 5pt of padding above and below the PREV cell: 40 + 10 = the full 50. */
+const PREV_TAP_SLOP = { top: 5, bottom: 5 };
+
 /** Arrow up / equals / arrow down. Meaning lives here, not in colour. */
 const GLYPH = { up: '\u2191', hold: '=', down: '\u2193' } as const;
 
@@ -111,6 +114,10 @@ export function SetRow({
   const phWeight =
     exercise.kind === 'bodyweight' ? 'BW' : carryWeight ?? set.prevWeight ?? '';
   const phReps = carryReps ?? set.prevReps ?? '';
+  // Set only on a done row with effort ratings on; null leaves the cell as it
+  // always was.
+  const effortTap =
+    set.done && onEffortPress && effortLine && effortLine.kind !== 'last' ? effortLine : null;
 
   return (
     <SwipeToDelete
@@ -147,61 +154,84 @@ export function SetRow({
         {/* PREV, and under it the suggestion. This is the only flexible column
             in the row's [34 | 1fr | 74 | 56 | 40] grid, and two 11-12px lines
             fit the 50pt height — so nothing reflows when one appears. */}
-        <View style={styles.prevCell}>
-          <Pressable onPress={onUsePrev} hitSlop={{ top: 6, bottom: 2 }}>
+        {effortTap ? (
+          // A done row with ratings on: the whole cell, at the row's full
+          // height, is the way in. Its two lines are 11-12px, far too small to
+          // aim at, and with the rest timer off this is the only way to rate.
+          <Pressable
+            style={[styles.prevCell, styles.prevCellTap]}
+            onPress={onEffortPress}
+            hitSlop={PREV_TAP_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel={
+              effortTap.kind === 'add' ? 'Rate this set' : `Effort ${effortTap.text}`
+            }
+            accessibilityHint="Opens the effort scale"
+          >
             <Text style={styles.prevText} numberOfLines={1}>
               {prev}
             </Text>
+            <Text style={[styles.effortText, effortStyles[effortTap.kind]]} numberOfLines={1}>
+              {effortTap.text}
+            </Text>
           </Pressable>
-          {/* Gone once the set is logged: it has served its purpose, and the
-              row is about what happened from then on. */}
-          {suggestion && !set.done ? (
-            <Pressable
-              onPress={onUseSuggestion}
-              hitSlop={{ top: 2, bottom: 6 }}
-              accessibilityRole="button"
-              accessibilityLabel={`Suggested ${fmtNum(suggestion.weight)} ${unit} by ${suggestion.reps}`}
-              accessibilityHint="Fills this set with the suggestion"
-            >
-              <Text
-                style={[
-                  styles.suggestText,
-                  // Dimmed once the user has typed something: it stays visible
-                  // so they can see what they changed from, without competing.
-                  edited && styles.suggestTextEdited,
-                  // Glyphs carry the meaning, not colour. Down is the one
-                  // exception, and only while a deload is running.
-                  suggestion.kind === 'down' && styles.suggestTextDown,
-                ]}
-                numberOfLines={1}
-              >
-                {`${GLYPH[suggestion.kind]} ${fmtNum(suggestion.weight)} × ${suggestion.reps}`}
+        ) : (
+          <View style={styles.prevCell}>
+            <Pressable onPress={onUsePrev} hitSlop={{ top: 6, bottom: 2 }}>
+              <Text style={styles.prevText} numberOfLines={1}>
+                {prev}
               </Text>
             </Pressable>
-          ) : effortLine ? (
-            // `last @9` is a reference and does nothing; the done row's line —
-            // the rating, or `+ RPE` — opens the scale.
-            effortLine.kind === 'last' || !onEffortPress ? (
-              <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
-                {effortLine.text}
-              </Text>
-            ) : (
+            {/* Gone once the set is logged: it has served its purpose, and the
+                row is about what happened from then on. */}
+            {suggestion && !set.done ? (
               <Pressable
-                onPress={onEffortPress}
-                hitSlop={{ top: 2, bottom: 12, left: 6, right: 6 }}
+                onPress={onUseSuggestion}
+                hitSlop={{ top: 2, bottom: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  effortLine.kind === 'add' ? 'Rate this set' : `Effort ${effortLine.text}`
-                }
-                accessibilityHint="Opens the effort scale"
+                accessibilityLabel={`Suggested ${fmtNum(suggestion.weight)} ${unit} by ${suggestion.reps}`}
+                accessibilityHint="Fills this set with the suggestion"
               >
+                <Text
+                  style={[
+                    styles.suggestText,
+                    // Dimmed once the user has typed something: it stays visible
+                    // so they can see what they changed from, without competing.
+                    edited && styles.suggestTextEdited,
+                    // Glyphs carry the meaning, not colour. Down is the one
+                    // exception, and only while a deload is running.
+                    suggestion.kind === 'down' && styles.suggestTextDown,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {`${GLYPH[suggestion.kind]} ${fmtNum(suggestion.weight)} × ${suggestion.reps}`}
+                </Text>
+              </Pressable>
+            ) : effortLine ? (
+              // `last @9` is a reference and does nothing; the done row's line —
+              // the rating, or `+ RPE` — opens the scale.
+              effortLine.kind === 'last' || !onEffortPress ? (
                 <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
                   {effortLine.text}
                 </Text>
-              </Pressable>
-            )
-          ) : null}
-        </View>
+              ) : (
+                <Pressable
+                  onPress={onEffortPress}
+                  hitSlop={{ top: 2, bottom: 12, left: 6, right: 6 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    effortLine.kind === 'add' ? 'Rate this set' : `Effort ${effortLine.text}`
+                  }
+                  accessibilityHint="Opens the effort scale"
+                >
+                  <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
+                    {effortLine.text}
+                  </Text>
+                </Pressable>
+              )
+            ) : null}
+          </View>
+        )}
 
         {/* Weight */}
         <TextInput
@@ -296,6 +326,9 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
   },
   prevCell: { flex: 1, justifyContent: 'center', paddingHorizontal: 2, gap: 1 },
+  // Fills the row's inner height so the tap target is not just the text. The
+  // lines stay centred, so nothing moves.
+  prevCellTap: { alignSelf: 'stretch' },
   prevText: {
     fontFamily: font.monoRegular,
     fontSize: 12,

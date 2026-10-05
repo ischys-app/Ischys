@@ -5,7 +5,14 @@
 import type { RoutineExerciseIn, RoutineOut } from './types';
 import { createRoutine, getRoutine } from '../data/routinesRepo';
 
-export { getRoutine, createRoutine, updateRoutine, deleteRoutine } from '../data/routinesRepo';
+export {
+  getRoutine,
+  getRoutineHistory,
+  createRoutine,
+  updateRoutine,
+  deleteRoutine,
+} from '../data/routinesRepo';
+export type { RoutineHistory } from '../data/routinesRepo';
 
 /**
  * Duplicate a routine: load the source, strip ids, then create a copy named

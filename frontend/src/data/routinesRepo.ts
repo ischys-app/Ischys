@@ -3,11 +3,12 @@
  * Touches the DB. No FK cascade, so child rows are removed explicitly. Sending
  * `exercises` on update replaces the whole list.
  */
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '../db/client';
 import * as schema from '../db/schema';
 import type { RoutineExerciseIn, RoutineOut } from '../api/types';
+import type { LoggedExercise } from '../domain/routineView';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
 import { toRoutineExerciseOut, toRoutineOut, type ExerciseRow } from './map';
 import { hydrateExercises } from './queries';
@@ -51,6 +52,73 @@ export async function getRoutine(id: string): Promise<RoutineOut> {
   const r = await loadRoutine(id);
   if (!r) throw new Error('routine not found');
   return r;
+}
+
+/** How a routine has gone before, for the read-only Routine View (#85). */
+export type RoutineHistory = {
+  /** Lengths of the most recent completed runs, newest first, in seconds. */
+  recentDurations: number[];
+  /** The most recent completed run, or null when the routine was never done. */
+  last: {
+    /** Epoch ms. */
+    startedAt: number;
+    durationSeconds: number;
+    exercises: LoggedExercise[];
+  } | null;
+};
+
+/** Runs that feed the duration estimate. */
+const HISTORY_RUNS = 3;
+
+/**
+ * The last few completed workouts started from this routine: their lengths, and
+ * the newest one's sets in the order they were performed.
+ */
+export async function getRoutineHistory(id: string): Promise<RoutineHistory> {
+  const runs = await db
+    .select({
+      id: schema.workouts.id,
+      startedAt: schema.workouts.startedAt,
+      durationSeconds: schema.workouts.durationSeconds,
+    })
+    .from(schema.workouts)
+    .where(and(eq(schema.workouts.routineId, id), eq(schema.workouts.status, 'completed')))
+    .orderBy(desc(schema.workouts.startedAt))
+    .limit(HISTORY_RUNS);
+  const newest = runs[0];
+  if (!newest) return { recentDurations: [], last: null };
+
+  const wes = await db
+    .select()
+    .from(schema.workoutExercises)
+    .where(eq(schema.workoutExercises.workoutId, newest.id))
+    .orderBy(asc(schema.workoutExercises.position));
+  const sets = wes.length
+    ? await db
+        .select()
+        .from(schema.workoutSets)
+        .where(inArray(schema.workoutSets.workoutExerciseId, wes.map((we) => we.id)))
+    : [];
+  const setsByWe = new Map<string, typeof sets>();
+  for (const s of sets) {
+    const list = setsByWe.get(s.workoutExerciseId) ?? [];
+    list.push(s);
+    setsByWe.set(s.workoutExerciseId, list);
+  }
+
+  return {
+    recentDurations: runs.map((r) => r.durationSeconds),
+    last: {
+      startedAt: newest.startedAt,
+      durationSeconds: newest.durationSeconds,
+      exercises: wes.map((we) => ({
+        exerciseId: we.exerciseId,
+        sets: (setsByWe.get(we.id) ?? [])
+          .sort((a, b) => a.position - b.position)
+          .map((s) => ({ weight: s.weight, reps: s.reps, done: s.done !== 0 })),
+      })),
+    },
+  };
 }
 
 /** db or a transaction handle — so the multi-row writers below stay atomic. */

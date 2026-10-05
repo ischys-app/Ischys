@@ -1062,7 +1062,11 @@ export default function ActiveWorkout() {
     setExercises((prev) => prev.filter((ex) => ex.id !== exId));
     if (persist && workoutId) {
       // Was local-only: the exercise reappeared on reload.
-      removeWorkoutExercise(workoutId, exId).catch(() => {});
+      removeWorkoutExercise(workoutId, exId).catch(() => {
+        // Nothing was removed (it is all or nothing), so the exercise still
+        // counts at finish. Show what the store holds rather than hide it.
+        void refresh();
+      });
     }
   };
 
@@ -1120,7 +1124,12 @@ export default function ActiveWorkout() {
     setExercises((prev) =>
       prev.map((e) => (e.id === exId ? { ...e, sets: e.sets.filter((s) => s.id !== setId) } : e)),
     );
-    if (persist && workoutId) deleteSetApi(setId).catch(() => {});
+    if (persist && workoutId) {
+      deleteSetApi(setId).catch(() => {
+        // The set is still stored, and would count at finish: bring it back.
+        void refresh();
+      });
+    }
   };
 
   /** Commit a full reorder from the drag overlay; the store persists `position`. */

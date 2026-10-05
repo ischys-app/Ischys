@@ -9,6 +9,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Pressable,
   ScrollView,
@@ -269,7 +270,9 @@ export default function WorkoutSummary() {
       try {
         await saveAsRoutine(workoutId);
       } catch {
-        // best-effort — navigate regardless
+        // Nothing was stored. Stay here, so the button can be tapped again.
+        Alert.alert('Couldn’t save routine', 'Nothing was changed. Try again.');
+        return;
       }
     }
     dismiss();
@@ -331,6 +334,14 @@ export default function WorkoutSummary() {
   const onUpdateRoutine = async () => {
     if (!routineId || !routine || !summary) return;
     const snapshot = routineToInput(routine); // captured for Undo
+    try {
+      await updateRoutine(routineId, { exercises: workoutToInput(summary.workout) });
+    } catch {
+      // The routine is as it was. No receipt for a change that did not
+      // happen; the prompt stays, so it can be tried again.
+      Alert.alert('Couldn’t update routine', 'Nothing was changed. Try again.');
+      return;
+    }
     setReceiptName(routine.name);
     undoRef.current = async () => {
       try {
@@ -339,11 +350,6 @@ export default function WorkoutSummary() {
         // best-effort revert
       }
     };
-    try {
-      await updateRoutine(routineId, { exercises: workoutToInput(summary.workout) });
-    } catch {
-      // best-effort — still show the receipt so the action isn't a silent no-op
-    }
     showReceipt('updated');
   };
 
@@ -357,16 +363,19 @@ export default function WorkoutSummary() {
   const onSaveAsNew = async () => {
     if (!workoutId || !summary) return;
     const created = await saveAsRoutine(workoutId).catch(() => null);
-    setReceiptName(created?.name ?? summary.workout.name);
-    undoRef.current = created
-      ? async () => {
-          try {
-            await deleteRoutine(created.id);
-          } catch {
-            // best-effort
-          }
-        }
-      : null;
+    if (!created) {
+      // No routine was stored, so no receipt saying one was.
+      Alert.alert('Couldn’t save routine', 'Nothing was changed. Try again.');
+      return;
+    }
+    setReceiptName(created.name);
+    undoRef.current = async () => {
+      try {
+        await deleteRoutine(created.id);
+      } catch {
+        // best-effort
+      }
+    };
     showReceipt('saved-new');
   };
 

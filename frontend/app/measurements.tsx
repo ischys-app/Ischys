@@ -7,6 +7,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Keyboard,
   Pressable,
   ScrollView,
@@ -97,7 +98,16 @@ export default function MeasurementsScreen() {
       const value = toCanonical(raw, metric, prefs);
       return value === null ? [] : [{ metric, value }];
     });
-    if (entries.length > 0) await addMeasurements(entries);
+    if (entries.length > 0) {
+      try {
+        await addMeasurements(entries);
+      } catch {
+        // None of the readings were stored. The sheet stays open with what
+        // was typed, so Save can be tapped again.
+        Alert.alert('Couldn’t save', 'Nothing was changed. Try again.');
+        return;
+      }
+    }
     setDraft({});
     setSheetOpen(false);
     Keyboard.dismiss();

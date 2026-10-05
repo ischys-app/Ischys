@@ -101,6 +101,9 @@ import {
   type Unit,
 } from '../../src/domain/units';
 import { useWeightUnit } from '../../src/lib/weightUnit';
+import { shouldPromptEffort } from '../../src/domain/effort';
+import { useEffortMode } from '../../src/lib/effortMode';
+import { EffortSheet } from '../../src/components/workout/EffortSheet';
 import { deloadActiveFor, getDeloadState, type DeloadState } from '../../src/lib/deloadState';
 import { groupLabels, restAfterSet, roundOfSet } from '../../src/domain/supersets';
 import { getBodyweightKg } from '../../src/lib/bodyweight';
@@ -128,6 +131,7 @@ import {
   fmtClock,
   makeSet,
   seedWorkout,
+  setBadge,
   TYPE_CYCLE,
   type Exercise,
 } from '../../src/components/workout/types';
@@ -170,6 +174,10 @@ function mapExercise(
         prevWeight: p?.weight == null ? undefined : weightText(p.weight, unit),
         prevReps: p?.reps == null ? undefined : String(p.reps),
         done: s.done,
+        // Loaded whatever the setting says: Off hides ratings, it does not
+        // drop them, and the setting can be switched while this screen is open.
+        rpe: s.rpe ?? null,
+        prevRpe: p?.rpe ?? null,
       };
     }),
   };
@@ -217,7 +225,24 @@ export default function ActiveWorkout() {
   // Which set the keyboard toolbar is acting on. The toolbar is one bar for the
   // whole screen, so it can only offer Plates once it knows whose weight is
   // being typed — and whether that exercise is even loaded with plates.
-  const [focusedSet, setFocusedSet] = useState<{ exerciseId: string; setId: string } | null>(null);
+  const [focusedSet, setFocusedSet] = useState<{
+    exerciseId: string;
+    setId: string;
+    field: 'weight' | 'reps';
+  } | null>(null);
+  // Effort per set (#84). 'off' for most people, and then nothing below that
+  // mentions effort renders or runs: no prompt, no row line, no keypad key.
+  const effortMode = useEffortMode();
+  // The set the rest bar is asking about: the one whose tick started the rest
+  // that is running. `saved` once it was rated from there, which folds the
+  // question away. Gone when the rest ends or another rest starts.
+  const [effortPrompt, setEffortPrompt] = useState<{
+    exerciseId: string;
+    setId: string;
+    saved: boolean;
+  } | null>(null);
+  // The set whose rating sheet is open (from its row, or the keypad's key).
+  const [effortSheet, setEffortSheet] = useState<{ exerciseId: string; setId: string } | null>(null);
   const [plateSheetOpen, setPlateSheetOpen] = useState(false);
   const [warmupExId, setWarmupExId] = useState<string | null>(null);
   const [supersetExId, setSupersetExId] = useState<string | null>(null);
@@ -530,6 +555,7 @@ export default function ActiveWorkout() {
       setRestStartedAt(null);
       setRestEndsAt(null);
       setRestExId(null);
+      setEffortPrompt(null); // the question goes when the rest does
       if (workoutId) clearRest(workoutId); // the rest is over — don't restore it
       haptics.commit(); // rest's up
     }
@@ -804,6 +830,10 @@ export default function ActiveWorkout() {
     exerciseId: string | null = null,
   ) => {
     if (seconds <= 0) return;
+    // A new rest is about a new set — or about none, when it was started by
+    // hand, from the Lock Screen or from the Watch. `toggleDone` asks again
+    // for the set it just ticked.
+    setEffortPrompt(null);
     const now = Date.now();
     setRestTotal(seconds);
     setRestRemaining(seconds);
@@ -846,6 +876,7 @@ export default function ActiveWorkout() {
     setRestStartedAt(null);
     setRestEndsAt(null);
     setRestExId(null);
+    setEffortPrompt(null);
     restEndsRef.current = null;
     if (workoutId) clearRest(workoutId); // skipped — nothing to restore
     const pending = restAlertId.current;
@@ -899,13 +930,26 @@ export default function ActiveWorkout() {
       );
       if (decision.startRest) {
         startRest(decision.seconds, upcomingExerciseName(setId), ex.id);
+        // Ask about this set in the rest that just started. Not when no rest
+        // did (timer off, mid-superset): the row's own slot is the way in then.
+        if (shouldPromptEffort(effortMode, decision)) {
+          setEffortPrompt({ exerciseId: exId, setId, saved: false });
+        }
       } else {
         // No timer — but the active row must move to the partner, or the screen
         // would still be pointing at the exercise you just finished.
         endRest();
       }
     }
+    // Unticked: there is no longer a set to ask about.
+    if (!willBeDone) setEffortPrompt((p) => (p?.setId === setId ? null : p));
     if (persist) write(patchSetApi(setId, { done: willBeDone }));
+  };
+
+  /** Rate a set, or clear its rating with null. Always RPE, whatever is shown. */
+  const rateSet = (exId: string, setId: string, rpe: number | null) => {
+    patchSet(exId, setId, { rpe });
+    if (persist) write(patchSetApi(setId, { rpe }));
   };
 
   const cycleType = (exId: string, setId: string) => {
@@ -1546,6 +1590,68 @@ export default function ActiveWorkout() {
     return `SUPERSET ${letter} · ROUND ${current} OF ${rounds}`;
   };
 
+  // --- effort per set (#84) -------------------------------------------
+  // Everything here is null with the setting Off, and the components below
+  // take null to mean "render as you always did".
+  const effortKind = effortMode === 'off' ? null : effortMode;
+
+  /** The set a prompt or sheet points at, while it still exists. */
+  const findSet = (ref: { exerciseId: string; setId: string } | null) => {
+    if (!ref) return null;
+    const ex = exercises.find((e) => e.id === ref.exerciseId);
+    const index = ex ? ex.sets.findIndex((x) => x.id === ref.setId) : -1;
+    return ex && index !== -1 ? { ex, index, set: ex.sets[index] } : null;
+  };
+
+  const promptTarget = effortKind ? findSet(effortPrompt) : null;
+  const restBarEffort =
+    effortKind && effortPrompt && promptTarget
+      ? {
+          kind: effortKind,
+          badge: setBadge(promptTarget.ex.sets, promptTarget.index),
+          rpe: promptTarget.set.rpe ?? null,
+          saved: effortPrompt.saved,
+          onRate: (rpe: number) => {
+            rateSet(effortPrompt.exerciseId, effortPrompt.setId, rpe);
+            setEffortPrompt((p) => (p ? { ...p, saved: true } : p));
+          },
+        }
+      : null;
+
+  const sheetTarget = effortKind ? findSet(effortSheet) : null;
+  // What the row would log, so the sheet can name a set that was opened from
+  // the keypad before anything was typed into it.
+  const sheetValues = sheetTarget
+    ? resolveSet(sheetTarget.set, carryFor(sheetTarget.ex.sets, sheetTarget.index))
+    : null;
+  // Kept after the sheet closes so it can slide away still showing its set,
+  // rather than vanishing the instant a value is tapped.
+  const effortSheetView = useRef<{
+    kind: 'rpe' | 'rir';
+    exerciseName: string;
+    badge: string;
+    weight: string;
+    reps: string;
+    bodyweight: boolean;
+    rpe: number | null;
+  } | null>(null);
+  if (effortKind && sheetTarget && sheetValues) {
+    effortSheetView.current = {
+      kind: effortKind,
+      exerciseName: sheetTarget.ex.name,
+      badge: setBadge(sheetTarget.ex.sets, sheetTarget.index),
+      // Already in the entry unit: these are the row's own strings.
+      weight: sheetValues.weight,
+      reps: sheetValues.reps,
+      bodyweight: sheetTarget.ex.kind === 'bodyweight',
+      rpe: sheetTarget.set.rpe ?? null,
+    };
+  }
+
+  // The keypad bar's key: only while reps are being typed, where a rating is
+  // the natural next thought. Named for the scale in use.
+  const effortKeySet = effortKind && focusedSet?.field === 'reps' ? focusedSet : null;
+
   const statusText = status === 'active' ? 'In progress' : status;
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
 
@@ -1637,7 +1743,15 @@ export default function ActiveWorkout() {
               onWeightChange={(setId, t) => editWeight(ex.id, setId, t)}
               onRepsChange={(setId, t) => editReps(ex.id, setId, t)}
               onToggleDone={(setId) => toggleDone(ex.id, setId)}
-              onFieldFocus={(setId) => setFocusedSet({ exerciseId: ex.id, setId })}
+              onFieldFocus={(setId, field) => setFocusedSet({ exerciseId: ex.id, setId, field })}
+              effort={
+                effortKind
+                  ? {
+                      kind: effortKind,
+                      onOpen: (setId) => setEffortSheet({ exerciseId: ex.id, setId }),
+                    }
+                  : undefined
+              }
               onWarmup={warmupBaseFor(ex) ? () => setWarmupExId(ex.id) : undefined}
               suggestionFor={(setId) => suggestionFor(ex.id, setId)}
               onUseSuggestion={(setId) => {
@@ -1683,7 +1797,36 @@ export default function ActiveWorkout() {
           {/* Plates only for barbell work. Dumbbells, machines and cables come in
               whatever increments they come in, so there is nothing to calculate —
               and a disabled button on every other exercise is worse than none. */}
-          {plateExercise ? (
+          {effortKeySet ? (
+            // With effort ratings on and reps being typed, the left side holds
+            // two keys. Otherwise this branch is skipped and the bar is the
+            // one below, untouched.
+            <View style={styles.kbdAccessoryKeys}>
+              {plateExercise ? (
+                <Pressable
+                  onPress={() => setPlateSheetOpen(true)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Plate calculator"
+                >
+                  <Text style={styles.kbdAccessoryAction}>Plates</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={() =>
+                  setEffortSheet({
+                    exerciseId: effortKeySet.exerciseId,
+                    setId: effortKeySet.setId,
+                  })
+                }
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Rate this set"
+              >
+                <Text style={styles.kbdAccessoryAction}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
+              </Pressable>
+            </View>
+          ) : plateExercise ? (
             <Pressable
               onPress={() => setPlateSheetOpen(true)}
               hitSlop={8}
@@ -1714,7 +1857,26 @@ export default function ActiveWorkout() {
         onMinus15={() => adjustRest(-15)}
         onPlus15={() => adjustRest(15)}
         onSkip={endRest}
+        effort={restBarEffort}
       />
+
+      {/* Never mounted until a sheet has been opened, which cannot happen with
+          the setting Off. */}
+      {effortSheetView.current ? (
+        <EffortSheet
+          visible={!!(effortKind && sheetTarget)}
+          {...effortSheetView.current}
+          unit={entryUnit}
+          onRate={(rpe) => {
+            if (effortSheet) rateSet(effortSheet.exerciseId, effortSheet.setId, rpe);
+            // Leave showing what was picked. A cleared rating keeps its last
+            // look, so the sheet does not reflow on its way out.
+            if (rpe != null && effortSheetView.current) effortSheetView.current.rpe = rpe;
+            setEffortSheet(null);
+          }}
+          onClose={() => setEffortSheet(null)}
+        />
+      ) : null}
 
       {warmupExercise && warmupBase && (
         <WarmupSheet
@@ -1933,6 +2095,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,
   },
+  kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   // Partners sit 4pt apart and share a rail in the screen margin.
   ssMember: { position: 'relative', marginBottom: 4 },
   ssHeader: {

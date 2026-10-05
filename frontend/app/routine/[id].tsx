@@ -45,7 +45,9 @@ import {
   TYPE_CYCLE,
   typeMeta,
 } from '../../src/components/workout/types';
+import { type Unit, inputToKg, unitLabel, weightText } from '../../src/domain/units';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
+import { getWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
 
 const DEFAULT_REST_SECONDS = 120;
@@ -53,8 +55,15 @@ const DEFAULT_REST_SECONDS = 120;
 type RSet = {
   id: string;
   type: SetType;
+  /** Target weight as typed, in the user's unit. */
   targetWeight: string;
   targetReps: string;
+  /**
+   * The kilograms this row was loaded with. Saved back untouched while the
+   * text still reads the same, so opening and saving a routine never nudges a
+   * stored weight through a display rounding.
+   */
+  storedKg?: number | null;
 };
 
 type REx = {
@@ -72,9 +81,9 @@ const TYPE_LABEL: Record<SetType, string> = {
   failure: 'To failure',
 };
 
-/** "KG" for weighted exercises, "+KG" for bodyweight (added weight). */
-function weightColumnLabelFor(kind: ExerciseOut['kind']): string {
-  return kind === 'bodyweight' ? '+KG' : 'KG';
+/** "KG" / "LB" for weighted exercises, with a "+" for bodyweight (added weight). */
+function weightColumnLabelFor(kind: ExerciseOut['kind'], unit: Unit): string {
+  return kind === 'bodyweight' ? `+${unitLabel(unit)}` : unitLabel(unit);
 }
 
 let _seq = 0;
@@ -91,6 +100,10 @@ export default function RoutineBuilder() {
   const params = useLocalSearchParams<{ id: string }>();
   const routeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const isNew = routeId === 'new';
+  // The unit target weights are shown and typed in. Read once and held for the
+  // life of the editor: the rows are loaded in it and saved from it, so it must
+  // not move underneath text that is already on screen.
+  const [unit] = useState<Unit>(getWeightUnit);
 
   const [name, setName] = useState('');
   const [exercises, setExercises] = useState<REx[]>([]);
@@ -122,8 +135,9 @@ export default function RoutineBuilder() {
             sets: rex.sets.map((s) => ({
               id: uid('rset'),
               type: s.type,
-              targetWeight: numStr(s.target_weight),
+              targetWeight: weightText(s.target_weight, unit),
               targetReps: numStr(s.target_reps),
+              storedKg: s.target_weight,
             })),
           })),
         );
@@ -264,7 +278,11 @@ export default function RoutineBuilder() {
       note: rex.note || undefined,
       sets: rex.sets.map((s) => ({
         type: s.type,
-        target_weight: s.targetWeight === '' ? null : parseFloat(s.targetWeight),
+        // Typed in the user's unit, stored as kilograms.
+        target_weight:
+          s.storedKg != null && s.targetWeight === weightText(s.storedKg, unit)
+            ? s.storedKg
+            : inputToKg(s.targetWeight, unit),
         target_reps: s.targetReps === '' ? null : parseInt(s.targetReps, 10),
       })),
     }));
@@ -354,6 +372,7 @@ export default function RoutineBuilder() {
                   onReplace={() => openReplace(rex.id)}
                   key={rex.id}
                   rex={rex}
+                  unit={unit}
                   onRemove={() => removeExercise(rex.id)}
                   onNoteChange={(t) => setNote(rex.id, t)}
                   onOpenRest={() => setRestSheetExId(rex.id)}
@@ -426,6 +445,7 @@ function EmptyBuilder() {
 }
 
 function ExerciseCardBuilder({
+  unit,
   rex,
   onReplace,
   onRemove,
@@ -440,6 +460,8 @@ function ExerciseCardBuilder({
   onRepsChange,
 }: {
   rex: REx;
+  /** The unit the target weights are typed in. */
+  unit: Unit;
   onReplace: () => void;
   onRemove: () => void;
   onNoteChange: (t: string) => void;
@@ -454,7 +476,7 @@ function ExerciseCardBuilder({
 }) {
   const ex = rex.exercise;
   const muscleLine = ex.category?.name ?? ex.primary_muscle?.name ?? ex.equipment;
-  const wLabel = weightColumnLabelFor(ex.kind);
+  const wLabel = weightColumnLabelFor(ex.kind, unit);
 
   // Working-set index counter — resets per exercise.
   let workingIdx = 0;

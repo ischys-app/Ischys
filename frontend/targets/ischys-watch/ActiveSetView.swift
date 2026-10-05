@@ -142,9 +142,11 @@ struct ActiveSetView: View {
       // Tap to choose which value the Crown edits; the selected one glows accent.
       Button { select(.weight) } label: {
         HStack(alignment: .lastTextBaseline, spacing: 3) {
-          Text(model.weight.isEmpty ? "0" : model.weight)
+          Text(model.weight.isEmpty ? "0" : Ischys.shortWeight(model.weight))
             .font(Ischys.mono(58, .semibold)).monospacedDigit()
             .tracking(-1.5)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .foregroundStyle(editing == .weight ? Ischys.accent : Ischys.text1)
           Text(model.unit).font(Ischys.ui(18, .medium)).foregroundStyle(Ischys.text2)
         }
@@ -180,7 +182,7 @@ struct ActiveSetView: View {
 
   private var prevLabel: String {
     guard !model.prevWeight.isEmpty || !model.prevReps.isEmpty else { return " " }
-    return "prev  \(model.prevWeight) \(model.unit) × \(model.prevReps)"
+    return "prev  \(Ischys.shortWeight(model.prevWeight)) \(model.unit) × \(model.prevReps)"
   }
 
   // 6 pills: done/active = accent (active wider), pending = surface-3.

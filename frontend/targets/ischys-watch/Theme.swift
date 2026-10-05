@@ -52,6 +52,15 @@ enum Ischys {
     .system(size: size * scale, weight: weight, design: .monospaced)
   }
 
+  /// A weight for the wrist: one decimal at most ("149.91" → "149.9", "225" →
+  /// "225"). Display only — two decimals do not fit beside the unit at this
+  /// size, and the value logged stays the exact string the phone sent.
+  static func shortWeight(_ text: String) -> String {
+    guard let v = Double(text.replacingOccurrences(of: ",", with: ".")) else { return text }
+    let r = (v * 10).rounded() / 10
+    return r == r.rounded() ? String(Int(r)) : String(format: "%.1f", r)
+  }
+
   /// Seconds → "M:SS". Minutes run past 60 for long sessions, which is fine.
   static func clock(_ seconds: Int) -> String {
     String(format: "%d:%02d", max(0, seconds) / 60, max(0, seconds) % 60)

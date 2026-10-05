@@ -13,11 +13,14 @@ export function WorkoutCard({
   workout,
   onPress,
   onLongPress,
+  accessibilityHint,
 }: {
   workout: WorkoutListItem;
   onPress?: () => void;
   /** Long-press the card. Omitted → no long-press affordance. */
   onLongPress?: () => void;
+  /** Replaces the default hint, for a caller that owns the long-press itself. */
+  accessibilityHint?: string;
 }) {
   const unit = useWeightUnit();
   return (
@@ -27,7 +30,9 @@ export function WorkoutCard({
       delayLongPress={400}
       accessibilityRole="button"
       accessibilityLabel={workout.name}
-      accessibilityHint={onLongPress ? 'Long-press to delete this workout.' : undefined}
+      accessibilityHint={
+        accessibilityHint ?? (onLongPress ? 'Long-press to delete this workout.' : undefined)
+      }
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.header}>

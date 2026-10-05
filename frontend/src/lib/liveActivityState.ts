@@ -15,6 +15,7 @@
  * as `resolve` rather than imported, keeping this file self-contained (see
  * setCarry.ts, which is tested separately). See liveActivityState.test.ts.
  */
+import type { Unit } from '../domain/units.ts';
 import { exerciseArtSlug } from './exerciseArt.ts';
 import { locateNextSet } from './nextSet.ts';
 
@@ -72,19 +73,22 @@ type Resolve = (
 /** U+00D7, matching the design. Not the ASCII letter x. */
 const TIMES = '×';
 
-/** An unlogged bodyweight set has no weight; show a dash rather than " kg". */
-const weightLabelFor = (weight: string): string =>
-  weight.trim() === '' ? '—' : `${weight.trim()} kg`;
+/**
+ * An unlogged bodyweight set has no weight; show a dash rather than a bare unit.
+ * The weight string is already in the user's unit — this only names it.
+ */
+const weightLabelFor = (weight: string, unit: Unit): string =>
+  weight.trim() === '' ? '—' : `${weight.trim()} ${unit}`;
 
 const repsLabelFor = (reps: string): string =>
   reps.trim() === '' ? '—' : `${reps.trim()} reps`;
 
 type Located = { exercise: ExerciseLike; setIndex: number };
 
-function describe(at: Located, resolve: Resolve): NextSet {
+function describe(at: Located, resolve: Resolve, unit: Unit): NextSet {
   const { exercise, setIndex } = at;
   const filled = resolve(exercise.sets, setIndex);
-  const weightLabel = weightLabelFor(filled.weight);
+  const weightLabel = weightLabelFor(filled.weight, unit);
   const repsLabel = repsLabelFor(filled.reps);
   return {
     exerciseName: exercise.name,
@@ -99,11 +103,16 @@ function describe(at: Located, resolve: Resolve): NextSet {
 /**
  * `null` when every set is done — the card has nothing useful left to say, and
  * the caller ends the Activity rather than showing a stale set.
+ *
+ * `unit` is the unit the set strings are expressed in. Required, not defaulted:
+ * the widget prints these labels verbatim, so a forgotten argument would put
+ * "kg" next to a number of pounds on the Lock Screen.
  */
 export function buildLiveActivityState(
   exercises: readonly ExerciseLike[],
   resting: boolean,
   resolve: Resolve,
+  unit: Unit,
 ): LiveActivitySnapshot | null {
   const current = locateNextSet(exercises);
   if (!current) return null;
@@ -111,7 +120,7 @@ export function buildLiveActivityState(
   const { exercise: ex, setIndex: index } = current;
   const set = ex.sets[index];
   const filled = resolve(ex.sets, index);
-  const weightLabel = weightLabelFor(filled.weight);
+  const weightLabel = weightLabelFor(filled.weight, unit);
   const repsLabel = repsLabelFor(filled.reps);
   const position = `set ${index + 1} of ${ex.sets.length}`;
 
@@ -126,6 +135,6 @@ export function buildLiveActivityState(
     repsLabel,
     setId: set.id,
     restSeconds: ex.rest,
-    next: after ? describe(after, resolve) : undefined,
+    next: after ? describe(after, resolve, unit) : undefined,
   };
 }

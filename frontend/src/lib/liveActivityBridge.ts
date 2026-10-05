@@ -16,7 +16,9 @@ import * as LiveActivity from '../../modules/live-activity';
 import type { WorkoutOut } from '../api/types';
 import { getWorkout, listWorkouts, patchSet } from '../api/workouts';
 import { carryFor, completionPatch, resolveSet } from '../components/workout/setCarry';
+import { type Unit, weightText } from '../domain/units';
 import { buildLiveActivityState } from './liveActivityState';
+import { loadWeightUnit } from './weightUnit';
 
 /** Rest lives only in the workout screen's state, so it is relayed, not applied. */
 export type RestAction = { type: 'skip' } | { type: 'adjust'; seconds: number };
@@ -50,8 +52,12 @@ export function onWorkoutChanged(listener: ChangeListener): () => void {
 
 const numStr = (n: number | null | undefined) => (n == null ? '' : String(n));
 
-/** WorkoutOut → the shape `buildLiveActivityState` reads. */
-const forSnapshot = (w: WorkoutOut) =>
+/**
+ * WorkoutOut → the shape `buildLiveActivityState` reads. This is the card's
+ * *display* copy, so stored kilograms become strings in the user's unit — unlike
+ * `completeSet` below, which carries and writes in kilograms throughout.
+ */
+const forSnapshot = (w: WorkoutOut, unit: Unit) =>
   w.exercises.map((we) => ({
     name: we.exercise.name,
     // Only used to look up the card's thumbnail artwork.
@@ -59,7 +65,7 @@ const forSnapshot = (w: WorkoutOut) =>
     rest: we.rest_seconds,
     sets: we.sets.map((s) => ({
       id: s.id,
-      weight: numStr(s.weight),
+      weight: weightText(s.weight, unit),
       reps: numStr(s.reps),
       done: s.done,
     })),
@@ -82,6 +88,9 @@ async function completeSet(
   const set = we.sets[index];
   if (set.done) return null;
 
+  // Straight from storage, so these strings are kilograms and so is the patch:
+  // the carried weight is written back exactly as the set above holds it,
+  // whatever unit the card is showing.
   const values = we.sets.map((s) => ({ weight: numStr(s.weight), reps: numStr(s.reps) }));
   const { patch } = completionPatch(values, index);
 
@@ -97,8 +106,14 @@ async function completeSet(
 
 /** Re-push the card from server truth, refilling `next`. */
 async function pushCard(w: WorkoutOut, restSeconds: number | null): Promise<void> {
-  const snapshot = buildLiveActivityState(forSnapshot(w), restSeconds != null, (sets, i) =>
-    resolveSet(sets[i], carryFor(sets, i)),
+  // Read from storage, not assumed: this runs on a background launch, where no
+  // screen has mounted to load the preference.
+  const unit = await loadWeightUnit();
+  const snapshot = buildLiveActivityState(
+    forSnapshot(w, unit),
+    restSeconds != null,
+    (sets, i) => resolveSet(sets[i], carryFor(sets, i)),
+    unit,
   );
   if (!snapshot) {
     await LiveActivity.end();

@@ -2,7 +2,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildLiveActivityState } from './liveActivityState.ts';
+import { buildLiveActivityState as build } from './liveActivityState.ts';
+
+// The set strings are already in the user's unit; the builder only labels them.
+// Most of these tests are about set selection, so they run in kg through this.
+const buildLiveActivityState = (
+  exercises: Parameters<typeof build>[0],
+  resting: boolean,
+  resolver: Parameters<typeof build>[2],
+) => build(exercises, resting, resolver, 'kg');
 
 const set = (id: string, weight: string, reps: string, done = false) => ({
   id,
@@ -142,4 +150,17 @@ test('resting after an exercise’s last set describes the next exercise', () =>
   );
   assert.equal(s?.exerciseName, 'Bench');
   assert.equal(s?.subtitle, 'Next: set 1 of 2 (80 kg × 8 reps)');
+});
+
+test('labels every weight with the unit it was handed, never a fixed kg', () => {
+  const s = build(legPress(set('a', '225', '5', true), set('b', '225', '5'), set('c', '235', '3')), true, resolve, 'lb');
+  assert.equal(s?.weightLabel, '225 lb');
+  assert.equal(s?.subtitle, 'Next: set 2 of 3 (225 lb × 5 reps)');
+  assert.equal(s?.next?.weightLabel, '235 lb');
+  assert.equal(s?.next?.subtitle, 'Next: set 3 of 3 (235 lb × 3 reps)');
+});
+
+test('a bodyweight set stays a dash in lb too', () => {
+  const s = build([{ name: 'Pull Up', rest: 90, sets: [set('a', '', '8')] }], false, resolve, 'lb');
+  assert.equal(s?.weightLabel, '—');
 });

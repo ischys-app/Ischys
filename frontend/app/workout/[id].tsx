@@ -87,6 +87,15 @@ import type { RampRow } from '../../src/domain/warmupRamp';
 import { getPlateSetup } from '../../src/lib/plateSetup';
 import { DEFAULT_BAR_SETUP, smallestStepKg, type BarSetup } from '../../src/domain/plateMath';
 import { suggestNextSet } from '../../src/domain/progression';
+import {
+  WEIGHT_STEPS,
+  convertWeightText,
+  inputToKg,
+  volumeToDisplay,
+  weightText,
+  type Unit,
+} from '../../src/domain/units';
+import { useWeightUnit } from '../../src/lib/weightUnit';
 import { deloadActiveFor, getDeloadState, type DeloadState } from '../../src/lib/deloadState';
 import { groupLabels, restAfterSet, roundOfSet } from '../../src/domain/supersets';
 import { getBodyweightKg } from '../../src/lib/bodyweight';
@@ -125,19 +134,14 @@ const DEFAULT_REST = 120;
 const numStr = (n: number | null | undefined) => (n == null ? '' : String(n));
 
 /**
- * Parse a user-typed weight. `decimal-pad` inserts the device's locale decimal
- * separator, so on a comma-locale keyboard the field holds "24,8" — and
- * `parseFloat` stops at the comma and silently drops the fraction (you log 24.8
- * and see 24 next time). Normalise the comma before parsing. NaN for empty/blank.
+ * Map a stored WorkoutExerciseOut (+ optional previous-session sets) to the
+ * local model. Stored weights are kilograms; the model's strings are in `unit`.
  */
-const parseWeight = (s: string | null | undefined): number =>
-  parseFloat(String(s ?? '').replace(',', '.'));
-
-/** Map a stored WorkoutExerciseOut (+ optional previous-session sets) to the local model. */
 function mapExercise(
   we: WorkoutExerciseOut,
   prev: PreviousSetOut[],
-  prevNote: string | null = null,
+  prevNote: string | null,
+  unit: Unit,
 ): Exercise {
   const prevByPos = new Map(prev.map((p) => [p.position, p]));
   return {
@@ -156,9 +160,9 @@ function mapExercise(
       return {
         id: s.id,
         type: s.type,
-        weight: numStr(s.weight),
+        weight: weightText(s.weight, unit),
         reps: numStr(s.reps),
-        prevWeight: p?.weight == null ? undefined : String(p.weight),
+        prevWeight: p?.weight == null ? undefined : weightText(p.weight, unit),
         prevReps: p?.reps == null ? undefined : String(p.reps),
         done: s.done,
       };
@@ -176,6 +180,18 @@ export default function ActiveWorkout() {
   const [exercises, setExercises] = useState<Exercise[]>(() =>
     isDemo ? seedWorkout() : [],
   );
+  // The user's weight unit, and the unit the weight strings in `exercises` are
+  // currently written in. They are separate on purpose: the preference can flip
+  // while this screen sits under Settings, and for a moment the strings are
+  // still in the old unit. Everything below — labels, volume, every write to
+  // storage — reads `entryUnit`, so a number is never shown or stored under a
+  // unit it was not typed in. `entryUnit` only ever changes in the same update
+  // that rewrites the strings (see the unit-switch effect further down). The
+  // demo seed is written in kilograms, hence the initial value.
+  const unit = useWeightUnit();
+  const unitRef = useRef(unit);
+  unitRef.current = unit;
+  const [entryUnit, setEntryUnit] = useState<Unit>('kg');
   const [workoutId, setWorkoutId] = useState<string | null>(isDemo ? null : routeId);
   const [persist, setPersist] = useState(!isDemo);
   const [name, setName] = useState(isDemo ? 'Upper' : '');
@@ -270,6 +286,7 @@ export default function ActiveWorkout() {
       } catch {
         if (cancelled) return;
         setExercises(seedWorkout());
+        setEntryUnit('kg'); // the seed is written in kilograms
         setPersist(false); // load failed → offline, don't write back
         setName('Upper');
         setStartedAt(Date.now() - START_ELAPSED * 1000);
@@ -287,7 +304,11 @@ export default function ActiveWorkout() {
       setStatus(w.status);
       setStartedAt(parseServerDate(w.started_at));
       setElapsed(w.duration_seconds);
-      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i])));
+      // Stored kilograms -> strings in the unit preferred right now, and
+      // `entryUnit` moved with them in the same update.
+      const loadedIn = unitRef.current;
+      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i], loadedIn)));
+      setEntryUnit(loadedIn);
       // Restore an in-flight rest countdown if the screen was unmounted (minimise
       // / navigate away) or the app was killed mid-rest. The countdown is derived
       // from the stored absolute end timestamp, so it's correct however long we
@@ -331,7 +352,9 @@ export default function ActiveWorkout() {
       setName(w.name);
       setStatus(w.status);
       setStartedAt(parseServerDate(w.started_at));
-      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i])));
+      const loadedIn = unitRef.current;
+      setExercises(w.exercises.map((we, i) => mapExercise(we, prev[i], prevNotes[i], loadedIn)));
+      setEntryUnit(loadedIn);
     } catch {
       // best-effort refresh — swallow errors so we don't clobber local state
     }
@@ -413,6 +436,36 @@ export default function ActiveWorkout() {
     };
   }, []);
 
+  // The unit was switched while this workout is open (Settings sits on top of
+  // this screen, which stays mounted). Bring the strings over to the new unit.
+  //
+  // A stored workout is simply re-read: `refresh` first lands any pending edits
+  // — each already converted to kilograms when it was typed, under the unit it
+  // was typed in — and then rebuilds every string from those kilograms. Nothing
+  // is rounded twice, so 225 lb comes back as 225 however often the unit flips.
+  // Until that lands the screen goes on showing the old unit, labels and all.
+  //
+  // Only the offline demo, which has no stored copy, converts its text in place.
+  useEffect(() => {
+    if (loading || unit === entryUnit) return;
+    if (!isDemo && persist) {
+      void refresh();
+      return;
+    }
+    setExercises((prev) =>
+      prev.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) => ({
+          ...s,
+          weight: convertWeightText(s.weight, entryUnit, unit),
+          prevWeight:
+            s.prevWeight == null ? undefined : convertWeightText(s.prevWeight, entryUnit, unit),
+        })),
+      })),
+    );
+    setEntryUnit(unit);
+  }, [unit, entryUnit, loading, isDemo, persist, refresh]);
+
   const exercisesRef = useRef(exercises);
   exercisesRef.current = exercises;
   const startedAtRef = useRef(startedAt);
@@ -490,10 +543,13 @@ export default function ActiveWorkout() {
   const resting = restRemaining > 0;
   const liveActivity = useMemo(
     () =>
-      buildLiveActivityState(exercises, resting, (sets, i) =>
-        resolveSet(sets[i], carryFor(sets, i)),
+      buildLiveActivityState(
+        exercises,
+        resting,
+        (sets, i) => resolveSet(sets[i], carryFor(sets, i)),
+        entryUnit,
       ),
-    [exercises, resting],
+    [exercises, resting, entryUnit],
   );
 
   const activityRunning = useRef(false);
@@ -630,6 +686,8 @@ export default function ActiveWorkout() {
 
   // Derived stats: volume + set count over done, non-warmup sets. A bodyweight
   // movement counts (bodyweight + added) × reps; with no bodyweight set it adds 0.
+  // Summed in kilograms (typed weights are converted from the unit they are in,
+  // so they can be added to the always-kg bodyweight) and shown in that unit.
   const { volume, doneSets } = useMemo(() => {
     let vol = 0;
     let count = 0;
@@ -641,7 +699,7 @@ export default function ActiveWorkout() {
         // stays working-only (matches the domain: setVolume vs countWorkingSets).
         if (isWarmup && !countWarmups) continue;
         const reps = parseFloat(s.reps) || 0;
-        const added = parseWeight(s.weight) || 0;
+        const added = inputToKg(s.weight, entryUnit) ?? 0;
         if (ex.kind === 'bodyweight') {
           const load = (bwKg ?? 0) + added;
           if (load > 0) vol += load * reps;
@@ -651,8 +709,8 @@ export default function ActiveWorkout() {
         if (!isWarmup) count += 1;
       }
     }
-    return { volume: Math.round(vol), doneSets: count };
-  }, [exercises, bwKg, countWarmups]);
+    return { volume: Math.round(volumeToDisplay(vol, entryUnit)), doneSets: count };
+  }, [exercises, bwKg, countWarmups, entryUnit]);
 
   // Every planned set is logged. `locateNextSet` returns null when nothing is
   // left to log.
@@ -799,7 +857,13 @@ export default function ActiveWorkout() {
       const { filled, patch } = completionPatch(ex.sets, idx);
       if (Object.keys(patch).length > 0) {
         patchSet(exId, setId, { weight: filled.weight, reps: filled.reps });
-        if (persist) write(patchSetApi(setId, patch));
+        // `completionPatch` works on the strings as typed, so its weight is in
+        // the entry unit; storage takes kilograms.
+        const stored =
+          patch.weight === undefined
+            ? patch
+            : { ...patch, weight: inputToKg(filled.weight, entryUnit) };
+        if (persist) write(patchSetApi(setId, stored));
       }
     }
 
@@ -852,23 +916,32 @@ export default function ActiveWorkout() {
     const reps = set.prevReps ?? '';
     patchSet(exId, setId, { weight, reps });
     if (persist) {
-      const w = parseWeight(weight);
       const r = parseInt(reps, 10);
       write(
         patchSetApi(setId, {
-          weight: Number.isNaN(w) ? null : w,
+          weight: inputToKg(weight, entryUnit),
           reps: Number.isNaN(r) ? null : r,
         }),
       );
     }
   };
 
-  const editWeight = (exId: string, setId: string, text: string) => {
+  /**
+   * `text` is what the field shows, in the entry unit. It is converted to
+   * kilograms here, once, and the pending write keeps that number — so a unit
+   * switched before the debounce fires cannot reinterpret it.
+   *
+   * Callers that already hold exact kilograms (the plate calculator) pass them
+   * as `kg`, so the value stored is theirs and not a re-conversion of the text.
+   */
+  const editWeight = (
+    exId: string,
+    setId: string,
+    text: string,
+    kg: number | null = inputToKg(text, entryUnit),
+  ) => {
     patchSet(exId, setId, { weight: text });
-    if (persist) {
-      const w = parseWeight(text);
-      debounce(`w:${setId}`, () => patchSetApi(setId, { weight: Number.isNaN(w) ? null : w }));
-    }
+    if (persist) debounce(`w:${setId}`, () => patchSetApi(setId, { weight: kg }));
   };
 
   const editReps = (exId: string, setId: string, text: string) => {
@@ -1095,12 +1168,20 @@ export default function ActiveWorkout() {
         startedAt,
         bwKg ?? 0,
         countWarmups,
+        entryUnit,
       ) ??
       // Every set logged: push a completed snapshot so the Watch can offer its
       // end-of-workout actions. Skipping the push here left the wrist showing a
       // stale mid-workout state (#45 on the watch side).
-      buildFinishedWatchState(exercises, name || 'Workout', startedAt, bwKg ?? 0, countWarmups),
-    [exercises, name, restRemaining, restTotal, startedAt, bwKg, countWarmups],
+      buildFinishedWatchState(
+        exercises,
+        name || 'Workout',
+        startedAt,
+        bwKg ?? 0,
+        countWarmups,
+        entryUnit,
+      ),
+    [exercises, name, restRemaining, restTotal, startedAt, bwKg, countWarmups, entryUnit],
   );
   const watchStateRef = useRef(watchState);
   watchStateRef.current = watchState;
@@ -1120,15 +1201,20 @@ export default function ActiveWorkout() {
         const ex = exercisesRef.current.find((e) => e.id === st.currentExerciseId);
         // The Watch sends the Crown-adjusted values, already carry-forward-filled
         // when they were pushed, so log them straight through and start rest.
+        // Its weight is in the unit the Watch was showing, which it sends along
+        // (older Watch builds don't; then it is the unit we last pushed). That
+        // may not be ours any more, so re-express it for the field, and store
+        // kilograms.
+        const sentIn = a.unit === 'kg' || a.unit === 'lb' ? a.unit : st.unit;
         patchSet(st.currentExerciseId, st.currentSetId, {
-          weight: a.weight,
+          weight: convertWeightText(a.weight, sentIn, entryUnit),
           reps: a.reps,
           done: true,
         });
         if (persist) {
           write(
             patchSetApi(st.currentSetId, {
-              weight: a.weight === '' ? null : Number(a.weight),
+              weight: inputToKg(a.weight, sentIn),
               reps: a.reps === '' ? null : Number(a.reps),
               done: true,
             }),
@@ -1207,14 +1293,16 @@ export default function ActiveWorkout() {
 
   // What the user has typed so far, or what the row would log if they ticked it
   // now — so opening Plates on an untouched set still has something to work from.
+  // The plate calculator works in kilograms whatever the display unit, so the
+  // typed text is converted on the way in (and `onUse` converts back).
   const plateTargetKg = useMemo(() => {
     if (!plateExercise || !focusedSet) return NaN;
     const sets = plateExercise.sets;
     const i = sets.findIndex((x) => x.id === focusedSet.setId);
     if (i === -1) return NaN;
     const resolved = resolveSet(sets[i], carryFor(sets, i));
-    return parseFloat(String(resolved.weight).replace(',', '.'));
-  }, [plateExercise, focusedSet]);
+    return inputToKg(resolved.weight, entryUnit) ?? NaN;
+  }, [plateExercise, focusedSet, entryUnit]);
 
   /**
    * The first working set of an exercise, when it has a weight to ramp toward.
@@ -1227,9 +1315,11 @@ export default function ActiveWorkout() {
     const i = ex.sets.findIndex((x) => x.type !== 'warmup');
     if (i === -1) return null;
     const resolved = resolveSet(ex.sets[i], carryFor(ex.sets, i));
-    const kgValue = parseFloat(String(resolved.weight).replace(',', '.'));
+    // The ramp is computed in kilograms; the working weight is typed in the
+    // entry unit.
+    const kgValue = inputToKg(resolved.weight, entryUnit);
     const repsValue = parseInt(String(resolved.reps), 10);
-    if (!Number.isFinite(kgValue) || kgValue <= 0) return null;
+    if (kgValue === null || !Number.isFinite(kgValue) || kgValue <= 0) return null;
     return { kg: kgValue, reps: Number.isFinite(repsValue) ? repsValue : 0 };
   };
 
@@ -1237,20 +1327,25 @@ export default function ActiveWorkout() {
   const warmupBase = warmupExercise ? warmupBaseFor(warmupExercise) : null;
 
   const insertWarmups = (exId: string, rows: RampRow[]) => {
+    // Rows arrive in kilograms. The field shows them in the entry unit; storage
+    // gets the kilograms as given (`kg`), not a re-conversion of that text.
     const fresh = rows.map((r) => ({
       ...makeSet(),
       type: 'warmup' as const,
-      weight: String(r.kg),
+      weight: weightText(r.kg, entryUnit),
       reps: String(r.reps),
+      kg: r.kg,
     }));
     setExercises((prev) =>
-      prev.map((e) => (e.id === exId ? { ...e, sets: [...fresh, ...e.sets] } : e)),
+      prev.map((e) =>
+        e.id === exId ? { ...e, sets: [...fresh.map(({ kg: _kg, ...s }) => s), ...e.sets] } : e,
+      ),
     );
     if (persist && workoutId) {
       write(
         insertWarmupSets(
           exId,
-          fresh.map((f) => ({ id: f.id, weight: Number(f.weight), reps: Number(f.reps) })),
+          fresh.map((f) => ({ id: f.id, weight: f.kg, reps: Number(f.reps) })),
         ).catch(() => {
           // Insert failed — take the optimistic rows back out rather than show
           // sets the store doesn't hold.
@@ -1302,13 +1397,21 @@ export default function ActiveWorkout() {
       equipment: ex.equipment,
       kind: ex.kind,
       setType: set.type,
+      // `prevWeight` is in the entry unit, and so is the suggestion that comes
+      // back — the steps below are therefore that unit's own, not conversions.
       last:
         set.prevWeight != null || set.prevReps != null
           ? { weight: Number(set.prevWeight ?? 0), reps: Number(set.prevReps ?? 0) }
           : null,
       lastSessionAt: catalogId ? (lastTrained.get(catalogId) ?? null) : null,
       targetReps: null,
-      stepKg: ex.equipment === 'barbell' ? smallestStepKg(plateSetup) : 2.5,
+      // The plate inventory is metric (#81 adds an imperial one), so it can only
+      // name the smallest jump in kg. In lb the bar moves in whole 5s.
+      step:
+        entryUnit === 'kg' && ex.equipment === 'barbell'
+          ? smallestStepKg(plateSetup)
+          : WEIGHT_STEPS[entryUnit].bar,
+      dumbbellStep: WEIGHT_STEPS[entryUnit].dumbbell,
       now: Date.now(),
       // The only route to a downward suggestion: a deload the user accepted on
       // a previous summary. Nothing here decides to back off on its own.
@@ -1419,7 +1522,7 @@ export default function ActiveWorkout() {
         status={`${statusText} · ${fmtClock(elapsed)}`}
         time={fmtClock(elapsed)}
         volume={String(volume)}
-        unit="kg"
+        unit={entryUnit}
         sets={String(doneSets)}
         onBack={() => {
           forgetActiveWorkout();
@@ -1466,6 +1569,7 @@ export default function ActiveWorkout() {
               {ex.supersetGroup != null ? <View style={styles.ssRail} /> : null}
             <ExerciseCard
               exercise={ex}
+              unit={entryUnit}
               onDeleteSet={(setId) => deleteSet(ex.id, setId)}
               openSetId={openSetId}
               onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
@@ -1605,7 +1709,15 @@ export default function ActiveWorkout() {
         targetKg={plateTargetKg}
         setup={plateSetup}
         onUse={(kgValue) => {
-          if (focusedSet) editWeight(focusedSet.exerciseId, focusedSet.setId, String(kgValue));
+          // Kilograms from the calculator: shown in the entry unit, stored as given.
+          if (focusedSet) {
+            editWeight(
+              focusedSet.exerciseId,
+              focusedSet.setId,
+              weightText(kgValue, entryUnit),
+              kgValue,
+            );
+          }
           setPlateSheetOpen(false);
         }}
         onEditSetup={() => {
@@ -1639,7 +1751,7 @@ export default function ActiveWorkout() {
           </View>
           <Text style={styles.doneTitle}>All sets done</Text>
           <Text style={styles.doneStat}>
-            {`${doneSets} ${doneSets === 1 ? 'set' : 'sets'} · ${volume} kg · ${fmtClock(elapsed)}`}
+            {`${doneSets} ${doneSets === 1 ? 'set' : 'sets'} · ${volume} ${entryUnit} · ${fmtClock(elapsed)}`}
           </Text>
           <PressableScale
             style={styles.doneFinish}

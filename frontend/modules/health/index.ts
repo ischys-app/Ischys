@@ -126,7 +126,12 @@ export const stopWatchWorkout = (discard = false): void => native?.stopWatchWork
 
 /** A control the user tapped on the Watch. Applied by the phone (JS is source of truth). */
 export type WatchAction =
-  | { action: 'logSet'; weight: string; reps: string }
+  /**
+   * `weight` is in `unit` — the unit the Watch was showing when the set was
+   * logged, so the phone never has to guess. Absent from a Watch build that
+   * predates the field; the phone then falls back to the unit it last pushed.
+   */
+  | { action: 'logSet'; weight: string; reps: string; unit?: 'kg' | 'lb' }
   | { action: 'adjustRest'; seconds: number }
   | { action: 'skipRest' }
   | { action: 'end' }

@@ -5,10 +5,11 @@
  * pushed from the iPhone"). This builds the snapshot the Watch's `PhoneState`
  * decodes — the current set, the set-progress dots, and the session totals.
  *
- * Pure — the only import is the shared look-ahead, so `node --test` can run it.
- * The carry-forward rule is injected as `resolve` (see setCarry.ts), keeping
- * this self-contained.
+ * Pure — the only imports are the shared look-ahead and the unit maths, so
+ * `node --test` can run it. The carry-forward rule is injected as `resolve`
+ * (see setCarry.ts), keeping this self-contained.
  */
+import { type Unit, inputToKg, volumeToDisplay } from '../domain/units.ts';
 import { locateNextSet } from './nextSet.ts';
 
 export type WatchSetDot = 'done' | 'active' | 'pending';
@@ -62,7 +63,14 @@ export type WatchState = {
   restRemaining: number;
   restTotal: number;
   nextSetLabel: string;
-  volumeKg: number;
+  /**
+   * The unit `weight`, `prevWeight` and `volume` are expressed in. The Watch
+   * labels with it, steps the Crown by it, and sends the logged weight back in
+   * it — the phone converts to kilograms on receipt.
+   */
+  unit: Unit;
+  /** Session volume, whole, already in `unit`. */
+  volume: number;
   setsDone: number;
   setsTotal: number;
   /**
@@ -78,21 +86,19 @@ export type WatchState = {
   currentSetId: string;
 };
 
-/**
- * Parse a typed weight. `decimal-pad` inserts the locale decimal separator, so a
- * comma-locale keyboard yields "24,8" — `parseFloat` would stop at the comma and
- * drop the fraction. Normalise first so the Watch's volume matches the phone's.
- */
-const parseWeight = (s: string): number => parseFloat(String(s ?? '').replace(',', '.'));
-
 /** Session totals: volume + set counts over done sets. Warmups are excluded from
  *  volume unless `countWarmups`, but never from the set count (matching the
  *  domain: only VOLUME counts warmups). A bodyweight movement counts
- *  (bodyweight + added) × reps; 0 bodyweight means it adds 0. */
+ *  (bodyweight + added) × reps; 0 bodyweight means it adds 0.
+ *
+ *  Summed in kilograms — each typed weight is converted from `unit` first, so
+ *  it can be added to the (always-kg) bodyweight — and converted to `unit` once
+ *  at the end, the same way the phone's header does it. */
 function totals(
   exercises: readonly (ExerciseLike & { id: string })[],
   bodyweightKg: number,
-  countWarmups = false,
+  countWarmups: boolean,
+  unit: Unit,
 ) {
   let volumeKg = 0;
   let setsDone = 0;
@@ -111,7 +117,7 @@ function totals(
       }
       if (s.done && (s.type !== 'warmup' || countWarmups)) {
         const reps = parseFloat(s.reps) || 0;
-        const added = parseWeight(s.weight) || 0;
+        const added = inputToKg(s.weight, unit) ?? 0;
         if (ex.kind === 'bodyweight') {
           const load = bodyweightKg + added;
           if (load > 0) volumeKg += load * reps;
@@ -121,7 +127,7 @@ function totals(
       }
     }
   }
-  return { volumeKg: Math.round(volumeKg), setsDone, setsTotal };
+  return { volume: Math.round(volumeToDisplay(volumeKg, unit)), setsDone, setsTotal };
 }
 
 /**
@@ -166,12 +172,14 @@ export function buildFinishedWatchState(
   startedAt: number | null = null,
   bodyweightKg = 0,
   countWarmups = false,
+  /** The unit the set strings are in. */
+  unit: Unit = 'kg',
 ): WatchState | null {
   const withSets = exercises.filter((e) => e.sets.length > 0);
   const last = withSets[withSets.length - 1];
   if (!last) return null;
   const lastSet = last.sets[last.sets.length - 1];
-  const t = totals(exercises, bodyweightKg, countWarmups);
+  const t = totals(exercises, bodyweightKg, countWarmups, unit);
 
   return {
     screen: 'session',
@@ -191,7 +199,8 @@ export function buildFinishedWatchState(
     restRemaining: 0,
     restTotal: 0,
     nextSetLabel: '',
-    volumeKg: t.volumeKg,
+    unit,
+    volume: t.volume,
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,
     currentExerciseId: last.id,
@@ -214,6 +223,8 @@ export function buildWatchState(
   bodyweightKg = 0,
   /** Whether warmup sets count toward the live volume; default off. */
   countWarmups = false,
+  /** The unit the set strings are in; the Watch labels and steps by it. */
+  unit: Unit = 'kg',
 ): WatchState | null {
   const current = locateNextSet(exercises);
   if (!current) return null;
@@ -226,7 +237,7 @@ export function buildWatchState(
     s.done ? 'done' : i === index ? 'active' : 'pending',
   );
 
-  const t = totals(exercises, bodyweightKg, countWarmups);
+  const t = totals(exercises, bodyweightKg, countWarmups, unit);
 
   return {
     screen: 'session',
@@ -253,7 +264,8 @@ export function buildWatchState(
     // clamped inside the current exercise, so the final set of an exercise
     // showed its own number back as "next".
     nextSetLabel: `Next: Set ${index + 1} of ${ex.sets.length}`,
-    volumeKg: t.volumeKg,
+    unit,
+    volume: t.volume,
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,
     currentExerciseId: ex.id,

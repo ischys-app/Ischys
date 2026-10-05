@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import type { Unit } from '../../domain/units';
 import { color, font } from '../../theme/tokens';
 
 /**
@@ -26,6 +27,8 @@ import { prevLabel, typeMeta, type Exercise, type WorkoutSet } from './types';
 type Props = {
   exercise: Exercise;
   set: WorkoutSet;
+  /** The unit the set's weight strings (and the suggestion) are in. */
+  unit: Unit;
   /** Precomputed badge glyph: working-set index ("1") or type letter ("W"/"D"/"F"). */
   badge: string;
   onCycleType: () => void;
@@ -62,6 +65,7 @@ const fmtNum = (n: number): string => String(Math.round(n * 100) / 100);
 export function SetRow({
   exercise,
   set,
+  unit,
   badge,
   onCycleType,
   onUsePrev,
@@ -90,7 +94,7 @@ export function SetRow({
     !(Number(set.weight) === suggestion.weight && Number(set.reps) === suggestion.reps);
 
   const meta = typeMeta[set.type];
-  const prev = prevLabel(exercise, set);
+  const prev = prevLabel(exercise, set, unit);
   // This session's carried values beat last session's reference, which is only
   // a hint. Bodyweight has no weight column to carry.
   const phWeight =
@@ -145,7 +149,7 @@ export function SetRow({
               onPress={onUseSuggestion}
               hitSlop={{ top: 2, bottom: 6 }}
               accessibilityRole="button"
-              accessibilityLabel={`Suggested ${suggestion.weight} by ${suggestion.reps}`}
+              accessibilityLabel={`Suggested ${fmtNum(suggestion.weight)} ${unit} by ${suggestion.reps}`}
               accessibilityHint="Fills this set with the suggestion"
             >
               <Text

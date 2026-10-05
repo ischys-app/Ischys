@@ -72,12 +72,74 @@ test('volume excludes warmups, but the set counts include them', () => {
     rest,
     resolve,
   );
-  assert.equal(s?.volumeKg, 1000); // 2 working sets × 100 × 5; warmup excluded
+  assert.equal(s?.volume, 1000); // 2 working sets × 100 × 5; warmup excluded
+  assert.equal(s?.unit, 'kg');
   // Both counters count warmups. The Watch derives "nothing left to log" from
   // setsDone >= setsTotal, so counting one side and not the other made that
   // impossible to reach.
   assert.equal(s?.setsDone, 3);
   assert.equal(s?.setsTotal, 4);
+});
+
+// --- the user's unit (#80): set strings arrive in it, volume is sent in it ---
+
+test('in lb the Watch gets the unit, the lb strings as typed, and lb volume', () => {
+  const s = buildWatchState(
+    legPress(set('a', '225', '5', true), set('b', '225', '5', true), set('c', '225', '5')),
+    'R',
+    rest,
+    resolve,
+    null,
+    0,
+    false,
+    'lb',
+  );
+  assert.equal(s?.unit, 'lb');
+  assert.equal(s?.weight, '225');
+  assert.equal(s?.volume, 2250); // 2 × 225 lb × 5, not the kg behind it
+});
+
+test('lb volume adds a kg bodyweight to lb added load correctly', () => {
+  const s = buildWatchState(
+    [
+      {
+        id: 'e1',
+        name: 'Pull Up',
+        equipment: 'Bodyweight',
+        rest: 90,
+        kind: 'bodyweight' as const,
+        sets: [set('a', '45', '5', true), set('b', '', '5')],
+      },
+    ],
+    'R',
+    rest,
+    resolve,
+    null,
+    80, // kg, as stored
+    false,
+    'lb',
+  );
+  // (80 kg = 176.37 lb) + 45 lb, × 5
+  assert.equal(s?.volume, Math.round((80 / 0.45359237 + 45) * 5));
+});
+
+test('the finished snapshot carries the unit and lb volume too', () => {
+  const s = buildFinishedWatchState(
+    legPress(set('a', '225', '5', true), set('b', '225', '5', true)),
+    'R',
+    null,
+    0,
+    false,
+    'lb',
+  );
+  assert.equal(s?.unit, 'lb');
+  assert.equal(s?.volume, 2250);
+});
+
+test('the finished snapshot defaults to kg', () => {
+  const s = buildFinishedWatchState(legPress(set('a', '100', '5', true)), 'R');
+  assert.equal(s?.unit, 'kg');
+  assert.equal(s?.volume, 500);
 });
 
 test('a workout with warmups can actually reach done on the Watch', () => {

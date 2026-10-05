@@ -1,6 +1,7 @@
 /** One exercise: header, note, rest-timer row, set grid, + Add Set. */
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import type { Unit } from '../../domain/units';
 import { exerciseArt } from '../../lib/exerciseArt';
 import { color, font } from '../../theme/tokens';
 import { ExerciseArt } from '../ExerciseArt';
@@ -13,6 +14,8 @@ import { exerciseMeta, restLabel, weightColumnLabel, type Exercise, type SetType
 
 type Props = {
   exercise: Exercise;
+  /** The unit the exercise's weight strings are in — labels the column and PREV. */
+  unit: Unit;
   menuOpen: boolean;
   onToggleMenu: () => void;
   onReplace: () => void;
@@ -61,6 +64,7 @@ function badgeFor(type: SetType, workingIndex: number): string {
 
 export function ExerciseCard({
   exercise,
+  unit,
   menuOpen,
   onToggleMenu,
   onReplace,
@@ -173,7 +177,7 @@ export function ExerciseCard({
       <View style={styles.colHeader}>
         <Text style={[styles.colLabel, styles.colSet]}>SET</Text>
         <Text style={[styles.colLabel, styles.colPrev]}>PREV</Text>
-        <Text style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise)}</Text>
+        <Text style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
         <Text style={[styles.colLabel, styles.colReps]}>REPS</Text>
         <View style={styles.colCheck} />
       </View>
@@ -191,6 +195,7 @@ export function ExerciseCard({
               key={s.id}
               exercise={exercise}
               set={s}
+              unit={unit}
               badge={badgeFor(s.type, working)}
               onCycleType={() => onCycleType(s.id)}
               onUsePrev={() => onUsePrev(s.id)}

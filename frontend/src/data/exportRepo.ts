@@ -79,14 +79,11 @@ export async function exportData(format: 'json' | 'csv'): Promise<string> {
   });
 }
 
-async function findOrCreateExercise(
-  name: string,
-  cache: Map<string, string>,
-  exec: Executor = db,
-): Promise<{ id: string; created: boolean }> {
+/** The stored exercise a file's name refers to, or null when there is none. */
+async function findExercise(name: string, cache: Map<string, string>, exec: Executor = db): Promise<string | null> {
   const key = exerciseKey(name);
   const cached = cache.get(key);
-  if (cached) return { id: cached, created: false };
+  if (cached) return cached;
   // Match case-insensitively: SQLite's default `=` is case-sensitive, so an exact
   // match created a duplicate custom exercise whenever an import's casing differed
   // from the catalog ("bench press" vs "Bench Press"). Reuse the existing row.
@@ -95,10 +92,18 @@ async function findOrCreateExercise(
     .from(schema.exercises)
     .where(sql`lower(trim(${schema.exercises.name})) = ${key}`)
     .limit(1);
-  if (existing[0]) {
-    cache.set(key, existing[0].id);
-    return { id: existing[0].id, created: false };
-  }
+  if (!existing[0]) return null;
+  cache.set(key, existing[0].id);
+  return existing[0].id;
+}
+
+async function findOrCreateExercise(
+  name: string,
+  cache: Map<string, string>,
+  exec: Executor = db,
+): Promise<{ id: string; created: boolean }> {
+  const found = await findExercise(name, cache, exec);
+  if (found) return { id: found, created: false };
   const id = newId();
   // Read equipment off a "Deadlift (Barbell)" style name rather than stamping every
   // import 'other': that one value also gates the duplicate-merge flow, which won't
@@ -107,7 +112,7 @@ async function findOrCreateExercise(
     id, userId: LOCAL_USER_ID, name: name.trim(), initials: initialsOf(name.trim()),
     kind: 'weighted', equipment: equipmentFromNameSuffix(name) ?? 'other', isCustom: 1, updatedAt: nowMs(),
   });
-  cache.set(key, id);
+  cache.set(exerciseKey(name), id);
   return { id, created: true };
 }
 
@@ -128,9 +133,16 @@ type RecordStanding = {
  * Read first because `reflagExercisePrs` replaces an exercise's share of those
  * counts, and can only do that knowing what the share was while the history
  * still stood as stored. An edit does the same around its own writes.
+ *
+ * `storedExerciseNames` are the exercises of the workouts the import skips as
+ * already stored. They gain nothing, but are re-derived with the rest, so
+ * that importing a file again repairs history that an earlier, interrupted
+ * import left without flags. They are only looked up: one that has since been
+ * renamed or merged away is not recreated.
  */
 async function recordStandingBefore(
   exerciseNames: readonly string[],
+  storedExerciseNames: readonly string[],
   cache: Map<string, string>,
   tx: Executor,
   currentBw: number | null,
@@ -143,13 +155,18 @@ async function recordStandingBefore(
     if (created) exercisesCreated++;
     if (!held.has(id)) held.set(id, await prCountHolders(id, tx, currentBw, countWarmups));
   }
+  for (const name of storedExerciseNames) {
+    const id = await findExercise(name, cache, tx);
+    if (id && !held.has(id)) held.set(id, await prCountHolders(id, tx, currentBw, countWarmups));
+  }
   return { held, exercisesCreated, currentBw, countWarmups };
 }
 
 /**
- * After an import's rows are written: for every exercise it touched, the PR
- * flags across the exercise's whole history, each workout's `pr_count`, and
- * the materialised records (#91).
+ * After an import's rows are written: for every exercise it touched, and
+ * every exercise of a workout it skipped as already stored, the PR flags
+ * across the exercise's whole history, each workout's `pr_count`, and the
+ * materialised records (#91).
  *
  * The whole history, not just the new rows: imported sessions are usually
  * older than what is already logged, and an older best takes the star from the
@@ -224,7 +241,7 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
     );
     duplicatesSkipped = plan.duplicatesSkipped;
 
-    const standing = await recordStandingBefore(plan.exercises, cache, tx, currentBw, countWarmups);
+    const standing = await recordStandingBefore(plan.exercises, plan.storedExercises, cache, tx, currentBw, countWarmups);
     exercisesCreated = standing.exercisesCreated;
 
     for (const pw of plan.accepted) {
@@ -375,7 +392,7 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
     );
     duplicatesSkipped = plan.duplicatesSkipped;
 
-    const standing = await recordStandingBefore(plan.exercises, cache, tx, currentBw, countWarmups);
+    const standing = await recordStandingBefore(plan.exercises, plan.storedExercises, cache, tx, currentBw, countWarmups);
     exercisesCreated = standing.exercisesCreated;
 
     for (const { w, rawName, name, startedAt } of plan.accepted) {

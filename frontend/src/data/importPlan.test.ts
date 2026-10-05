@@ -88,3 +88,45 @@ test('an import of nothing new touches nothing', () => {
   assert.deepEqual(plan.accepted, []);
   assert.deepEqual(plan.exercises, []);
 });
+
+test('the exercises of a workout skipped as already stored are reported for repair', () => {
+  const seen = new Set([workoutKey('Push', 1), workoutKey('Pull', 2)]);
+  const plan = planImport(
+    [candidate('Push', 1, ['Bench Press', ' dip ']), candidate('Pull', 2, ['Row', 'DIP'])],
+    seen,
+  );
+  // Nothing is written, as before…
+  assert.deepEqual(plan.accepted, []);
+  assert.deepEqual(plan.exercises, []);
+  assert.equal(plan.duplicatesSkipped, 2);
+  // …but importing the same file again names every exercise it holds, once.
+  assert.deepEqual(plan.storedExercises, ['Bench Press', 'dip', 'Row']);
+});
+
+test('an exercise a written workout also names is touched once, not repaired as well', () => {
+  const seen = new Set([workoutKey('Push', 1)]);
+  const plan = planImport(
+    [candidate('Push', 1, ['Bench Press', 'Dip']), candidate('Pull', 2, ['Row', 'dip'])],
+    seen,
+  );
+  assert.deepEqual(plan.exercises, ['Row', 'dip']);
+  assert.deepEqual(plan.storedExercises, ['Bench Press']);
+  // Whichever comes first in the file: here the written workout does.
+  const reversed = planImport(
+    [candidate('Pull', 2, ['Row', 'dip']), candidate('Push', 1, ['Bench Press', 'Dip'])],
+    seen,
+  );
+  assert.deepEqual(reversed.exercises, ['Row', 'dip']);
+  assert.deepEqual(reversed.storedExercises, ['Bench Press']);
+});
+
+test('a second listing inside the file is not stored history: its exercises are not repaired', () => {
+  const plan = planImport([candidate('Push', 1, ['Bench Press']), candidate('Push', 1, ['Dip'])], new Set());
+  assert.equal(plan.duplicatesSkipped, 1);
+  assert.deepEqual(plan.storedExercises, []);
+});
+
+test('a first import has nothing stored to repair', () => {
+  const plan = planImport([candidate('Push', 1, ['Bench Press']), candidate('Workout', null, ['Row'])], new Set());
+  assert.deepEqual(plan.storedExercises, []);
+});

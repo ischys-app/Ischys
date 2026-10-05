@@ -54,7 +54,7 @@ export default function OneRepMaxScreen() {
 
   useEffect(() => {
     let alive = true;
-    void getPlateSetup().then((s) => {
+    void getPlateSetup('kg').then((s) => {
       if (alive) setSetup(s);
     });
     return () => {

@@ -1276,7 +1276,7 @@ export default function ActiveWorkout() {
   useEffect(() => {
     if (!plateSheetOpen) return;
     let alive = true;
-    void getPlateSetup().then((s) => {
+    void getPlateSetup('kg').then((s) => {
       if (alive) setPlateSetupState(s);
     });
     return () => {

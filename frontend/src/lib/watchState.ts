@@ -62,6 +62,14 @@ export type WatchState = {
   resting: boolean;
   restRemaining: number;
   restTotal: number;
+  /**
+   * Epoch ms the running rest ends, 0 when not resting. The Watch counts down to
+   * this itself and buzzes when it passes: `restRemaining` only moves while the
+   * phone's JS is running, which stops with the phone locked in a pocket (#82).
+   */
+  restEndsAt: number;
+  /** The `rest_timer_alerts` setting. Off means the wrist stays quiet too. */
+  restAlerts: boolean;
   nextSetLabel: string;
   /**
    * The unit `weight`, `prevWeight` and `volume` are expressed in. The Watch
@@ -85,6 +93,27 @@ export type WatchState = {
   currentExerciseId: string;
   currentSetId: string;
 };
+
+/** What the caller knows about the rest timer. */
+export type WatchRest = {
+  resting: boolean;
+  remaining: number;
+  total: number;
+  /** Epoch ms the rest ends; null or omitted when unknown or not resting. */
+  endsAt?: number | null;
+  /** The user's `rest_timer_alerts` setting; omitted reads as off. */
+  alerts?: boolean;
+};
+
+/**
+ * The end date the Watch may act on, or 0 for none. Only a running rest has
+ * one: an end date left over beside `resting: false` would let the wrist buzz
+ * for a rest that was skipped, so it is dropped here rather than trusted there.
+ */
+export function watchRestEndsAt(rest: WatchRest): number {
+  if (!rest.resting || rest.remaining <= 0) return 0;
+  return rest.endsAt != null && rest.endsAt > 0 ? rest.endsAt : 0;
+}
 
 /** Session totals: volume + set counts over done sets. Warmups are excluded from
  *  volume unless `countWarmups`, but never from the set count (matching the
@@ -174,6 +203,8 @@ export function buildFinishedWatchState(
   countWarmups = false,
   /** The unit the set strings are in. */
   unit: Unit = 'kg',
+  /** The `rest_timer_alerts` setting, so every push agrees on it. */
+  restAlerts = false,
 ): WatchState | null {
   const withSets = exercises.filter((e) => e.sets.length > 0);
   const last = withSets[withSets.length - 1];
@@ -198,6 +229,8 @@ export function buildFinishedWatchState(
     resting: false,
     restRemaining: 0,
     restTotal: 0,
+    restEndsAt: 0,
+    restAlerts,
     nextSetLabel: '',
     unit,
     volume: t.volume,
@@ -215,7 +248,7 @@ export function buildFinishedWatchState(
 export function buildWatchState(
   exercises: readonly (ExerciseLike & { id: string })[],
   routineName: string,
-  rest: { resting: boolean; remaining: number; total: number },
+  rest: WatchRest,
   resolve: Resolve,
   /** Epoch ms the workout began; omit (or null) before it is known. */
   startedAt: number | null = null,
@@ -256,6 +289,8 @@ export function buildWatchState(
     resting: rest.resting,
     restRemaining: rest.remaining,
     restTotal: rest.total,
+    restEndsAt: watchRestEndsAt(rest),
+    restAlerts: rest.alerts === true,
     // The Watch's Rest screen shows only this line, so it must describe the set
     // the rest is *for* — which is the located set: during rest the set just
     // completed is already `done`, so the look-ahead has moved on (crossing into

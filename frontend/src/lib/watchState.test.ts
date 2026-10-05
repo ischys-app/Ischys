@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildFinishedWatchState, buildWatchState } from './watchState.ts';
+import { buildFinishedWatchState, buildWatchState, watchRestEndsAt } from './watchState.ts';
 
 const set = (id: string, weight: string, reps: string, done = false, type = 'normal') => ({
   id,
@@ -220,6 +220,51 @@ test('rest state passes through', () => {
   assert.equal(s?.resting, true);
   assert.equal(s?.restRemaining, 45);
   assert.equal(s?.restTotal, 90);
+});
+
+/**
+ * The Watch buzzes off the end date, not off `restRemaining` — the latter only
+ * moves while the phone's JS runs, so a locked phone froze the wrist (#82).
+ */
+test('a running rest carries its end date and the alerts setting', () => {
+  const s = buildWatchState(
+    legPress(set('a', '1', '1', true), set('b', '1', '1')),
+    'R',
+    { resting: true, remaining: 45, total: 90, endsAt: 1_700_000_045_000, alerts: true },
+    resolve,
+  );
+  assert.equal(s?.restEndsAt, 1_700_000_045_000);
+  assert.equal(s?.restAlerts, true);
+});
+
+test('alerts read as off unless the caller says they are on', () => {
+  const s = buildWatchState(
+    legPress(set('a', '1', '1', true), set('b', '1', '1')),
+    'R',
+    { resting: true, remaining: 45, total: 90, endsAt: 1_700_000_045_000 },
+    resolve,
+  );
+  assert.equal(s?.restAlerts, false);
+});
+
+test('no end date reaches the Watch once the rest is over', () => {
+  // The screen clears its end date one render after `remaining` hits 0, and a
+  // skip zeroes `remaining` first. Either way a stale date must not go out.
+  assert.equal(watchRestEndsAt({ resting: false, remaining: 0, total: 90, endsAt: 5_000 }), 0);
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 0, total: 90, endsAt: 5_000 }), 0);
+});
+
+test('an unknown end date pushes 0, not a 1970 deadline', () => {
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 45, total: 90 }), 0);
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 45, total: 90, endsAt: null }), 0);
+  assert.equal(watchRestEndsAt({ resting: true, remaining: 45, total: 90, endsAt: 0 }), 0);
+});
+
+test('the finished state has no rest to buzz for but keeps the setting', () => {
+  const allDone = legPress(set('a', '1', '1', true));
+  const s = buildFinishedWatchState(allDone, 'R', null, 0, false, 'kg', true);
+  assert.equal(s?.restEndsAt, 0);
+  assert.equal(s?.restAlerts, true);
 });
 
 test('the next exercise becomes current once one is fully done', () => {

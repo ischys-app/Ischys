@@ -30,6 +30,11 @@ struct PhoneState {
   var resting = false
   var restRemaining = 0
   var restTotal = 0
+  /// When the running rest ends. nil when not resting, or when the phone did
+  /// not say (it pushes 0) — the Watch then has nothing to count down to.
+  var restEndsAt: Date?
+  /// The phone's `rest_timer_alerts` setting. Absent reads as off.
+  var restAlerts = false
   var nextSetLabel = ""
   /// "kg" or "lb": the unit `weight`, `prevWeight` and `volume` are already
   /// expressed in. The phone converts; the Watch only labels, steps the Crown
@@ -86,6 +91,11 @@ struct PhoneState {
     resting = d["resting"] as? Bool ?? false
     restRemaining = d["restRemaining"] as? Int ?? 0
     restTotal = d["restTotal"] as? Int ?? 0
+    // Epoch milliseconds, read as a Double for the same reason as `startedAt`.
+    if let ms = (d["restEndsAt"] as? NSNumber)?.doubleValue, ms > 0 {
+      restEndsAt = Date(timeIntervalSince1970: ms / 1000)
+    }
+    restAlerts = d["restAlerts"] as? Bool ?? false
     nextSetLabel = d["nextSetLabel"] as? String ?? ""
     // Anything but the two known units is ignored rather than shown.
     if let u = d["unit"] as? String, u == "kg" || u == "lb" { unit = u }

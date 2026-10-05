@@ -2,7 +2,25 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { alertBody, shouldSchedule } from './restAlertRules.ts';
+import { readFileSync } from 'node:fs';
+
+import {
+  REST_ALERT_CATEGORY,
+  REST_ALERT_TITLE,
+  alertBody,
+  shouldSchedule,
+} from './restAlertRules.ts';
+
+test('the Watch matches the notification on the strings the phone sends', () => {
+  // Two languages, no shared constant: a rename on one side would silently
+  // bring the double buzz back, so pin them together here.
+  const swift = readFileSync(
+    new URL('../../targets/ischys-watch/RestAlertMute.swift', import.meta.url),
+    'utf8',
+  );
+  assert.ok(swift.includes(`"${REST_ALERT_CATEGORY}"`));
+  assert.ok(swift.includes(`"${REST_ALERT_TITLE}"`));
+});
 
 test('schedules when alerts are on and rest is in the future', () => {
   assert.equal(shouldSchedule(true, 90), true);

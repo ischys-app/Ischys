@@ -6,7 +6,8 @@ import SwiftUI
 ///
 /// The phone still owns the countdown — every ±15 / Skip is sent to it and the
 /// corrected rest state is pushed straight back; the Watch never mutates the timer
-/// itself (the local 1 Hz tick only fills between pushes). Two tiers: the REST
+/// itself. It only counts down to the end date the phone gave it, so the banner
+/// keeps moving (and the wrist buzzes) while the phone is locked. Two tiers: the REST
 /// label + countdown + NEXT exercise on top, the ±15 / Skip controls below, with a
 /// 2px accent progress line pinned to the bottom edge as the glanceable read.
 struct RestBanner: View {

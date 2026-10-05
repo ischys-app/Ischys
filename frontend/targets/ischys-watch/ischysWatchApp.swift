@@ -32,6 +32,9 @@ final class AppDelegate: NSObject, WKApplicationDelegate {
     // Clear any session orphaned by a prior app process before it burns calories
     // forever and blocks the next workout from starting.
     WorkoutManager.shared.recoverActiveSession()
+    // Before the link: the delegate has to be in place before a forwarded
+    // notification can arrive.
+    RestAlertMute.shared.install()
     PhoneLink.shared.activate()
   }
 

@@ -282,9 +282,24 @@ export type PrWalkStep = {
  * sets that hold a new one, and counts the exercise toward the workout's PR
  * count. This replays exactly that for a whole history: each session is
  * compared with a running baseline of everything before it, through the same
- * `computeRecords` and `detectPrs`, with the session itself listed first as
- * the finish path lists it. So a past session that changes — or moves in time
- * — re-decides every session after it, not just itself.
+ * `computeRecords` and `detectPrs`. So a past session that changes — or moves
+ * in time — re-decides every session after it, not just itself.
+ *
+ * One pass. Finish recomputes the records over the whole history and keeps
+ * what beat the baseline; but every metric is a maximum, and a record only
+ * counts when it is strictly beaten, so a set that beats the baseline is in
+ * the new session and is that session's own best. Its records alone, set
+ * against the baseline, give the same answer without rereading the history
+ * before it — which made a whole-database pass quadratic in an exercise's
+ * sessions. records.test.ts holds this to the recomputing walk, value for
+ * value.
+ *
+ * Volume is the one metric a session's own records cannot stand in for, and
+ * is carried along instead. `computeRecords` reports nothing at all until the
+ * history has a working set, and then reports the best volume of every
+ * session so far — warm-up-only ones included, when warm-ups count. So the
+ * best volume, and the latest session to reach it, are tracked from the
+ * start and offered as a record once a working set exists.
  *
  * `best_volume` belongs to a session, not a set, so it appears in `deltas`
  * and flags nothing, as at finish.
@@ -292,21 +307,42 @@ export type PrWalkStep = {
 export function walkPrFlags(sessions: readonly PRSession[], countWarmups = false): PrWalkStep[] {
   const oldestFirst = sessions.slice().sort((a, b) => a.achievedAt - b.achievedAt);
   const out: PrWalkStep[] = [];
-  /** Newest first, the order `computeRecords` is always handed. */
-  const seen: PRSession[] = [];
-  let baseline: Partial<Record<RecordMetric, number>> = {};
+  const baseline: Partial<Record<RecordMetric, number>> = {};
+  let anyWorking = false;
+  let bestVolume = 0;
+  let bestVolumeBy: PRSession | null = null;
   for (const sess of oldestFirst) {
-    seen.unshift(sess);
-    const computed = computeRecords(seen, countWarmups);
-    const deltas = detectPrs(baseline, computed);
-    const own = new Set(sess.sets.map((s) => s.id));
+    anyWorking ||= sess.sets.some(isWorking);
+    const volume = sess.sets.reduce((sum, s) => sum + setVolume(s, sess.bodyweightKg ?? 0, countWarmups), 0);
+    // `>=`: of two sessions with the same volume, the records name the later.
+    if (volume > 0 && volume >= bestVolume) {
+      bestVolume = volume;
+      bestVolumeBy = sess;
+    }
+
+    const own = computeRecords([sess], countWarmups);
+    // In `computeRecords`' own key order, which is the order of `deltas`.
+    const current: Partial<Record<RecordMetric, RecordValue>> = {};
+    if (own.best_set) current.best_set = own.best_set;
+    if (own.est_1rm) current.est_1rm = own.est_1rm;
+    if (anyWorking && bestVolumeBy) {
+      current.best_volume = {
+        metric: 'best_volume',
+        value: bestVolume,
+        display: `${grouped(bestVolume)} kg`,
+        workoutId: bestVolumeBy.id,
+        achievedAt: bestVolumeBy.achievedAt,
+      };
+    }
+    if (own.max_reps) current.max_reps = own.max_reps;
+
+    const deltas = detectPrs(baseline, current);
     const flagged = new Set<string>();
     for (const d of deltas) {
-      if (d.value.workoutSetId && own.has(d.value.workoutSetId)) flagged.add(d.value.workoutSetId);
+      if (d.value.workoutSetId) flagged.add(d.value.workoutSetId);
+      baseline[d.metric] = d.value.value;
     }
     out.push({ sessionId: sess.id, flaggedSetIds: [...flagged], deltas });
-    baseline = {};
-    for (const rv of Object.values(computed) as RecordValue[]) baseline[rv.metric] = rv.value;
   }
   return out;
 }

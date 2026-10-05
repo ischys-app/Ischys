@@ -27,6 +27,7 @@ import {
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
 import { watchSaveWaitMs } from './watchFinish';
+import { createWatchSaveLog } from './watchSave';
 
 // Plausible human heart-rate bounds. A stray sample outside this range is
 // dropped rather than persisted.
@@ -72,13 +73,8 @@ const prefOn = (v: string | null): boolean => v !== '0';
 // depends on whether the Watch has saved already or is waiting to be told the
 // finish worked.
 
-// Epoch ms of the last "Watch saved its HKWorkout" confirmation, plus a hook the
-// active waiter installs so a confirmation wakes it immediately.
-let lastWatchSaveAt = 0;
-// The UUID that confirmation carried: which Health entry is the Watch's. Null
-// from a Watch build that predates sending it.
-let lastWatchSaveUuid: string | null = null;
-let notifyWatchSaved: (() => void) | null = null;
+// The Watch's "saved its HKWorkout" confirmations, and the wait on them.
+const watchSaves = createWatchSaveLog();
 let watchSaveListening = false;
 
 /**
@@ -93,36 +89,7 @@ let watchSaveListening = false;
 export function ensureWatchSaveListener(): void {
   if (watchSaveListening) return;
   watchSaveListening = true;
-  Health.addWatchActionListener((a) => {
-    if (a.action === 'workoutSaved') {
-      lastWatchSaveAt = Date.now();
-      lastWatchSaveUuid = typeof a.uuid === 'string' && a.uuid.length > 0 ? a.uuid : null;
-      notifyWatchSaved?.();
-    }
-  });
-}
-
-/**
- * Resolves true once the Watch confirms it saved THIS session's HKWorkout, or
- * false if no confirmation lands within `waitMs`. `since` is the instant the
- * finish began: a confirmation already recorded at/after it — one that landed
- * while the finish was being written — counts, closing the race where the
- * confirmation beats the waiter.
- */
-function awaitWatchSave(since: number, waitMs: number): Promise<boolean> {
-  if (lastWatchSaveAt >= since) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    let settled = false;
-    const done = (saved: boolean) => {
-      if (settled) return;
-      settled = true;
-      if (notifyWatchSaved === wake) notifyWatchSaved = null;
-      resolve(saved);
-    };
-    const wake = () => done(true);
-    notifyWatchSaved = wake;
-    setTimeout(() => done(false), waitMs);
-  });
+  Health.addWatchActionListener((a) => watchSaves.note(a));
 }
 
 /**
@@ -146,7 +113,9 @@ export async function syncFinishedWorkout(
   watchWasActive = false,
   /** When the finish began, if that was before this call (the database write
    *  comes first). A Watch confirmation from then on is this session's, so one
-   *  that landed during the write still counts. */
+   *  that landed during the write still counts. For a finish drained at launch
+   *  (`consumeWatchActions`) it is the drain's `heardAt` instead, so that a
+   *  confirmation buffered alongside it counts too. */
   finishBeganAtMs = Date.now(),
   /** True when the Watch asked for this finish and is keeping its session
    *  running until it hears the outcome (#95). It then saves later than a
@@ -162,7 +131,7 @@ export async function syncFinishedWorkout(
     let watchSavePromise: Promise<boolean> = Promise.resolve(false);
     if (watchWasActive) {
       ensureWatchSaveListener();
-      watchSavePromise = awaitWatchSave(finishedAt, watchSaveWaitMs(watchAwaitsOutcome));
+      watchSavePromise = watchSaves.wait(finishedAt, watchSaveWaitMs(watchAwaitsOutcome));
     }
 
     const [connected, writePref, hrPref] = await Promise.all([
@@ -203,7 +172,7 @@ export async function syncFinishedWorkout(
       // message is the better answer when it has one: its UUID is exact, and it
       // does not depend on the recording having synced to this phone yet, which
       // can lag the confirmation. So Health is asked only when that is missing.
-      const watchUuid = watchSaved ? lastWatchSaveUuid : null;
+      const watchUuid = watchSaved ? watchSaves.uuid : null;
       const found =
         watchSaved && watchUuid ? null : await Health.findWorkout(startedAtMs, endedAtMs);
       const phoneSaved =
@@ -439,9 +408,26 @@ export function setWatchThemeId(id: string): void {
  * Watch actions that arrived before JS was listening — the cold-launch window,
  * where WCSession can deliver a queued finish while the bundle is still loading.
  * Drained once from the root layout. Empty when Health is unavailable.
+ *
+ * The Watch's "saved" confirmation is buffered there as well and is recorded
+ * here, since nothing else would hear it. `heardAt` is the instant a finish
+ * among `actions` must pass to `syncFinishedWorkout` as its beginning, for that
+ * confirmation to count as its own (see `noteDrained` in watchSave.ts).
  */
-export async function consumeWatchActions(): Promise<Health.WatchAction[]> {
-  return Health.isAvailable() ? Health.consumeWatchActions() : [];
+export async function consumeWatchActions(): Promise<{
+  actions: Health.WatchAction[];
+  heardAt: number;
+}> {
+  // Taken before the drain, which is what turns live delivery on: anything
+  // that arrives live from here on is stamped later than this.
+  const heardAt = Date.now();
+  if (!Health.isAvailable()) return { actions: [], heardAt };
+  // Listening first, for the same reason: a confirmation sent live the moment
+  // the drain returns must find a listener.
+  ensureWatchSaveListener();
+  const actions = await Health.consumeWatchActions();
+  watchSaves.noteDrained(actions, heardAt);
+  return { actions, heardAt };
 }
 
 /**

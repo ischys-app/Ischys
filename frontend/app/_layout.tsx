@@ -162,7 +162,10 @@ function useWatchFinish() {
     // both carry the same one. Only finishes take the turn, so the Watch's
     // other messages, which all arrive here too, cannot make one be dropped.
     let applying = false;
-    const apply = async (a: WatchAction) => {
+    // `heardAt` comes with an action drained at launch: the instant from which
+    // a Watch "saved" confirmation is this finish's (it can have been buffered
+    // before the finish itself was applied).
+    const apply = async (a: WatchAction, heardAt?: number) => {
       const action = a.action;
       if (!completesWorkout(action)) return;
       if (applying) return;
@@ -231,7 +234,7 @@ function useWatchFinish() {
             startedAt,
             finishBeganAt,
             true,
-            finishBeganAt,
+            heardAt ?? finishBeganAt,
             finishId != null,
           );
         }
@@ -254,7 +257,8 @@ function useWatchFinish() {
     // Actions queued natively before any listener existed — the cold-launch case,
     // where WCSession can deliver before the JS bundle has subscribed.
     void (async () => {
-      for (const a of await consumeWatchActions()) await apply(a);
+      const { actions, heardAt } = await consumeWatchActions();
+      for (const a of actions) await apply(a, heardAt);
     })();
 
     return onWatchAction((a) => void apply(a));

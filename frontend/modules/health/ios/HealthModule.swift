@@ -53,8 +53,9 @@ public class HealthModule: Module {
     /// moment the app launches, can land before the root layout has subscribed.
     /// For a "log set" that costs one tap; for a finish it left the workout stuck
     /// active on the phone after the user ended it on the wrist. So completing
-    /// actions are buffered whenever there is no listener, and the root layout
-    /// drains them on mount.
+    /// actions, and the Watch's "saved" confirmation that follows a finish, are
+    /// buffered whenever there is no listener, and the root layout drains them
+    /// on mount.
     AsyncFunction("consumeWatchActions") { () -> [[String: Any]] in
       PhoneConnectivity.shared.drainPendingActions()
     }
@@ -441,6 +442,12 @@ final class PhoneConnectivity: NSObject, WCSessionDelegate {
   /// re-sends it — so these, and only these, are worth buffering.
   private static let completingActions: Set<String> = ["end", "discard"]
 
+  /// The Watch confirming it saved its recording to Health. Buffered as well:
+  /// a phone app launched by the Watch's finish can be handed this before JS
+  /// subscribes, and without it the phone takes the Watch not to have saved
+  /// and can write a second Health workout.
+  private static let saveConfirmation = "workoutSaved"
+
   private let pendingLock = NSLock()
   private var pendingActions: [[String: Any]] = []
   /// False until JS first drains, which is the only proof a listener exists.
@@ -457,13 +464,15 @@ final class PhoneConnectivity: NSObject, WCSessionDelegate {
     return drained
   }
 
-  /// Buffers a workout-ending action that arrived before JS could hear it.
+  /// Buffers a workout-ending action, or the Watch's save confirmation, that
+  /// arrived before JS could hear it.
   /// Returns true when it was buffered, meaning the caller must NOT also emit —
   /// emitting as well would let a listener that subscribed in between apply the
   /// finish twice.
   func bufferIfUnheard(_ payload: [String: Any]) -> Bool {
     guard let action = payload["action"] as? String,
-          Self.completingActions.contains(action) else { return false }
+          Self.completingActions.contains(action) || action == Self.saveConfirmation
+    else { return false }
     pendingLock.lock()
     defer { pendingLock.unlock() }
     guard !jsListening else { return false }

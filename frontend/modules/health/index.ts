@@ -279,8 +279,9 @@ export const updateWatchState = (state: WatchState): void => native?.updateWatch
 
 /**
  * Drains Watch actions that arrived before any JS listener existed, and marks JS
- * as listening from here on. Only workout-ending actions are ever buffered — see
- * `consumeWatchActions` in the native module for why.
+ * as listening from here on. Only workout-ending actions and the Watch's
+ * `workoutSaved` confirmation are ever buffered — see `consumeWatchActions` in
+ * the native module for why.
  *
  * Empty on an older native build that lacks the function, which just restores the
  * previous behaviour (the pre-subscribe window drops the action).

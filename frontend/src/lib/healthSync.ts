@@ -8,6 +8,17 @@ import * as SecureStore from 'expo-secure-store';
 
 import * as Health from '../../modules/health';
 import { uploadHeartRate } from '../api/workouts';
+import { getWorkoutHealthEntry, setWorkoutHealthEntry } from '../data/healthEntryRepo';
+import {
+  entryAfterLookup,
+  entryAfterReplace,
+  entryAtFinish,
+  healthReplacement,
+  healthWindow,
+  needsLookup,
+  type HealthEditState,
+  type PlannedWhen,
+} from '../domain/healthEntry';
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
 
@@ -61,6 +72,9 @@ const WATCH_SAVE_TIMEOUT_MS = 10_000;
 // Epoch ms of the last "Watch saved its HKWorkout" confirmation, plus a hook the
 // active waiter installs so a confirmation wakes it immediately.
 let lastWatchSaveAt = 0;
+// The UUID that confirmation carried: which Health entry is the Watch's. Null
+// from a Watch build that predates sending it.
+let lastWatchSaveUuid: string | null = null;
 let notifyWatchSaved: (() => void) | null = null;
 let watchSaveListening = false;
 
@@ -69,8 +83,9 @@ function ensureWatchSaveListener(): void {
   if (watchSaveListening) return;
   watchSaveListening = true;
   Health.addWatchActionListener((a) => {
-    if ((a as { action?: string }).action === 'workoutSaved') {
+    if (a.action === 'workoutSaved') {
       lastWatchSaveAt = Date.now();
+      lastWatchSaveUuid = typeof a.uuid === 'string' && a.uuid.length > 0 ? a.uuid : null;
       notifyWatchSaved?.();
     }
   });
@@ -102,8 +117,9 @@ function awaitWatchSave(since: number): Promise<boolean> {
 /**
  * Reconciles a finished workout with Apple Health, if the user connected it.
  * Reads the metrics a Watch recorded for the session, saves the workout (with
- * energy) when writing is on, and uploads avg/max HR to the server when HR
- * reading is on.
+ * energy) when writing is on, records which Health entry is this workout's and
+ * who wrote it (#90), and uploads avg/max HR to the server when HR reading is
+ * on.
  *
  * Best-effort throughout: it must never throw into the finish flow, so a Health
  * failure cannot stop a workout from being saved to the server.
@@ -162,14 +178,24 @@ export async function syncFinishedWorkout(
       // HKWorkout is already in Health by then and writing another puts the
       // session in Fitness twice. HealthKit is the authority, so ask it before
       // writing — and it also covers a phone-side sync that ran twice.
-      const alreadyInHealth = watchSaved
-        ? false
-        : await Health.hasWorkout(startedAtMs, endedAtMs);
-      const saved =
-        watchSaved || alreadyInHealth
-          ? true
+      //
+      // The same question says which entry is this workout's. The Watch's own
+      // message is the better answer when it has one: its UUID is exact, and it
+      // does not depend on the recording having synced to this phone yet, which
+      // can lag the confirmation. So Health is asked only when that is missing.
+      const watchUuid = watchSaved ? lastWatchSaveUuid : null;
+      const found =
+        watchSaved && watchUuid ? null : await Health.findWorkout(startedAtMs, endedAtMs);
+      const phoneSaved =
+        watchSaved || found
+          ? null
           : await Health.saveWorkout(startedAtMs, endedAtMs, metrics.energyKcal ?? 0);
-      if (saved) {
+      const entry = entryAtFinish({ watchConfirmed: watchSaved, watchUuid, found, phoneSaved });
+      if (entry) {
+        // Kept with the workout, so an edit to its time knows whether there is
+        // an entry to move and whether it is Ischys's to move. Failing to
+        // record it only means it is looked up later instead.
+        if (workoutId) await setWorkoutHealthEntry(workoutId, entry).catch(() => {});
         await SecureStore.setItemAsync(HEALTH_KEYS.lastSync, new Date().toISOString());
         const prev = Number(await SecureStore.getItemAsync(HEALTH_KEYS.written)) || 0;
         await SecureStore.setItemAsync(HEALTH_KEYS.written, String(prev + 1));
@@ -197,6 +223,96 @@ export async function syncFinishedWorkout(
   } catch {
     // A Health failure must not break finishing a workout.
   }
+}
+
+// --- editing a finished workout (#90) ----------------------------------------
+
+/** A workout's time as stored: what its Health entry was written over. */
+type StoredWhen = { startedAt: number; durationSeconds: number; endedAt: number | null };
+
+const NO_HEALTH: HealthEditState = { connected: false, entry: null, canWrite: false };
+
+/**
+ * What an edit needs to know about a workout's Health entry: whether Health is
+ * connected, which entry is the workout's and who wrote it, and whether Ischys
+ * may write. domain/healthEntry.ts turns this into the Date & time sheet's line
+ * and into whether Save replaces the entry.
+ *
+ * A workout finished before entries were recorded has nothing stored. Health
+ * is then asked for Ischys's entry over the workout's stored window, and what
+ * it holds is stored, so the question is asked once. `stored` must be the time
+ * as it was BEFORE any edit: that is where the entry is.
+ *
+ * Never throws; on any failure the answer is "no entry", which shows no line
+ * and changes nothing.
+ */
+export async function loadHealthEditState(
+  workoutId: string,
+  stored: StoredWhen,
+): Promise<HealthEditState> {
+  try {
+    if (!Health.isAvailable()) return NO_HEALTH;
+    const [connected, writePref] = await Promise.all([
+      SecureStore.getItemAsync(HEALTH_KEYS.connected),
+      SecureStore.getItemAsync(HEALTH_KEYS.writeWorkouts),
+    ]);
+    if (connected !== '1') return NO_HEALTH;
+
+    let entry = await getWorkoutHealthEntry(workoutId);
+    if (needsLookup(entry)) {
+      const window = healthWindow(stored);
+      const found = window ? await Health.findWorkout(window.startedAt, window.endedAt) : null;
+      if (found) {
+        entry = entryAfterLookup(entry, found);
+        await setWorkoutHealthEntry(workoutId, entry).catch(() => {});
+      }
+    }
+    // Both switches: Ischys's own "write workouts" setting, and iOS's grant.
+    return { connected: true, entry, canWrite: prefOn(writePref) && Health.canWriteWorkouts() };
+  } catch {
+    return NO_HEALTH;
+  }
+}
+
+// One at a time: a second save must see the UUID the first one stored, not the
+// entry it has just deleted.
+let editedSync: Promise<void> = Promise.resolve();
+
+/**
+ * Brings Apple Health in step with an edit that has ALREADY been committed.
+ *
+ * Only when the edit changed the date, the start or the duration, the entry is
+ * one the phone wrote, and writing is allowed: that entry is replaced with one
+ * over the new start and end, and its new UUID stored. A Watch recording, a
+ * denied write, and every edit to sets alone leave Health exactly as it is.
+ *
+ * Best-effort, like the finish path: it never throws, and nothing it does or
+ * fails to do can undo the save that came before it.
+ *
+ * `stored` is the workout's time before the edit; `plan` the edit's time fields.
+ */
+export function syncEditedWorkout(
+  workoutId: string,
+  stored: StoredWhen,
+  plan: PlannedWhen,
+): Promise<void> {
+  // Set edits never touch Health, and never ask it anything either.
+  if (plan.endedAt == null) return Promise.resolve();
+  editedSync = editedSync.then(async () => {
+    try {
+      const state = await loadHealthEditState(workoutId, stored);
+      const target = healthReplacement(state, plan, stored);
+      if (!target || !state.entry) return;
+      const outcome = await Health.replaceWorkout(target.uuid, target.startedAt, target.endedAt);
+      await setWorkoutHealthEntry(workoutId, entryAfterReplace(state.entry, outcome));
+      if (outcome.status === 'replaced') {
+        await SecureStore.setItemAsync(HEALTH_KEYS.lastSync, new Date().toISOString());
+      }
+    } catch {
+      // A Health failure must not surface as a failed edit.
+    }
+  });
+  return editedSync;
 }
 
 /**

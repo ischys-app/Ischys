@@ -575,6 +575,32 @@ export function exerciseRows(s: EditSession): ExerciseRow[] {
   });
 }
 
+/** What Remove does to the list's layout, for whoever keeps the scroll steady. */
+export type CollapseEffect = {
+  /**
+   * True when the card folds down to a removed row in its place. False when
+   * it leaves the list altogether, gap and all: an exercise only added in
+   * this edit has nothing to undo back to.
+   */
+  leavesRow: boolean;
+  /**
+   * How many "SUPERSET A" labels the list is shorter by afterwards. Zero when
+   * a row is left, since a removed partner holds its group open. A card that
+   * vanishes can take its own label with it (unless the next partner inherits
+   * it), or end a pair and with it the label over its partner.
+   */
+  headersLost: number;
+};
+
+export function collapseEffect(s: EditSession, exId: string): CollapseEffect {
+  const after = exerciseRows(removeExercise(s, exId));
+  const headers = (rows: ExerciseRow[]) => rows.filter((r) => r.header).length;
+  return {
+    leavesRow: after.some((r) => r.exercise.id === exId),
+    headersLost: headers(exerciseRows(s)) - headers(after),
+  };
+}
+
 /** "60 × 6", "BW × 11", "+10 × 8" — no unit, like the PREV cell it replaces. */
 function setText(ex: { kind: 'weighted' | 'bodyweight' }, set: OriginalSet, unit: Unit): string {
   const reps = set.reps == null ? '–' : String(set.reps);

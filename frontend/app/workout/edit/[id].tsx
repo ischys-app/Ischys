@@ -56,12 +56,20 @@ import {
   loadWorkoutForEdit,
   saveWorkoutEdit,
 } from '../../../src/data/workoutEditRepo';
+import {
+  NO_TAIL,
+  tailAfterCollapse,
+  tailAfterRestore,
+  tailAfterSettle,
+  tailTotal,
+} from '../../../src/domain/collapseTail';
 import { healthEditLine, type HealthEditState } from '../../../src/domain/healthEntry';
 import {
   addExercise,
   addSet,
   buildPlan,
   canToggleDone,
+  collapseEffect,
   cycleSetType,
   editSetReps,
   editSetWeight,
@@ -125,6 +133,12 @@ const noop = () => {};
  * the last one's foot.
  */
 const RAIL = { underLabel: 9, fromAbove: -10, intoBelow: -14, end: 6 };
+
+/** The air between two entries of the list. */
+const LIST_GAP = 10;
+/** A "SUPERSET A" label over a group, and the space under it. */
+const SS_HEADER_HEIGHT = 22;
+const SS_HEADER_GAP = 6;
 
 /** A card folding down to its removed row, or back: the list below slides. */
 const COLLAPSE = LayoutAnimation.create(
@@ -388,31 +402,46 @@ export default function EditWorkout() {
    * list too short for where it is scrolled to; the scroll view would pull
    * everything down to fit, and the row would jump away from the thumb that
    * just tapped Remove. This holds the scroll position valid instead, so the
-   * row's top edge stays put, and is let go once the user scrolls on.
+   * row's top edge stays put. It is kept per collapsed card
+   * (domain/collapseTail.ts): Undo gives that card's share back, and the rest
+   * is let go once the user scrolls on.
    */
-  const [tail, setTail] = useState(0);
+  const [tails, setTails] = useState(NO_TAIL);
+  const tail = tailTotal(tails);
 
   const collapse = (exId: string) => {
     setOpenMenuId(null);
-    const { y, viewport, content } = scroll.current;
-    const lost = Math.max(0, (cardHeights.current.get(exId) ?? 0) - REMOVED_ROW_HEIGHT);
-    const over = y - Math.max(0, content - lost - viewport);
+    const current = latest.current.session;
+    if (current) {
+      // What the list is about to be shorter by. A stored exercise folds down
+      // to its row; one added in this edit goes altogether, with the gap
+      // under it, and can take a superset label along. (If this empties the
+      // workout, the "No sets" card arrives as well and the tail runs that
+      // much long until the next scroll lets it go.)
+      const card = cardHeights.current.get(exId) ?? 0;
+      const effect = collapseEffect(current, exId);
+      const lost =
+        (effect.leavesRow ? card - REMOVED_ROW_HEIGHT : card + LIST_GAP) +
+        effect.headersLost * (SS_HEADER_HEIGHT + SS_HEADER_GAP);
+      const at = { ...scroll.current };
+      setTails((t) => tailAfterCollapse(t, exId, at, lost));
+    }
     LayoutAnimation.configureNext(COLLAPSE);
-    if (over > 0) setTail((t) => t + over);
     edit((s) => removeExercise(s, exId));
   };
 
   const restore = (exId: string) => {
     LayoutAnimation.configureNext(COLLAPSE);
+    // The card takes back the height its collapse was made up for, so that
+    // padding goes in the same animation.
+    setTails((t) => tailAfterRestore(t, exId));
     edit((s) => undoRemoveExercise(s, exId));
   };
 
   /** Once scrolling settles, keep only as much of the tail as still holds it there. */
   const releaseTail = () => {
-    if (tail === 0) return;
-    const { y, viewport, content } = scroll.current;
-    const needed = Math.max(0, y - Math.max(0, content - tail - viewport));
-    if (needed < tail) setTail(needed);
+    const at = { ...scroll.current };
+    setTails((t) => tailAfterSettle(t, at));
   };
 
   // --- render ----------------------------------------------------------------
@@ -888,7 +917,7 @@ const styles = StyleSheet.create({
   },
 
   // Cards --------------------------------------------------------------
-  list: { gap: 10, marginTop: 14 },
+  list: { gap: LIST_GAP, marginTop: 14 },
   // Supersets keep their rail and tags (11a), drawn as board 13b's E11 has
   // them: the label over the group, the rail in the page margin.
   ssMember: { position: 'relative' },
@@ -896,8 +925,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    height: 22,
-    marginBottom: 6,
+    height: SS_HEADER_HEIGHT,
+    marginBottom: SS_HEADER_GAP,
     paddingHorizontal: 2,
   },
   ssLabel: {

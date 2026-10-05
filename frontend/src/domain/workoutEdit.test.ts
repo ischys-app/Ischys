@@ -12,6 +12,7 @@ import {
   canToggleDone,
   clampWhen,
   clampWhileTurning,
+  collapseEffect,
   cycleSetType,
   durationFromParts,
   durationParts,
@@ -634,6 +635,46 @@ test('undo brings the card back with the set edits made before it was removed', 
   assert.deepEqual(plan.removedExerciseIds, []);
   assert.deepEqual(plan.removedSetIds, ['b4']);
   assert.deepEqual(plan.updatedSets, [{ id: 'b2', reps: 9 }]);
+});
+
+test('removing a stored exercise leaves a row, and every superset label where it was', () => {
+  assert.deepEqual(collapseEffect(open(three()), 'we-b'), { leavesRow: true, headersLost: 0 });
+  // One of a pair: the removed partner holds the group, and its label, open.
+  const pair = [
+    oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 3 }),
+    oEx('b', [oSet('b1', 10, 5)], { supersetGroup: 3 }),
+  ];
+  assert.deepEqual(collapseEffect(open(pair), 'we-a'), { leavesRow: true, headersLost: 0 });
+  assert.deepEqual(collapseEffect(open(pair), 'we-b'), { leavesRow: true, headersLost: 0 });
+});
+
+test('removing an exercise added in this edit takes its whole place out of the list', () => {
+  const s = addExercise(open(three()), chosen('bench'), 'we-new', 'n1');
+  assert.deepEqual(collapseEffect(s, 'we-new'), { leavesRow: false, headersLost: 0 });
+});
+
+test('an added exercise that vanishes takes a superset label with it when it ends the pair', () => {
+  // Paired with a stored exercise: without it there is no group, so no label.
+  let s = addExercise(open(three()), chosen('bench'), 'we-new', 'n1');
+  s = joinSuperset(s, ['we-c', 'we-new']);
+  assert.equal(exerciseRows(s).filter((r) => r.header).length, 1);
+  assert.deepEqual(collapseEffect(s, 'we-new'), { leavesRow: false, headersLost: 1 });
+
+  // One of three: the other two are still a superset, and still labelled.
+  s = joinSuperset(addExercise(open(three()), chosen('bench'), 'we-new', 'n1'), [
+    'we-b',
+    'we-c',
+    'we-new',
+  ]);
+  assert.deepEqual(collapseEffect(s, 'we-new'), { leavesRow: false, headersLost: 0 });
+
+  // First of its group, so the label was over it: the next partner inherits it.
+  s = addExercise(open(three()), chosen('bench'), 'we-n1', 'n1');
+  s = addExercise(s, chosen('row'), 'we-n2', 'n2');
+  s = addExercise(s, chosen('curl'), 'we-n3', 'n3');
+  s = joinSuperset(s, ['we-n1', 'we-n2', 'we-n3']);
+  assert.equal(exerciseRows(s).find((r) => r.header)?.exercise.id, 'we-n1');
+  assert.deepEqual(collapseEffect(s, 'we-n1'), { leavesRow: false, headersLost: 0 });
 });
 
 test('an added exercise goes under everything, removed rows included', () => {

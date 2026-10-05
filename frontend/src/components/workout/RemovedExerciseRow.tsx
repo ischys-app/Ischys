@@ -12,8 +12,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font } from '../../theme/tokens';
 import { UndoIcon } from '../icons';
 
-/** The board's row height: the 44pt button and 6pt of padding either side. */
-export const REMOVED_ROW_HEIGHT = 56;
+/**
+ * The row's height as it is laid out: the 44pt button, 6pt of padding either
+ * side of it, and the 1pt dashed border top and bottom. The edit screen's
+ * scroll bookkeeping counts on this being exact.
+ */
+export const REMOVED_ROW_HEIGHT = 58;
 
 type Props = {
   name: string;

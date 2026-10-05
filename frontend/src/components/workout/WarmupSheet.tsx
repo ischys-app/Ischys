@@ -5,6 +5,10 @@
  * The rows it inserts are ordinary warm-up sets from then on: swipe to delete,
  * tap the badge to change type. Warm-ups are already excluded from PRs and
  * volume, so nothing downstream needs to know these came from here.
+ *
+ * The ladder is computed and inserted in kilograms, like every stored weight.
+ * What changes with the unit is the rounding (see `domain/loadRounding`) and
+ * the labels: a pound lifter ramps through 135 and 185, not 61.2 and 83.9.
  */
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -12,19 +16,24 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { color, font } from '../../theme/tokens';
+import { warmupRounder } from '../../domain/loadRounding';
 import { defaultWarmupSets, warmupRamp, type RampRow } from '../../domain/warmupRamp';
-import { solvePlates, type BarSetup } from '../../domain/plateMath';
+import { loadToKg, solvePlatesForKg, type BarSetup } from '../../domain/plateMath';
+import { unitLabel, weightText, type Unit } from '../../domain/units';
 
 type Props = {
   visible: boolean;
   /** Name of the exercise being warmed up, for the subtitle. */
   exerciseName: string;
-  /** Weight and reps of the first working set. */
+  /** Weight (kg) and reps of the first working set. */
   workingKg: number;
   workingReps: number;
+  /** The unit the workout is being typed in: labels and non-barbell rounding. */
+  unit: Unit;
   /** 'barbell' | 'dumbbell' | 'machine' | … — decides rounding and the bar rung. */
   equipment: string;
   setup: BarSetup;
+  /** Rows carry kilograms; a pound row is the kg that reads as that pound number. */
   onInsert: (rows: RampRow[]) => void;
   onClose: () => void;
 };
@@ -32,30 +41,12 @@ type Props = {
 const SET_CHOICES = [1, 2, 3, 4, 5];
 const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 
-/**
- * How a weight snaps, per equipment. A barbell can make whatever the plates in
- * the user's inventory allow; everything else comes in fixed jumps, so rounding
- * to a neat number is the closest thing to honest.
- */
-function rounderFor(equipment: string, setup: BarSetup): (kg: number) => number {
-  if (equipment === 'barbell') {
-    return (target) => {
-      const s = solvePlates(target, setup);
-      if (s.kind === 'exact') return s.load.totalKg;
-      if (s.kind === 'below-bar') return setup.barKg;
-      // Down, not to the nearest: a warm-up erring heavy is the wrong error.
-      return s.below?.totalKg ?? s.above?.totalKg ?? setup.barKg;
-    };
-  }
-  const step = equipment === 'machine' ? 5 : 2;
-  return (target) => Math.max(step, Math.round(target / step) * step);
-}
-
 export function WarmupSheet({
   visible,
   exerciseName,
   workingKg,
   workingReps,
+  unit,
   equipment,
   setup,
   onInsert,
@@ -68,17 +59,17 @@ export function WarmupSheet({
     () =>
       warmupRamp({
         workingKg,
-        barKg: equipment === 'barbell' ? setup.barKg : null,
+        barKg: equipment === 'barbell' ? loadToKg(setup.barKg, setup) : null,
         sets: chosen,
-        round: rounderFor(equipment, setup),
+        round: warmupRounder(equipment, setup, unit),
       }),
-    [workingKg, equipment, setup, chosen],
+    [workingKg, equipment, setup, unit, chosen],
   );
 
-  /** Plates per side for a row, blank for equipment that has none. */
+  /** Plates per side for a row (in the rack's unit), blank for equipment that has none. */
   const platesFor = (kg: number): string => {
     if (equipment !== 'barbell') return '';
-    const s = solvePlates(kg, setup);
+    const s = solvePlatesForKg(kg, setup);
     if (s.kind !== 'exact') return '';
     return s.load.plates.length === 0
       ? 'bar'
@@ -98,7 +89,7 @@ export function WarmupSheet({
         </Pressable>
       </View>
       <Text style={styles.sub}>
-        Ramps to your first working set · {fmt(workingKg)} kg × {workingReps}
+        Ramps to your first working set · {weightText(workingKg, unit)} {unit} × {workingReps}
       </Text>
       <Text style={styles.subName} numberOfLines={1}>
         {exerciseName}
@@ -107,7 +98,7 @@ export function WarmupSheet({
       <View style={styles.tableHead}>
         <Text style={[styles.headCell, styles.colSet]}>SET</Text>
         <Text style={[styles.headCell, styles.colPct]}>%</Text>
-        <Text style={[styles.headCell, styles.colWeight]}>KG × REPS</Text>
+        <Text style={[styles.headCell, styles.colWeight]}>{unitLabel(unit)} × REPS</Text>
         {equipment === 'barbell' && (
           <Text style={[styles.headCell, styles.colPlates]}>PLATES / SIDE</Text>
         )}
@@ -126,7 +117,7 @@ export function WarmupSheet({
               </View>
               <Text style={[styles.cell, styles.colPct]}>{r.pct == null ? 'bar' : `${r.pct}%`}</Text>
               <Text style={[styles.cell, styles.colWeight, styles.cellStrong]}>
-                {fmt(r.kg)} × {r.reps}
+                {weightText(r.kg, unit)} × {r.reps}
               </Text>
               {equipment === 'barbell' && (
                 <Text style={[styles.cell, styles.colPlates]} numberOfLines={1}>

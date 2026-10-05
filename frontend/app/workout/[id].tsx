@@ -85,7 +85,12 @@ import { WarmupSheet } from '../../src/components/workout/WarmupSheet';
 import { SupersetSheet } from '../../src/components/workout/SupersetSheet';
 import type { RampRow } from '../../src/domain/warmupRamp';
 import { getPlateSetup } from '../../src/lib/plateSetup';
-import { DEFAULT_BAR_SETUP, smallestStepKg, type BarSetup } from '../../src/domain/plateMath';
+import {
+  DEFAULT_BAR_SETUP,
+  setupUnit,
+  smallestStepKg,
+  type BarSetup,
+} from '../../src/domain/plateMath';
 import { suggestNextSet } from '../../src/domain/progression';
 import {
   WEIGHT_STEPS,
@@ -1270,19 +1275,23 @@ export default function ActiveWorkout() {
     };
   }, []);
 
-  // Re-read the gym's bar and plates whenever the sheet opens. It is edited on
+  // Read the gym's bar and plates for the unit the workout is typed in, and
+  // re-read them whenever a sheet that uses them opens. They are edited on
   // another screen, and the workout outlives that trip, so loading once would
-  // leave the calculator proposing plates the user has just said they don't have.
+  // leave the calculator proposing plates the user has just said they don't
+  // have. Each unit has its own rack, so a unit switch is a different setup —
+  // and it has to be in hand before a sheet opens, because the warm-up ramp and
+  // the progression suggestion read it too.
+  const warmupSheetOpen = warmupExId != null;
   useEffect(() => {
-    if (!plateSheetOpen) return;
     let alive = true;
-    void getPlateSetup('kg').then((s) => {
+    void getPlateSetup(entryUnit).then((s) => {
       if (alive) setPlateSetupState(s);
     });
     return () => {
       alive = false;
     };
-  }, [plateSheetOpen]);
+  }, [entryUnit, plateSheetOpen, warmupSheetOpen]);
 
   // The exercise whose weight is being typed, when plates apply to it at all.
   const plateExercise = useMemo(() => {
@@ -1293,8 +1302,8 @@ export default function ActiveWorkout() {
 
   // What the user has typed so far, or what the row would log if they ticked it
   // now — so opening Plates on an untouched set still has something to work from.
-  // The plate calculator works in kilograms whatever the display unit, so the
-  // typed text is converted on the way in (and `onUse` converts back).
+  // The plate sheet takes kilograms and solves in the rack's own unit, so the
+  // typed text is converted on the way in (and `onUse` hands kilograms back).
   const plateTargetKg = useMemo(() => {
     if (!plateExercise || !focusedSet) return NaN;
     const sets = plateExercise.sets;
@@ -1405,10 +1414,11 @@ export default function ActiveWorkout() {
           : null,
       lastSessionAt: catalogId ? (lastTrained.get(catalogId) ?? null) : null,
       targetReps: null,
-      // The plate inventory is metric (#81 adds an imperial one), so it can only
-      // name the smallest jump in kg. In lb the bar moves in whole 5s.
+      // On a bar the smallest jump is whatever this gym's smallest pair makes,
+      // in the unit the rack is in. That only applies while the rack on hand
+      // is in the unit being typed; until it is, the unit's own bar step.
       step:
-        entryUnit === 'kg' && ex.equipment === 'barbell'
+        ex.equipment === 'barbell' && setupUnit(plateSetup) === entryUnit
           ? smallestStepKg(plateSetup)
           : WEIGHT_STEPS[entryUnit].bar,
       dumbbellStep: WEIGHT_STEPS[entryUnit].dumbbell,
@@ -1687,6 +1697,7 @@ export default function ActiveWorkout() {
           exerciseName={warmupExercise.name}
           workingKg={warmupBase.kg}
           workingReps={warmupBase.reps}
+          unit={entryUnit}
           equipment={warmupExercise.equipment}
           setup={plateSetup}
           onInsert={(rows) => insertWarmups(warmupExercise.id, rows)}

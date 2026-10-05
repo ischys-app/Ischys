@@ -17,10 +17,19 @@ import WatchConnectivity
 /// session, so the user need not touch the Watch. `stopWatchWorkout` ends it over
 /// WatchConnectivity when they finish on the phone.
 public class HealthModule: Module {
-  private let store = HKHealthStore()
-  /// Ischys's own workouts in Health: saving, finding and replacing them.
-  private lazy var entries = WorkoutEntries(store: store)
+  private let store: HKHealthStore
+  /// Ischys's own workouts in Health: saving, finding and replacing them. A
+  /// `let` set in `init`, not a `lazy var`: it is read from the JS thread and
+  /// from Tasks, and lazy initialisation is not synchronised.
+  private let entries: WorkoutEntries
   private var hrQuery: HKQuery?
+
+  public required init(appContext: AppContext) {
+    let store = HKHealthStore()
+    self.store = store
+    self.entries = WorkoutEntries(store: store)
+    super.init(appContext: appContext)
+  }
 
   private var hrType: HKQuantityType? { HKObjectType.quantityType(forIdentifier: .heartRate) }
   private var energyType: HKQuantityType? {

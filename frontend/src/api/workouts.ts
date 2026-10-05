@@ -37,6 +37,7 @@ export {
   setWorkoutExerciseNote,
   setWorkoutExerciseRest,
   addWorkoutExercise,
+  addWorkoutExercises,
   uploadHeartRate,
 } from '../data/workoutsRepo';
 

@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
 
-import { atomically, db } from '../db/client';
+import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
 import type {
   PreviousSetOut,
@@ -365,19 +365,26 @@ export async function insertWarmupSets(
  */
 export async function setSupersetGroup(weIds: string[], group: number | null): Promise<void> {
   if (weIds.length === 0) return;
-  await atomically(async (tx) => {
-    for (const id of weIds) {
-      await tx
-        .update(schema.workoutExercises)
-        .set({ supersetGroup: group, updatedAt: nowMs() })
-        .where(eq(schema.workoutExercises.id, id));
-    }
-  });
+  await atomically((tx) => writeSupersetGroup(tx, weIds, group));
+}
+
+/** Statements only: runs inside the caller's transaction. */
+async function writeSupersetGroup(tx: Executor, weIds: string[], group: number | null): Promise<void> {
+  for (const id of weIds) {
+    await tx
+      .update(schema.workoutExercises)
+      .set({ supersetGroup: group, updatedAt: nowMs() })
+      .where(eq(schema.workoutExercises.id, id));
+  }
 }
 
 /** A group number not currently in use by this workout. */
 export async function nextSupersetGroup(workoutId: string): Promise<number> {
-  const rows = await db
+  return unusedSupersetGroup(db, workoutId);
+}
+
+async function unusedSupersetGroup(ex: Executor, workoutId: string): Promise<number> {
+  const rows = await ex
     .select({ g: schema.workoutExercises.supersetGroup })
     .from(schema.workoutExercises)
     .where(eq(schema.workoutExercises.workoutId, workoutId));
@@ -421,58 +428,104 @@ export async function reorderExercises(wid: string, order: string[]): Promise<Wo
   return getWorkout(wid);
 }
 
-export async function addWorkoutExercise(
-  workoutId: string,
-  body: {
-    exercise_id: string;
-    rest_seconds?: number;
-    note?: string;
-    sets?: { type: SetType; weight?: number | null; reps?: number | null; done: boolean }[];
-  },
-): Promise<WorkoutExerciseOut> {
-  const weId = newId();
-  let sets = body.sets;
+type AddExerciseBody = {
+  exercise_id: string;
+  rest_seconds?: number;
+  note?: string;
+  sets?: { type: SetType; weight?: number | null; reps?: number | null; done: boolean }[];
+};
+type AddExerciseSets = NonNullable<AddExerciseBody['sets']>;
+
+/** The sets a newly added exercise starts with. Reads only; called before the transaction. */
+async function setsForAddedExercise(workoutId: string, body: AddExerciseBody): Promise<AddExerciseSets> {
+  if (body.sets) return body.sets;
   // No explicit sets: prefill from this exercise's last completed session (the
   // same carry-forward a routine gives), so re-adding an exercise you've done
   // shows your latest weights/reps instead of coming in blank. Fall back to a
   // single empty set when there's no history.
-  if (!sets) {
-    const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, workoutId)))[0];
-    const prev = await previousSets(body.exercise_id, w ? w.startedAt : nowMs());
-    sets = prev.length
-      ? prev.map((s) => ({ type: s.type as SetType, weight: s.weight, reps: s.reps, done: false }))
-      : [{ type: 'normal' as SetType, done: false }];
-  }
-  // Position read + inserts atomic: two rapid adds must not read the same
-  // position and collide, and the exercise's sets must land as one unit.
-  await atomically(async (tx) => {
-    const existing = await tx.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, workoutId));
-    const position = existing.reduce((max, we) => Math.max(max, we.position + 1), 0);
-    await tx.insert(schema.workoutExercises).values({
-      id: weId,
-      workoutId,
-      exerciseId: body.exercise_id,
-      position,
-      restSeconds: body.rest_seconds ?? 120,
-      note: body.note ?? null,
+  const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, workoutId)))[0];
+  const prev = await previousSets(body.exercise_id, w ? w.startedAt : nowMs());
+  return prev.length
+    ? prev.map((s) => ({ type: s.type as SetType, weight: s.weight, reps: s.reps, done: false }))
+    : [{ type: 'normal' as SetType, done: false }];
+}
+
+/** Appends one exercise and its sets. Statements only: runs inside the caller's transaction. */
+async function insertWorkoutExercise(
+  tx: Executor,
+  workoutId: string,
+  weId: string,
+  body: AddExerciseBody,
+  sets: AddExerciseSets,
+): Promise<void> {
+  const existing = await tx.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, workoutId));
+  const position = existing.reduce((max, we) => Math.max(max, we.position + 1), 0);
+  await tx.insert(schema.workoutExercises).values({
+    id: weId,
+    workoutId,
+    exerciseId: body.exercise_id,
+    position,
+    restSeconds: body.rest_seconds ?? 120,
+    note: body.note ?? null,
+    updatedAt: nowMs(),
+  });
+  for (let i = 0; i < sets.length; i++) {
+    await tx.insert(schema.workoutSets).values({
+      id: newId(),
+      workoutExerciseId: weId,
+      position: i,
+      type: sets[i].type,
+      weight: sets[i].weight ?? null,
+      reps: sets[i].reps ?? null,
+      done: sets[i].done ? 1 : 0,
+      completedAt: sets[i].done ? nowMs() : null,
       updatedAt: nowMs(),
     });
-    for (let i = 0; i < sets.length; i++) {
-      await tx.insert(schema.workoutSets).values({
-        id: newId(),
-        workoutExerciseId: weId,
-        position: i,
-        type: sets[i].type,
-        weight: sets[i].weight ?? null,
-        reps: sets[i].reps ?? null,
-        done: sets[i].done ? 1 : 0,
-        completedAt: sets[i].done ? nowMs() : null,
-        updatedAt: nowMs(),
-      });
+  }
+}
+
+export async function addWorkoutExercise(
+  workoutId: string,
+  body: AddExerciseBody,
+): Promise<WorkoutExerciseOut> {
+  const weId = newId();
+  const sets = await setsForAddedExercise(workoutId, body);
+  // Position read + inserts atomic: two rapid adds must not read the same
+  // position and collide, and the exercise's sets must land as one unit.
+  await atomically((tx) => insertWorkoutExercise(tx, workoutId, weId, body, sets));
+  const w = await getWorkout(workoutId);
+  return w.exercises.find((e) => e.id === weId)!;
+}
+
+/**
+ * Adds several exercises in the order given, and with `asSuperset` pairs them
+ * under a fresh group, as one unit: all of them land, or none.
+ *
+ * Adding them one call at a time left the first few stored when a later one
+ * failed, and the retry added those again. Each exercise is stored exactly as
+ * `addWorkoutExercise` stores it, and the grouping exactly as
+ * `nextSupersetGroup` + `setSupersetGroup` do (two or more, or no group).
+ */
+export async function addWorkoutExercises(
+  workoutId: string,
+  bodies: AddExerciseBody[],
+  opts: { asSuperset?: boolean } = {},
+): Promise<WorkoutExerciseOut[]> {
+  const planned: { weId: string; body: AddExerciseBody; sets: AddExerciseSets }[] = [];
+  for (const body of bodies) {
+    planned.push({ weId: newId(), body, sets: await setsForAddedExercise(workoutId, body) });
+  }
+  if (planned.length === 0) return [];
+  await atomically(async (tx) => {
+    for (const p of planned) await insertWorkoutExercise(tx, workoutId, p.weId, p.body, p.sets);
+    if (opts.asSuperset && planned.length >= 2) {
+      const group = await unusedSupersetGroup(tx, workoutId);
+      await writeSupersetGroup(tx, planned.map((p) => p.weId), group);
     }
   });
   const w = await getWorkout(workoutId);
-  return w.exercises.find((e) => e.id === weId)!;
+  const byId = new Map(w.exercises.map((e) => [e.id, e]));
+  return planned.map((p) => byId.get(p.weId)!);
 }
 
 export async function discardWorkout(wid: string): Promise<WorkoutOut> {

@@ -82,6 +82,12 @@ export type EditSet = {
   weight: string;
   reps: string;
   done: boolean;
+  /**
+   * On an added set whose weight was copied down from the set above: the
+   * kilograms that text stands for, so a copy of 100 kg shown as 220.46 lb is
+   * saved as 100 kg. Ignored once the text no longer reads as that weight.
+   */
+  carriedKg?: number | null;
 };
 
 /** Shaped so the workout's `ExerciseCard` can render it as it is. */
@@ -119,6 +125,16 @@ export type ChosenExercise = {
 
 const DEFAULT_REST = 120;
 
+/**
+ * A stored weight as its field shows it. A bodyweight movement's weight is a
+ * load added to the mover, so a positive one reads "+10", as on the board —
+ * and `parseWeight` reads "+10" as 10, so it is still the stored value.
+ */
+function fieldWeight(kind: 'weighted' | 'bodyweight', weightKg: number | null, unit: Unit): string {
+  const text = weightText(weightKg, unit);
+  return kind === 'bodyweight' && weightKg != null && weightKg > 0 ? `+${text}` : text;
+}
+
 export function openEditSession(original: OriginalWorkout, unit: Unit): EditSession {
   return {
     original,
@@ -139,7 +155,7 @@ export function openEditSession(original: OriginalWorkout, unit: Unit): EditSess
       sets: ex.sets.map((s) => ({
         id: s.id,
         type: s.type,
-        weight: weightText(s.weight, unit),
+        weight: fieldWeight(ex.kind, s.weight, unit),
         reps: s.reps == null ? '' : String(s.reps),
         done: s.done,
       })),
@@ -148,6 +164,8 @@ export function openEditSession(original: OriginalWorkout, unit: Unit): EditSess
 }
 
 // --- edits -------------------------------------------------------------------
+
+const blankSet = (id: string): EditSet => ({ id, type: 'normal', weight: '', reps: '', done: true });
 
 const mapExercise = (
   s: EditSession,
@@ -163,13 +181,16 @@ const mapSet = (
 ): EditSession =>
   mapExercise(s, exId, (e) => ({ ...e, sets: e.sets.map((x) => (x.id === setId ? fn(x) : x)) }));
 
-/** Typing into a set says it happened, so an unticked one is logged with it. */
+/**
+ * Typing changes the number and nothing else. Whether an unticked set counts
+ * is its own decision (`toggleSetDone`), and one that can be taken back.
+ */
 export function editSetWeight(s: EditSession, exId: string, setId: string, text: string): EditSession {
-  return mapSet(s, exId, setId, (x) => ({ ...x, weight: text, done: true }));
+  return mapSet(s, exId, setId, (x) => ({ ...x, weight: text }));
 }
 
 export function editSetReps(s: EditSession, exId: string, setId: string, text: string): EditSession {
-  return mapSet(s, exId, setId, (x) => ({ ...x, reps: text, done: true }));
+  return mapSet(s, exId, setId, (x) => ({ ...x, reps: text }));
 }
 
 /** W → 1 → D → F, as on the live row. */
@@ -180,16 +201,37 @@ export function cycleSetType(s: EditSession, exId: string, setId: string): EditS
   }));
 }
 
-/** Logs a set that was left unticked, with the numbers it already holds. */
-export function markSetDone(s: EditSession, exId: string, setId: string): EditSession {
-  return mapSet(s, exId, setId, (x) => ({ ...x, done: true }));
+/**
+ * Logs a set that was left unticked, with the numbers its row holds — or, a
+ * second time, takes that back. Only a set stored as not done has this
+ * choice: every other set on this screen is done.
+ */
+export function toggleSetDone(s: EditSession, exId: string, setId: string): EditSession {
+  if (!canToggleDone(s, setId)) return s;
+  return mapSet(s, exId, setId, (x) => ({ ...x, done: !x.done }));
 }
 
+/**
+ * A new set under the others starts as a copy of the nearest filled one above
+ * it, as real values: what the row shows is what Save writes, and it counts
+ * as a change at once. A bodyweight row's weight is left blank, which reads
+ * BW. With nothing above to copy, the set is blank and is not saved until it
+ * has reps.
+ */
 export function addSet(s: EditSession, exId: string, newSetId: string): EditSession {
-  return mapExercise(s, exId, (e) => ({
-    ...e,
-    sets: [...e.sets, { id: newSetId, type: 'normal', weight: '', reps: '', done: true }],
-  }));
+  const stored = originalSets(s);
+  return mapExercise(s, exId, (e) => {
+    const added: EditSet = blankSet(newSetId);
+    const above = e.sets.slice().reverse();
+    const reps = above.find((x) => x.reps.trim() !== '');
+    if (reps) added.reps = reps.reps;
+    const weight = e.kind === 'bodyweight' ? undefined : above.find((x) => x.weight.trim() !== '');
+    if (weight) {
+      added.weight = weight.weight;
+      added.carriedKg = setWeightKg(weight, stored.get(weight.id)?.set, s.unit);
+    }
+    return { ...e, sets: [...e.sets, added] };
+  });
 }
 
 export function removeSet(s: EditSession, exId: string, setId: string): EditSession {
@@ -210,8 +252,6 @@ export function removeExercise(s: EditSession, exId: string): EditSession {
 export function undoRemoveExercise(s: EditSession, exId: string): EditSession {
   return mapExercise(s, exId, (e) => ({ ...e, removed: false }));
 }
-
-const blankSet = (id: string): EditSet => ({ id, type: 'normal', weight: '', reps: '', done: true });
 
 export function addExercise(
   s: EditSession,
@@ -271,14 +311,30 @@ export function reorderExercises(s: EditSession, order: readonly string[]): Edit
   return { ...s, exercises: [...moved, ...rest] };
 }
 
-/** Groups the given exercises under a group number nothing else is using. */
+/**
+ * Groups the given exercises under a group number nothing else is using —
+ * or, when they are exactly the members of a group the workout was stored
+ * with, under that group's own number, so leaving a superset and joining it
+ * again is not a change.
+ */
 export function joinSuperset(s: EditSession, exIds: readonly string[]): EditSession {
   const used = s.exercises.map((e) => e.supersetGroup ?? 0);
-  const group = (used.length ? Math.max(...used) : 0) + 1;
+  const group = storedGroupOf(s, exIds) ?? (used.length ? Math.max(...used) : 0) + 1;
   return {
     ...s,
     exercises: s.exercises.map((e) => (exIds.includes(e.id) ? { ...e, supersetGroup: group } : e)),
   };
+}
+
+/** The stored group whose members are exactly `exIds`, if nothing else holds its number now. */
+function storedGroupOf(s: EditSession, exIds: readonly string[]): number | null {
+  const first = s.original.exercises.find((e) => e.id === exIds[0]);
+  const g = first?.supersetGroup;
+  if (g == null) return null;
+  const members = s.original.exercises.filter((e) => e.supersetGroup === g).map((e) => e.id);
+  if (members.length !== new Set(exIds).size || !members.every((id) => exIds.includes(id))) return null;
+  if (s.exercises.some((e) => e.supersetGroup === g && !exIds.includes(e.id))) return null;
+  return g;
 }
 
 export function leaveSuperset(s: EditSession, exId: string): EditSession {
@@ -299,7 +355,10 @@ export function setWhen(s: EditSession, when: When): EditSession {
  * nobody touched it, in which case it is left exactly as it was.
  */
 export function activeExercises(s: EditSession): EditExercise[] {
-  const live = s.exercises.filter((e) => !e.removed);
+  return withoutLoneGroups(s, s.exercises.filter((e) => !e.removed));
+}
+
+function withoutLoneGroups(s: EditSession, live: EditExercise[]): EditExercise[] {
   const size = new Map<number, number>();
   for (const e of live) {
     if (e.supersetGroup != null) size.set(e.supersetGroup, (size.get(e.supersetGroup) ?? 0) + 1);
@@ -333,11 +392,28 @@ function originalSets(s: EditSession): Map<string, { set: OriginalSet; ex: Origi
  * stored — however it is typed: "220.46", "220.460", "220,46" — is the stored
  * kilograms, not that text converted again.
  */
-function weightKg(text: string, stored: OriginalSet | undefined, unit: Unit): number | null {
+function weightKg(
+  text: string,
+  stored: { weight: number | null } | undefined,
+  unit: Unit,
+): number | null {
   const typed = parseWeight(text);
   if (stored && typed === toDisplay(stored.weight, unit)) return stored.weight;
   return toKg(typed, unit);
 }
+
+/** As `weightKg`, for any row: an added set's copied weight is its stored value. */
+function setWeightKg(set: EditSet, stored: OriginalSet | undefined, unit: Unit): number | null {
+  if (stored) return weightKg(set.weight, stored, unit);
+  return weightKg(
+    set.weight,
+    set.carriedKg !== undefined ? { weight: set.carriedKg } : undefined,
+    unit,
+  );
+}
+
+/** An added row nobody has typed in. It is not a set, and is ignored. */
+const isBlank = (set: EditSet): boolean => set.weight.trim() === '' && set.reps.trim() === '';
 
 function repsOf(text: string): number | null {
   const t = text.trim();
@@ -356,12 +432,10 @@ type FinalSet = {
 };
 
 /**
- * The sets an exercise will hold once saved.
+ * The sets an exercise will hold once saved: exactly what its rows show.
  *
- * A stored set is whatever its row says. An added one logs what it shows,
- * which for a blank field is the value carried down from the nearest filled
- * set above — the same placeholder rule as a live workout — and an added set
- * with no reps at all is not a set, so it is left out.
+ * An added row with no reps is not a set, so it is left out — silently when
+ * it is blank, and as something Save waits for when it is not (`blockers`).
  */
 function finalSets(
   s: EditSession,
@@ -369,34 +443,58 @@ function finalSets(
   stored: Map<string, { set: OriginalSet }>,
 ): FinalSet[] {
   const out: FinalSet[] = [];
-  ex.sets.forEach((set, i) => {
+  for (const set of ex.sets) {
     const was = stored.get(set.id)?.set;
-    if (was) {
-      out.push({
-        id: set.id,
-        type: set.type,
-        weight: weightKg(set.weight, was, s.unit),
-        reps: repsOf(set.reps),
-        done: set.done,
-        isNew: false,
-      });
-      return;
-    }
-    let weight: number | null | undefined =
-      set.weight.trim() !== '' ? toKg(parseWeight(set.weight), s.unit) : undefined;
-    let reps: number | null | undefined = set.reps.trim() !== '' ? repsOf(set.reps) : undefined;
-    for (let j = i - 1; j >= 0 && (weight === undefined || reps === undefined); j--) {
-      const above = ex.sets[j];
-      // A bodyweight row's blank weight reads BW, so that is what it logs.
-      if (weight === undefined && ex.kind !== 'bodyweight' && above.weight.trim() !== '') {
-        weight = weightKg(above.weight, stored.get(above.id)?.set, s.unit);
-      }
-      if (reps === undefined && above.reps.trim() !== '') reps = repsOf(above.reps);
-    }
-    if (reps == null) return;
-    out.push({ id: set.id, type: set.type, weight: weight ?? null, reps, done: true, isNew: true });
-  });
+    const reps = repsOf(set.reps);
+    if (!was && reps == null) continue;
+    out.push({
+      id: set.id,
+      type: set.type,
+      weight: setWeightKg(set, was, s.unit),
+      reps,
+      done: set.done,
+      isNew: !was,
+    });
+  }
   return out;
+}
+
+/**
+ * What keeps Save inert although something changed, by set id and by
+ * exercise id.
+ *
+ * - An added row with a weight but no reps. Dropping it would lose what was
+ *   typed; saving it would store a set that never happened.
+ * - A stored exercise left with no sets, by removing them or by replacing the
+ *   movement and typing nothing. An exercise is never stored empty — though
+ *   one that already was, and has not been touched, is not this edit's doing.
+ */
+function blockers(s: EditSession): { sets: Set<string>; exercises: Set<string> } {
+  const stored = originalSets(s);
+  const storedEx = new Map(s.original.exercises.map((e) => [e.id, e]));
+  const sets = new Set<string>();
+  const exercises = new Set<string>();
+  for (const e of s.exercises) {
+    if (e.removed) continue;
+    for (const set of e.sets) {
+      if (!stored.has(set.id) && !isBlank(set) && repsOf(set.reps) == null) sets.add(set.id);
+    }
+    const was = storedEx.get(e.id);
+    const emptied = !!was && (was.sets.length > 0 || was.exerciseId !== e.exerciseCatalogId);
+    if (emptied && finalSets(s, e, stored).length === 0) {
+      exercises.add(e.id);
+      // Its first row is where the reps are missing, when it has a row.
+      if (e.sets.length > 0) sets.add(e.sets[0].id);
+    }
+  }
+  return { sets, exercises };
+}
+
+/** The line an exercise's card shows while it has no rows at all, else null. */
+export function exerciseHint(s: EditSession, exId: string): string | null {
+  const ex = s.exercises.find((e) => e.id === exId);
+  if (!ex || ex.removed || ex.sets.length > 0) return null;
+  return blockers(s).exercises.has(exId) ? 'Add a set, or remove this exercise.' : null;
 }
 
 /** "60 × 6", "BW × 11", "+10 × 8" — no unit, like the PREV cell it replaces. */
@@ -411,34 +509,40 @@ function setText(ex: { kind: 'weighted' | 'bodyweight' }, set: OriginalSet, unit
 
 /**
  * The WAS cell: empty until the set changes, then what was saved, or "new".
+ * Every label fits the cell — 76pt at 390pt, about nine characters of 11.5px
+ * mono beyond "was ".
  *
  * A set left unticked reads "not done" from the start. That is its state, not
  * a change — but without it the row is indistinguishable from the logged ones
  * around it, and whether it counts is exactly what someone is here to fix.
+ * Tapping the cell logs it ("now done"), and tapping again takes that back.
+ *
+ * An added row Save is waiting on reads "needs reps".
  */
 export function wasLabel(s: EditSession, exId: string, setId: string): string {
   const ex = s.exercises.find((e) => e.id === exId);
   const set = ex?.sets.find((x) => x.id === setId);
   if (!ex || !set) return '';
   const found = originalSets(s).get(setId);
-  if (!found) return 'new';
+  if (!found) return blockers(s).sets.has(setId) ? 'needs reps' : 'new';
   const was = found.set;
+  if (!was.done) return set.done ? 'now done' : 'not done';
   const weight = weightKg(set.weight, was, s.unit);
   const reps = repsOf(set.reps);
   if (weight !== was.weight || reps !== was.reps) return `was ${setText(found.ex, was, s.unit)}`;
-  if (set.done !== was.done) return 'was not done';
   if (set.type !== was.type) return `was ${TYPE_WORD[was.type]}`;
-  return was.done ? '' : 'not done';
+  return '';
 }
 
-/** True for a set added in this session — its blank fields show carried values. */
+/** True for a set added in this session. */
 export function isNewSet(s: EditSession, setId: string): boolean {
   return !originalSets(s).has(setId);
 }
 
-/** True for a stored set that was never ticked and has not been touched. */
-export function isUntickedSet(s: EditSession, exId: string, setId: string): boolean {
-  return wasLabel(s, exId, setId) === 'not done';
+/** True for a set stored as not done: its WAS cell switches it on and off. */
+export function canToggleDone(s: EditSession, setId: string): boolean {
+  const found = originalSets(s).get(setId);
+  return !!found && !found.set.done;
 }
 
 // --- the plan Save applies ---------------------------------------------------
@@ -498,6 +602,11 @@ export type EditPlan = {
   changeCount: number;
   /** Sets the workout will hold once saved. */
   setCount: number;
+  /**
+   * Something on screen cannot be saved as it stands: a half-typed added set,
+   * or an exercise with no sets. Save stays inert until it is dealt with.
+   */
+  blocked: boolean;
 };
 
 const sameOrder = (a: readonly string[], b: readonly string[]): boolean =>
@@ -527,8 +636,20 @@ export function buildPlan(s: EditSession): EditPlan {
 
   const active = activeExercises(s);
   const finals = new Map(active.map((e) => [e.id, finalSets(s, e, stored)]));
-  // An added exercise with nothing logged in it is not saved.
-  const saved = active.filter((e) => storedEx.has(e.id) || (finals.get(e.id) ?? []).length > 0);
+  // An added exercise with nothing logged in it is not saved — and a superset
+  // it was the other half of is then not a superset.
+  const saved = withoutLoneGroups(
+    s,
+    active.filter((e) => storedEx.has(e.id) || (finals.get(e.id) ?? []).length > 0),
+  );
+
+  const blocking = blockers(s);
+  // A half-typed row is not in the plan, but it is something to discard.
+  for (const e of active) {
+    for (const set of e.sets) {
+      if (!stored.has(set.id) && blocking.sets.has(set.id) && !isBlank(set)) changeCount += 1;
+    }
+  }
 
   const survivors = saved.filter((e) => storedEx.has(e.id)).map((e) => e.id);
   const reordered = !sameOrder(
@@ -649,6 +770,7 @@ export function buildPlan(s: EditSession): EditPlan {
     touchedExerciseIds: [...touched],
     changeCount,
     setCount,
+    blocked: blocking.sets.size > 0 || blocking.exercises.size > 0,
   };
 }
 
@@ -657,10 +779,13 @@ export function hasChanges(s: EditSession): boolean {
   return buildPlan(s).changeCount > 0;
 }
 
-/** Something changed, and what is left is still a workout. */
+/** Something changed, what is left is still a workout, and nothing is half-entered. */
 export function canSave(s: EditSession): boolean {
-  const plan = buildPlan(s);
-  return plan.changeCount > 0 && plan.setCount > 0;
+  return planCanSave(buildPlan(s));
+}
+
+export function planCanSave(plan: EditPlan): boolean {
+  return plan.changeCount > 0 && plan.setCount > 0 && !plan.blocked;
 }
 
 // --- date, start and duration ------------------------------------------------
@@ -686,6 +811,11 @@ export function endsAt(startedAt: number, durationSeconds: number): number {
 export function clampWhen(when: When, now: number, storedDuration?: number): When {
   const startedAt = Math.min(when.startedAt, now);
   const room = Math.floor((now - startedAt) / 60_000) * 60;
+  // A duration nobody changed is not corrected, whatever it is: a workout
+  // stored with none keeps none. Only an end in the future can shorten it.
+  if (when.durationSeconds === storedDuration && storedDuration <= room) {
+    return { startedAt, durationSeconds: storedDuration };
+  }
   const cap = when.durationSeconds === storedDuration ? Infinity : MAX_DURATION_SECONDS;
   const max = Math.max(MIN_DURATION_SECONDS, Math.min(cap, room));
   const durationSeconds = Math.min(max, Math.max(MIN_DURATION_SECONDS, when.durationSeconds));
@@ -703,10 +833,13 @@ export function clampWhen(when: When, now: number, storedDuration?: number): Whe
  * checked once, when the picker is confirmed.
  */
 export function clampWhileTurning(when: When, now: number, storedDuration?: number): When {
-  const cap = when.durationSeconds === storedDuration ? Infinity : MAX_DURATION_SECONDS;
+  const startedAt = Math.min(when.startedAt, now);
+  // Untouched, so left exactly as stored: turning the date wheel must not
+  // give a workout stored with no duration a minute it never had.
+  if (when.durationSeconds === storedDuration) return { startedAt, durationSeconds: storedDuration };
   return {
-    startedAt: Math.min(when.startedAt, now),
-    durationSeconds: Math.min(cap, Math.max(MIN_DURATION_SECONDS, when.durationSeconds)),
+    startedAt,
+    durationSeconds: Math.min(MAX_DURATION_SECONDS, Math.max(MIN_DURATION_SECONDS, when.durationSeconds)),
   };
 }
 
@@ -825,6 +958,15 @@ export type RecordChange = {
   /** The record after Save. Null when nothing is left behind it. */
   to: RecordValue | null;
 };
+
+/**
+ * True while an exercise on screen has no history loaded yet. `recordImpact`
+ * reports nothing for it, so Save must wait rather than read that as "no
+ * record moves" and skip the confirmation.
+ */
+export function recordsPending(s: EditSession, ctx: RecordContext): boolean {
+  return activeExercises(s).some((e) => !ctx.history[e.exerciseCatalogId]);
+}
 
 const METRIC_ORDER: RecordMetric[] = ['best_set', 'est_1rm', 'max_reps', 'best_volume'];
 

@@ -9,6 +9,7 @@ import {
   addSet,
   buildPlan,
   canSave,
+  canToggleDone,
   clampWhen,
   clampWhileTurning,
   cycleSetType,
@@ -17,14 +18,15 @@ import {
   editSetReps,
   editSetWeight,
   endsAt,
+  exerciseHint,
   hasChanges,
   joinSuperset,
   leaveSuperset,
-  markSetDone,
   openEditSession,
   recordImpact,
   recordLine,
   recordRow,
+  recordsPending,
   removeExercise,
   removeSet,
   reorderExercises,
@@ -32,6 +34,7 @@ import {
   setWhen,
   startFromParts,
   startParts,
+  toggleSetDone,
   undoRemoveExercise,
   wasLabel,
   type OriginalExercise,
@@ -200,15 +203,58 @@ test('a set left unticked stays unticked unless it is touched', () => {
   assert.equal(wasLabel(s, 'we-row', 'r2'), 'not done');
   assert.equal(hasChanges(s), false);
 
-  s = markSetDone(s, 'we-row', 'r2');
-  assert.equal(wasLabel(s, 'we-row', 'r2'), 'was not done');
+  s = toggleSetDone(s, 'we-row', 'r2');
+  assert.equal(wasLabel(s, 'we-row', 'r2'), 'now done');
   assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'r2', done: true }]);
 });
 
-test('typing into an unticked set logs it', () => {
+test('typing into an unticked set changes the number, not whether it counts', () => {
   const ex = oEx('row', [oSet('r1', 30, 10, 'normal', { done: false })]);
-  const s = editSetReps(open([ex]), 'we-row', 'r1', '12');
-  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'r1', reps: 12, done: true }]);
+  let s = editSetReps(open([ex]), 'we-row', 'r1', '12');
+  assert.equal(s.exercises[0].sets[0].done, false);
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'r1', reps: 12 }]);
+  s = editSetWeight(s, 'we-row', 'r1', '32.5');
+  assert.equal(s.exercises[0].sets[0].done, false);
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'r1', weight: 32.5, reps: 12 }]);
+  // Still an unticked set, and still says so.
+  assert.equal(wasLabel(s, 'we-row', 'r1'), 'not done');
+});
+
+test('logging an unticked set can be taken back, and everything restored is no change', () => {
+  const ex = oEx('row', [oSet('r1', 30, 10), oSet('r2', 30, 9, 'normal', { done: false })]);
+  let s = open([ex]);
+  assert.equal(canToggleDone(s, 'r2'), true);
+  // A set stored as done has no such switch.
+  assert.equal(canToggleDone(s, 'r1'), false);
+  assert.equal(toggleSetDone(s, 'we-row', 'r1'), s);
+
+  s = toggleSetDone(s, 'we-row', 'r2');
+  assert.equal(hasChanges(s), true);
+  s = toggleSetDone(s, 'we-row', 'r2');
+  assert.equal(wasLabel(s, 'we-row', 'r2'), 'not done');
+  assert.equal(hasChanges(s), false);
+
+  // Typed, logged, then all of it put back.
+  s = editSetReps(s, 'we-row', 'r2', '12');
+  s = toggleSetDone(s, 'we-row', 'r2');
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'r2', reps: 12, done: true }]);
+  s = toggleSetDone(s, 'we-row', 'r2');
+  s = editSetReps(s, 'we-row', 'r2', '9');
+  assert.equal(hasChanges(s), false);
+  assert.deepEqual(buildPlan(s).updatedSets, []);
+});
+
+test('every label the WAS cell can show for a set that is not a value fits it', () => {
+  // 76pt at 390pt holds about nine characters of 11.5px mono after "was ".
+  const ex = oEx('row', [oSet('r1', 30, 9, 'normal', { done: false })]);
+  let s = open([ex, incline()]);
+  const labels = [wasLabel(s, 'we-row', 'r1')];
+  s = toggleSetDone(s, 'we-row', 'r1');
+  labels.push(wasLabel(s, 'we-row', 'r1'));
+  s = editSetWeight(addSet(open([oEx('row', [])]), 'we-row', 'n1'), 'we-row', 'n1', '40');
+  labels.push(wasLabel(s, 'we-row', 'n1'));
+  assert.deepEqual(labels, ['not done', 'now done', 'needs reps']);
+  for (const l of labels) assert.ok(l.length <= 10, l);
 });
 
 // --- untouched values keep their kilograms ----------------------------------
@@ -253,6 +299,128 @@ test('an added set carries the values above it, like a live workout', () => {
     { id: 'n1', workoutExerciseId: 'we-incline', position: 4, type: 'normal', weight: 68, reps: 5, done: true },
   ]);
   assert.equal(plan.changeCount, 1);
+});
+
+test('an added set holds the values above it as real values, not placeholders', () => {
+  let s = addSet(open(), 'we-incline', 'n1');
+  const added = s.exercises[0].sets[4];
+  assert.equal(added.weight, '68');
+  assert.equal(added.reps, '5');
+  assert.equal(hasChanges(s), true);
+  // What is saved is what the row shows: clear a field and it is cleared.
+  s = editSetWeight(s, 'we-incline', 'n1', '');
+  assert.equal(buildPlan(s).addedSets[0].weight, null);
+  // And with the reps cleared too it is a blank row again, and ignored.
+  s = editSetReps(s, 'we-incline', 'n1', '');
+  assert.deepEqual(buildPlan(s).addedSets, []);
+  assert.equal(hasChanges(s), false);
+});
+
+test('an added set copies the nearest filled value above, column by column', () => {
+  const ex = oEx('row', [oSet('r1', 40, 10), oSet('r2', null, 8), oSet('r3', 45, null)]);
+  const s = addSet(open([ex]), 'we-row', 'n1');
+  assert.deepEqual(buildPlan(s).addedSets, [
+    { id: 'n1', workoutExerciseId: 'we-row', position: 3, type: 'normal', weight: 45, reps: 8, done: true },
+  ]);
+});
+
+test('an added set under a stored weight is saved as the same kilograms', () => {
+  // 100 kg shows as 220.46 lb; that text converted again would be 99.9989 kg.
+  const ex = oEx('squat', [oSet('q1', 100, 5)]);
+  let s = addSet(openEditSession(workout([ex]), 'lb'), 'we-squat', 'n1');
+  assert.equal(s.exercises[0].sets[1].weight, '220.46');
+  assert.equal(buildPlan(s).addedSets[0].weight, 100);
+  // A second copy, of the copy, is still the stored value.
+  s = addSet(s, 'we-squat', 'n2');
+  assert.equal(buildPlan(s).addedSets[1].weight, 100);
+  // Typed over, it is whatever was typed.
+  s = editSetWeight(s, 'we-squat', 'n1', '225');
+  assert.equal(buildPlan(s).addedSets[0].weight, 102.0583);
+});
+
+test('an added bodyweight set copies the reps and reads BW', () => {
+  const s = addSet(open(), 'we-pullup', 'n1');
+  assert.equal(s.exercises[1].sets[2].weight, '');
+  assert.deepEqual(buildPlan(s).addedSets, [
+    { id: 'n1', workoutExerciseId: 'we-pullup', position: 2, type: 'normal', weight: null, reps: 8, done: true },
+  ]);
+});
+
+// --- sets that cannot be saved as they stand ----------------------------------
+
+test('a half-typed added set holds Save back and says what it needs', () => {
+  let s = addSet(open(), 'we-incline', 'n1');
+  assert.equal(buildPlan(s).blocked, false);
+  // The weight stays, the reps go.
+  s = editSetReps(s, 'we-incline', 'n1', '');
+  assert.equal(wasLabel(s, 'we-incline', 'n1'), 'needs reps');
+  assert.equal(buildPlan(s).blocked, true);
+  assert.equal(canSave(s), false);
+  // Not saved, not dropped behind the user's back — and still a thing to discard.
+  assert.deepEqual(buildPlan(s).addedSets, []);
+  assert.equal(hasChanges(s), true);
+
+  s = editSetReps(s, 'we-incline', 'n1', '6');
+  assert.equal(wasLabel(s, 'we-incline', 'n1'), 'new');
+  assert.equal(buildPlan(s).blocked, false);
+  assert.equal(canSave(s), true);
+});
+
+test('a half-typed set in an added exercise holds Save back too', () => {
+  let s = editSetReps(open(), 'we-incline', 's3', '8');
+  s = addExercise(s, chosen('bench'), 'we-new', 'n1');
+  // A blank added exercise is simply not saved.
+  assert.equal(canSave(s), true);
+  assert.equal(wasLabel(s, 'we-new', 'n1'), 'new');
+  s = editSetWeight(s, 'we-new', 'n1', '80');
+  assert.equal(canSave(s), false);
+  assert.equal(wasLabel(s, 'we-new', 'n1'), 'needs reps');
+  s = editSetWeight(s, 'we-new', 'n1', '');
+  assert.equal(canSave(s), true);
+});
+
+test('a completely blank added row under saved sets is ignored', () => {
+  let s = addSet(open(), 'we-incline', 'n1');
+  s = editSetWeight(s, 'we-incline', 'n1', '');
+  s = editSetReps(s, 'we-incline', 'n1', '');
+  s = editSetReps(s, 'we-incline', 's3', '8');
+  assert.equal(wasLabel(s, 'we-incline', 'n1'), 'new');
+  assert.equal(buildPlan(s).blocked, false);
+  assert.equal(canSave(s), true);
+  assert.deepEqual(buildPlan(s).addedSets, []);
+});
+
+test('an exercise is never saved with no sets: replaced and left blank', () => {
+  let s = replaceExercise(open(), 'we-incline', chosen('bench'), 'n1');
+  // The pull-ups still hold sets, so the workout is not empty — the card is.
+  assert.equal(buildPlan(s).setCount, 2);
+  assert.equal(buildPlan(s).blocked, true);
+  assert.equal(canSave(s), false);
+  assert.equal(wasLabel(s, 'we-incline', 'n1'), 'needs reps');
+  assert.equal(exerciseHint(s, 'we-incline'), null);
+
+  s = editSetReps(s, 'we-incline', 'n1', '5');
+  assert.equal(buildPlan(s).blocked, false);
+  assert.equal(canSave(s), true);
+});
+
+test('an exercise is never saved with no sets: every set removed', () => {
+  let s = open();
+  for (const id of ['p1', 'p2']) s = removeSet(s, 'we-pullup', id);
+  assert.equal(buildPlan(s).setCount, 4);
+  assert.equal(canSave(s), false);
+  assert.equal(exerciseHint(s, 'we-pullup'), 'Add a set, or remove this exercise.');
+  assert.equal(exerciseHint(s, 'we-incline'), null);
+  // Removing the exercise is the other way out.
+  assert.equal(canSave(removeExercise(s, 'we-pullup')), true);
+});
+
+test('an exercise that was already stored empty does not hold other edits back', () => {
+  let s = open([oEx('row', []), incline()]);
+  s = editSetReps(s, 'we-incline', 's3', '8');
+  assert.equal(buildPlan(s).blocked, false);
+  assert.equal(canSave(s), true);
+  assert.equal(exerciseHint(s, 'we-row'), null);
 });
 
 test('an added set with nothing to log is not saved and is not a change', () => {
@@ -355,6 +523,47 @@ test('supersets: joining groups the exercises, leaving a pair dissolves it', () 
   assert.equal(hasChanges(s), false);
 });
 
+test('leaving a stored superset and joining it again is not a change', () => {
+  const grouped = [
+    oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 3 }),
+    oEx('b', [oSet('b1', 10, 5)], { supersetGroup: 3 }),
+    oEx('c', [oSet('c1', 10, 5)]),
+  ];
+  let s = leaveSuperset(open(grouped), 'we-b');
+  assert.equal(hasChanges(s), true);
+  s = joinSuperset(s, ['we-b', 'we-a']);
+  assert.deepEqual(activeExercises(s).map((e) => e.supersetGroup), [3, 3, null]);
+  assert.equal(hasChanges(s), false);
+
+  // A different membership is a new group, and a change.
+  s = joinSuperset(leaveSuperset(open(grouped), 'we-b'), ['we-b', 'we-c']);
+  assert.deepEqual(activeExercises(s).map((e) => e.supersetGroup), [null, 4, 4]);
+  assert.equal(hasChanges(s), true);
+  // As is the stored pair with a third member.
+  s = joinSuperset(open(grouped), ['we-c', 'we-a', 'we-b']);
+  assert.deepEqual(activeExercises(s).map((e) => e.supersetGroup), [4, 4, 4]);
+});
+
+test('a superset whose other half is not saved is saved as no superset', () => {
+  let s = addExercise(open(), chosen('bench'), 'we-new', 'n1');
+  s = joinSuperset(s, ['we-incline', 'we-new']);
+  // On screen it is a pair. The blank addition is not saved, so nothing is.
+  assert.deepEqual(activeExercises(s).map((e) => e.supersetGroup), [1, null, 1]);
+  let plan = buildPlan(s);
+  assert.deepEqual(plan.addedExercises, []);
+  assert.deepEqual(plan.updatedExercises, []);
+  assert.equal(plan.changeCount, 0);
+
+  // Once the addition holds a set, the pair is saved as one.
+  s = editSetReps(s, 'we-new', 'n1', '5');
+  plan = buildPlan(s);
+  assert.equal(plan.addedExercises[0].supersetGroup, 1);
+  assert.deepEqual(
+    plan.updatedExercises.filter((p) => p.id === 'we-incline'),
+    [{ id: 'we-incline', supersetGroup: 1 }],
+  );
+});
+
 test('removing one of a pair dissolves the superset on screen and on save', () => {
   const grouped = [
     oEx('a', [oSet('a1', 10, 5)], { supersetGroup: 3 }),
@@ -447,6 +656,36 @@ test('a duration is at least a minute and under a day', () => {
   const old = NOW - 10 * 86_400_000;
   assert.equal(clampWhen({ startedAt: old, durationSeconds: 0 }, NOW).durationSeconds, 60);
   assert.equal(clampWhen({ startedAt: old, durationSeconds: 99 * 3600 }, NOW).durationSeconds, 23 * 3600 + 59 * 60);
+});
+
+test('a workout stored with no duration keeps none while only its date moves', () => {
+  const start = NOW - 10 * 86_400_000;
+  const earlier = start - 86_400_000;
+  assert.deepEqual(clampWhileTurning({ startedAt: earlier, durationSeconds: 0 }, NOW, 0), {
+    startedAt: earlier,
+    durationSeconds: 0,
+  });
+  assert.deepEqual(clampWhen({ startedAt: earlier, durationSeconds: 0 }, NOW, 0), {
+    startedAt: earlier,
+    durationSeconds: 0,
+  });
+  // Changed, it is held to the wheel's range like any other.
+  assert.equal(clampWhileTurning({ startedAt: earlier, durationSeconds: 30 }, NOW, 0).durationSeconds, 60);
+  assert.equal(clampWhen({ startedAt: earlier, durationSeconds: 30 }, NOW, 0).durationSeconds, 60);
+  // And so the session reports no change at all for the duration.
+  const zero = openEditSession(workout([incline()], { startedAt: start, durationSeconds: 0, endedAt: start }), 'kg');
+  const plan = buildPlan(setWhen(zero, clampWhen({ startedAt: earlier, durationSeconds: 0 }, NOW, 0)));
+  assert.equal(plan.durationSeconds, null);
+  assert.equal(plan.startedAt, earlier);
+});
+
+test('an over-long stored duration survives a date change but never ends in the future', () => {
+  const thirtyHours = 30 * 3600;
+  const old = NOW - 10 * 86_400_000;
+  assert.equal(clampWhen({ startedAt: old, durationSeconds: thirtyHours }, NOW, thirtyHours).durationSeconds, thirtyHours);
+  assert.equal(clampWhileTurning({ startedAt: old, durationSeconds: thirtyHours }, NOW, thirtyHours).durationSeconds, thirtyHours);
+  const recent = NOW - 2 * 3600_000;
+  assert.equal(clampWhen({ startedAt: recent, durationSeconds: thirtyHours }, NOW, thirtyHours).durationSeconds, 2 * 3600);
 });
 
 test('a valid past date and duration pass through unchanged', () => {
@@ -556,4 +795,55 @@ test('records read in the user unit', () => {
   const best = recordImpact(s, ctx()).find((c) => c.metric === 'best_set');
   assert.ok(best);
   assert.equal(recordRow(best, 'lb').from, '149.91 × 5');
+});
+
+test('the preview is pending while an added or replacing exercise has no history loaded', () => {
+  const base = ctx();
+  assert.equal(recordsPending(open(), base), false);
+  let s = addExercise(open(), chosen('bench'), 'we-new', 'n1');
+  assert.equal(recordsPending(s, base), true);
+  // Until then a record it would set is not reported, which is why Save waits.
+  s = editSetWeight(s, 'we-new', 'n1', '80');
+  s = editSetReps(s, 'we-new', 'n1', '5');
+  assert.equal(recordImpact(s, base).some((c) => c.exerciseId === 'bench'), false);
+  const loaded = { ...base, history: { ...base.history, bench: [] } };
+  assert.equal(recordsPending(s, loaded), false);
+  assert.equal(recordImpact(s, loaded).some((c) => c.exerciseId === 'bench' && c.kind === 'gained'), true);
+
+  const replaced = replaceExercise(open(), 'we-incline', chosen('bench'), 'n1');
+  assert.equal(recordsPending(replaced, base), true);
+  assert.equal(recordsPending(replaced, loaded), false);
+});
+
+// --- bodyweight added load -----------------------------------------------------
+
+test('a positive added load on a bodyweight exercise reads +10 and is still the stored value', () => {
+  let s = open();
+  assert.equal(s.exercises[1].sets[0].weight, '');
+  assert.equal(s.exercises[1].sets[1].weight, '+10');
+  // Weighted exercises are bare numbers, as ever.
+  assert.equal(s.exercises[0].sets[1].weight, '60');
+  assert.equal(hasChanges(s), false);
+  assert.equal(wasLabel(s, 'we-pullup', 'p2'), '');
+
+  // Untouched, the weight is not written at all.
+  s = editSetReps(s, 'we-pullup', 'p2', '9');
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'p2', reps: 9 }]);
+  // Retyped without the sign — the keypad has none — it is the same load.
+  s = editSetWeight(s, 'we-pullup', 'p2', '10');
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'p2', reps: 9 }]);
+  s = editSetWeight(s, 'we-pullup', 'p2', '+12.5');
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'p2', weight: 12.5, reps: 9 }]);
+});
+
+test('+load keeps its stored kilograms in lb, and zero or negative loads take no sign', () => {
+  const ex = oEx('dip', [oSet('d1', 10, 8), oSet('d2', 0, 8), oSet('d3', -20, 8)], { kind: 'bodyweight' });
+  let s = openEditSession(workout([ex]), 'lb');
+  assert.deepEqual(s.exercises[0].sets.map((x) => x.weight), ['+22.05', '0', '-44.09']);
+  assert.equal(hasChanges(s), false);
+  // 22.05 lb converted again would be 10.0017 kg.
+  s = editSetReps(s, 'we-dip', 'd1', '9');
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'd1', reps: 9 }]);
+  s = editSetWeight(s, 'we-dip', 'd1', '+22.05');
+  assert.deepEqual(buildPlan(s).updatedSets, [{ id: 'd1', reps: 9 }]);
 });

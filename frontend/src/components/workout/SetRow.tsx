@@ -73,7 +73,8 @@ type Props = {
     was: string;
     /** The tick column's replacement. Swipe-to-delete still works beside it. */
     onRemove: () => void;
-    /** Present on a set that was left unticked: tapping WAS logs it. */
+    /** Present on a set that was left unticked: tapping WAS logs it, and
+     *  tapping again takes that back. */
     onWasPress?: () => void;
   };
 };
@@ -186,8 +187,8 @@ export function SetRow({
               onPress={edit.onWasPress}
               hitSlop={PREV_TAP_SLOP}
               accessibilityRole="button"
-              accessibilityLabel={`Set ${badge} was not ticked`}
-              accessibilityHint="Logs this set"
+              accessibilityLabel={`Set ${badge}, ${edit.was}`}
+              accessibilityHint="Switches this set between done and not done"
             >
               <Text style={styles.wasText} numberOfLines={1}>
                 {edit.was}

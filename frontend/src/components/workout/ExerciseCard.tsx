@@ -64,10 +64,13 @@ type Props = {
    * WAS. Absent → the live card, exactly as it has always been.
    */
   edit?: {
-    /** Per set: its WAS label, whether it was added here, and — for a set
-     *  left unticked — the tap that logs it. */
-    setState: (setId: string) => { was: string; isNew: boolean; onWasPress?: () => void };
+    /** Per set: its WAS label and — for a set left unticked — the tap that
+     *  logs it, or takes that back. */
+    setState: (setId: string) => { was: string; onWasPress?: () => void };
     onRemoveSet: (setId: string) => void;
+    /** Shown in place of the rows while the exercise has none and cannot be
+     *  saved that way. */
+    emptyHint?: string | null;
     /** The neutral line shown while this exercise has a record moving. */
     recordLine?: string | null;
   };
@@ -247,10 +250,8 @@ export function ExerciseCard({
                 onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
                 isOpen={openSetId === s.id}
                 onOpenChange={(o) => onSetOpenChange?.(s.id, o)}
-                // Only a set added here logs what its blank fields show; a
-                // stored set with an empty field is saved as empty.
-                carryWeight={state.isNew ? carry.weight : undefined}
-                carryReps={state.isNew ? carry.reps : undefined}
+                // No carried placeholders: Save writes what a field holds, so
+                // an empty field has to look empty.
                 edit={{
                   was: state.was,
                   onRemove: () => edit.onRemoveSet(s.id),
@@ -297,6 +298,7 @@ export function ExerciseCard({
             />
           );
         })}
+        {edit?.emptyHint ? <Text style={styles.emptyHint}>{edit.emptyHint}</Text> : null}
       </View>
 
       {/* + Add Set, sharing its row with Warm-up when a ramp is on offer. The
@@ -369,6 +371,15 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   colHeaderEdit: { paddingTop: 12 },
+  // The WAS cell's own type, for a card with no row to carry a WAS cell.
+  emptyHint: {
+    fontFamily: font.monoRegular,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: color.text3,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
   avatarText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
   headerText: { flex: 1, minWidth: 0 },
   name: {

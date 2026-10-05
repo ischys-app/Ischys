@@ -53,26 +53,28 @@ import {
   addExercise,
   addSet,
   buildPlan,
+  canToggleDone,
   cycleSetType,
   editSetReps,
   editSetWeight,
+  exerciseHint,
   fmtCellDate,
   fmtClock,
   fmtHoursMinutes,
-  isNewSet,
-  isUntickedSet,
   joinSuperset,
   leaveSuperset,
-  markSetDone,
   openEditSession,
+  planCanSave,
   recordImpact,
   recordLine,
+  recordsPending,
   removeExercise,
   removeSet,
   removedExercises,
   reorderExercises,
   replaceExercise,
   setWhen,
+  toggleSetDone,
   undoRemoveExercise,
   wasLabel,
   type EditSession,
@@ -120,6 +122,8 @@ export default function EditWorkout() {
   /** Nothing to edit: no such workout, or it is not a finished one. */
   const [missing, setMissing] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Save was tapped and is waiting on a history load before it decides anything. */
+  const [deciding, setDeciding] = useState(false);
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [openSetId, setOpenSetId] = useState<string | null>(null);
@@ -172,7 +176,9 @@ export default function EditWorkout() {
 
   const plan = useMemo(() => (session ? buildPlan(session) : null), [session]);
   const dirty = (plan?.changeCount ?? 0) > 0;
-  const savable = dirty && (plan?.setCount ?? 0) > 0;
+  // Also false while a set is half-typed or an exercise has no sets: the row
+  // or the card says what is missing.
+  const savable = !!plan && planCanSave(plan);
   const cards = useMemo(() => (session ? activeExercises(session) : []), [session]);
   const removed = useMemo(() => (session ? removedExercises(session) : []), [session]);
   const impact = useMemo(
@@ -182,6 +188,11 @@ export default function EditWorkout() {
 
   const edit = (fn: (s: EditSession) => EditSession) => setSession((s) => (s ? fn(s) : s));
 
+  // What Save reads after waiting on something: the values of the latest
+  // render, not of the one its handler was created in.
+  const latest = useRef({ session, records });
+  latest.current = { session, records };
+
   // --- leaving ---------------------------------------------------------------
 
   const leave = useCallback(() => {
@@ -190,6 +201,9 @@ export default function EditWorkout() {
   }, [router]);
 
   const onCancel = () => {
+    // The transaction is already running; there is nothing left to cancel,
+    // and leaving now would be followed by Save leaving a second time.
+    if (saving || deciding) return;
     Keyboard.dismiss();
     if (dirty) setConfirmDiscard(true);
     else leave();
@@ -199,20 +213,26 @@ export default function EditWorkout() {
   useEffect(() => {
     if (!dirty) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setConfirmDiscard(true);
+      if (!saving && !deciding) setConfirmDiscard(true);
       return true;
     });
     return () => sub.remove();
-  }, [dirty]);
+  }, [dirty, saving, deciding]);
 
   // --- saving ----------------------------------------------------------------
 
+  /** The state lags a tap by a render; this does not. */
+  const saveStarted = useRef(false);
+
   const save = async () => {
-    if (!plan || saving) return;
+    const current = latest.current.session;
+    if (!current || saveStarted.current) return;
+    saveStarted.current = true;
     setSaving(true);
     try {
-      await saveWorkoutEdit(plan);
+      await saveWorkoutEdit(buildPlan(current));
     } catch {
+      saveStarted.current = false;
       setSaving(false);
       setConfirmSave(false);
       haptics.error();
@@ -227,12 +247,38 @@ export default function EditWorkout() {
     else leave();
   };
 
-  const onSave = () => {
-    if (!savable || saving) return;
+  /** History loads still in flight for exercises added or swapped in here. */
+  const historyLoads = useRef(new Set<Promise<void>>());
+  /** What they brought back, readable the moment they settle. */
+  const loadedHistory = useRef<RecordContext['history']>({});
+
+  const onSave = async () => {
+    if (!savable || saving || deciding) return;
     Keyboard.dismiss();
+    // An exercise picked a moment ago reports no record change until its
+    // history is in. Deciding now would skip the sheet for exactly the edit
+    // that needs it, so the decision waits for the loads still running.
+    const withLoaded = (ctx: RecordContext): RecordContext => ({
+      ...ctx,
+      history: { ...loadedHistory.current, ...ctx.history },
+    });
+    const before = latest.current;
+    if (
+      before.session &&
+      before.records &&
+      historyLoads.current.size > 0 &&
+      recordsPending(before.session, withLoaded(before.records))
+    ) {
+      setDeciding(true);
+      await Promise.allSettled([...historyLoads.current]);
+      setDeciding(false);
+    }
+    const now = latest.current;
+    if (!now.session || !planCanSave(buildPlan(now.session))) return;
     // Most saves touch no record, and a dialog every time trains people to
     // tap through the one that matters.
-    if (impact.length > 0) setConfirmSave(true);
+    const moved = now.records ? recordImpact(now.session, withLoaded(now.records)) : [];
+    if (moved.length > 0) setConfirmSave(true);
     else void save();
   };
 
@@ -243,13 +289,18 @@ export default function EditWorkout() {
 
   const loadHistoryFor = (chosen: ExerciseOut) => {
     if (!workoutId) return;
-    void loadExerciseHistory(chosen.id, workoutId)
-      .then((sessions) =>
+    const load: Promise<void> = loadExerciseHistory(chosen.id, workoutId)
+      .then((sessions) => {
+        loadedHistory.current[chosen.id] ??= sessions;
         setRecords((r) =>
           r && !r.history[chosen.id] ? { ...r, history: { ...r.history, [chosen.id]: sessions } } : r,
-        ),
-      )
-      .catch(() => {});
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        historyLoads.current.delete(load);
+      });
+    historyLoads.current.add(load);
   };
 
   const firstFocus = useRef(true);
@@ -450,14 +501,14 @@ export default function EditWorkout() {
                       edit={{
                         setState: (setId) => ({
                           was: wasLabel(session, ex.id, setId),
-                          isNew: isNewSet(session, setId),
-                          onWasPress: isUntickedSet(session, ex.id, setId)
+                          onWasPress: canToggleDone(session, setId)
                             ? () => {
                                 haptics.select();
-                                edit((s) => markSetDone(s, ex.id, setId));
+                                edit((s) => toggleSetDone(s, ex.id, setId));
                               }
                             : undefined,
                         }),
+                        emptyHint: exerciseHint(session, ex.id),
                         onRemoveSet: (setId) => {
                           setOpenSetId(null);
                           edit((s) => removeSet(s, ex.id, setId));
@@ -534,9 +585,11 @@ export default function EditWorkout() {
         <HeaderFade />
         <Pressable
           onPress={onCancel}
+          disabled={saving || deciding}
           style={styles.cancel}
           hitSlop={HEADER_SLOP}
           accessibilityRole="button"
+          accessibilityState={{ disabled: saving || deciding }}
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
@@ -548,12 +601,12 @@ export default function EditWorkout() {
         </View>
         {/* Inert until something changes, then the screen's one accent. */}
         <Pressable
-          onPress={onSave}
-          disabled={!savable || saving}
+          onPress={() => void onSave()}
+          disabled={!savable || saving || deciding}
           style={[styles.save, savable && styles.saveOn]}
           hitSlop={HEADER_SLOP}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !savable || saving }}
+          accessibilityState={{ disabled: !savable || saving || deciding }}
         >
           <Text style={[styles.saveText, savable && styles.saveTextOn]}>Save</Text>
         </Pressable>
@@ -588,7 +641,7 @@ export default function EditWorkout() {
             changeCount={plan?.changeCount ?? 0}
             onDiscard={() => {
               setConfirmDiscard(false);
-              leave();
+              if (!saving) leave();
             }}
             onClose={() => setConfirmDiscard(false)}
           />
@@ -642,7 +695,15 @@ function WhenCell({
         <Text style={styles.whenLabel}>{label}</Text>
         <ChevronDownIcon size={9} color={color.text3} strokeWidth={2.6} />
       </View>
-      <Text style={styles.whenValue} numberOfLines={1}>
+      {/* Never an ellipsis: "Wed 30 Sep" is 2pt wider than the cell at 390pt,
+          and the board lets it run unclipped. It shrinks a touch instead. */}
+      <Text
+        style={styles.whenValue}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.9}
+        ellipsizeMode="clip"
+      >
         {value}
       </Text>
       {was ? (

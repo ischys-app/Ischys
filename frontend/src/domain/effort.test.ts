@@ -16,6 +16,7 @@ import {
   effortValue,
   isEffortMode,
   normalizeRpe,
+  releasedStep,
   selectedStep,
   shouldPromptEffort,
   stepAt,
@@ -75,6 +76,29 @@ test('stepAt maps a touch to a cell and clamps past either end', () => {
   assert.equal(stepAt(-20, 342, 9), 0);
   assert.equal(stepAt(900, 342, 9), 8);
   assert.equal(stepAt(10, 0, 9), 0); // not laid out yet
+});
+
+test('releasedStep commits only when a finger really lifted', () => {
+  const on = { active: 4, y: 20, height: 44, slop: 40 };
+  // A drag that ended, and a plain tap (never a drag, but the finger came up).
+  assert.equal(releasedStep({ ...on, end: 'ended', fingerUp: true }), 4);
+  assert.equal(releasedStep({ ...on, end: 'failed', fingerUp: true }), 4);
+  // A drag's end is a lift even if the lift itself was not reported first.
+  assert.equal(releasedStep({ ...on, end: 'ended', fingerUp: false }), 4);
+  // Taken away by the system: mid-drag, or before it ever moved.
+  assert.equal(releasedStep({ ...on, end: 'cancelled', fingerUp: false }), null);
+  assert.equal(releasedStep({ ...on, end: 'cancelled', fingerUp: true }), null);
+  assert.equal(releasedStep({ ...on, end: 'failed', fingerUp: false }), null);
+  // Nothing was under the thumb.
+  assert.equal(releasedStep({ ...on, active: null, end: 'ended', fingerUp: true }), null);
+});
+
+test('releasedStep calls the drag off when it lifts far from the bar', () => {
+  const up = { active: 2, end: 'ended' as const, fingerUp: true, height: 44, slop: 40 };
+  assert.equal(releasedStep({ ...up, y: -40 }), 2); // at the edge of the slop
+  assert.equal(releasedStep({ ...up, y: 84 }), 2);
+  assert.equal(releasedStep({ ...up, y: -41 }), null);
+  assert.equal(releasedStep({ ...up, y: 85 }), null);
 });
 
 test('selectedStep finds the cell showing a stored rating', () => {

@@ -76,6 +76,42 @@ export function stepAt(x: number, width: number, count: number): number {
   return Math.max(0, Math.min(count - 1, i));
 }
 
+/** How a touch on the scale came to an end. */
+export type EffortTouchEnd =
+  /** The drag was recognised and the finger came off the glass. */
+  | 'ended'
+  /** Never recognised as a drag: a tap, or a touch lost before it moved. */
+  | 'failed'
+  /** Taken away mid-drag: a call, a system gesture, another gesture winning. */
+  | 'cancelled';
+
+/**
+ * The cell a finished touch chose, or null when it chose nothing.
+ *
+ * Only a finger lifting off the glass is a choice. A touch the system takes
+ * away has to leave the rating alone, and so does lifting well above or below
+ * the bar, which is how a drag is called off.
+ */
+export function releasedStep(input: {
+  /** The cell under the thumb, or null when the touch never landed on one. */
+  active: number | null;
+  end: EffortTouchEnd;
+  /** A finger was seen lifting, with none left down. Tells a tap from a lost touch. */
+  fingerUp: boolean;
+  /** Where it lifted, relative to the bar's top. */
+  y: number;
+  height: number;
+  /** How far above or below the bar still counts. */
+  slop: number;
+}): number | null {
+  const { active, end, fingerUp, y, height, slop } = input;
+  if (active == null) return null;
+  if (end === 'cancelled') return null;
+  if (end === 'failed' && !fingerUp) return null;
+  if (y < -slop || y > height + slop) return null;
+  return active;
+}
+
 /** The cell showing a stored rating, or -1 when this scale has no cell for it. */
 export function selectedStep(rpe: number | null | undefined, kind: EffortScaleKind): number {
   if (rpe == null) return -1;

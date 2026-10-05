@@ -11,18 +11,21 @@
  * rest bar the accent already means REST, Skip and the progress line.
  *
  * A touch previews (a tick per cell crossed) and lifting commits, so a tap is
- * one tick and one save. Dragging well off the bar and letting go cancels.
+ * one tick and one save. Dragging well off the bar and letting go cancels,
+ * and so does a touch the system takes away (a call, a system gesture).
  */
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, State } from 'react-native-gesture-handler';
 
 import {
   effortLabel,
   effortSteps,
+  releasedStep,
   selectedStep,
   stepAt,
   type EffortScaleKind,
+  type EffortTouchEnd,
 } from '../../domain/effort';
 import { haptics } from '../../lib/haptics';
 import { color, font } from '../../theme/tokens';
@@ -63,15 +66,26 @@ export function EffortScale({ kind, value, size = 'bar', onPreview, onCommit }: 
     handlers.current.onPreview?.(list[i].rpe);
   };
 
-  const finish = (y: number) => {
-    const i = activeRef.current;
+  // Whether the last finger was seen coming off the glass. A tap never becomes
+  // a drag, so its end looks the same as a touch the system took away; this is
+  // what tells them apart.
+  const fingerUp = useRef(false);
+
+  const finish = (end: EffortTouchEnd, y: number) => {
+    const i = releasedStep({
+      active: activeRef.current,
+      end,
+      fingerUp: fingerUp.current,
+      y,
+      height: layout.current.height,
+      slop: CANCEL_SLOP,
+    });
     activeRef.current = null;
+    fingerUp.current = false;
     setActive(null);
     handlers.current.onPreview?.(null);
-    if (i == null) return;
-    const h = layout.current.height;
-    if (y < -CANCEL_SLOP || y > h + CANCEL_SLOP) return; // dragged away: no change
-    handlers.current.onCommit(stepsRef.current[i].rpe);
+    // Cancelled, or dragged away: the preview is gone and nothing is saved.
+    if (i != null) handlers.current.onCommit(stepsRef.current[i].rpe);
   };
 
   // Runs on the JS thread: there is no animation to drive, only a cell index.
@@ -79,9 +93,20 @@ export function EffortScale({ kind, value, size = 'bar', onPreview, onCommit }: 
   const pan = Gesture.Pan()
     .runOnJS(true)
     .minDistance(0)
+    .onTouchesDown(() => {
+      fingerUp.current = false;
+    })
+    .onTouchesUp((e) => {
+      fingerUp.current = e.numberOfTouches === 0;
+    })
+    .onTouchesCancelled(() => {
+      fingerUp.current = false;
+    })
     .onBegin((e) => moveTo(e.x))
     .onUpdate((e) => moveTo(e.x))
-    .onFinalize((e) => finish(e.y));
+    .onFinalize((e) =>
+      finish(e.state === State.END ? 'ended' : e.state === State.CANCELLED ? 'cancelled' : 'failed', e.y),
+    );
 
   const shown = active ?? selectedStep(value, kind);
   const big = size === 'sheet';

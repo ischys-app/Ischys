@@ -4,10 +4,12 @@ import { test } from 'node:test';
 
 import {
   computeRecords,
+  countsTowardPrCount,
   detectPrs,
   headlinePr,
   recordDeltaDisplay,
   recordDisplay,
+  walkPrFlags,
   type PRSet,
   type PRSession,
 } from './records.ts';
@@ -253,4 +255,149 @@ test('no est_1rm when every working set is above the rep ceiling', () => {
   // The other metrics still stand — a high-rep session is a real session.
   assert.equal(recs.best_set!.value, 40);
   assert.equal(recs.max_reps!.value, 20);
+});
+
+// --- walkPrFlags: a whole history, re-decided as finish would have ---
+
+/**
+ * What `finishWorkout` does for one exercise, without the database: the
+ * records as materialised so far are the baseline, the session joins the
+ * history (newest first, as `completedSessionsFor` returns it), the records
+ * are recomputed, and whatever improved is flagged and counted.
+ */
+function logInOrder(sessions: PRSession[], countWarmups = false) {
+  const flags = new Map<string, string[]>();
+  const counted = new Map<string, boolean>();
+  let materialised: ReturnType<typeof computeRecords> = {};
+  const completed: PRSession[] = [];
+  for (const sess of sessions.slice().sort((a, b) => a.achievedAt - b.achievedAt)) {
+    const baseline: Record<string, number> = {};
+    for (const rv of Object.values(materialised)) baseline[rv.metric] = rv.value;
+    completed.push(sess);
+    const computed = computeRecords(
+      completed.slice().sort((a, b) => b.achievedAt - a.achievedAt),
+      countWarmups,
+    );
+    const deltas = detectPrs(baseline, computed);
+    const setIds = new Set(sess.sets.map((s) => s.id));
+    const flagged: string[] = [];
+    for (const d of deltas) {
+      if (d.value.workoutSetId && setIds.has(d.value.workoutSetId) && !flagged.includes(d.value.workoutSetId)) {
+        flagged.push(d.value.workoutSetId);
+      }
+    }
+    flags.set(sess.id, flagged);
+    counted.set(sess.id, headlinePr(deltas) !== null);
+    materialised = computed;
+  }
+  return { flags, counted };
+}
+
+const assertWalkMatchesFinish = (sessions: PRSession[], countWarmups = false) => {
+  const logged = logInOrder(sessions, countWarmups);
+  const steps = walkPrFlags(sessions, countWarmups);
+  assert.equal(steps.length, sessions.length);
+  for (const step of steps) {
+    assert.deepEqual(step.flaggedSetIds, logged.flags.get(step.sessionId), `flags of ${step.sessionId}`);
+    assert.equal(step.deltas.length > 0, logged.counted.get(step.sessionId), `count of ${step.sessionId}`);
+  }
+  return steps;
+};
+
+const flagsOf = (steps: ReturnType<typeof walkPrFlags>) =>
+  Object.fromEntries(steps.map((s) => [s.sessionId, s.flaggedSetIds.slice().sort()]));
+
+/** Five sessions with a plateau, a tie, a warm-up heavier than any working set and an unticked set. */
+const longHistory = (): PRSession[] => [
+  session('w1', 1, [wset('a1', 'warmup', 90, 3), wset('a2', 'normal', 60, 8), wset('a3', 'normal', 65, 5)]),
+  session('w2', 3, [wset('b1', 'normal', 60, 8), wset('b2', 'normal', 65, 5), wset('b3', 'normal', 65, 5)]),
+  session('w3', 5, [wset('c1', 'normal', 68, 5), wset('c2', 'normal', 70, 2, false)]),
+  session('w4', 7, [wset('d1', 'normal', 68, 6), wset('d2', 'drop', 40, 14)]),
+  session('w5', 9, [wset('e1', 'failure', 66, 5)]),
+];
+
+test('the walk flags exactly what finishing each session in date order would have', () => {
+  const steps = assertWalkMatchesFinish(longHistory());
+  assert.deepEqual(flagsOf(steps), {
+    // First ever: heaviest set and est. 1RM on a3, most reps on a2.
+    w1: ['a2', 'a3'],
+    // Same top set, more volume: a record with no set to flag.
+    w2: [],
+    w3: ['c1'],
+    // 68 again is not a heavier set, but 68 × 6 is a better 1RM, and 14 reps a new most.
+    w4: ['d1', 'd2'],
+    w5: [],
+  });
+  assert.deepEqual(steps[1].deltas.map((d) => d.metric), ['best_volume']);
+});
+
+test('the walk reads sessions oldest first whatever order they arrive in', () => {
+  const shuffled = [longHistory()[3], longHistory()[0], longHistory()[4], longHistory()[2], longHistory()[1]];
+  assert.deepEqual(flagsOf(walkPrFlags(shuffled)), flagsOf(walkPrFlags(longHistory())));
+  assert.deepEqual(walkPrFlags(shuffled).map((s) => s.sessionId), ['w1', 'w2', 'w3', 'w4', 'w5']);
+});
+
+test('the walk honours the warm-up setting and each session’s bodyweight, as finish does', () => {
+  const dips: PRSession[] = [
+    { id: 'w1', achievedAt: at(1), bodyweightKg: 80, sets: [bwset('a1', null, 10), bwset('a2', 10, 6)] },
+    { id: 'w2', achievedAt: at(3), bodyweightKg: 84, sets: [bwset('b1', null, 10), bwset('b2', 10, 6)] },
+    { id: 'w3', achievedAt: at(5), bodyweightKg: 0, sets: [bwset('c1', null, 12)] },
+  ];
+  const steps = assertWalkMatchesFinish(dips);
+  // Same sets at a heavier bodyweight: more volume, nothing to flag.
+  assert.deepEqual(steps[1].flaggedSetIds, []);
+  assert.deepEqual(steps[1].deltas.map((d) => d.metric), ['best_volume']);
+  assert.deepEqual(steps[2].flaggedSetIds, ['c1']);
+
+  const warm: PRSession[] = [
+    session('w1', 1, [wset('a1', 'warmup', 40, 10), wset('a2', 'normal', 60, 5)]),
+    session('w2', 3, [wset('b1', 'warmup', 40, 12), wset('b2', 'normal', 60, 5)]),
+  ];
+  assert.deepEqual(assertWalkMatchesFinish(warm, false)[1].deltas, []);
+  assert.deepEqual(assertWalkMatchesFinish(warm, true)[1].deltas.map((d) => d.metric), ['best_volume']);
+});
+
+test('lowering a past best promotes the later set that is now the record', () => {
+  const before = flagsOf(walkPrFlags(longHistory()));
+  assert.deepEqual(before.w3, ['c1']);
+  assert.deepEqual(before.w5, []);
+  // 68 × 5 on day 5 was a typo for 58 × 5, and so was day 7's 68.
+  const edited = longHistory();
+  edited[2] = session('w3', 5, [wset('c1', 'normal', 58, 5), wset('c2', 'normal', 70, 2, false)]);
+  edited[3] = session('w4', 7, [wset('d1', 'normal', 58, 6), wset('d2', 'drop', 40, 14)]);
+  const after = flagsOf(assertWalkMatchesFinish(edited));
+  assert.deepEqual(after.w3, []);
+  assert.deepEqual(after.w5, ['e1']);
+});
+
+test('raising a past best demotes the later sets it now beats', () => {
+  const edited = longHistory();
+  edited[0] = session('w1', 1, [wset('a1', 'warmup', 90, 3), wset('a2', 'normal', 60, 8), wset('a3', 'normal', 75, 5)]);
+  const after = flagsOf(assertWalkMatchesFinish(edited));
+  assert.deepEqual(after.w3, []);
+  assert.deepEqual(after.w4, ['d2']);
+});
+
+test('moving a session in time re-decides the sessions it now sits between', () => {
+  // The 68 × 6 day moves ahead of the 68 × 5 day, which then sets nothing.
+  const moved = longHistory();
+  moved[3] = { ...moved[3], achievedAt: at(4) };
+  const after = flagsOf(assertWalkMatchesFinish(moved));
+  assert.deepEqual(after.w4, ['d1', 'd2']);
+  assert.deepEqual(after.w3, []);
+});
+
+test('a workout’s PR count holds an exercise only where the stored data says so', () => {
+  const [first, volumeOnly] = walkPrFlags(longHistory());
+  // A flagged set counts.
+  assert.equal(countsTowardPrCount(first, true, 1), true);
+  // A volume record has no set to flag, and counts where the count has room.
+  assert.equal(countsTowardPrCount(volumeOnly, false, 1), true);
+  // Imported without flags: the count is zero, so nothing is held.
+  assert.equal(countsTowardPrCount(first, false, 0), false);
+  assert.equal(countsTowardPrCount(volumeOnly, false, 0), false);
+  // The walk would flag a set here but none is stored: not counted.
+  assert.equal(countsTowardPrCount(first, false, 2), false);
+  // An exercise the workout no longer has a session for.
+  assert.equal(countsTowardPrCount(undefined, false, 1), false);
 });

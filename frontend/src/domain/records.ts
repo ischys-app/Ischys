@@ -265,3 +265,67 @@ export function headlinePr(deltas: PRDelta[]): PRDelta | null {
   }
   return null;
 }
+
+/** One session of an exercise as `walkPrFlags` decided it. */
+export type PrWalkStep = {
+  sessionId: string;
+  /** The sets of this session that set a record when it was logged. */
+  flaggedSetIds: string[];
+  /** Every metric the session improved; empty when it set no record. */
+  deltas: PRDelta[];
+};
+
+/**
+ * Re-decides one exercise's records session by session, oldest first.
+ *
+ * Finishing a workout compares it with the records as they stood, flags the
+ * sets that hold a new one, and counts the exercise toward the workout's PR
+ * count. This replays exactly that for a whole history: each session is
+ * compared with a running baseline of everything before it, through the same
+ * `computeRecords` and `detectPrs`, with the session itself listed first as
+ * the finish path lists it. So a past session that changes — or moves in time
+ * — re-decides every session after it, not just itself.
+ *
+ * `best_volume` belongs to a session, not a set, so it appears in `deltas`
+ * and flags nothing, as at finish.
+ */
+export function walkPrFlags(sessions: readonly PRSession[], countWarmups = false): PrWalkStep[] {
+  const oldestFirst = sessions.slice().sort((a, b) => a.achievedAt - b.achievedAt);
+  const out: PrWalkStep[] = [];
+  /** Newest first, the order `computeRecords` is always handed. */
+  const seen: PRSession[] = [];
+  let baseline: Partial<Record<RecordMetric, number>> = {};
+  for (const sess of oldestFirst) {
+    seen.unshift(sess);
+    const computed = computeRecords(seen, countWarmups);
+    const deltas = detectPrs(baseline, computed);
+    const own = new Set(sess.sets.map((s) => s.id));
+    const flagged = new Set<string>();
+    for (const d of deltas) {
+      if (d.value.workoutSetId && own.has(d.value.workoutSetId)) flagged.add(d.value.workoutSetId);
+    }
+    out.push({ sessionId: sess.id, flaggedSetIds: [...flagged], deltas });
+    baseline = {};
+    for (const rv of Object.values(computed) as RecordValue[]) baseline[rv.metric] = rv.value;
+  }
+  return out;
+}
+
+/**
+ * Whether an exercise is, as stored, one of the PRs a workout's count holds.
+ *
+ * The count is a bare number, so this is read off what is beside it: a flagged
+ * set says yes. With none flagged, only a volume record — which has no set to
+ * flag — can have counted, and only where the count has room for it. History
+ * that was imported without flags has a count of zero and so holds nothing,
+ * whatever a walk over it would find.
+ */
+export function countsTowardPrCount(
+  step: PrWalkStep | undefined,
+  hasFlaggedSet: boolean,
+  prCount: number,
+): boolean {
+  if (prCount <= 0) return false;
+  if (hasFlaggedSet) return true;
+  return !!step && step.deltas.length > 0 && step.flaggedSetIds.length === 0;
+}

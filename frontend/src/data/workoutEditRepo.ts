@@ -164,6 +164,9 @@ export async function saveWorkoutEdit(plan: EditPlan): Promise<void> {
   const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, wid)))[0];
   if (!w) throw new Error('workout not found');
   if (w.status !== 'completed') throw new Error(`workout not finished (${w.status})`);
+  // Editing never deletes a workout. The screen keeps Save inert in this
+  // state; this is the same rule for any other caller.
+  if (plan.setCount === 0) throw new Error('a workout needs at least one set');
 
   const currentBw = await getBodyweightKg();
   const countWarmups = await getCountWarmups();

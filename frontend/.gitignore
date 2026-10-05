@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local release signing (see signing.local.example.json)
+signing.local.json

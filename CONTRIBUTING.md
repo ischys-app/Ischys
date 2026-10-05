@@ -18,7 +18,7 @@ TZ=Europe/Athens npm test   # timestamps are timezone-sensitive; see below
 There is no backend — the app runs entirely on-device (SQLite + Drizzle). The
 whole suite is `frontend`.
 
-## Two invariants that fail silently
+## Three invariants that fail silently
 
 **1. The widget and the app compile the *same* Swift source.**
 
@@ -48,6 +48,43 @@ alone. `secondsSince` drives the live workout / rest clocks.
 
 Run the test suite in a non-UTC timezone (`TZ=Europe/Athens npm test`). In UTC, a
 naive-vs-local bug is invisible.
+
+**3. `frontend/ios/` is generated, and the release version lives in `app.json` only.**
+
+`ios/` is gitignored and rebuilt by `expo prebuild`. Nothing edited there survives, so a
+release is cut by bumping `app.json` and prebuilding — never by editing the Xcode project
+or a target `Info.plist`.
+
+The trap is that the three targets read their version from two different places. The main
+app uses `ios/Ischys/Info.plist`, which Expo writes from `app.json`. The watch app and the
+widget set `GENERATE_INFOPLIST_FILE = YES`, so Xcode synthesises their version keys from
+the `MARKETING_VERSION` build setting and **ignores** `targets/ischys-*/Info.plist`
+entirely — which is why those files no longer carry version keys at all. On a prebuild,
+`@bacons/apple-targets` syncs `MARKETING_VERSION` onto every target from `app.json`; skip
+the prebuild and the app ships at the new version with its extensions still on the old one.
+Apple rejects that, but only at validation, after a full archive.
+
+So, to cut a release:
+
+```bash
+cd frontend
+# bump expo.version and expo.ios.buildNumber in app.json, then:
+npx expo prebuild -p ios
+npm run release:ios     # checks every target's version, applies manual signing
+xcodebuild -workspace ios/Ischys.xcworkspace -scheme Ischys -configuration Release \
+  -destination generic/platform=iOS -archivePath build/Ischys.xcarchive archive
+```
+
+`npm run release:ios` fails loudly on any target that disagrees with `app.json`, which is
+the cheap version of the feedback Apple would otherwise give you an archive later. It also
+switches the Release configurations to manual distribution signing, because the generated
+project pins `CODE_SIGN_IDENTITY` to "iPhone Developer" at project level and leaves the
+generated targets on automatic signing — an archive then reaches for a Development key,
+which fails outright over SSH, where the login keychain cannot be unlocked. This cannot be
+a config plugin: the standard `ios.xcodeproj` mod runs before the watch and widget targets
+exist. Signing needs an untracked `frontend/signing.local.json` (copy
+`signing.local.example.json`); without it the script tells you what to write, and ordinary
+development is unaffected since Debug stays on automatic signing.
 
 ## Tests are pure
 

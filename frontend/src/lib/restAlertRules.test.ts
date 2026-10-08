@@ -8,6 +8,7 @@ import {
   REST_ALERT_CATEGORY,
   REST_ALERT_TITLE,
   alertBody,
+  shouldAskForExactAlarms,
   shouldSchedule,
 } from './restAlertRules.ts';
 
@@ -43,4 +44,17 @@ test('body names the exercise when we know it', () => {
 test('body degrades gracefully with no exercise', () => {
   assert.equal(alertBody(null), 'Time for your next set');
   assert.equal(alertBody(''), 'Time for your next set');
+});
+
+test('asks for exact alarms only when the alert would otherwise be late', () => {
+  assert.equal(shouldAskForExactAlarms(true, false, false), true);
+  assert.equal(shouldAskForExactAlarms(true, true, false), false); // already on time
+});
+
+test('never asks for exact alarms when alerts themselves are off or declined', () => {
+  assert.equal(shouldAskForExactAlarms(false, false, false), false);
+});
+
+test('asks for exact alarms unprompted only once', () => {
+  assert.equal(shouldAskForExactAlarms(true, false, true), false);
 });

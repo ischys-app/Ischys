@@ -12,9 +12,17 @@
  * See restAlert.test.ts.
  */
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { Alert, Platform } from 'react-native';
 
-import { REST_ALERT_CATEGORY, REST_ALERT_TITLE, alertBody } from './restAlertRules';
+import { canScheduleExactAlarms, openExactAlarmSettings } from '../../modules/exact-alarm';
+
+import {
+  REST_ALERT_CATEGORY,
+  REST_ALERT_TITLE,
+  alertBody,
+  shouldAskForExactAlarms,
+} from './restAlertRules';
 
 export { alertBody, shouldSchedule } from './restAlertRules';
 
@@ -56,6 +64,37 @@ export async function ensureAlertPermission(): Promise<boolean> {
     ios: { allowAlert: true, allowSound: true, allowBadge: false },
   });
   return asked.granted;
+}
+
+const KEY_EXACT_ALARM_ASKED = 'ischys.exactAlarmAsked';
+
+/**
+ * Android 14+ only delivers a scheduled notification on time if the user has
+ * let the app set alarms; otherwise the alert can trail the end of the rest by
+ * over a minute. This explains that and opens the switch.
+ *
+ * Asks once on its own. `force` is for a deliberate act — turning the alerts
+ * setting on — where asking again is the answer to what the user just did.
+ */
+export async function maybeAskForExactAlarms(
+  alertsGranted: boolean,
+  { force = false }: { force?: boolean } = {},
+): Promise<void> {
+  try {
+    const asked = !force && (await SecureStore.getItemAsync(KEY_EXACT_ALARM_ASKED)) !== null;
+    if (!shouldAskForExactAlarms(alertsGranted, canScheduleExactAlarms(), asked)) return;
+    await SecureStore.setItemAsync(KEY_EXACT_ALARM_ASKED, new Date().toISOString());
+    Alert.alert(
+      'Rest alerts on time',
+      'Android can delay the end-of-rest alert by a minute or more unless Ischys is allowed to set alarms. Turn on "Alarms & reminders" for Ischys to get it on the second.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Open settings', onPress: () => void openExactAlarmSettings() },
+      ],
+    );
+  } catch {
+    // A late alert is the worst case here; never let the prompt break a workout.
+  }
 }
 
 /** Schedule the end-of-rest alert. Returns its id so it can be cancelled. */

@@ -1,0 +1,18 @@
+<lint-module
+    format="1"
+    dir="/Users/vasilispoulopoulos/projects/Ischys/frontend/modules/exact-alarm/android"
+    name=":exact-alarm"
+    type="LIBRARY"
+    maven="app.ischys:exact-alarm:0.1.0"
+    agpVersion="8.12.0"
+    buildFolder="build"
+    bootClassPath="/opt/homebrew/share/android-commandlinetools/platforms/android-36/android.jar:/opt/homebrew/share/android-commandlinetools/build-tools/35.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-36"
+    neverShrinking="true">
+  <lintOptions
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

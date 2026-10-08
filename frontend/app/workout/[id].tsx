@@ -129,6 +129,7 @@ import {
   cancelRestAlert,
   ensureAlertPermission,
   installRestAlertHandler,
+  maybeAskForExactAlarms,
   scheduleRestAlert,
   shouldSchedule,
 } from '../../src/lib/restAlert';
@@ -809,7 +810,9 @@ export default function ActiveWorkout() {
         setHapticsEnabled(s.haptic_feedback);
         if (cancelled || !s.rest_timer_alerts) return;
         setRestAlertsSetting(true);
-        setAlertsEnabled(await ensureAlertPermission());
+        const granted = await ensureAlertPermission();
+        setAlertsEnabled(granted);
+        void maybeAskForExactAlarms(granted);
       } catch {
         // Unreachable server or a declined prompt: no alerts, no crash.
       }

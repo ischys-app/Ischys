@@ -32,6 +32,7 @@ import {
 } from '../src/lib/weeklyTarget';
 import { getCountWarmups, setCountWarmups } from '../src/lib/warmupVolume';
 import { setHapticsEnabled } from '../src/lib/haptics';
+import { maybeAskForExactAlarms } from '../src/lib/restAlert';
 import { isAvailable as isHealthAvailable, readBodyMass, requestAuthorization as requestHealthAuth } from '../modules/health';
 import {
   BellIcon,
@@ -339,7 +340,10 @@ export default function Settings() {
             icon={<BellIcon size={20} color={color.text2} />}
             label="Rest timer alerts"
             value={settings.rest_timer_alerts}
-            onChange={(v) => patch({ rest_timer_alerts: v })}
+            onChange={(v) => {
+              patch({ rest_timer_alerts: v });
+              if (v) void maybeAskForExactAlarms(true, { force: true });
+            }}
             isLast={false}
           />
           <ToggleRow

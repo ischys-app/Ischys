@@ -12,8 +12,17 @@
  * See restAlert.test.ts.
  */
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
+import { Alert, Platform } from 'react-native';
 
-import { REST_ALERT_CATEGORY, REST_ALERT_TITLE, alertBody } from './restAlertRules';
+import { canScheduleExactAlarms, openExactAlarmSettings } from '../../modules/exact-alarm';
+
+import {
+  REST_ALERT_CATEGORY,
+  REST_ALERT_TITLE,
+  alertBody,
+  shouldAskForExactAlarms,
+} from './restAlertRules';
 
 export { alertBody, shouldSchedule } from './restAlertRules';
 
@@ -30,8 +39,24 @@ export function installRestAlertHandler(): void {
   });
 }
 
+/**
+ * Android delivers through a channel, and from Android 13 the permission prompt
+ * does not appear at all until the app owns one — so it is created before asking.
+ */
+const ANDROID_CHANNEL_ID = 'rest-timer';
+
+async function ensureAndroidChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+    name: 'Rest timer',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 150, 250],
+  });
+}
+
 /** Ask once. Returns false if the user declined — we then simply never schedule. */
 export async function ensureAlertPermission(): Promise<boolean> {
+  await ensureAndroidChannel();
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;
@@ -39,6 +64,37 @@ export async function ensureAlertPermission(): Promise<boolean> {
     ios: { allowAlert: true, allowSound: true, allowBadge: false },
   });
   return asked.granted;
+}
+
+const KEY_EXACT_ALARM_ASKED = 'ischys.exactAlarmAsked';
+
+/**
+ * Android 14+ only delivers a scheduled notification on time if the user has
+ * let the app set alarms; otherwise the alert can trail the end of the rest by
+ * over a minute. This explains that and opens the switch.
+ *
+ * Asks once on its own. `force` is for a deliberate act — turning the alerts
+ * setting on — where asking again is the answer to what the user just did.
+ */
+export async function maybeAskForExactAlarms(
+  alertsGranted: boolean,
+  { force = false }: { force?: boolean } = {},
+): Promise<void> {
+  try {
+    const asked = !force && (await SecureStore.getItemAsync(KEY_EXACT_ALARM_ASKED)) !== null;
+    if (!shouldAskForExactAlarms(alertsGranted, canScheduleExactAlarms(), asked)) return;
+    await SecureStore.setItemAsync(KEY_EXACT_ALARM_ASKED, new Date().toISOString());
+    Alert.alert(
+      'Rest alerts on time',
+      'Android can delay the end-of-rest alert by a minute or more unless Ischys is allowed to set alarms. Turn on "Alarms & reminders" for Ischys to get it on the second.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Open settings', onPress: () => void openExactAlarmSettings() },
+      ],
+    );
+  } catch {
+    // A late alert is the worst case here; never let the prompt break a workout.
+  }
 }
 
 /** Schedule the end-of-rest alert. Returns its id so it can be cancelled. */
@@ -62,6 +118,7 @@ export async function scheduleRestAlert(
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds,
         repeats: false,
+        channelId: ANDROID_CHANNEL_ID,
       },
     });
   } catch {

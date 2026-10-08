@@ -20,3 +20,16 @@ export const REST_ALERT_TITLE = 'Rest complete';
 export function alertBody(exerciseName: string | null | undefined): string {
   return exerciseName ? `Next set: ${exerciseName}` : 'Time for your next set';
 }
+
+/**
+ * Whether to send the user to Android's "Alarms & reminders" switch. Only once
+ * alerts are actually wanted and allowed, only when the alert would otherwise
+ * be late, and only once unprompted — after a "Not now" it is their call.
+ */
+export function shouldAskForExactAlarms(
+  alertsGranted: boolean,
+  canScheduleExact: boolean,
+  alreadyAsked: boolean,
+): boolean {
+  return alertsGranted && !canScheduleExact && !alreadyAsked;
+}

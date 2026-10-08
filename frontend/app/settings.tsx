@@ -5,7 +5,7 @@
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { cacheDirectory, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
@@ -32,6 +32,7 @@ import {
 } from '../src/lib/weeklyTarget';
 import { getCountWarmups, setCountWarmups } from '../src/lib/warmupVolume';
 import { setHapticsEnabled } from '../src/lib/haptics';
+import { maybeAskForExactAlarms } from '../src/lib/restAlert';
 import { isAvailable as isHealthAvailable, readBodyMass, requestAuthorization as requestHealthAuth } from '../modules/health';
 import {
   BellIcon,
@@ -339,7 +340,10 @@ export default function Settings() {
             icon={<BellIcon size={20} color={color.text2} />}
             label="Rest timer alerts"
             value={settings.rest_timer_alerts}
-            onChange={(v) => patch({ rest_timer_alerts: v })}
+            onChange={(v) => {
+              patch({ rest_timer_alerts: v });
+              if (v) void maybeAskForExactAlarms(true, { force: true });
+            }}
             isLast={false}
           />
           <ToggleRow
@@ -394,16 +398,18 @@ export default function Settings() {
           />
         </Section>
 
-        {/* SERVER */}
-        <Section title="DEVICE">
-          <LinkRow
-            icon={<HeartFilledIcon size={20} color={color.text2} />}
-            label="Apple Health"
-            sub="Save finished workouts to Fitness"
-            onPress={() => router.push('/health')}
-            isLast
-          />
-        </Section>
+        {/* Apple Health is the only thing in this section, and it is iOS-only. */}
+        {Platform.OS === 'ios' && (
+          <Section title="DEVICE">
+            <LinkRow
+              icon={<HeartFilledIcon size={20} color={color.text2} />}
+              label="Apple Health"
+              sub="Save finished workouts to Fitness"
+              onPress={() => router.push('/health')}
+              isLast
+            />
+          </Section>
+        )}
 
         <Section title="DATA">
           <LinkRow
@@ -430,9 +436,19 @@ export default function Settings() {
             label="Privacy"
             value="On-device"
             onPress={() => {
+              const backup = Platform.OS === 'ios' ? 'iCloud' : 'your Google account';
               Alert.alert(
                 'Privacy',
-                'All your workout data lives on this device only. Nothing is sent to any server or third party. It backs up with your device (iCloud) like any other app.',
+                `All your workout data lives on this device only. Nothing is sent to any server or third party. It backs up with your device (${backup}) like any other app.`,
+                [
+                  {
+                    text: 'Privacy policy',
+                    onPress: () => {
+                      Linking.openURL('https://ischys.app/privacy').catch(() => {});
+                    },
+                  },
+                  { text: 'OK', style: 'cancel' },
+                ],
               );
             }}
             isLast={false}

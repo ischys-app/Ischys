@@ -42,3 +42,6 @@ yarn-error.*
 
 # local release signing (see signing.local.example.json)
 signing.local.json
+
+# native module build output
+modules/*/android/build/

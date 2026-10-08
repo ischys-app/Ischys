@@ -20,6 +20,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Alert, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { WatchAction } from '../modules/health';
@@ -313,6 +314,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
+      <AboveNavigationBar>
       <StatusBar style="light" />
         <Stack
           screenOptions={{
@@ -450,6 +452,7 @@ export default function RootLayout() {
             }}
           />
         </Stack>
+      </AboveNavigationBar>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );

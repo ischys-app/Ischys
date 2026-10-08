@@ -6,5 +6,11 @@
     "app.ischys.mobile": "Ischys AppStore",
     "app.ischys.mobile.watch": "Ischys Watch AppStore",
     "app.ischys.mobile.widget": "Ischys Widget AppStore"
+  },
+  "android": {
+    "storeFile": "/absolute/path/to/upload.jks",
+    "storePassword": "KEYSTORE PASSWORD",
+    "keyAlias": "upload",
+    "keyPassword": "KEY PASSWORD"
   }
 }

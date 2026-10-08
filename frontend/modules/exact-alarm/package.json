@@ -1,0 +1,8 @@
+{
+  "name": "exact-alarm",
+  "version": "0.1.0",
+  "description": "Checks and requests Android's exact-alarm access for the rest timer alert",
+  "main": "index.ts",
+  "author": "Ischys",
+  "license": "MIT"
+}

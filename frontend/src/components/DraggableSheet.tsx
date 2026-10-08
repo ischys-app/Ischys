@@ -30,6 +30,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { haptics } from '../lib/haptics';
+import { useNavigationBarInset } from './AboveNavigationBar';
 
 const SCREEN_H = Dimensions.get('window').height;
 const SPRING = { dampingRatio: 0.82, duration: 340 } as const;
@@ -98,6 +99,7 @@ export function DraggableSheet({ visible, onClose, children, sheetStyle, handleO
       }
     });
 
+  const navigationBar = useNavigationBarInset();
   const sheetAnim = useAnimatedStyle(() => ({ transform: [{ translateY: ty.value }] }));
   const backdropAnim = useAnimatedStyle(() => {
     const h = sheetH.value || SCREEN_H;
@@ -122,7 +124,9 @@ export function DraggableSheet({ visible, onClose, children, sheetStyle, handleO
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.root}>
+      {/* The Modal is its own edge-to-edge window on Android, so the sheet is
+          lifted clear of the navigation bar here and clipped as it leaves. */}
+      <View style={[styles.root, { marginBottom: navigationBar, overflow: 'hidden' }]}>
         <Animated.View style={[styles.backdrop, backdropAnim]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>

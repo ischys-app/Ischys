@@ -11,6 +11,7 @@
 import { useRef, useState } from 'react';
 import {
   Alert,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -20,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
@@ -135,10 +136,13 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
     if (disabled || busy) return;
     setBusy(true);
     try {
-      const perm = await MediaLibrary.getPermissionsAsync();
+      // Android only ever adds this one image, so it asks for write access
+      // alone — the read permissions are not in the manifest at all.
+      const writeOnly = Platform.OS === 'android';
+      const perm = await MediaLibrary.getPermissionsAsync(writeOnly);
       let granted = perm.granted;
       if (!granted && perm.canAskAgain) {
-        const req = await MediaLibrary.requestPermissionsAsync();
+        const req = await MediaLibrary.requestPermissionsAsync(writeOnly);
         granted = req.granted;
       }
       if (!granted) {

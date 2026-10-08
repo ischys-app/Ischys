@@ -5,7 +5,7 @@
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { cacheDirectory, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
@@ -434,9 +434,19 @@ export default function Settings() {
             label="Privacy"
             value="On-device"
             onPress={() => {
+              const backup = Platform.OS === 'ios' ? 'iCloud' : 'your Google account';
               Alert.alert(
                 'Privacy',
-                'All your workout data lives on this device only. Nothing is sent to any server or third party. It backs up with your device (iCloud) like any other app.',
+                `All your workout data lives on this device only. Nothing is sent to any server or third party. It backs up with your device (${backup}) like any other app.`,
+                [
+                  {
+                    text: 'Privacy policy',
+                    onPress: () => {
+                      Linking.openURL('https://ischys.app/privacy').catch(() => {});
+                    },
+                  },
+                  { text: 'OK', style: 'cancel' },
+                ],
               );
             }}
             isLast={false}

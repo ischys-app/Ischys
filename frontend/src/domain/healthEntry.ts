@@ -68,19 +68,20 @@ export function healthEditCase(state: HealthEditState): HealthEditCase {
   return state.canWrite ? 'updates' : 'writeOff';
 }
 
-const LINE: Record<Exclude<HealthEditCase, 'none'>, string> = {
-  updates: 'Saving updates this workout in Apple Health too.',
-  watch: 'Apple Health keeps your Watch’s recording. Only Ischys changes.',
-  writeOff: 'Writing to Apple Health is off, so it won’t change.',
+/** `product` is the health store's name on this platform. */
+const LINE: Record<Exclude<HealthEditCase, 'none'>, (product: string) => string> = {
+  updates: (product) => `Saving updates this workout in ${product} too.`,
+  watch: (product) => `${product} keeps your Watch’s recording. Only Ischys changes.`,
+  writeOff: (product) => `Writing to ${product} is off, so it won’t change.`,
 };
 
 /**
  * The sheet's Health line, or null for no line at all. A fact about Save, not
  * a warning, so it reads the same before and after anything is changed.
  */
-export function healthEditLine(state: HealthEditState): string | null {
+export function healthEditLine(state: HealthEditState, product = 'Apple Health'): string | null {
   const which = healthEditCase(state);
-  return which === 'none' ? null : LINE[which];
+  return which === 'none' ? null : LINE[which](product);
 }
 
 // --- Save --------------------------------------------------------------------

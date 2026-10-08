@@ -33,7 +33,14 @@ import {
 import { getCountWarmups, setCountWarmups } from '../src/lib/warmupVolume';
 import { setHapticsEnabled } from '../src/lib/haptics';
 import { maybeAskForExactAlarms } from '../src/lib/restAlert';
-import { isAvailable as isHealthAvailable, readBodyMass, requestAuthorization as requestHealthAuth } from '../modules/health';
+import {
+  availability as healthAvailability,
+  getPermissions as getHealthPermissions,
+  isAvailable as isHealthAvailable,
+  readBodyMass,
+  requestAuthorization as requestHealthAuth,
+} from '../modules/health';
+import { healthCopy } from '../src/lib/healthSyncPlatform';
 import {
   BellIcon,
   ChevronRightIcon,
@@ -265,10 +272,14 @@ export default function Settings() {
   const pullBwFromHealth = async () => {
     // Ensure the bodyweight read is offered — a user who connected Health before
     // this existed won't have granted it, and iOS only prompts for undecided types.
-    await requestHealthAuth();
+    // Android says what is granted, and its screen lists everything still
+    // refused, so it is only shown when weight is what is missing.
+    if (Platform.OS !== 'android' || !(await getHealthPermissions())?.readWeight) {
+      await requestHealthAuth();
+    }
     const kg = await readBodyMass();
     if (kg == null) {
-      showToast('No bodyweight in Apple Health');
+      showToast(healthCopy(Platform.OS).noBodyweight);
       return;
     }
     const disp = toDisplay(kg, settings.unit);
@@ -398,13 +409,14 @@ export default function Settings() {
           />
         </Section>
 
-        {/* Apple Health is the only thing in this section, and it is iOS-only. */}
-        {Platform.OS === 'ios' && (
+        {/* Health is the only thing in this section: Apple Health on iOS, and
+            Health Connect on an Android that has it or can install it. */}
+        {(Platform.OS === 'ios' || healthAvailability() !== 'unavailable') && (
           <Section title="DEVICE">
             <LinkRow
               icon={<HeartFilledIcon size={20} color={color.text2} />}
-              label="Apple Health"
-              sub="Save finished workouts to Fitness"
+              label={healthCopy(Platform.OS).name}
+              sub={healthCopy(Platform.OS).settingsSub}
               onPress={() => router.push('/health')}
               isLast
             />
@@ -544,7 +556,7 @@ export default function Settings() {
               accessibilityRole="button"
             >
               <HeartFilledIcon size={14} color={color.drop} />
-              <Text style={styles.bwHealthText}>Use Apple Health</Text>
+              <Text style={styles.bwHealthText}>{healthCopy(Platform.OS).useForBodyweight}</Text>
             </Pressable>
           )}
           <Pressable
@@ -848,7 +860,7 @@ function LinkRow({
 }: {
   icon: React.ReactNode;
   label: string;
-  /** Optional trailing value; rows like Apple Health show only a chevron. */
+  /** Optional trailing value; rows like Health show only a chevron. */
   value?: string;
   sub?: string;
   onPress: () => void;

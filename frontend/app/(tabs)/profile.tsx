@@ -16,6 +16,7 @@ import { muscleWorkEntries } from '../../src/data/muscleMapRepo';
 import { latestMeasurements, type MeasurementRow } from '../../src/data/measurementsRepo';
 import { formatMeasurement, type MetricId } from '../../src/domain/measurements';
 import { recordDisplay } from '../../src/domain/records';
+import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
 
@@ -360,7 +361,7 @@ export default function Profile() {
               onPress={() => router.push('/health')}
               hitSlop={6}
               style={({ pressed }) => [styles.healthChip, pressed && styles.healthChipPressed]}
-              accessibilityLabel="Apple Health connected"
+              accessibilityLabel={`${healthCopy(Platform.OS).name} connected`}
               accessibilityRole="button"
             >
               <HeartFilledIcon size={12} color={color.success} />

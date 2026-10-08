@@ -332,3 +332,10 @@ test('the stored columns read back as an entry only when the writer is one we kn
   assert.equal(healthEntryFromRow('X', null), null);
   assert.equal(healthEntryFromRow('X', 'tablet'), null);
 });
+
+test('the line names the platform\'s own health store', () => {
+  assert.equal(
+    healthEditLine(state(), 'Health Connect'),
+    'Saving updates this workout in Health Connect too.',
+  );
+});

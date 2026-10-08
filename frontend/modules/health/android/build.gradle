@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.ischys'
+version = '0.1.0'
+
+android {
+  namespace "app.ischys.health"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  // Health Connect's Jetpack client: the one API over both the framework
+  // module (Android 14+) and the Health Connect app (Android 9 to 13).
+  implementation 'androidx.health.connect:connect-client:1.1.0'
+}

@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "app.ischys.mobile",
-      "versionCode": 4,
+      "versionCode": 5,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_AUDIO",

@@ -1,4 +1,6 @@
-import { Platform, requireOptionalNativeModule } from 'expo-modules-core';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+
+import * as WearLink from '../wear-link';
 
 /** Aggregates over a workout's window. A field is null when no Watch recorded it. */
 export type WorkoutMetrics = {
@@ -17,8 +19,24 @@ export type FoundWorkout = {
   endedAt: number;
   energyKcal: number;
   writer: WorkoutWriter;
-  /** The bundle id HealthKit names as the entry's source. */
+  /** The bundle id (iOS) or package (Android) Health names as the entry's source. */
   bundleId: string;
+};
+
+/** Whether Health can be used here; see `availability`. */
+export type HealthAvailability = 'available' | 'needsProvider' | 'unavailable';
+
+/**
+ * What the user has allowed in Health Connect, one flag per thing Ischys asks
+ * for. Android only: HealthKit never says what it lets an app read.
+ */
+export type HealthPermissions = {
+  writeWorkouts: boolean;
+  writeEnergy: boolean;
+  readHeartRate: boolean;
+  readEnergy: boolean;
+  readWeight: boolean;
+  readBodyFat: boolean;
 };
 
 export type ReplaceWorkoutResult =
@@ -27,7 +45,7 @@ export type ReplaceWorkoutResult =
   | { status: 'missing' }
   /** Not an entry the phone wrote (a Watch recording). Nothing was done to it. */
   | { status: 'notOurs' }
-  /** iOS does not let Ischys write workouts. */
+  /** The system does not let Ischys write workouts. */
   | { status: 'denied' }
   /** Nothing changed; includes Health not answering (a locked phone). */
   | { status: 'failed' }
@@ -36,7 +54,12 @@ export type ReplaceWorkoutResult =
 
 type HealthNativeModule = {
   isAvailable(): boolean;
+  /** Android only, as are the three after `requestAuthorization`. */
+  availability?(): string;
   requestAuthorization(): Promise<boolean>;
+  getPermissions?(): Promise<Record<string, unknown> | null>;
+  openSettings?(): boolean;
+  openProviderListing?(): boolean;
   /** `startedAt`/`endedAt` are epoch ms; `energyKcal` 0 to attach no energy. */
   /** Resolves the saved HKWorkout's UUID. (A module from before #90: a boolean.) */
   saveWorkout(startedAt: number, endedAt: number, energyKcal: number): Promise<string | boolean | null>;
@@ -61,14 +84,84 @@ type HealthNativeModule = {
 
 const native = requireOptionalNativeModule<HealthNativeModule>('Health');
 
-/** HealthKit is iOS-only; every call is a no-op elsewhere. */
-export const isAvailable = (): boolean =>
-  Platform.OS === 'ios' && !!native && native.isAvailable();
+/**
+ * Whether Health is usable right now: HealthKit on iOS, Health Connect on
+ * Android. Every call is a no-op where it is not.
+ */
+export const isAvailable = (): boolean => !!native && native.isAvailable();
 
 /**
- * Prompts for HealthKit access (write workouts + energy, read heart rate).
- * Resolves once the user has answered — true does not guarantee write access,
- * because HealthKit refuses to disclose write grants. A denied save just no-ops.
+ * `isAvailable` with the one case worth telling apart: an Android phone from
+ * before Health Connect was built in (Android 13 and earlier), where it is an
+ * app the user has yet to install or update. iOS is never `needsProvider`.
+ */
+export const availability = (): HealthAvailability => {
+  if (!native) return 'unavailable';
+  try {
+    if (typeof native.availability === 'function') {
+      const answer = native.availability();
+      return answer === 'available' || answer === 'needsProvider' ? answer : 'unavailable';
+    }
+    return native.isAvailable() ? 'available' : 'unavailable';
+  } catch {
+    return 'unavailable';
+  }
+};
+
+/** Opens Health Connect's store listing, to install or update it. Android only. */
+export const openProviderListing = (): boolean => {
+  try {
+    return native?.openProviderListing?.() ?? false;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Opens Health Connect, where the user can change what Ischys may read and
+ * write. Android only; false when nothing opened, which is always the answer
+ * on iOS.
+ */
+export const openSettings = (): boolean => {
+  try {
+    return native?.openSettings?.() ?? false;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * What the user has allowed in Health Connect. Null on iOS, and on Android
+ * when Health Connect is not there or did not answer.
+ */
+export const getPermissions = async (): Promise<HealthPermissions | null> => {
+  if (!native || typeof native.getPermissions !== 'function') return null;
+  try {
+    const p = await native.getPermissions();
+    if (!p) return null;
+    return {
+      writeWorkouts: p.writeWorkouts === true,
+      writeEnergy: p.writeEnergy === true,
+      readHeartRate: p.readHeartRate === true,
+      readEnergy: p.readEnergy === true,
+      readWeight: p.readWeight === true,
+      readBodyFat: p.readBodyFat === true,
+    };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Prompts for Health access (write workouts + energy, read heart rate, energy
+ * and body readings).
+ *
+ * iOS: resolves once the user has answered — true does not guarantee write
+ * access, and HealthKit never discloses read grants. A denied save just no-ops.
+ *
+ * Android: resolves true only when at least one permission is granted, and
+ * `getPermissions` says which. After two refusals Android stops showing the
+ * screen and this resolves straight away.
  */
 export const requestAuthorization = async (): Promise<boolean> =>
   native ? native.requestAuthorization() : false;
@@ -141,9 +234,10 @@ export const findWorkout = async (
 };
 
 /**
- * Whether iOS lets Ischys write workouts. Unlike read access, HealthKit
+ * Whether the system lets Ischys write workouts. Unlike read access, HealthKit
  * discloses this one, so false is a real "no" — and also the answer on an older
- * native module, which could not replace an entry anyway.
+ * native module, which could not replace an entry anyway. On Android it is the
+ * grant as last seen, refreshed whenever the app comes to the foreground.
  */
 export const canWriteWorkouts = (): boolean => {
   if (!native || typeof native.canWriteWorkouts !== 'function') return false;
@@ -228,19 +322,45 @@ export const onHeartRate = (listener: (bpm: number) => void): (() => void) => {
   };
 };
 
+// --- the Watch companion ------------------------------------------------------
+//
+// One set of calls for both kinds of watch. On iOS they go to this module's own
+// native half, which talks to the Apple Watch over WatchConnectivity. On
+// Android they go to `modules/wear-link`, which talks to the Wear OS app over
+// the Wearable Data Layer. The state pushed and the actions that come back are
+// the same either way.
+
+/**
+ * Whether there is a watch link on this device at all: HealthKit on iOS, the
+ * Data Layer (Google Play services) on Android. Says nothing about a watch
+ * being paired — with none, every call below quietly does nothing. Not the
+ * same question as `isAvailable`: on Android the link needs no Health Connect.
+ */
+export const isWatchAvailable = (): boolean =>
+  WearLink.handlesWatch ? WearLink.isAvailable() : isAvailable();
+
+/**
+ * Whether the watch measures only once the user has connected the health
+ * store. True on iOS, where the Watch's heart rate arrives through HealthKit;
+ * false on Android, where the watch app streams it over its own link.
+ */
+export const watchNeedsHealth = (): boolean => !WearLink.handlesWatch;
+
 /**
  * Launches the Ischys Watch app and starts its workout session, so the Watch
  * measures without the user opening anything. A no-op with no paired Watch — the
  * live-HR read path still works if they start a session another way.
  */
-export const startWatchWorkout = (): void => native?.startWatchWorkout();
+export const startWatchWorkout = (): void =>
+  WearLink.handlesWatch ? WearLink.startWorkout() : native?.startWatchWorkout();
 
 /**
  * Ends the Watch session (WatchConnectivity). Harmless if none is running.
  * `discard: true` tells the Watch to throw its recording away instead of saving
  * it to Health — used when the user discards the workout on the phone.
  */
-export const stopWatchWorkout = (discard = false): void => native?.stopWatchWorkout(discard);
+export const stopWatchWorkout = (discard = false): void =>
+  WearLink.handlesWatch ? WearLink.stopWorkout(discard) : native?.stopWatchWorkout(discard);
 
 /** A control the user tapped on the Watch. Applied by the phone (JS is source of truth). */
 export type WatchAction =
@@ -269,13 +389,28 @@ export type WatchAction =
    * The Watch confirming it saved this session's HKWorkout (see healthSync).
    * `uuid` is that HKWorkout's; absent from a Watch build that predates #90.
    */
-  | { action: 'workoutSaved'; uuid?: string };
+  | { action: 'workoutSaved'; uuid?: string }
+  /**
+   * Wear OS only: what the Watch's session measured, sent once as it ends and
+   * is kept (not on a discard). Takes the place of `workoutSaved` there — the
+   * Watch has nowhere to save to, so it hands the numbers to the phone. Times
+   * are epoch ms; a heart rate of 0 means none was read.
+   */
+  | {
+      action: 'sessionMetrics';
+      startedAt: number;
+      endedAt: number;
+      avgHr: number;
+      maxHr: number;
+      cal: number;
+    };
 
 /** The workout state pushed to the Watch. Mirrors PhoneState in the watch target. */
 export type WatchState = Record<string, unknown>;
 
 /** Push the latest workout state to the Watch (coalesced natively). */
-export const updateWatchState = (state: WatchState): void => native?.updateWatchState(state);
+export const updateWatchState = (state: WatchState): void =>
+  WearLink.handlesWatch ? WearLink.updateState(state) : native?.updateWatchState(state);
 
 /**
  * Drains Watch actions that arrived before any JS listener existed, and marks JS
@@ -286,14 +421,17 @@ export const updateWatchState = (state: WatchState): void => native?.updateWatch
  * Empty on an older native build that lacks the function, which just restores the
  * previous behaviour (the pre-subscribe window drops the action).
  */
-export const consumeWatchActions = async (): Promise<WatchAction[]> =>
-  native?.consumeWatchActions
+export const consumeWatchActions = async (): Promise<WatchAction[]> => {
+  if (WearLink.handlesWatch) return (await WearLink.consumeActions()) as unknown as WatchAction[];
+  return native?.consumeWatchActions
     ? ((await native.consumeWatchActions()) as unknown as WatchAction[])
     : [];
+};
 
 /**
  * Latest waist and body-fat readings from Health, each with the sample's uuid
- * so a re-read updates the same row instead of appending a duplicate.
+ * so a re-read updates the same row instead of appending a duplicate. Body fat
+ * only on Android: Health Connect has no waist measurement.
  *
  * Empty on an older native build, which simply means no Health-sourced
  * measurements — the manually logged ones are unaffected.
@@ -303,11 +441,19 @@ export const readBodyMeasurements = async (): Promise<
 > => (native?.readBodyMeasurements ? native.readBodyMeasurements() : {});
 
 /** Subscribe to Watch control taps. */
-export const addWatchActionListener = (fn: (a: WatchAction) => void): { remove(): void } =>
-  native ? native.addListener('onWatchAction', fn as (e: unknown) => void) : { remove: () => {} };
+export const addWatchActionListener = (fn: (a: WatchAction) => void): { remove(): void } => {
+  if (WearLink.handlesWatch) return WearLink.addActionListener(fn as (a: unknown) => void);
+  return native
+    ? native.addListener('onWatchAction', fn as (e: unknown) => void)
+    : { remove: () => {} };
+};
 
 /** Subscribe to live HR/energy streamed from the Watch. */
 export const addWatchMetricsListener = (
   fn: (m: { bpm: number; cal: number }) => void,
-): { remove(): void } =>
-  native ? native.addListener('onWatchMetrics', fn as (e: unknown) => void) : { remove: () => {} };
+): { remove(): void } => {
+  if (WearLink.handlesWatch) return WearLink.addMetricsListener(fn);
+  return native
+    ? native.addListener('onWatchMetrics', fn as (e: unknown) => void)
+    : { remove: () => {} };
+};

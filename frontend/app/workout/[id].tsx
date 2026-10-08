@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LiveActivity from '../../modules/live-activity';
 import { haptics, setHapticsEnabled } from '../../src/lib/haptics';
+import { setProgress } from '../../src/lib/liveActivityProgress';
 import { buildLiveActivityState } from '../../src/lib/liveActivityState';
 
 import type {
@@ -603,6 +604,9 @@ export default function ActiveWorkout() {
     [exercises, resting, entryUnit],
   );
 
+  // Android's notification draws these as its progress bar; iOS ignores them.
+  const { setsDone, setsTotal } = useMemo(() => setProgress(exercises), [exercises]);
+
   const activityRunning = useRef(false);
 
   useEffect(() => {
@@ -619,6 +623,8 @@ export default function ActiveWorkout() {
 
     const state = {
       ...liveActivity,
+      setsDone,
+      setsTotal,
       restStartedAt: restStartedAt ?? undefined,
       restEndsAt: restEndsAt ?? undefined,
     };
@@ -633,7 +639,7 @@ export default function ActiveWorkout() {
     activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
     // `startedAt` arrives with the loaded workout, after the first run — without
     // it in the deps the card would never start.
-  }, [liveActivity, restStartedAt, restEndsAt, startedAt]);
+  }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt, startedAt]);
 
   /**
    * Say once, at the start of a workout, when Live Activities are switched off
@@ -645,6 +651,9 @@ export default function ActiveWorkout() {
   const liveActivityChecked = useRef(false);
   useEffect(() => {
     if (!liveActivity || liveActivityChecked.current) return;
+    // iOS only. Android has no switch that turns itself off: its notification
+    // is missing only where the user refused notifications, which they know.
+    if (Platform.OS !== 'ios') return;
     if (!LiveActivity.isAvailable()) return;
     liveActivityChecked.current = true;
 
@@ -682,13 +691,15 @@ export default function ActiveWorkout() {
       if (LiveActivity.isActive()) return;
       const state = {
         ...liveActivity,
+        setsDone,
+        setsTotal,
         restStartedAt: restStartedAt ?? undefined,
         restEndsAt: restEndsAt ?? undefined,
       };
       activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
     });
     return () => sub.remove();
-  }, [liveActivity, restStartedAt, restEndsAt]);
+  }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt]);
 
   // Card buttons are drained at the root layout, because an intent can launch
   // the app in the background with this screen unmounted. Sets are written
@@ -1432,7 +1443,10 @@ export default function ActiveWorkout() {
   useEffect(() => {
     const offAction = onWatchAction((a) => applyWatchAction.current(a));
     const offMetrics = onWatchMetrics(({ bpm, cal }) => {
-      watchRecordedRef.current = true;
+      // Only an Apple Watch saves the workout to Health itself. A Wear OS
+      // watch has nowhere to save to, so there the phone stays the writer and
+      // must not wait at finish for a confirmation that never comes.
+      if (Platform.OS === 'ios') watchRecordedRef.current = true;
       if (bpm > 0) setHeartRate(bpm);
       if (cal > 0) setActiveCal(cal);
     });

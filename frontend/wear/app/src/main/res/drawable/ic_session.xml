@@ -1,0 +1,10 @@
+<!-- A dumbbell: the session's status-bar and watch-face mark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,9h2v6h-2zM6,6h3v12h-3zM10,11h4v2h-4zM15,6h3v12h-3zM19,9h2v6h-2z" />
+</vector>

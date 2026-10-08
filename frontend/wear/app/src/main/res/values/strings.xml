@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Ischys</string>
+    <string name="session_channel">Workout</string>
+    <string name="session_title">Workout in progress</string>
+    <string name="start_channel">Workout started on phone</string>
+    <string name="start_title">Workout started</string>
+    <string name="start_text">Tap to track it on your watch</string>
+</resources>

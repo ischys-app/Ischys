@@ -45,3 +45,8 @@ signing.local.json
 
 # native module build output
 modules/*/android/build/
+
+# Wear OS companion build output
+wear/**/build/
+wear/.gradle/
+wear/local.properties

@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Receives what the Wear OS companion sends. Google Play services
+             binds this whenever something arrives on one of these paths,
+             starting the app's process if it has to, so a Finish tapped on
+             the wrist is not lost while the app is in the background.
+             Exported because the binder is Google Play services, which
+             checks that the sender is this app's own Watch build. -->
+        <service
+            android:name=".WearLinkListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/ischys/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/ischys/queued" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/ischys/metrics" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

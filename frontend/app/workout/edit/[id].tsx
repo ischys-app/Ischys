@@ -463,7 +463,10 @@ export default function EditWorkout() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Android draws edge-to-edge, so the window no longer shrinks for the
+        // keyboard on its own; without this a field low on the screen is typed
+        // into blind.
+        behavior="padding"
       >
         <ScrollView
           style={styles.flex}

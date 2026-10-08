@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -230,7 +230,11 @@ export default function Profile() {
                   const tick = bars.ticks.find((t) => t.index === i);
                   return (
                     <View key={i} style={styles.axisCell}>
-                      {tick && <Text style={styles.axisLabel}>{tick.label}</Text>}
+                      {tick && (
+                        <Text style={styles.axisLabel} numberOfLines={1}>
+                          {tick.label}
+                        </Text>
+                      )}
                     </View>
                   );
                 })}
@@ -334,7 +338,9 @@ export default function Profile() {
               </View>
               <View style={styles.statusText}>
                 <Text style={styles.statusTitle}>On this device · not synced</Text>
-                <Text style={styles.statusSub}>Backs up with iCloud</Text>
+                <Text style={styles.statusSub}>
+                  {Platform.OS === 'ios' ? 'Backs up with iCloud' : 'Backs up with your Google account'}
+                </Text>
               </View>
               <Text style={styles.statusBadge}>SQLite</Text>
             </View>
@@ -380,10 +386,13 @@ function StatCell({ label, value, unit }: { label: string; value: string; unit: 
   return (
     <View style={styles.statCell}>
       <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>
-        {value}
+      {/* Two Texts on a shared baseline, not one nested in the other: Android
+          measures a nested span with its own size against the parent's
+          metrics and draws the unit over the last digit. */}
+      <View style={styles.statValueRow}>
+        <Text style={styles.statValue}>{value}</Text>
         {!!unit && <Text style={styles.statUnit}>{unit}</Text>}
-      </Text>
+      </View>
     </View>
   );
 }
@@ -515,6 +524,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
   },
+  statValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
   statValue: {
     fontFamily: font.monoSemi,
     fontSize: 26,
@@ -585,6 +598,10 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: color.text3,
     fontVariant: ['tabular-nums'],
+    // Wider than the cell on purpose: without a width of its own Android
+    // wraps the label to the bar's few pixels, one letter per line.
+    width: 28,
+    textAlign: 'center',
   },
 
   // Records

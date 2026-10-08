@@ -3,7 +3,7 @@
  * (Home.dc.html): a blurred, translucent pill with an accent-tinted active tab.
  */
 import { BlurView } from 'expo-blur';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { accentA, color } from '../theme/tokens';
@@ -29,7 +29,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 10 }]} pointerEvents="box-none">
-      <BlurView intensity={26} tint="dark" style={styles.bar}>
+      <BlurView intensity={26} tint="dark" style={[styles.bar, Platform.OS === 'android' && styles.barAndroid]}>
         <View style={styles.tint} />
         {state.routes.map((route, index) => {
           const meta = TABS[route.name];
@@ -60,6 +60,9 @@ export function TabBar({ state, navigation }: TabBarProps) {
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, zIndex: 30 },
+  // Android's BlurView does not blur, it only tints, so the list scrolling
+  // underneath reads straight through the bar. Make it near-opaque there.
+  barAndroid: { backgroundColor: 'rgba(20,20,23,0.97)' },
   bar: {
     flexDirection: 'row',
     alignItems: 'stretch',

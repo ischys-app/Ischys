@@ -398,16 +398,18 @@ export default function Settings() {
           />
         </Section>
 
-        {/* SERVER */}
-        <Section title="DEVICE">
-          <LinkRow
-            icon={<HeartFilledIcon size={20} color={color.text2} />}
-            label="Apple Health"
-            sub="Save finished workouts to Fitness"
-            onPress={() => router.push('/health')}
-            isLast
-          />
-        </Section>
+        {/* Apple Health is the only thing in this section, and it is iOS-only. */}
+        {Platform.OS === 'ios' && (
+          <Section title="DEVICE">
+            <LinkRow
+              icon={<HeartFilledIcon size={20} color={color.text2} />}
+              label="Apple Health"
+              sub="Save finished workouts to Fitness"
+              onPress={() => router.push('/health')}
+              isLast
+            />
+          </Section>
+        )}
 
         <Section title="DATA">
           <LinkRow

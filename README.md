@@ -53,12 +53,14 @@ tap away, and the accent colour reserved for a single action — completing a se
 
 ## Platform support
 
-**iOS only, for now.** Ischys is built and tested on iPhone (iOS 26, Expo SDK 57),
-and its headline features — Live Activity, the Apple Watch companion, and Apple
-Health — are iOS-specific with no Android equivalents yet. It's a React Native /
-Expo app, so an Android build is *possible in principle*, but it has **never been
-built or run on Android** and is entirely untested there. Treat Android as
-unsupported until someone does that work — contributions welcome.
+**iPhone first, Android in testing.** Ischys is built and tested on iPhone (iOS 26,
+Expo SDK 57), and its headline extras — Live Activity, the Apple Watch companion,
+and Apple Health — are iOS-only with no Android equivalents yet.
+
+The core app also runs on Android: logging, routines, the rest timer, records,
+import and export. It builds from the same source (`npm run release:android`,
+see `frontend/scripts/build-android-release.mjs`) and is in testing on Google
+Play. It has had far less use there than on iPhone, so expect rough edges.
 
 ## Stack
 

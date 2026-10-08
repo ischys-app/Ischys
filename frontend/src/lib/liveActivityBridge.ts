@@ -1,5 +1,7 @@
 /**
- * Applies Live Activity card taps, from anywhere in the app.
+ * Applies Live Activity card taps, from anywhere in the app. "Card" below is the
+ * Lock Screen card on iOS and the ongoing workout notification on Android; both
+ * queue their button taps natively and are drained through the same calls.
  *
  * A LiveActivityIntent makes iOS launch the app in the background if it is not
  * already running. That launch starts Expo Router at the root route, so the
@@ -11,13 +13,21 @@
  * `toggleDone` does (carry-forward included) and then re-pushes the card so its
  * `next` block, which the intent nils out when it optimistically redraws, is
  * refilled and the ✓ stays tappable for the following set.
+ *
+ * Android never launches the app for a tap. If the process is alive the tap is
+ * applied at once, as above; if it is gone, the notification redraws itself
+ * natively and the tap waits in the queue for the next launch.
  */
+import { Platform } from 'react-native';
+
 import * as LiveActivity from '../../modules/live-activity';
 import type { WorkoutOut } from '../api/types';
 import { getWorkout, listWorkouts, patchSet } from '../api/workouts';
 import { carryFor, completionPatch, resolveSet } from '../components/workout/setCarry';
 import { type Unit, weightText } from '../domain/units';
+import { setProgress } from './liveActivityProgress';
 import { buildLiveActivityState } from './liveActivityState';
+import { getThemeId } from './themePref';
 import { loadWeightUnit } from './weightUnit';
 
 /** Rest lives only in the workout screen's state, so it is relayed, not applied. */
@@ -123,9 +133,46 @@ async function pushCard(w: WorkoutOut, restSeconds: number | null): Promise<void
   const now = Date.now();
   await LiveActivity.update({
     ...snapshot,
+    ...setProgress(w.exercises),
     restStartedAt: restSeconds != null ? now : undefined,
     restEndsAt: restSeconds != null ? now + restSeconds * 1000 : undefined,
   });
+}
+
+/**
+ * Whether a card was already showing when this module loaded — one left by an
+ * earlier run of the app, since nothing in this run can have started one yet.
+ */
+let cardFromLastRun = false;
+try {
+  cardFromLastRun = LiveActivity.isActive();
+} catch {
+  // No native module (web, tests): there is no card.
+}
+
+/**
+ * Squares the card with reality once, at launch.
+ *
+ * The accent is re-sent because native storage only learns it when it changes,
+ * so a theme picked on a build that predates the card would never arrive.
+ *
+ * On Android a notification outlives the process that posted it. That is wanted
+ * while the workout is still running — it is how the rest timer survives the
+ * app being killed — but if no workout is active any more (it was finished or
+ * discarded and the process died before `end` ran) the leftover would be
+ * describing a workout that does not exist, so it is removed. A card started
+ * during this run is left alone: the screen that started it owns it.
+ */
+export async function reconcileCardOnLaunch(): Promise<void> {
+  try {
+    LiveActivity.setThemeId(await getThemeId());
+    if (Platform.OS !== 'android' || !cardFromLastRun) return;
+    cardFromLastRun = false;
+    const [active] = await listWorkouts({ status: 'active', limit: 1 });
+    if (!active) await LiveActivity.end();
+  } catch {
+    // A stale notification is the worst case; never let this break launch.
+  }
 }
 
 let running = false;

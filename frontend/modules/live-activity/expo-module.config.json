@@ -1,6 +1,9 @@
 {
-  "platforms": ["apple"],
+  "platforms": ["apple", "android"],
   "apple": {
     "modules": ["LiveActivityModule"]
+  },
+  "android": {
+    "modules": ["app.ischys.liveactivity.LiveActivityModule"]
   }
 }

@@ -12,6 +12,7 @@
  * See restAlert.test.ts.
  */
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 import { REST_ALERT_CATEGORY, REST_ALERT_TITLE, alertBody } from './restAlertRules';
 
@@ -30,8 +31,24 @@ export function installRestAlertHandler(): void {
   });
 }
 
+/**
+ * Android delivers through a channel, and from Android 13 the permission prompt
+ * does not appear at all until the app owns one — so it is created before asking.
+ */
+const ANDROID_CHANNEL_ID = 'rest-timer';
+
+async function ensureAndroidChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+    name: 'Rest timer',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 150, 250],
+  });
+}
+
 /** Ask once. Returns false if the user declined — we then simply never schedule. */
 export async function ensureAlertPermission(): Promise<boolean> {
+  await ensureAndroidChannel();
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;
@@ -62,6 +79,7 @@ export async function scheduleRestAlert(
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds,
         repeats: false,
+        channelId: ANDROID_CHANNEL_ID,
       },
     });
   } catch {

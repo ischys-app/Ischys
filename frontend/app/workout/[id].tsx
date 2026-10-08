@@ -83,8 +83,11 @@ import {
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
 import {
   claimWatchFinish,
+  completedByWatch,
   finishRequestId,
+  onWatchFinished,
   watchAwaitingFinish,
+  type WatchCompletion,
   withFinishVerdict,
 } from '../../src/lib/watchFinish';
 import { PlateSheet } from '../../src/components/workout/PlateSheet';
@@ -314,14 +317,28 @@ export default function ActiveWorkout() {
   // phone lets the Watch be the primary HKWorkout writer and backfills only if the
   // Watch never confirms the save (see syncFinishedWorkout).
   const watchRecordedRef = useRef(false);
+  // True once a Wear OS watch streams metrics. It saves nothing itself: as its
+  // session ends it sends what it measured, and the finish waits a moment for
+  // that so the Health Connect entry carries the energy (see syncFinishedWorkout).
+  const wearRecordedRef = useRef(false);
   useEffect(() => {
     if (isDemo) return;
-    // Launch the Watch app into a session (needs WKBackgroundModes:
-    // workout-processing on the Watch) and read the live BPM it streams into
-    // HealthKit. The Watch's own Start button remains a fallback.
-    void startWatchSession();
+    // Read the live BPM a recording Apple Watch streams into HealthKit.
     return subscribeLiveHeartRate(setHeartRate);
   }, [isDemo]);
+  // Launch the Watch app into a session (needs WKBackgroundModes:
+  // workout-processing on the Watch). The Watch's own Start button remains a
+  // fallback. Only once the workout is loaded and known to be running: this
+  // screen also opens on a workout that is already over — to edit one from
+  // history, or at a launch that reopened it while a Finish from the wrist
+  // was being applied — and that must not set the Watch recording.
+  const watchSessionWanted = !isDemo && !loading && status === 'active';
+  const watchSessionStarted = useRef(false);
+  useEffect(() => {
+    if (!watchSessionWanted) return;
+    watchSessionStarted.current = true;
+    void startWatchSession();
+  }, [watchSessionWanted]);
 
   // Load a real workout on mount; fall back to the offline demo seed on failure.
   useEffect(() => {
@@ -1304,6 +1321,9 @@ export default function ActiveWorkout() {
         watchRecordedRef.current,
         finishBeganAt,
         watchAwaitsOutcome,
+        // A finish asked for from a Wear OS wrist had a watch in it, whether
+        // or not a reading ever got through.
+        wearRecordedRef.current || (fromWatch && Platform.OS === 'android'),
       );
     }
     if (summary && workoutId) {
@@ -1370,9 +1390,11 @@ export default function ActiveWorkout() {
   watchStateRef.current = watchState;
 
   useEffect(() => {
-    if (isDemo || !watchState) return;
+    // Only a running workout is mirrored: this screen can be up for a moment
+    // on one the wrist has already finished (see `completedByWatch`).
+    if (isDemo || !watchState || status !== 'active') return;
     pushWatchState(watchState);
-  }, [isDemo, watchState]);
+  }, [isDemo, watchState, status]);
 
   // Ref so the once-registered listener never closes over stale handlers/state.
   const applyWatchAction = useRef<(a: WatchAction) => void>(() => {});
@@ -1440,6 +1462,32 @@ export default function ActiveWorkout() {
     return claimWatchFinish(workoutId);
   }, [workoutId]);
 
+  // The root layout completed this workout over this screen's head: a Finish
+  // or Discard from the wrist that had been waiting since before the app
+  // opened, applied as the app reopened here (see `routeWatchFinish`). It has
+  // stored or deleted the workout and taken down everything that belongs to a
+  // running one; what is left is to stop showing it as running. Keyed on the
+  // route's id, not the loaded workout's, so it holds while the load is still
+  // in flight — and asked once at mount, for a finish that beat the mount.
+  useEffect(() => {
+    if (isDemo) return;
+    const leave = (completion: WatchCompletion) => {
+      if (finishStarted.current) return;
+      finishStarted.current = true;
+      // Mounting may have set the Watch recording again, for a workout that
+      // was already over on the wrist. Nothing that measured is worth keeping.
+      if (watchSessionStarted.current) stopWatchSession({ discard: true });
+      if (completion === 'finished') router.replace(`/summary/${routeId}`);
+      else if (router.canGoBack()) router.back();
+      else router.replace('/(tabs)');
+    };
+    const already = completedByWatch(routeId);
+    if (already) leave(already);
+    return onWatchFinished((id, completion) => {
+      if (id === routeId) leave(completion);
+    });
+  }, [isDemo, routeId, router]);
+
   useEffect(() => {
     const offAction = onWatchAction((a) => applyWatchAction.current(a));
     const offMetrics = onWatchMetrics(({ bpm, cal }) => {
@@ -1447,6 +1495,7 @@ export default function ActiveWorkout() {
       // watch has nowhere to save to, so there the phone stays the writer and
       // must not wait at finish for a confirmation that never comes.
       if (Platform.OS === 'ios') watchRecordedRef.current = true;
+      else wearRecordedRef.current = true;
       if (bpm > 0) setHeartRate(bpm);
       if (cal > 0) setActiveCal(cal);
     });

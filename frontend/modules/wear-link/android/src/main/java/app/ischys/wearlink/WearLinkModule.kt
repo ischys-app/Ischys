@@ -1,11 +1,15 @@
 package app.ischys.wearlink
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The phone's end of the link to the Wear OS companion, over the Wearable
@@ -16,6 +20,11 @@ import expo.modules.kotlin.modules.ModuleDefinition
 class WearLinkModule : Module() {
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+
+  private companion object {
+    /** How long opening the app waits for the sweep of queued Watch actions. */
+    const val SWEEP_WAIT_MS = 2_000L
+  }
 
   override fun definition() = ModuleDefinition {
     Name("WearLink")
@@ -67,8 +76,22 @@ class WearLinkModule : Module() {
      * tapped on the wrist with the app closed waits, on disk, until the app is
      * next opened.
      */
-    AsyncFunction("consumeActions") {
-      WearLinkHub.drain(context)
+    AsyncFunction("consumeActions") { promise: Promise ->
+      val app = context.applicationContext
+      // First whatever the Watch queued that the listener was never told
+      // about; it is buffered like anything else and drained with the rest.
+      // The sweep answers in milliseconds, but opening the app must not wait
+      // on Google Play services, so it is given a moment and no more.
+      val answered = AtomicBoolean(false)
+      val drain = Runnable {
+        if (answered.compareAndSet(false, true)) promise.resolve(WearLinkHub.drain(app))
+      }
+      val main = Handler(Looper.getMainLooper())
+      main.postDelayed(drain, SWEEP_WAIT_MS)
+      WearLinkHub.sweep(app) {
+        main.removeCallbacks(drain)
+        drain.run()
+      }
     }
   }
 }

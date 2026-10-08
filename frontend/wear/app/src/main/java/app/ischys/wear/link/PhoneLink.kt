@@ -4,8 +4,8 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import app.ischys.wear.BuildConfig
 import app.ischys.wear.WorkoutModel
+import app.ischys.wear.logic.UntilKnown
 import app.ischys.wear.logic.Wire
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.CapabilityInfo
@@ -19,7 +19,7 @@ import org.json.JSONObject
  * metrics over the Wearable Data Layer, and knows whether the phone is in
  * reach. What arrives from the phone comes in through `WearLinkService`.
  *
- * In reach means a connected node advertising the phone app's capability. An
+ * In reach means a directly connected node advertising the phone app's capability. An
  * action is then a message, delivered now. Out of reach it becomes a data item,
  * which the Data Layer holds and syncs when the phone is back — the queue the
  * Apple Watch gets from `transferUserInfo`.
@@ -33,6 +33,12 @@ object PhoneLink {
   /** The phone node to message, or null when none is in reach. */
   @Volatile
   private var phoneNode: String? = null
+
+  /**
+   * Holds what is sent before the first lookup of the phone has come back.
+   * Main thread only, which is where every send and every lookup result is.
+   */
+  private val reach = UntilKnown()
 
   /**
    * Debug builds only (DebugReceiver): stands in for a paired phone on the
@@ -68,27 +74,37 @@ object PhoneLink {
   }
 
   private fun onCapability(info: CapabilityInfo) {
-    // A nearby node (Bluetooth) over one reached through the cloud.
-    val node = info.nodes.firstOrNull { it.isNearby } ?: info.nodes.firstOrNull()
+    // Only a phone connected directly. One the Data Layer can still route to
+    // through Google's servers — left at home, with the Watch on Wi-Fi or
+    // mobile data — also counts as reachable, but a message sent that way is
+    // not delivered now and can be lost without a word: a state pushed across
+    // such a route never arrived, and nothing said so. What is queued instead
+    // is synced by the Data Layer whichever way it can.
+    val node = info.nodes.firstOrNull { it.isNearby }
+    LinkLog.d { "phone capability: ${info.nodes.map { "${it.id}${if (it.isNearby) "" else " (relayed)"}" }}" }
     setNode(node?.id)
   }
 
   private fun setNode(id: String?) {
+    if (id != phoneNode) LinkLog.d { "phone node ${id ?: "none"}" }
     phoneNode = id
-    main.post { WorkoutModel.onPhoneReachable(canAskNow) }
+    main.post {
+      reach.nowKnown()
+      WorkoutModel.onPhoneReachable(canAskNow)
+    }
   }
 
   /**
    * One action. Sent now when the phone is in reach; otherwise, and when
    * sending fails, queued unless `queueIfUnreachable` is false.
    */
-  fun send(action: JSONObject, queueIfUnreachable: Boolean = true) {
+  fun send(action: JSONObject, queueIfUnreachable: Boolean = true) = whenReachKnown {
     log(Wire.PATH_ACTION, action)
-    if (debugReachable == true) return
+    if (debugReachable == true) return@whenReachKnown
     val node = phoneNode
     if (node == null) {
       if (queueIfUnreachable) put(queuedPath(), action)
-      return
+      return@whenReachKnown
     }
     Wearable.getMessageClient(app)
       .sendMessage(node, Wire.PATH_ACTION, bytes(action))
@@ -106,14 +122,14 @@ object PhoneLink {
    * queued: a queued request is answered whenever the phone next runs, far too
    * late to wait for. If it cannot be sent the model is told instead.
    */
-  fun requestFinish(id: String) {
+  fun requestFinish(id: String) = whenReachKnown {
     val request = Wire.endAsking(id)
     log(Wire.PATH_ACTION, request)
-    if (debugReachable == true) return
+    if (debugReachable == true) return@whenReachKnown
     val node = phoneNode
     if (node == null) {
       main.post { WorkoutModel.finishUndeliverable(id) }
-      return
+      return@whenReachKnown
     }
     Wearable.getMessageClient(app)
       .sendMessage(node, Wire.PATH_ACTION, bytes(request))
@@ -121,8 +137,12 @@ object PhoneLink {
   }
 
   /**
-   * Live sensor metrics. A message while the phone is in reach; otherwise one
-   * data item that each reading overwrites, so the newest lands when it is back.
+   * Live sensor metrics, while the phone is in reach. Otherwise they are
+   * dropped: a reading is only worth showing now, and the next one follows
+   * within a second of the phone coming back. Writing each to the Data Layer
+   * to sync later kept the radio busy for a number that would arrive stale.
+   * What the session measured in all still reaches the phone, once, as
+   * `sessionMetrics`.
    */
   fun sendMetrics(hr: Int, cal: Int) {
     val metrics = Wire.metrics(hr, cal)
@@ -130,12 +150,17 @@ object PhoneLink {
       log(Wire.PATH_METRICS, metrics)
       return
     }
-    val node = phoneNode
-    if (node == null) {
-      put(Wire.PATH_METRICS, metrics)
-      return
-    }
+    val node = phoneNode ?: return
     Wearable.getMessageClient(app).sendMessage(node, Wire.PATH_METRICS, bytes(metrics))
+  }
+
+  /**
+   * Runs `send` once it is known whether the phone is in reach: at once,
+   * except in the moments after this process starts. The debug stand-in for a
+   * phone needs no lookup.
+   */
+  private fun whenReachKnown(send: () -> Unit) {
+    if (debugReachable != null) send() else reach.run(send)
   }
 
   private fun queuedPath() = "${Wire.PATH_QUEUED}/${UUID.randomUUID()}"
@@ -143,13 +168,13 @@ object PhoneLink {
   private fun put(path: String, payload: JSONObject) {
     val request = PutDataRequest.create(path).setData(bytes(payload)).setUrgent()
     Wearable.getDataClient(app).putDataItem(request)
-      .addOnSuccessListener { if (BuildConfig.DEBUG) Log.d(TAG, "QUEUED ${it.uri.path}") }
+      .addOnSuccessListener { item -> LinkLog.d { "QUEUED ${item.uri.path}" } }
       .addOnFailureListener { Log.w(TAG, "could not queue $path", it) }
   }
 
   private fun bytes(json: JSONObject) = json.toString().toByteArray(Charsets.UTF_8)
 
   private fun log(path: String, payload: JSONObject) {
-    if (BuildConfig.DEBUG) Log.d(TAG, "OUT $path $payload")
+    LinkLog.d { "OUT $path $payload" }
   }
 }

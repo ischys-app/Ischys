@@ -10,13 +10,16 @@ internal object WearPaths {
   const val STATE = "/ischys/state"
   /** Phone → Watch. `{cmd: start|stop|discard, sentAt}`. */
   const val COMMAND = "/ischys/command"
-  /** Phone → Watch. `{finishId}`: the app is not running to answer a finish. */
+  /**
+   * Phone → Watch. The app is not running to act on what was sent: `{finishId}`
+   * for a finish, `{action}` for anything else.
+   */
   const val UNDELIVERABLE = "/ischys/undeliverable"
   /** Watch → phone. One action, live. */
   const val ACTION = "/ischys/action"
   /** Watch → phone. Prefix of the data items holding actions queued out of reach. */
   const val QUEUED = "/ischys/queued"
-  /** Watch → phone. `{metrics, hr, cal}`. */
+  /** Watch → phone. `{metrics, hr, cal}`: a message, sent only while the phone is in reach. */
   const val METRICS = "/ischys/metrics"
 
   /** Advertised by this app (res/values/wear.xml). */

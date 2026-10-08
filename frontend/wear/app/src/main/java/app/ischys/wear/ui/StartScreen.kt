@@ -43,10 +43,12 @@ import app.ischys.wear.logic.UiState
  * start an empty workout. Every tap starts this Watch's session and asks the
  * phone to begin; the phone pushes back the state that moves to the session.
  *
- * Three states beyond the happy path: no routines (a dashed box), phone not
+ * Four states beyond the happy path: no routines (a dashed box), phone not
  * reachable (a warning chip, dimmed rows, and an Empty Workout that stays
- * enabled), and handing off (the tapped row holds a spinner while the phone
- * spins the workout up; the others dim).
+ * enabled), phone in reach but Ischys not running on it (the same chip,
+ * asking for it to be opened: nothing can be started there until it is), and
+ * handing off (the tapped row holds a spinner while the phone spins the
+ * workout up; the others dim).
  */
 @Composable
 fun StartScreen(ui: UiState) {
@@ -66,7 +68,11 @@ fun StartScreen(ui: UiState) {
   ) {
     item { TitleRow() }
     // An unreachable phone is urgent, so the status moves up top as a warning.
-    if (!ui.phoneReachable) item { UnreachableChip() }
+    if (!ui.phoneReachable) {
+      item { WarningChip("Phone not reachable") }
+    } else if (ui.phoneAppClosed) {
+      item { WarningChip("Open Ischys on phone") }
+    }
     item { EmptyCard(ui.phoneReachable, handingOff) }
     item {
       Text(
@@ -90,7 +96,7 @@ fun StartScreen(ui: UiState) {
       }
     }
     // The reassuring footer only earns its place when reachable and idle.
-    if (ui.phoneReachable && !handingOff) item { SyncedChip() }
+    if (ui.phoneReachable && !ui.phoneAppClosed && !handingOff) item { SyncedChip() }
   }
 }
 
@@ -104,7 +110,7 @@ private fun TitleRow() {
 }
 
 @Composable
-private fun UnreachableChip() {
+private fun WarningChip(text: String) {
   val shape = RoundedCornerShape(12.s())
   Row(
     Modifier
@@ -117,7 +123,7 @@ private fun UnreachableChip() {
   ) {
     GlyphIcon(Glyph.WARNING, Ischys.warning, 10.s())
     Spacer(Modifier.width(5.s()))
-    Text("Phone not reachable", style = Ischys.mono(8.5.t(), Color(0xFFFFD98A)))
+    Text(text, style = Ischys.mono(8.5.t(), Color(0xFFFFD98A)), maxLines = 1)
   }
 }
 

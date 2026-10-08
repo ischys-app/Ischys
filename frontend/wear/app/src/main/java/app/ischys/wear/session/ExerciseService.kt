@@ -36,6 +36,7 @@ import androidx.wear.phone.interactions.notifications.BridgingManager
 import app.ischys.wear.MainActivity
 import app.ischys.wear.R
 import app.ischys.wear.WorkoutModel
+import app.ischys.wear.link.LinkLog
 import app.ischys.wear.link.PhoneLink
 import app.ischys.wear.logic.Wire
 import kotlin.math.roundToInt
@@ -221,6 +222,7 @@ class ExerciseService : Service() {
     // A session that lasted under 3s is a phantom — a start immediately
     // dropped — and a discard keeps nothing. Neither is reported.
     val tooShort = started == null || ended - started < MIN_SESSION_MS
+    LinkLog.d { "session end discard=$discard tooShort=$tooShort hrCount=$hrCount hrMax=$hrMax cal=$lastCal" }
     if (!discard && !tooShort && started != null) {
       val avg = if (hrCount > 0) (hrSum.toDouble() / hrCount).roundToInt() else 0
       PhoneLink.send(Wire.sessionMetrics(started, ended, avg, hrMax, lastCal))
@@ -337,6 +339,7 @@ class ExerciseService : Service() {
         Log.w(TAG, "session not started from the background", e)
         false
       }
+      LinkLog.d { "session start fromPhone=$fromPhone started=$started maySense=${maySense(context)}" }
       if (started) {
         context.getSystemService(NotificationManager::class.java).cancel(START_NOTIFICATION_ID)
       } else if (fromPhone) {

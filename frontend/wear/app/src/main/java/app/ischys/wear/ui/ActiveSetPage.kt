@@ -143,6 +143,16 @@ fun ActiveSetPage(ui: UiState, active: Boolean) {
 // and the system clock is drawn above this row.
 @Composable
 private fun StatusRow(ui: UiState) {
+  // Nothing tapped here takes effect until the phone app is opened, which
+  // matters more than the heart rate (still on the Metrics page).
+  if (ui.phoneReachable && ui.phoneAppClosed) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      GlyphIcon(Glyph.WARNING, Ischys.warning, 8.5.s())
+      Spacer(Modifier.width(3.s()))
+      Text("Open Ischys on phone", style = Ischys.mono(8.5.t(), Ischys.warning), maxLines = 1)
+    }
+    return
+  }
   Row(verticalAlignment = Alignment.CenterVertically) {
     GlyphIcon(Glyph.HEART, Ischys.error, 8.5.s())
     Spacer(Modifier.width(3.s()))

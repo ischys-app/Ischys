@@ -1,8 +1,12 @@
 package app.ischys.wearlink
 
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import com.google.android.gms.wearable.DataClient
+import com.google.android.gms.wearable.PutDataRequest
+import com.google.android.gms.wearable.Wearable
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,6 +30,8 @@ internal object WearLinkHub {
   private var emit: ((event: String, body: Map<String, Any?>) -> Unit)? = null
   /** False until JS first drains, which is the only proof a listener exists. */
   private var jsListening = false
+  /** The queued data items already handed over (see `RecentSet`). */
+  private val handledItems = RecentSet()
 
   /** The module came up: there is a React app to emit to once it listens. */
   fun attach(emitter: (event: String, body: Map<String, Any?>) -> Unit) = synchronized(lock) {
@@ -48,6 +54,7 @@ internal object WearLinkHub {
     val stored = prefs.getString(KEY_PENDING, null) ?: return emptyList()
     prefs.edit().remove(KEY_PENDING).apply()
     val pending = JSONArray(stored)
+    WearLog.d { "JS drained ${pending.length()} buffered action(s)" }
     List(pending.length()) { pending.getString(it) }
   }
 
@@ -68,7 +75,9 @@ internal object WearLinkHub {
         main.post { emitter("onWatchAction", mapOf("json" to json)) }
         return false
       }
-      return when (PendingActions.fate(action, appRunning = emitter != null)) {
+      val fate = PendingActions.fate(action, appRunning = emitter != null)
+      WearLog.d { "no JS listening: $fate ${action.optString("action")}" }
+      return when (fate) {
         PendingActions.Fate.REFUSE -> true
         PendingActions.Fate.DROP -> false
         PendingActions.Fate.BUFFER -> {
@@ -80,6 +89,50 @@ internal object WearLinkHub {
         }
       }
     }
+  }
+
+  /**
+   * An action the Watch queued while out of reach, as the data item it wrote.
+   * Handed over once, then deleted: left in place it would be handed over
+   * again whenever the Data Layer next syncs. A queued finish never carries an
+   * id, so there is nothing to refuse.
+   */
+  fun onQueued(context: Context, item: Uri, json: String) {
+    if (handledItems.add(item.toString())) onAction(context, json)
+    Wearable.getDataClient(context.applicationContext).deleteDataItems(item)
+  }
+
+  /**
+   * Hands over every queued action still sitting in the Data Layer, then calls
+   * `done`. Made when the app opens, before JS drains.
+   *
+   * The Data Layer announces a queued item once, when it syncs. If that was
+   * missed — the listener could not be started, or the process died between
+   * being told and writing the action down — nothing would ever look at the
+   * item again, and a workout finished on the wrist would stay active here.
+   * It also clears the live-metrics item an older Watch build left behind.
+   */
+  fun sweep(context: Context, done: () -> Unit) {
+    val app = context.applicationContext
+    val data = Wearable.getDataClient(app)
+    // No host: items from any node.
+    val anyNode = Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME)
+    data.deleteDataItems(anyNode.path(WearPaths.METRICS).build())
+    data.getDataItems(anyNode.path(WearPaths.QUEUED).build(), DataClient.FILTER_PREFIX)
+      .addOnSuccessListener { items ->
+        try {
+          WearLog.d { "swept ${items.count} queued item(s)" }
+          for (item in items) {
+            val json = item.data?.let { String(it, Charsets.UTF_8) } ?: continue
+            onQueued(app, item.uri, json)
+          }
+        } finally {
+          items.release()
+          done()
+        }
+      }
+      // No Google Play services, or no Wear OS app on the phone: nothing queued.
+      .addOnFailureListener { done() }
   }
 
   /** Live heart rate and calories. Only worth anything to a listener there now. */

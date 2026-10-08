@@ -1,6 +1,7 @@
 import { Platform, requireOptionalNativeModule } from 'expo-modules-core';
 
 import { parseAction } from './parseAction.ts';
+import { createPushGate } from './pushGate.ts';
 
 /**
  * The phone's end of the link to the Wear OS companion (the app in `wear/`).
@@ -66,10 +67,16 @@ export function stopWorkout(discard: boolean): void {
   }
 }
 
-/** Pushes the latest workout state to the Watch. */
+const worthSending = createPushGate();
+
+/**
+ * Pushes the latest workout state to the Watch — unless all that changed is a
+ * rest countdown the Watch keeps for itself (see pushGate.ts).
+ */
 export function updateState(state: Record<string, unknown>): void {
+  if (!native || !worthSending(state)) return;
   try {
-    native?.updateState(JSON.stringify(state));
+    native.updateState(JSON.stringify(state));
   } catch {
     // As above.
   }

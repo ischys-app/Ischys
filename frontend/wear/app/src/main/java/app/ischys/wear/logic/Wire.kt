@@ -15,17 +15,20 @@ import org.json.JSONObject
  * (modules/wear-link/android/.../WearPaths.kt). Change the two together.
  */
 object Wire {
-  /** Phone → Watch. The latest state: a live message and a data item both. */
+  /** Phone → Watch. The latest state: a message, or a data item when out of reach. */
   const val PATH_STATE = "/ischys/state"
   /** Phone → Watch. `{cmd: start|stop|discard}`: a message, or a data item when queued. */
   const val PATH_COMMAND = "/ischys/command"
-  /** Phone → Watch. `{finishId}`: the phone app is not running to answer a finish. */
+  /**
+   * Phone → Watch. The phone app is not running to act on what was sent:
+   * `{finishId}` for a finish, `{action}` for a start or a request for state.
+   */
   const val PATH_UNDELIVERABLE = "/ischys/undeliverable"
   /** Watch → phone. One action, live. */
   const val PATH_ACTION = "/ischys/action"
   /** Watch → phone. Prefix of the data items holding actions queued while out of reach. */
   const val PATH_QUEUED = "/ischys/queued"
-  /** Watch → phone. `{metrics, hr, cal}`: a message, or a data item when out of reach. */
+  /** Watch → phone. `{metrics, hr, cal}`: a message, sent only while the phone is in reach. */
   const val PATH_METRICS = "/ischys/metrics"
 
   /** Advertised by the phone app; how the Watch knows the phone is in reach. */

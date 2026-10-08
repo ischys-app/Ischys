@@ -10,7 +10,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 import * as Health from '../../modules/health';
-import { uploadHeartRate } from '../api/workouts';
+import { listWorkouts, uploadHeartRate } from '../api/workouts';
 import {
   getWorkoutHealthEntry,
   healthEntryHeldByAnother,
@@ -30,7 +30,15 @@ import {
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
 import { watchSaveWaitMs } from './watchFinish';
+import { parseServerDate } from './serverTime';
 import { createWatchSaveLog } from './watchSave';
+import {
+  createWearSessionLog,
+  parseWearSession,
+  WEAR_SESSION_WAIT_MS,
+  withWearSession,
+  workoutForSession,
+} from './wearSession';
 
 // Plausible human heart-rate bounds. A stray sample outside this range is
 // dropped rather than persisted.
@@ -95,7 +103,56 @@ let watchSaveListening = false;
 export function ensureWatchSaveListener(): void {
   if (watchSaveListening) return;
   watchSaveListening = true;
-  Health.addWatchActionListener((a) => watchSaves.note(a));
+  Health.addWatchActionListener((a) => {
+    watchSaves.note(a);
+    noteWearSession(a);
+  });
+}
+
+// What a Wear OS watch's session measured (wearSession.ts): the counterpart of
+// the Apple Watch's save confirmation above, heard by the same listener.
+const wearSessions = createWearSessionLog();
+
+/**
+ * Takes in a Wear OS watch's `sessionMetrics`; ignores every other action.
+ *
+ * Recorded, for a finish that is waiting to write the workout to Health
+ * Connect with its energy; and its heart rate stored on the workout at once.
+ * At once, because the finish is not always there to do it: the numbers can
+ * arrive after the finish has stopped waiting, before a finish that has not
+ * happened yet, or at a launch with the workout long over.
+ */
+function noteWearSession(a: Health.WatchAction): void {
+  const session = parseWearSession(a);
+  if (!session) return;
+  wearSessions.note(session);
+  if (session.avgHr == null || session.maxHr == null) return;
+  const hr = { avg_hr: session.avgHr, max_hr: session.maxHr };
+  void (async () => {
+    try {
+      if (!prefOn(await SecureStore.getItemAsync(HEALTH_KEYS.readHR))) return;
+      // Whatever its status: the Watch can end before the phone has finished.
+      const recent = await listWorkouts({ limit: 20 });
+      const id = workoutForSession(
+        session,
+        recent
+          .filter((w) => w.status !== 'discarded')
+          .map((w) => ({
+            id: w.id,
+            startedAt: parseServerDate(w.started_at),
+            // A finished workout ended its length after it began.
+            endedAt:
+              w.status === 'active'
+                ? null
+                : parseServerDate(w.started_at) + w.duration_seconds * 1000,
+          })),
+        Date.now(),
+      );
+      if (id) await uploadHeartRate(id, hr);
+    } catch {
+      // The workout is stored either way; it just carries no heart rate.
+    }
+  })();
 }
 
 /**
@@ -128,8 +185,16 @@ export async function syncFinishedWorkout(
    *  Watch that was told to stop, or stopped itself, so the wait for its
    *  confirmation is longer (`watchSaveWaitMs`). */
   watchAwaitsOutcome = false,
+  /** True when a Wear OS watch recorded the session. It saves nothing itself:
+   *  it sends what it measured, and this waits a moment for that so the entry
+   *  the phone writes carries the energy (`noteWearSession` has stored the
+   *  heart rate by then, connected to Health or not). */
+  wearWasActive = false,
 ): Promise<void> {
   try {
+    // Before anything else, and whether or not Health is connected: the
+    // numbers arrive about now and must not be missed.
+    if (wearWasActive) ensureWatchSaveListener();
     if (!Health.isAvailable()) return;
     // Begin listening for the Watch's save confirmation immediately, before any
     // await, so a fast confirmation can't slip past while we read prefs/metrics.
@@ -147,7 +212,13 @@ export async function syncFinishedWorkout(
     ]);
     if (connected !== '1') return;
 
-    const metrics = await Health.readWorkoutMetrics(startedAtMs, endedAtMs);
+    const wearSession = wearWasActive
+      ? await wearSessions.wait(startedAtMs, endedAtMs, WEAR_SESSION_WAIT_MS)
+      : null;
+    const metrics = withWearSession(
+      await Health.readWorkoutMetrics(startedAtMs, endedAtMs),
+      wearSession,
+    );
 
     // Honest read-receipts: HealthKit hides read grants, so the Health screen
     // shows when data last actually ARRIVED instead of a fake granted/denied.
@@ -441,6 +512,8 @@ export async function consumeWatchActions(): Promise<{
   ensureWatchSaveListener();
   const actions = await Health.consumeWatchActions();
   watchSaves.noteDrained(actions, heardAt);
+  // A Wear OS watch's numbers for a session that ended with the app closed.
+  for (const a of actions) noteWearSession(a);
   return { actions, heardAt };
 }
 

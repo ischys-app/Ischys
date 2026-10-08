@@ -13,6 +13,11 @@ data class UiState(
   val phoneReachable: Boolean = true,
   /** The routine just tapped, while the phone spins the workout up. */
   val pendingRoutineId: String? = null,
+  /**
+   * The phone is in reach but Ischys is not running on it, so it cannot list
+   * routines or start a workout. Until the phone next pushes anything.
+   */
+  val phoneAppClosed: Boolean = false,
 
   // Active Set. `weight`/`reps` are editable here, seeded by the phone and
   // sent back on Log Set.
@@ -191,7 +196,34 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
 
   fun setPaused(paused: Boolean) = update { it.copy(paused = paused) }
 
-  fun setPhoneReachable(reachable: Boolean) = update { it.copy(phoneReachable = reachable) }
+  /**
+   * The phone came into reach or went out of it. Back in reach, the state is
+   * asked for: whatever the phone pushed in between was never delivered, and
+   * the wrist would go on showing the set it had when the link dropped. Out
+   * of reach, whether the phone app is open is no longer the thing to say.
+   */
+  fun setPhoneReachable(reachable: Boolean) {
+    val regained = reachable && !ui.phoneReachable
+    update {
+      it.copy(phoneReachable = reachable, phoneAppClosed = it.phoneAppClosed && reachable)
+    }
+    if (regained) host.requestState()
+  }
+
+  /**
+   * The phone turned `action` away: Ischys is not running on it. Android only
+   * wakes the phone app's listener for a message, not the app, so a workout
+   * cannot be started there from the wrist, a set cannot be logged, and the
+   * routine list cannot be read. Say so; buzz for a tap that did nothing; and
+   * do not leave a session recording for a workout the phone never began.
+   */
+  fun phoneAppClosed(action: String) {
+    update { it.copy(phoneAppClosed = true, pendingRoutineId = null) }
+    // Asked for in the background, not tapped.
+    if (action == "requestState") return
+    host.playFailureHaptic()
+    if (action == "startEmpty" || action == "startRoutine") endSessionOrLeave(discard = true)
+  }
 
   // Clock
 
@@ -362,6 +394,23 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
       if (id != ui.themeId) host.persistTheme(id)
     }
 
+    // The phone has no workout, and says so with its Start screen — while a
+    // session of ours is recording. It ends a workout with a command, which
+    // ends the session too, so this is not that: it is the routine list
+    // answering a request made before the phone began the workout we asked
+    // for, or a phone that never heard of it. Leaving for Start would hide a
+    // session that is still running, with no control left to end it.
+    if (s.screen == WatchScreen.START && host.sessionRunning) {
+      update {
+        it.copy(
+          routines = s.routines ?: it.routines,
+          themeId = s.themeId ?: it.themeId,
+          phoneAppClosed = false,
+        )
+      }
+      return
+    }
+
     // The workout's own start beats our session's.
     val originChanged = s.startedAt != null && s.startedAt != elapsedOrigin
     if (originChanged) elapsedOrigin = s.startedAt
@@ -415,6 +464,8 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
         resting = if (end == null) s.resting else it.resting,
         restRemaining = if (end == null) s.restRemaining else it.restRemaining,
         themeId = s.themeId ?: it.themeId,
+        // Anything pushed means the phone app is running.
+        phoneAppClosed = false,
       )
     }
 

@@ -64,6 +64,7 @@ import {
   tailTotal,
 } from '../../../src/domain/collapseTail';
 import { healthEditLine, type HealthEditState } from '../../../src/domain/healthEntry';
+import { healthCopy } from '../../../src/lib/healthSyncPlatform';
 import {
   addExercise,
   addSet,
@@ -736,7 +737,7 @@ export default function EditWorkout() {
               durationSeconds: stored.durationSeconds,
               endedAt: stored.endedAt,
             }}
-            healthLine={health ? healthEditLine(health) : null}
+            healthLine={health ? healthEditLine(health, healthCopy(Platform.OS).name) : null}
             onDone={(when) => {
               edit((s) => setWhen(s, when));
               setWhenField(null);

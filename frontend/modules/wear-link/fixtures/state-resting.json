@@ -1,0 +1,32 @@
+{
+  "themeId": "volt",
+  "screen": "session",
+  "startedAt": 1760000000000,
+  "routineName": "Push Day",
+  "exerciseName": "Bench Press",
+  "equipment": "Barbell",
+  "supersetLabel": "",
+  "setNum": 3,
+  "setCount": 3,
+  "weight": "102.5",
+  "reps": "6",
+  "prevWeight": "97.5",
+  "prevReps": "8",
+  "setDots": [
+    "done",
+    "done",
+    "active"
+  ],
+  "resting": true,
+  "restRemaining": 90,
+  "restTotal": 120,
+  "restEndsAt": 1760000900000,
+  "restAlerts": true,
+  "nextSetLabel": "Next: Set 3 of 3",
+  "unit": "lb",
+  "volume": 800,
+  "setsDone": 2,
+  "setsTotal": 5,
+  "currentExerciseId": "e1",
+  "currentSetId": "s3"
+}

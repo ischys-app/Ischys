@@ -1,0 +1,8 @@
+{
+  "name": "wear-link",
+  "version": "0.1.0",
+  "description": "The phone's end of the link to the Ischys Wear OS companion",
+  "main": "index.ts",
+  "author": "Ischys",
+  "license": "MIT"
+}

@@ -1,6 +1,8 @@
 /**
- * Apple Health screen — Settings-adjacent surface that manages the Apple Health
- * integration. Two visual states driven by a local `connected` boolean persisted
+ * Health screen — Settings-adjacent surface that manages the Health
+ * integration: Apple Health on iOS, Health Connect on Android. The wording and
+ * what is known about permissions differ between the two, and both live in
+ * src/lib/healthSyncPlatform.ts. Two visual states driven by a local `connected` boolean persisted
  * in SecureStore under `ischys.healthConnected`.
  *
  * Source of truth: design-handoff/design_handoff_release2/boards/Health
@@ -13,15 +15,19 @@
  * splits into two sections: ISCHYS WRITES (real Allowed/Denied) and ISCHYS ASKS
  * HEALTH FOR (the reads, with receipts). Green now lives only on receipts.
  *
- * The real HealthKit binding is guarded behind a dynamic import so this screen
- * renders (and toggles work) on Android / simulators / dev clients that don't
- * ship a native HealthKit module.
+ * Android (Health Connect) reports every grant, reads included. There a read
+ * row can also say "not allowed", and the write row's status is the real one.
+ *
+ * The native binding is optional, so this screen renders (and toggles work) on
+ * simulators and dev clients that don't ship it.
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  AppState,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -35,12 +41,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackChevronIcon, HeartFilledIcon, ShieldIcon } from '../src/components/icons';
 import { fmtAgo, parseIso } from '../src/lib/format';
+import {
+  availability,
+  getPermissions,
+  openProviderListing,
+  openSettings,
+} from '../modules/health';
 import { connectHealth, isHealthAvailable } from '../src/lib/healthSync';
+import { healthCopy, readRowKind, readsAllowed } from '../src/lib/healthSyncPlatform';
 import {
   clearReadReceipts,
   getReadReceipt,
   getWriteStatus,
-  receiptKind,
   type ReadPref,
   type Receipt,
   type WriteStatus,
@@ -77,36 +89,15 @@ const DEFAULT_PREFS: Record<PrefKey, boolean> = {
   readBody: true,
 };
 
+const ANDROID = Platform.OS === 'android';
+const copy = healthCopy(Platform.OS);
+
 // A read row's static copy. `offDesc` shows (no status colour) when the switch
 // is off; `explainer` is the in-place box revealed on an uncertain row.
-const READ_ROWS: {
-  pref: ReadPref;
-  label: string;
-  offDesc: string;
-  explainer: string;
-}[] = [
-  {
-    pref: 'readHR',
-    label: 'Heart rate',
-    offDesc: 'Live BPM from an Apple Watch',
-    explainer:
-      "This means one of two things, and iOS won't say which: Health is holding the data back, or nothing has recorded any yet. Heart rate needs an Apple Watch worn during the session.",
-  },
-  {
-    pref: 'readEnergy',
-    label: 'Active energy',
-    offDesc: 'Calories burned per session',
-    explainer:
-      "This means one of two things, and iOS won't say which: Health is holding the data back, or nothing has recorded any yet. Active energy needs an Apple Watch worn during the session.",
-  },
-  {
-    pref: 'readBody',
-    label: 'Waist and body fat',
-    offDesc: 'Into your measurement history',
-    explainer:
-      "These are the only body measurements HealthKit has a type for — the rest of your measurements are logged here and stay here. Nothing is written back to Health.",
-  },
-];
+const READ_ROWS = (['readHR', 'readEnergy', 'readBody'] as const).map((pref) => ({
+  pref,
+  ...copy.reads[pref],
+}));
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -118,10 +109,17 @@ function fmtAsked(iso: string | null): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
-/** iOS can't deep-link a specific Health page; this at least opens the app. */
+/**
+ * Neither platform can deep-link Ischys's own page; this at least opens the
+ * Health app, or Health Connect.
+ */
 function openHealthApp() {
+  if (ANDROID) {
+    openSettings();
+    return;
+  }
   Linking.openURL('x-apple-health://').catch(() => {
-    // Best-effort — Health may be unavailable (simulator / Android).
+    // Best-effort — Health may be unavailable (simulator).
   });
 }
 
@@ -138,6 +136,8 @@ export default function Health() {
     readBody: null,
   });
   const [writeStatus, setWriteStatus] = useState<WriteStatus>('allowed');
+  // Per read row: allowed, refused, or null where the platform won't say (iOS).
+  const [allowed, setAllowed] = useState(readsAllowed(null));
   const [workoutsWritten, setWorkoutsWritten] = useState<number>(0);
   const [lastSyncIso, setLastSyncIso] = useState<string | null>(null);
 
@@ -177,6 +177,23 @@ export default function Health() {
     };
   }, []);
 
+  // Android: what Health Connect says is allowed, asked on arrival and again
+  // whenever the app returns to the front — the user changes it over there.
+  const refreshGrants = async () => {
+    const grants = await getPermissions();
+    if (!grants) return;
+    setAllowed(readsAllowed(grants));
+    setWriteStatus(grants.writeWorkouts ? 'allowed' : 'denied');
+  };
+  useEffect(() => {
+    if (!ANDROID || !loaded) return;
+    void refreshGrants();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshGrants();
+    });
+    return () => sub.remove();
+  }, [loaded]);
+
   const persistConnected = async (v: boolean) => {
     setConnectedState(v);
     if (v) {
@@ -207,33 +224,54 @@ export default function Health() {
     ]);
     setPrefsState(DEFAULT_PREFS);
     setReceipts({ readHR: null, readEnergy: null, readBody: null });
-    setWriteStatus('allowed');
+    if (!ANDROID) setWriteStatus('allowed');
     setWorkoutsWritten(0);
     setLastSyncIso(null);
   };
 
   const onConnect = async () => {
-    if (!isHealthAvailable()) {
+    // Android 13 and earlier: Health Connect is an app, and may not be there.
+    if (availability() === 'needsProvider') {
       Alert.alert(
-        'Not available',
-        'Apple Health needs a device build with HealthKit — it is not available on the simulator or on Android.',
+        'Health Connect needed',
+        'Install or update Health Connect from Google Play, then come back here to connect.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Get Health Connect', onPress: () => void openProviderListing() },
+        ],
       );
       return;
     }
-    // Real HealthKit prompt. The user answering does not tell us what they
-    // granted for reads (HealthKit hides read grants), so afterwards the screen
-    // shows what data actually arrives instead of a permission list.
+    if (!isHealthAvailable()) {
+      Alert.alert('Not available', copy.unavailable);
+      return;
+    }
+    // The system's own prompt. On iOS the user answering does not tell us what
+    // they granted for reads (HealthKit hides read grants), so afterwards the
+    // screen shows what data actually arrives instead of a permission list.
     const ok = await connectHealth();
     if (ok) {
       setConnectedState(true);
       setLastSyncIso(new Date().toISOString());
+      if (ANDROID) void refreshGrants();
+    } else if (ANDROID) {
+      // Nothing was allowed. Android stops showing its screen after two
+      // refusals, so point at the place where it can still be changed.
+      Alert.alert(
+        'Nothing allowed yet',
+        'Ischys connects once you allow at least one thing. You can also allow them in Health Connect.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Health Connect', onPress: () => void openSettings() },
+        ],
+      );
     }
   };
 
   const onDisconnect = () => {
     Alert.alert(
-      'Disconnect Apple Health',
-      'Ischys will stop reading and writing Health data. Any records already written stay in Health.',
+      `Disconnect ${copy.name}`,
+      copy.disconnectBody,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -265,7 +303,7 @@ export default function Health() {
         >
           <BackChevronIcon color={color.text2} strokeWidth={2.2} />
         </Pressable>
-        <Text style={styles.title} numberOfLines={1}>Apple Health</Text>
+        <Text style={styles.title} numberOfLines={1}>{copy.name}</Text>
       </View>
 
       <ScrollView
@@ -285,6 +323,7 @@ export default function Health() {
             workoutsWritten={workoutsWritten}
             prefs={prefs}
             receipts={receipts}
+            allowed={allowed}
             writeStatus={writeStatus}
             onTogglePref={setPref}
             onDisconnect={onDisconnect}
@@ -320,31 +359,32 @@ function Disconnected({ onConnect }: { onConnect: () => void }) {
       <View style={styles.discHero}>
         <HeartFilledIcon size={34} color={color.error} />
       </View>
-      <Text style={styles.discTitle}>Apple Health</Text>
-      <Text style={styles.discCopy}>
-        Save finished workouts as Traditional Strength Training, and read heart
-        rate and calories live from your Apple Watch.
-      </Text>
+      <Text style={styles.discTitle}>{copy.name}</Text>
+      <Text style={styles.discCopy}>{copy.intro}</Text>
 
-      {/* Sets the expectation before iOS takes over the permission sheet. */}
+      {/* Sets the expectation before the system takes over the permission sheet. */}
       <View style={styles.nextCard}>
         <Text style={styles.nextLabel}>WHAT HAPPENS NEXT</Text>
-        <Text style={styles.nextBody}>
-          iOS asks you, not us. Ischys is told whether it may{' '}
-          <Text style={styles.nextEmph}>write</Text>, but never whether it may{' '}
-          <Text style={styles.nextEmph}>read</Text> — so afterwards this screen
-          shows what data actually arrives instead of a permission list.
-        </Text>
+        {ANDROID ? (
+          <Text style={styles.nextBody}>{copy.next}</Text>
+        ) : (
+          <Text style={styles.nextBody}>
+            iOS asks you, not us. Ischys is told whether it may{' '}
+            <Text style={styles.nextEmph}>write</Text>, but never whether it may{' '}
+            <Text style={styles.nextEmph}>read</Text> — so afterwards this screen
+            shows what data actually arrives instead of a permission list.
+          </Text>
+        )}
       </View>
 
       <Pressable
         onPress={onConnect}
         style={({ pressed }) => [styles.connectBtn, pressed && styles.connectBtnPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Connect Apple Health"
+        accessibilityLabel={copy.connect}
       >
         <HeartFilledIcon size={17} color={color.accentFg} />
-        <Text style={styles.connectBtnText}>Connect Apple Health</Text>
+        <Text style={styles.connectBtnText}>{copy.connect}</Text>
       </Pressable>
 
       <View style={styles.privacyRow}>
@@ -363,6 +403,7 @@ function Connected({
   workoutsWritten,
   prefs,
   receipts,
+  allowed,
   writeStatus,
   onTogglePref,
   onDisconnect,
@@ -372,6 +413,7 @@ function Connected({
   workoutsWritten: number;
   prefs: Record<PrefKey, boolean>;
   receipts: Record<ReadPref, Receipt | null>;
+  allowed: Record<ReadPref, boolean | null>;
   writeStatus: WriteStatus;
   onTogglePref: (k: PrefKey, next: boolean) => void;
   onDisconnect: () => void;
@@ -392,8 +434,8 @@ function Connected({
           <HeartFilledIcon size={17} color={color.error} />
         </View>
         <View style={styles.statusTextCol}>
-          <Text style={styles.statusTitle}>Linked to Apple Health</Text>
-          <Text style={styles.statusSub}>This iPhone · asked {askedLabel}</Text>
+          <Text style={styles.statusTitle}>Linked to {copy.name}</Text>
+          <Text style={styles.statusSub}>{copy.device} · asked {askedLabel}</Text>
         </View>
       </View>
 
@@ -406,7 +448,7 @@ function Connected({
             <View style={styles.statusLine}>
               <View style={[styles.statusDot, { backgroundColor: denied ? color.error : color.success }]} />
               <Text style={[styles.statusText, { color: denied ? color.error : color.success }]}>
-                {denied ? 'Denied in Health' : 'Allowed in Health'}
+                {denied ? copy.writeDenied : copy.writeAllowed}
               </Text>
             </View>
           </View>
@@ -417,16 +459,13 @@ function Connected({
         {denied && (
           <View style={styles.explainerBlockLast}>
             <View style={styles.explainerBox}>
-              <Text style={styles.explainerText}>
-                Health is blocking writes, so finished workouts aren't being
-                saved there. Only you can change this — Ischys can't ask again.
-              </Text>
+              <Text style={styles.explainerText}>{copy.writeDeniedExplainer}</Text>
               <Pressable
                 onPress={openHealthApp}
                 style={({ pressed }) => [styles.explainerCta, pressed && styles.pressedDim]}
                 accessibilityRole="link"
               >
-                <Text style={styles.explainerCtaText}>Open Health → Sharing → Ischys</Text>
+                <Text style={styles.explainerCtaText}>{copy.writeDeniedCta}</Text>
                 <ExternalLinkIcon size={12} color={color.accent} />
               </Pressable>
             </View>
@@ -440,10 +479,7 @@ function Connected({
       {/* ISCHYS ASKS HEALTH FOR — reads, with the plain-words caveat. */}
       <View style={styles.readsHead}>
         <Text style={styles.sectionLabelBare}>ISCHYS ASKS HEALTH FOR</Text>
-        <Text style={styles.readsNote}>
-          iOS never tells apps whether a read was allowed. These choose what
-          Ischys asks for — Health decides what it returns.
-        </Text>
+        <Text style={styles.readsNote}>{copy.readsNote}</Text>
       </View>
       <Animated.View style={styles.card} layout={LinearTransition.springify().mass(0.55)}>
         {READ_ROWS.map((r, i) => (
@@ -454,6 +490,7 @@ function Connected({
             explainer={r.explainer}
             enabled={prefs[r.pref]}
             receipt={receipts[r.pref]}
+            allowed={allowed[r.pref]}
             expanded={expanded[r.pref]}
             onToggleExpand={() => setExpanded((e) => ({ ...e, [r.pref]: !e[r.pref] }))}
             onTogglePref={(next) => onTogglePref(r.pref, next)}
@@ -465,9 +502,7 @@ function Connected({
       {/* Privacy reassurance (H2). */}
       <View style={styles.shieldRow}>
         <ShieldIcon size={15} color={color.text3} />
-        <Text style={styles.shieldNote}>
-          Health data stays on this device. Ischys reads only what it writes back.
-        </Text>
+        <Text style={styles.shieldNote}>{copy.privacyNote}</Text>
       </View>
 
       {/* Stats block. */}
@@ -489,9 +524,9 @@ function Connected({
         onPress={onDisconnect}
         style={({ pressed }) => [styles.disconnectBtn, pressed && styles.disconnectBtnPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Disconnect Apple Health"
+        accessibilityLabel={`Disconnect ${copy.name}`}
       >
-        <Text style={styles.disconnectBtnText}>Disconnect Apple Health</Text>
+        <Text style={styles.disconnectBtnText}>Disconnect {copy.name}</Text>
       </Pressable>
     </View>
   );
@@ -505,6 +540,7 @@ function ReadRow({
   explainer,
   enabled,
   receipt,
+  allowed,
   expanded,
   onToggleExpand,
   onTogglePref,
@@ -515,13 +551,16 @@ function ReadRow({
   explainer: string;
   enabled: boolean;
   receipt: Receipt | null;
+  /** Null where the platform never says (iOS). */
+  allowed: boolean | null;
   expanded: boolean;
   onToggleExpand: () => void;
   onTogglePref: (next: boolean) => void;
   isLast: boolean;
 }) {
-  const kind = receiptKind(receipt, enabled);
-  const uncertain = kind === 'nothing';
+  const kind = readRowKind(receipt, enabled, allowed);
+  // A refused read (Android) explains itself the same way an empty one does.
+  const uncertain = kind === 'nothing' || kind === 'denied';
 
   // The switch always flips intent. Tapping the row body opens the explainer
   // when uncertain (the switch is already on, so the actionable thing is to
@@ -538,6 +577,13 @@ function ReadRow({
         <Text style={[styles.statusText, { color: color.success }]}>
           Receiving · {receipt?.value} last session
         </Text>
+      </View>
+    );
+  } else if (kind === 'denied') {
+    receiptNode = (
+      <View style={styles.statusLine}>
+        <View style={[styles.statusDot, { backgroundColor: color.error }]} />
+        <Text style={[styles.statusText, { color: color.error }]}>{copy.readDenied}</Text>
       </View>
     );
   } else {
@@ -572,13 +618,15 @@ function ReadRow({
           style={[styles.explainerBlock, !isLast && styles.rowDivider]}
         >
           <View style={styles.explainerBox}>
-            <Text style={styles.explainerTextSecondary}>{explainer}</Text>
+            <Text style={styles.explainerTextSecondary}>
+              {kind === 'denied' ? copy.readDeniedExplainer : explainer}
+            </Text>
             <Pressable
               onPress={openHealthApp}
               style={({ pressed }) => [styles.explainerCta, pressed && styles.pressedDim]}
               accessibilityRole="link"
             >
-              <Text style={styles.explainerCtaText}>Check in the Health app</Text>
+              <Text style={styles.explainerCtaText}>{copy.checkCta}</Text>
               <ExternalLinkIcon size={12} color={color.accent} />
             </Pressable>
           </View>

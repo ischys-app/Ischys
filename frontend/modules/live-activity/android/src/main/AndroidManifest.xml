@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Android 16 Live Updates: lets the workout notification be promoted to a
+         status-bar chip (the Now Bar on Samsung). Granted at install; the user
+         can switch it off per app, and the notification then stays an ordinary
+         ongoing one. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
+
+    <application>
+        <!-- Not exported: only this app's own PendingIntents reach it, which the
+             system delivers on the app's behalf. It handles the notification's
+             buttons, its dismissal, and the alarm at the end of a rest. -->
+        <receiver
+            android:name=".WorkoutNotificationReceiver"
+            android:exported="false"/>
+    </application>
+</manifest>

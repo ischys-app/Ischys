@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.ischys'
+version = '0.1.0'
+
+android {
+  namespace "app.ischys.wearlink"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  // The Wearable Data Layer. The Wear OS app (../../wear) uses the same version.
+  implementation 'com.google.android.gms:play-services-wearable:19.0.0'
+
+  testImplementation 'junit:junit:4.13.2'
+  // android.jar's org.json is stubs on the JVM.
+  testImplementation 'org.json:json:20240303'
+}

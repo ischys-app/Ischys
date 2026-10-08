@@ -1,7 +1,7 @@
 {
   "name": "health",
   "version": "0.1.0",
-  "description": "Writes Ischys workouts to Apple Health",
+  "description": "Ischys workouts in Apple Health and Health Connect, and the watch link",
   "main": "index.ts",
   "author": "Ischys",
   "license": "MIT"

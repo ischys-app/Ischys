@@ -1,0 +1,7 @@
+<resources>
+    <!-- Advertised over the Data Layer so the Watch knows the phone app is
+         installed and in reach. Must match WearPaths.CAPABILITY_PHONE. -->
+    <string-array name="android_wear_capabilities">
+        <item>ischys_phone</item>
+    </string-array>
+</resources>

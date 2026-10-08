@@ -1,0 +1,18 @@
+{
+  "themeId": "ember",
+  "screen": "start",
+  "routines": [
+    {
+      "id": "r1",
+      "name": "Push Day",
+      "initials": "PD",
+      "exerciseCount": 5
+    },
+    {
+      "id": "r2",
+      "name": "Pull Day",
+      "initials": "PL",
+      "exerciseCount": 6
+    }
+  ]
+}

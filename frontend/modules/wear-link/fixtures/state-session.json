@@ -1,0 +1,32 @@
+{
+  "themeId": "ember",
+  "screen": "session",
+  "startedAt": 1760000000000,
+  "routineName": "Push Day",
+  "exerciseName": "Bench Press",
+  "equipment": "Barbell",
+  "supersetLabel": "",
+  "setNum": 2,
+  "setCount": 3,
+  "weight": "100",
+  "reps": "8",
+  "prevWeight": "97.5",
+  "prevReps": "8",
+  "setDots": [
+    "done",
+    "active",
+    "pending"
+  ],
+  "resting": false,
+  "restRemaining": 0,
+  "restTotal": 0,
+  "restEndsAt": 0,
+  "restAlerts": true,
+  "nextSetLabel": "Next: Set 2 of 3",
+  "unit": "kg",
+  "volume": 0,
+  "setsDone": 1,
+  "setsTotal": 5,
+  "currentExerciseId": "e1",
+  "currentSetId": "s2"
+}

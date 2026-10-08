@@ -1,0 +1,20 @@
+[
+  { "action": "logSet", "weight": "102.5", "reps": "6", "unit": "kg" },
+  { "action": "adjustRest", "seconds": -15 },
+  { "action": "skipRest" },
+  { "action": "end" },
+  { "action": "end", "finishId": "finish-1" },
+  { "action": "discard" },
+  { "action": "addSet" },
+  { "action": "startEmpty" },
+  { "action": "startRoutine", "routineId": "r1" },
+  { "action": "requestState" },
+  {
+    "action": "sessionMetrics",
+    "startedAt": 1760000000000,
+    "endedAt": 1760003600000,
+    "avgHr": 121,
+    "maxHr": 164,
+    "cal": 312
+  }
+]

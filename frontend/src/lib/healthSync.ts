@@ -1,5 +1,8 @@
 /**
- * Bridges Ischys workouts to Apple Health.
+ * Bridges Ischys workouts to Health: Apple Health on iOS, Health Connect on
+ * Android. The comments below speak of HealthKit, where all of this began;
+ * the Android module answers the same calls, and where it behaves differently
+ * the comment says so.
  *
  * The Health settings screen and the workout-finish flow both touch these keys,
  * so they live here once rather than in two places that can drift.
@@ -44,17 +47,20 @@ export const HEALTH_KEYS = {
   readEnergy: 'ischys.healthPref.readEnergy',
 } as const;
 
-/** True once HealthKit is present and the user has answered the prompt. */
+/** True when Health exists on this device: HealthKit, or Health Connect. */
 export function isHealthAvailable(): boolean {
   return Health.isAvailable();
 }
 
 /**
- * Shows the HealthKit permission sheet and records that the user connected.
- * Returns false when HealthKit is unavailable (Android, simulator, no build).
+ * Shows the system's Health permission screen and records that the user
+ * connected. Returns false when Health is unavailable (simulator, no build, an
+ * Android without Health Connect).
  *
- * "Connected" means "the user went through the prompt" — HealthKit refuses to
- * report write grants, so we cannot claim more. A denied write just no-ops.
+ * On iOS "connected" means "the user went through the prompt" — HealthKit
+ * hides read grants, so we cannot claim more. A denied write just no-ops. On
+ * Android it means they allowed at least one thing: Health Connect reports
+ * every grant, and allowing nothing leaves nothing to be connected to.
  */
 export async function connectHealth(): Promise<boolean> {
   if (!Health.isAvailable()) return false;
@@ -175,10 +181,14 @@ export async function syncFinishedWorkout(
       const watchUuid = watchSaved ? watchSaves.uuid : null;
       const found =
         watchSaved && watchUuid ? null : await Health.findWorkout(startedAtMs, endedAtMs);
+      // A write Health refuses outright rejects (on Android that includes the
+      // user not allowing it). It must not skip the heart-rate upload below.
       const phoneSaved =
         watchSaved || found
           ? null
-          : await Health.saveWorkout(startedAtMs, endedAtMs, metrics.energyKcal ?? 0);
+          : await Health.saveWorkout(startedAtMs, endedAtMs, metrics.energyKcal ?? 0).catch(
+              () => null,
+            );
       const entry = entryAtFinish({ watchConfirmed: watchSaved, watchUuid, found, phoneSaved });
       if (entry) {
         // Kept with the workout, so an edit to its time knows whether there is
@@ -368,12 +378,16 @@ export async function syncBodyweightFromHealth(): Promise<number | null> {
  * Health and left HR reading on. Best-effort and silent with no Watch.
  */
 export async function startWatchSession(): Promise<void> {
-  if (!Health.isAvailable()) return;
-  const [connected, hrPref] = await Promise.all([
-    SecureStore.getItemAsync(HEALTH_KEYS.connected),
-    SecureStore.getItemAsync(HEALTH_KEYS.readHR),
-  ]);
-  if (connected !== '1' || !prefOn(hrPref)) return;
+  if (!Health.isWatchAvailable()) return;
+  // A Wear OS watch streams over its own link, so it does not wait on a
+  // Health Connect connection the way the Apple Watch waits on HealthKit.
+  if (Health.watchNeedsHealth()) {
+    const [connected, hrPref] = await Promise.all([
+      SecureStore.getItemAsync(HEALTH_KEYS.connected),
+      SecureStore.getItemAsync(HEALTH_KEYS.readHR),
+    ]);
+    if (connected !== '1' || !prefOn(hrPref)) return;
+  }
   Health.startWatchWorkout();
 }
 
@@ -383,7 +397,7 @@ export async function startWatchSession(): Promise<void> {
  * of writing it to Apple Health.
  */
 export function stopWatchSession(opts?: { discard?: boolean }): void {
-  if (Health.isAvailable()) Health.stopWatchWorkout(opts?.discard ?? false);
+  if (Health.isWatchAvailable()) Health.stopWatchWorkout(opts?.discard ?? false);
 }
 
 /**
@@ -394,7 +408,7 @@ export function stopWatchSession(opts?: { discard?: boolean }): void {
  * any extra plumbing.
  */
 export function pushWatchState(state: Record<string, unknown>): void {
-  if (!Health.isAvailable()) return;
+  if (!Health.isWatchAvailable()) return;
   Health.updateWatchState({ themeId: currentThemeId, ...state });
 }
 
@@ -421,7 +435,7 @@ export async function consumeWatchActions(): Promise<{
   // Taken before the drain, which is what turns live delivery on: anything
   // that arrives live from here on is stamped later than this.
   const heardAt = Date.now();
-  if (!Health.isAvailable()) return { actions: [], heardAt };
+  if (!Health.isWatchAvailable()) return { actions: [], heardAt };
   // Listening first, for the same reason: a confirmation sent live the moment
   // the drain returns must find a listener.
   ensureWatchSaveListener();

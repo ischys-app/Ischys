@@ -1,0 +1,48 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The Health Connect client declares minSdk 26 and the app builds for 24.
+         It is only ever called behind a version check (HealthModule.status),
+         so the two Android 7 releases simply have no Health. -->
+    <uses-sdk tools:overrideLibrary="androidx.health.connect.client"/>
+
+    <!-- A finished workout, saved as a strength-training session, with the
+         active energy another device measured for it when there is any. -->
+    <uses-permission android:name="android.permission.health.WRITE_EXERCISE"/>
+    <uses-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED"/>
+    <!-- What a watch or band recorded over a workout's window, and the user's
+         latest bodyweight and body fat. Read-only: none is ever written back. -->
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+    <uses-permission android:name="android.permission.health.READ_WEIGHT"/>
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT"/>
+
+    <!-- Up to Android 13 Health Connect is an app, and package visibility
+         hides it from anyone who does not name it. -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata"/>
+    </queries>
+
+    <application>
+        <!-- Health Connect's "why does this app want my data" link. Up to
+             Android 13 it starts the action below; from 14 the system asks
+             through the alias instead. -->
+        <activity
+            android:name="app.ischys.health.PermissionsRationaleActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:name="app.ischys.health.ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity="app.ischys.health.PermissionsRationaleActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
+            </intent-filter>
+        </activity-alias>
+    </application>
+</manifest>

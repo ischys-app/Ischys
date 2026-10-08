@@ -38,6 +38,14 @@ export type LiveActivityState = {
     repsLabel: string;
     setId?: string;
   };
+
+  /**
+   * Sets logged and sets planned across the whole workout. Android draws them
+   * as the notification's progress bar; the iOS card ignores them. Optional, so
+   * a caller that leaves them out just gets no bar.
+   */
+  setsDone?: number;
+  setsTotal?: number;
 };
 
 /** A button tapped on the card. Queued natively, applied by JS exactly once. */
@@ -51,8 +59,9 @@ type LiveActivityNativeModule = {
   setThemeId?(id: string): void;
   isAvailable(): boolean;
   isActive(): boolean;
-  start(workoutStartedAt: number, state: LiveActivityState): string | null;
-  update(state: LiveActivityState): Promise<void>;
+  // iOS takes the state as an object; Android as JSON (see `wire`).
+  start(workoutStartedAt: number, state: LiveActivityState | string): string | null;
+  update(state: LiveActivityState | string): Promise<void>;
   end(): Promise<void>;
   consumeActions(): LiveActivityAction[];
   addListener(event: 'onActions', listener: () => void): { remove(): void };
@@ -61,13 +70,15 @@ type LiveActivityNativeModule = {
 const native = requireOptionalNativeModule<LiveActivityNativeModule>('LiveActivity');
 
 /**
- * Live Activities are iOS-only; every call is a no-op elsewhere.
+ * A Live Activity on iOS, an ongoing notification on Android (a Live Update
+ * from Android 16); every call is a no-op elsewhere.
  *
  * False *either* because the OS cannot show them or because the user has them
- * switched off for Ischys — see `isAvailable` for telling those two apart.
+ * switched off for Ischys — see `isAvailable` for telling those two apart. On
+ * Android "switched off" means notifications, or the workout channel, are.
  */
 export const isSupported = (): boolean =>
-  Platform.OS === 'ios' && !!native && native.isSupported();
+  (Platform.OS === 'ios' || Platform.OS === 'android') && !!native && native.isSupported();
 
 /**
  * The OS can show Live Activities, whatever the per-app switch says. So
@@ -79,7 +90,7 @@ export const isSupported = (): boolean =>
  * "cannot tell", so nothing is claimed about why the card is missing.
  */
 export const isAvailable = (): boolean => {
-  if (Platform.OS !== 'ios' || !native) return false;
+  if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !native) return false;
   if (typeof native.isAvailable !== 'function') return false;
   return native.isAvailable();
 };
@@ -87,6 +98,9 @@ export const isAvailable = (): boolean => {
 /**
  * Whether a workout card is currently live. False after the user swipes it away,
  * which is the signal the workout screen uses to re-show it on foreground.
+ *
+ * Android differs on the second half: a notification the user dismissed is not
+ * reposted for that workout — `start` returns null until `end` is called.
  */
 export const isActive = (): boolean => (native ? native.isActive() : false);
 
@@ -95,11 +109,18 @@ export const isActive = (): boolean => (native ? native.isActive() : false);
  * elapsed time from it, so it keeps counting while the app is suspended.
  */
 export const start = (workoutStartedAt: number, state: LiveActivityState): string | null =>
-  native ? native.start(workoutStartedAt, state) : null;
+  native ? native.start(workoutStartedAt, wire(state)) : null;
 
 export const update = async (state: LiveActivityState): Promise<void> => {
-  await native?.update(state);
+  await native?.update(wire(state));
 };
+
+/**
+ * Android's module converter throws on an object holding `undefined` values,
+ * and most of the card's fields are optional. JSON drops them on the way.
+ */
+const wire = (state: LiveActivityState): LiveActivityState | string =>
+  Platform.OS === 'android' ? JSON.stringify(state) : state;
 
 export const end = async (): Promise<void> => {
   await native?.end();
@@ -120,7 +141,8 @@ export const addActionListener = (listener: () => void): { remove(): void } =>
   native ? native.addListener('onActions', listener) : { remove: () => {} };
 
 /**
- * Mirrors the accent into the App Group so the Live Activity card matches the
- * app. No-op on an older native build, which simply keeps the default accent.
+ * Mirrors the accent into native storage (the App Group on iOS) so the card or
+ * notification matches the app. No-op on an older native build, which simply
+ * keeps the default accent.
  */
 export const setThemeId = (id: string): void => native?.setThemeId?.(id);

@@ -18,7 +18,7 @@ import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { Alert, AppState, View } from 'react-native';
+import { Alert, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -39,7 +39,7 @@ import { setEffortMode } from '../src/lib/effortMode';
 import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { usePrFlagBackfill } from '../src/data/prBackfill';
-import { applyPendingCardActions } from '../src/lib/liveActivityBridge';
+import { applyPendingCardActions, reconcileCardOnLaunch } from '../src/lib/liveActivityBridge';
 import {
   consumeWatchActions,
   ensureWatchSaveListener,
@@ -69,6 +69,7 @@ import { color } from '../src/theme/tokens';
  */
 function useLiveActivityActions() {
   useEffect(() => {
+    void reconcileCardOnLaunch();
     void applyPendingCardActions(); // taps that launched us, or landed while away
 
     const tapped = LiveActivity.addActionListener(() => void applyPendingCardActions());
@@ -228,13 +229,15 @@ function useWatchFinish() {
         // The Watch ran the session, so it is the primary writer of the
         // HKWorkout; this verifies that save rather than duplicating it. A
         // Watch that waited saves only now, so the wait for it is longer.
+        // An Apple Watch, that is: a Wear OS one has nowhere to save to, so
+        // there the phone writes without waiting.
         const startedAt = parseServerDate(active.started_at);
         if (!Number.isNaN(startedAt)) {
           void syncFinishedWorkout(
             active.id,
             startedAt,
             finishBeganAt,
-            true,
+            Platform.OS === 'ios',
             heardAt ?? finishBeganAt,
             finishId != null,
           );

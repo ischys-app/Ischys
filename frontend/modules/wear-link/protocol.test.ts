@@ -119,3 +119,38 @@ test('a malformed action is dropped, not passed on', () => {
   assert.equal(parseAction('{"weight":"100"}'), null);
   assert.equal(parseAction(undefined), null);
 });
+
+// Google Play services finds the other app by a capability it reads out of the
+// installed APK by resource name. Nothing in the code refers to that resource,
+// so a build that shrinks resources strips it unless a keep file names it —
+// and the two apps then never see each other, with nothing failing.
+test('each app declares its capability and keeps it through resource shrinking', () => {
+  const root = path.join(import.meta.dirname, '..', '..');
+  const sides = [
+    { res: 'wear/app/src/main/res', capability: 'ischys_watch', kotlin: 'CAPABILITY_WATCH' },
+    {
+      res: 'modules/wear-link/android/src/main/res',
+      capability: 'ischys_phone',
+      kotlin: 'CAPABILITY_PHONE',
+    },
+  ];
+  const constants = ['wear/app/src/main/java/app/ischys/wear/logic/Wire.kt',
+    'modules/wear-link/android/src/main/java/app/ischys/wearlink/WearPaths.kt',
+  ].map((file) => fs.readFileSync(path.join(root, file), 'utf8'));
+
+  for (const { res, capability, kotlin } of sides) {
+    const declared = fs.readFileSync(path.join(root, res, 'values/wear.xml'), 'utf8');
+    assert.match(declared, /<string-array name="android_wear_capabilities">/);
+    assert.ok(declared.includes(`<item>${capability}</item>`), `${res} declares ${capability}`);
+    for (const source of constants) {
+      assert.ok(source.includes(`${kotlin} = "${capability}"`), `${kotlin} is ${capability}`);
+    }
+
+    const raw = path.join(root, res, 'raw');
+    const kept = fs
+      .readdirSync(raw)
+      .map((name) => fs.readFileSync(path.join(raw, name), 'utf8'))
+      .some((xml) => /tools:keep="[^"]*@array\/android_wear_capabilities/.test(xml));
+    assert.ok(kept, `${res}/raw keeps android_wear_capabilities`);
+  }
+});

@@ -50,7 +50,12 @@ async function ensureAndroidChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
     name: 'Rest timer',
     importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 150, 250],
+    // The system's own notification buzz, with no pattern of ours — as on iOS,
+    // where the alert arrives with whatever the phone does for any notification.
+    // Android fixes a channel's vibration when it is first created, so an
+    // install that already has this channel keeps the pattern it was made with
+    // (two 250 ms buzzes, all but the stock default) until its data is cleared.
+    enableVibrate: true,
   });
 }
 

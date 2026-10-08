@@ -8,8 +8,33 @@
  * completion), so the user's `haptic_feedback` preference is cached here: loaded
  * once at startup and updated when the toggle changes. `impactAsync` etc. are
  * fire-and-forget — never awaited on the interaction path.
+ *
+ * iOS is the reference. expo-haptics realises the same calls on Android as
+ * fixed vibrator waveforms (40–60 ms buzzes at a set amplitude), which feel
+ * like a buzz where iOS gives a tap. So on Android each kind plays the system
+ * effect with the same role instead, through `performAndroidHapticsAsync`: the
+ * device's own tuned click, and like the Taptic Engine it follows the system's
+ * touch-feedback setting. Which effect is decided in hapticsPlan.ts:
+ *
+ *   kind       iOS                    Android                     why
+ *   commit     impact, medium         VIRTUAL_KEY                 the standard click: one firm tap
+ *   light      impact, light          CONTEXT_CLICK               a tick, lighter than the click
+ *   select     selection              SEGMENT_TICK (14+),         the tick for stepping through
+ *                                     else CLOCK_TICK             choices; never above `light`
+ *   success    notification, success  CONFIRM (11+)               the system's "it worked"
+ *   error      notification, error    REJECT (11+)                the system's "it failed": a double click
+ *   warning    notification, warning  LONG_PRESS                  one heavy click, weightier than commit;
+ *                                                                 Android has no warning effect
+ *   longPress  none (the context      LONG_PRESS                  what a long-press feels like on each
+ *              menu plays its own)                                system
+ *
+ * Before Android 11 there is no CONFIRM or REJECT, so success and error fall
+ * back to the vibrator patterns: two pulses and three, as on iOS.
  */
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
+
+import { hapticCall, type HapticKind } from './hapticsPlan';
 
 let enabled = true;
 
@@ -18,26 +43,49 @@ export function setHapticsEnabled(value: boolean): void {
   enabled = value;
 }
 
-const impact = (style: Haptics.ImpactFeedbackStyle) => {
-  if (enabled) void Haptics.impactAsync(style).catch(() => {});
-};
-const notify = (type: Haptics.NotificationFeedbackType) => {
-  if (enabled) void Haptics.notificationAsync(type).catch(() => {});
+const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : 0;
+
+function fire(kind: HapticKind): Promise<void> {
+  const call = hapticCall(kind, Platform.OS, apiLevel);
+  switch (call.via) {
+    case 'impact':
+      return Haptics.impactAsync(call.style as Haptics.ImpactFeedbackStyle);
+    case 'notification':
+      return Haptics.notificationAsync(call.type as Haptics.NotificationFeedbackType);
+    case 'selection':
+      return Haptics.selectionAsync();
+    case 'android':
+      return Haptics.performAndroidHapticsAsync(call.type as Haptics.AndroidHaptics);
+    case 'none':
+      return Promise.resolve();
+  }
+}
+
+const play = (kind: HapticKind) => {
+  if (!enabled) return;
+  try {
+    void fire(kind).catch(() => {});
+  } catch {
+    // Feedback only; a device without the effect just stays quiet.
+  }
 };
 
 export const haptics = {
   /** A committing tap — completing a set, a swipe snapping to delete. */
-  commit: () => impact(Haptics.ImpactFeedbackStyle.Medium),
+  commit: () => play('commit'),
   /** A lighter tap — a swipe crossing its threshold, a minor commit. */
-  light: () => impact(Haptics.ImpactFeedbackStyle.Light),
+  light: () => play('light'),
   /** A crisp selection tick — cycling set type, switching a segment/tab. */
-  select: () => {
-    if (enabled) void Haptics.selectionAsync().catch(() => {});
-  },
+  select: () => play('select'),
   /** Achievement — a personal record, finishing a workout. */
-  success: () => notify(Haptics.NotificationFeedbackType.Success),
+  success: () => play('success'),
   /** About to do something destructive/irreversible. */
-  warning: () => notify(Haptics.NotificationFeedbackType.Warning),
+  warning: () => play('warning'),
   /** Something failed. */
-  error: () => notify(Haptics.NotificationFeedbackType.Error),
+  error: () => play('error'),
+  /**
+   * A long-press was recognised. Where iOS opens a context menu the system
+   * plays this itself, so there it is silent.
+   */
+  longPress: () => play('longPress'),
 };

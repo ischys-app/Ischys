@@ -34,10 +34,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Text
+import app.ischys.wear.Haptics
 import app.ischys.wear.WorkoutModel
 import app.ischys.wear.logic.Format
 import app.ischys.wear.logic.SetDot
@@ -78,6 +80,12 @@ fun ActiveSetPage(ui: UiState, active: Boolean) {
   val focus = remember { FocusRequester() }
   var turned by remember { mutableFloatStateOf(0f) }
   val density = LocalDensity.current.density
+  val view = LocalView.current
+  // A notch of the crown ticks, as it does on the Apple Watch. − / + do not.
+  val turn: (Int) -> Unit = { notches ->
+    step(notches)
+    Haptics.crownNotch(view)
+  }
   // The crown goes to whichever page is showing; this one takes it back each
   // time it is.
   LaunchedEffect(active, ui.resting) { if (active && !ui.resting) focus.requestFocus() }
@@ -91,13 +99,13 @@ fun ActiveSetPage(ui: UiState, active: Boolean) {
         if (abs(dp) >= DETENT_DP * 0.75f) {
           // Whole detents: one click of the bezel is one notch.
           turned = 0f
-          step((dp / DETENT_DP).roundToInt())
+          turn((dp / DETENT_DP).roundToInt())
         } else {
           turned += dp
           val notches = (turned / NOTCH_DP).toInt()
           if (notches != 0) {
             turned -= notches * NOTCH_DP
-            step(notches)
+            turn(notches)
           }
         }
         true

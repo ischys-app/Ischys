@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nothing in the code refers to the capability list: Google Play services
+     reads it out of the installed app by name. Resource shrinking would
+     otherwise strip it from the release build, and the phone would never find
+     this Watch. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@array/android_wear_capabilities" />

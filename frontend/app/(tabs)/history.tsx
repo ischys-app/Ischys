@@ -14,6 +14,7 @@ import {
   startOfDay,
   startOfIsoWeek,
 } from '../../src/lib/format';
+import { haptics } from '../../src/lib/haptics';
 import { accentA, color, font } from '../../src/theme/tokens';
 
 const HEAT_WEEKS = 12;
@@ -215,7 +216,10 @@ export default function History() {
                         key={w.id}
                         workout={w}
                         onPress={() => router.push(`/summary/${w.id}`)}
-                        onLongPress={() => confirmDelete(w)}
+                        onLongPress={() => {
+                          haptics.longPress(); // the menu's own tap, on iOS
+                          confirmDelete(w);
+                        }}
                       />
                     ),
                   )}

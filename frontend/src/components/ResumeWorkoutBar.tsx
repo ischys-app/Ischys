@@ -7,7 +7,7 @@ import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
 
 import { secondsSince } from '../lib/serverTime';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -47,7 +47,7 @@ export function ResumeWorkoutBar({ name, startedAt, onPress }: Props) {
   return (
     <View style={[styles.shadow, { bottom }]} pointerEvents="box-none">
       <Pressable onPress={onPress}>
-        <BlurView intensity={20} tint="dark" style={styles.clip}>
+        <BlurView intensity={20} tint="dark" style={[styles.clip, Platform.OS === 'android' && styles.clipAndroid]}>
           <View style={styles.tint} />
           <View style={styles.row}>
             <View style={styles.halo}>
@@ -100,6 +100,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: accentA(0.4),
   },
+  // Android's BlurView only tints; give the bar a solid base there so the
+  // routine cards underneath do not read through it.
+  clipAndroid: { backgroundColor: 'rgba(20,20,23,0.97)' },
   tint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: accentA(0.12) },
   row: {
     flexDirection: 'row',

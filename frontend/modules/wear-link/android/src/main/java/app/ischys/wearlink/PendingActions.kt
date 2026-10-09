@@ -20,15 +20,27 @@ internal object PendingActions {
    */
   private val sessionReports = setOf("sessionMetrics", "workoutSaved")
 
+  /**
+   * Actions that begin a workout. One held for later would start a workout
+   * whenever the app was next opened, long after the user gave up on it.
+   */
+  private val starting = setOf("startEmpty", "startRoutine")
+
+  /** Everything else the Watch sends: it acts on, or asks about, the workout on screen. */
+  private val live = setOf("logSet", "adjustRest", "skipRest", "addSet", "requestState")
+
   enum class Fate {
     /** Hold it for JS to drain. */
     BUFFER,
     /**
-     * A finish the Watch is waiting on an answer to, with no app running to
-     * give one. The Watch is told at once, and sends a plain finish instead.
+     * Nothing here can act on it, and the Watch is told at once rather than
+     * left to think it worked. For a finish it is waiting on an answer to, it
+     * then sends a plain finish instead, which is held. For anything else it
+     * asks the user to open Ischys on the phone: unlike on iOS, a message from
+     * the Watch wakes only this listener, never the app.
      */
     REFUSE,
-    /** Only meaningful to a workout screen that is on screen now. */
+    /** The app is coming up and will push its state in a moment; nothing to say. */
     DROP,
   }
 
@@ -41,6 +53,10 @@ internal object PendingActions {
     if (name == "end" && action.optString("finishId", "").isNotEmpty() && !appRunning) {
       return Fate.REFUSE
     }
-    return if (name in completing || name in sessionReports) Fate.BUFFER else Fate.DROP
+    if (name in completing || name in sessionReports) return Fate.BUFFER
+    if (name in starting) return Fate.REFUSE
+    if (name in live) return if (appRunning) Fate.DROP else Fate.REFUSE
+    // Not something the Watch sends.
+    return Fate.DROP
   }
 }

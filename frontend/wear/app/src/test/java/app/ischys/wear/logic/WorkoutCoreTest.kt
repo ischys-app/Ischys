@@ -373,11 +373,24 @@ class WorkoutCoreTest {
   }
 
   @Test fun aFailedFinishDoesNotFollowTheWatchOutOfTheWorkout() {
+    // A Watch mirroring without a session of its own: with one, a Start push
+    // does not leave the workout (below), and what ends the workout is the
+    // phone's command, which settles the finish itself.
+    core.apply(session(), t0)
+    core.requestFinish("f1", t0)
+    core.finishVerdict(FinishHandshake.Verdict.FAILED, "f1")
+    assertTrue(core.ui.finishFailed)
+    core.apply(PhoneState(screen = WatchScreen.START), t0 + 5_000)
+    assertFalse(core.ui.finishFailed)
+  }
+
+  @Test fun aFailedFinishIsSettledWhenThePhoneThenEndsTheWorkout() {
     startSession()
     core.requestFinish("f1", t0)
     core.finishVerdict(FinishHandshake.Verdict.FAILED, "f1")
-    core.apply(PhoneState(screen = WatchScreen.START), t0 + 5_000)
+    core.phoneEnded(discard = true)
     assertFalse(core.ui.finishFailed)
+    assertEquals(WatchScreen.START, core.ui.screen)
   }
 
   @Test fun finishWithNoSessionLeavesOnTheVerdict() {
@@ -387,5 +400,92 @@ class WorkoutCoreTest {
     core.finishVerdict(FinishHandshake.Verdict.FINISHED, "f1")
     assertEquals(WatchScreen.START, core.ui.screen)
     assertTrue(host.calls.none { it == "endSession" })
+  }
+
+  // A phone whose app is not running, and a Start push during a session
+
+  private fun startScreen(routines: List<RoutineItem>? = null) =
+    PhoneState(screen = WatchScreen.START, routines = routines)
+
+  @Test fun aStartPushDoesNotHideASessionThatIsStillRecording() {
+    startSession()
+    core.apply(session(), t0)
+    val upper = RoutineItem(id = "r1", name = "Upper", initials = "U", exerciseCount = 3)
+    core.apply(startScreen(listOf(upper)), t0 + 1_000)
+
+    // Still in the workout, showing what it showed, with the session running.
+    assertEquals(WatchScreen.SESSION, core.ui.screen)
+    assertEquals("Bench Press", core.ui.exerciseName)
+    assertTrue(host.sessionRunning)
+    assertFalse("endSession" in host.calls || "discardSession" in host.calls)
+    // The routine list it carried is kept for when the workout is over.
+    assertEquals(listOf(upper), core.ui.routines)
+  }
+
+  @Test fun aStartPushMovesToStartOnceTheSessionIsOver() {
+    core.apply(session(), t0)
+    core.apply(startScreen(), t0 + 1_000)
+    assertEquals(WatchScreen.START, core.ui.screen)
+  }
+
+  @Test fun aStartThePhoneAppIsNotRunningForEndsTheSessionAndSaysSo() {
+    core.routineTapped("r1")
+    startSession()
+    core.phoneAppClosed("startRoutine")
+
+    // Buzzes for the tap that did nothing, and drops the session it started.
+    assertEquals(listOf("requestState", "failureHaptic", "discardSession"), host.calls)
+    assertEquals(WatchScreen.START, core.ui.screen)
+    assertTrue(core.ui.phoneAppClosed)
+    assertNull(core.ui.pendingRoutineId)
+  }
+
+  @Test fun aRefusedRequestForStateOnlySaysThePhoneAppIsClosed() {
+    startSession()
+    core.phoneAppClosed("requestState")
+    // A workout begun on the phone and still recording is not thrown away
+    // because the phone app has since been closed.
+    assertEquals(WatchScreen.SESSION, core.ui.screen)
+    assertTrue(host.sessionRunning)
+    assertTrue(core.ui.phoneAppClosed)
+  }
+
+  @Test fun aSetTheClosedPhoneAppCouldNotLogBuzzesAndKeepsTheSession() {
+    startSession()
+    core.apply(session(), t0)
+    core.phoneAppClosed("logSet")
+    assertTrue("failureHaptic" in host.calls)
+    assertEquals(WatchScreen.SESSION, core.ui.screen)
+    assertTrue(host.sessionRunning)
+    assertTrue(core.ui.phoneAppClosed)
+  }
+
+  @Test fun anythingThePhonePushesMeansItsAppIsRunningAgain() {
+    core.phoneAppClosed("requestState")
+    core.apply(startScreen(), t0)
+    assertFalse(core.ui.phoneAppClosed)
+  }
+
+  @Test fun outOfReachTakesOverFromThePhoneAppBeingClosed() {
+    core.phoneAppClosed("requestState")
+    core.setPhoneReachable(false)
+    assertFalse(core.ui.phoneReachable)
+    assertFalse(core.ui.phoneAppClosed)
+  }
+
+  // Reconnecting
+
+  @Test fun comingBackIntoReachAsksForTheStateMissedInBetween() {
+    core.setPhoneReachable(false)
+    assertTrue(host.calls.none { it == "requestState" })
+    core.setPhoneReachable(true)
+    assertEquals(listOf("requestState"), host.calls)
+  }
+
+  @Test fun beingToldItIsStillInReachAsksForNothing() {
+    // The capability listener repeats itself; that is not a reconnection.
+    core.setPhoneReachable(true)
+    core.setPhoneReachable(true)
+    assertTrue(host.calls.none { it == "requestState" })
   }
 }

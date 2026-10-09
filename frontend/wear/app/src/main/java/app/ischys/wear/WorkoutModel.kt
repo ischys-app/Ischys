@@ -7,6 +7,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import app.ischys.wear.link.LinkLog
 import app.ischys.wear.link.PhoneLink
 import app.ischys.wear.logic.PhoneState
 import app.ischys.wear.logic.UiState
@@ -130,6 +131,7 @@ object WorkoutModel : WorkoutCore.Host {
   // From the phone (WearLinkService)
 
   fun onInbound(path: String, payload: ByteArray) {
+    LinkLog.d { "IN $path ${LinkLog.brief(String(payload, Charsets.UTF_8))}" }
     val json = try {
       JSONObject(String(payload, Charsets.UTF_8))
     } catch (e: Exception) {
@@ -138,7 +140,12 @@ object WorkoutModel : WorkoutCore.Host {
     }
     if (path == Wire.PATH_UNDELIVERABLE) {
       val id = json.optString("finishId", "")
-      if (id.isNotEmpty()) act { finishUndeliverable(id) }
+      val refused = json.optString("action", "")
+      if (id.isNotEmpty()) {
+        act { finishUndeliverable(id) }
+      } else if (refused.isNotEmpty()) {
+        act { phoneAppClosed(refused) }
+      }
       return
     }
     when (val inbound = Wire.parseInbound(json)) {

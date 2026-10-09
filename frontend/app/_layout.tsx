@@ -89,6 +89,10 @@ function useLiveActivityActions() {
  * that could miss) and navigates into the workout, which then mirrors to the
  * Watch. Other Watch actions (log set, rest…) are handled by the workout screen.
  */
+// A start the Watch asked for that is still being written: a second tap in
+// that moment must not begin a second workout.
+let watchStartInFlight = false;
+
 function useWatchStart() {
   useEffect(
     () =>
@@ -123,14 +127,29 @@ function useWatchStart() {
           return;
         }
         if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
+        // A second tap while the first start is still being written.
+        if (watchStartInFlight) return;
+        watchStartInFlight = true;
         void (async () => {
           try {
+            // One workout at a time. A start can arrive with one already
+            // running — tapped twice, or a Watch that never heard the first
+            // had begun — and a second active workout would sit behind the
+            // first, unseen, until it was found and discarded. Open the one
+            // there is instead; its screen puts the wrist back in it.
+            const [active] = await listWorkouts({ status: 'active', limit: 1 });
+            if (active) {
+              if (!screenHoldsWatchFinish()) router.push(`/workout/${active.id}`);
+              return;
+            }
             const w = await startWorkout(
               a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
             );
             router.push(`/workout/${w.id}`);
           } catch {
             // No server / not signed in — nothing to start.
+          } finally {
+            watchStartInFlight = false;
           }
         })();
       }),
@@ -184,14 +203,16 @@ function useWatchFinish() {
       };
       try {
         const [active] = await listWorkouts({ status: 'active', limit: 1 });
-        if (routeWatchFinish(action, active?.id ?? null) !== 'fallback' || !active) return;
+        // One drained at launch (it comes with `heardAt`) reached nobody else.
+        const drained = heardAt !== undefined;
+        if (routeWatchFinish(action, active?.id ?? null, drained) !== 'fallback' || !active) return;
 
         if (action === 'discard') {
           void LiveActivity.end();
           forgetActiveWorkout();
           clearRest(active.id);
           await discardWorkout(active.id);
-          notifyWatchFinished(active.id);
+          notifyWatchFinished(active.id, 'discarded');
           return;
         }
 
@@ -240,6 +261,8 @@ function useWatchFinish() {
             Platform.OS === 'ios',
             heardAt ?? finishBeganAt,
             finishId != null,
+            // A Wear OS watch sends what it measured instead of saving it.
+            Platform.OS === 'android',
           );
         }
         saveSummary(active.id, summary);

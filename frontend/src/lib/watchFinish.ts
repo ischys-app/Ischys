@@ -68,10 +68,17 @@ export function screenHoldsWatchFinish(): boolean {
 /** Drops every claim. Test seam — production code releases via `claimWatchFinish`. */
 export function releaseAllWatchFinishClaims(): void {
   claimedWorkoutId = null;
+  completedByFallback.clear();
 }
 
-type FinishedListener = (workoutId: string) => void;
+/** How the fallback completed a workout: stored, or thrown away. */
+export type WatchCompletion = 'finished' | 'discarded';
+
+type FinishedListener = (workoutId: string, completion: WatchCompletion) => void;
 const finishedListeners = new Set<FinishedListener>();
+// What the fallback has completed since the app started, for a screen that
+// mounts a moment too late to be told.
+const completedByFallback = new Map<string, WatchCompletion>();
 
 /**
  * Fires when the fallback completed a workout, so screens showing it as running
@@ -91,10 +98,14 @@ export function onWatchFinished(listener: FinishedListener): () => void {
 }
 
 /** Announces a fallback finish. Every listener runs even if an earlier one throws. */
-export function notifyWatchFinished(workoutId: string): void {
+export function notifyWatchFinished(
+  workoutId: string,
+  completion: WatchCompletion = 'finished',
+): void {
+  completedByFallback.set(workoutId, completion);
   for (const listener of finishedListeners) {
     try {
-      listener(workoutId);
+      listener(workoutId, completion);
     } catch {
       // A subscriber mid-unmount must not swallow the notification for the rest.
     }
@@ -102,15 +113,35 @@ export function notifyWatchFinished(workoutId: string): void {
 }
 
 /**
+ * How the fallback completed `workoutId` since the app started, or null if it
+ * has not. A workout screen asks as it mounts: at launch the app reopens into
+ * the workout it was closed in while a Finish from the wrist, waiting since
+ * before, is applied — and which of the two happens first is not fixed.
+ */
+export function completedByWatch(workoutId: string): WatchCompletion | null {
+  return completedByFallback.get(workoutId) ?? null;
+}
+
+/**
  * Who should handle `action`, given the workout the phone currently has active.
  * `activeWorkoutId` is what the DB says is running, not what any screen believes.
+ *
+ * `drained`: the action was waiting from before the app opened and was handed
+ * to the root layout alone. A mounted screen wins a live action because it
+ * hears it too; it never hears a drained one. And at launch one is mounted
+ * more often than not — the app reopens into the workout it was killed in — so
+ * leaving a drained finish to the screen dropped it: finished on the wrist,
+ * still running on the phone. The fallback takes it, and the screen is told
+ * through `onWatchFinished`.
  */
 export function routeWatchFinish(
   action: string,
   activeWorkoutId: string | null,
+  drained = false,
 ): WatchFinishRoute {
   if (!COMPLETING_ACTIONS.has(action)) return 'ignore';
   if (!activeWorkoutId) return 'ignore';
+  if (drained) return 'fallback';
   return claimedWorkoutId === activeWorkoutId ? 'screen' : 'fallback';
 }
 

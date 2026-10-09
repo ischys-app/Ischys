@@ -4,6 +4,7 @@ import { beforeEach, test } from 'node:test';
 
 import {
   claimWatchFinish,
+  completedByWatch,
   completesWorkout,
   finishRequestId,
   finishVerdict,
@@ -57,6 +58,34 @@ test('ignores actions that do not complete a workout', () => {
   for (const action of ['logSet', 'skipRest', 'addSet', 'requestState', 'startEmpty']) {
     assert.equal(routeWatchFinish(action, 'w1'), 'ignore', action);
   }
+});
+
+test('a finish that waited for the app to open is the fallback\'s, mounted screen or not', () => {
+  // The app reopened into the workout; its screen never hears a drained action.
+  claimWatchFinish('w1');
+  assert.equal(routeWatchFinish('end', 'w1', true), 'fallback');
+  assert.equal(routeWatchFinish('discard', 'w1', true), 'fallback');
+  // Still nothing to do with no workout, or for an action that ends nothing.
+  assert.equal(routeWatchFinish('end', null, true), 'ignore');
+  assert.equal(routeWatchFinish('logSet', 'w1', true), 'ignore');
+});
+
+test('subscribers are told whether the workout was stored or thrown away', () => {
+  const seen: string[] = [];
+  const off = onWatchFinished((id, completion) => seen.push(`${id}:${completion}`));
+  notifyWatchFinished('w1');
+  notifyWatchFinished('w2', 'discarded');
+  off();
+  assert.deepEqual(seen, ['w1:finished', 'w2:discarded']);
+});
+
+test('a screen that mounts after the fallback finished can still find out', () => {
+  assert.equal(completedByWatch('w1'), null);
+  notifyWatchFinished('w1');
+  notifyWatchFinished('w2', 'discarded');
+  assert.equal(completedByWatch('w1'), 'finished');
+  assert.equal(completedByWatch('w2'), 'discarded');
+  assert.equal(completedByWatch('w3'), null);
 });
 
 test('ignores end when no workout is active', () => {

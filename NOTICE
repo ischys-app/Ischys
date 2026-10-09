@@ -61,9 +61,10 @@ the same movement, so most of the catalog deliberately shows initials instead.
 Fonts
 -----
 
-The Live Activity widget bundles two typefaces, both licensed under the
-**SIL Open Font License, Version 1.1** (full text alongside the font files in
-`frontend/targets/ischys-widget/assets/`):
+The Live Activity widget and the Wear OS app bundle the same two typefaces, both
+licensed under the **SIL Open Font License, Version 1.1** (full text alongside
+the widget's font files in `frontend/targets/ischys-widget/assets/`; the Wear OS
+copies in `frontend/wear/app/src/main/res/font/` are the same files, renamed):
 
     Space Grotesk  — Copyright 2020 The Space Grotesk Project Authors
                      https://github.com/floriankarsten/space-grotesk

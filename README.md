@@ -8,6 +8,10 @@ server, no cloud. Nothing ever leaves the device.
 free · iPhone. Or [build it from source](#build--run) — it's open, MIT-licensed,
 and the whole thing runs on-device either way.
 
+**Android and Wear OS:** the app now runs there too. It is in closed testing on
+Google Play and not publicly listed yet — coming soon. See
+[Platform support](#platform-support).
+
 The design is a precision instrument: monochrome, near-black, sharp, and legible
 mid-set with sweaty hands. Big number targets, previous-session references one
 tap away, and the accent colour reserved for a single action — completing a set.
@@ -22,7 +26,8 @@ tap away, and the accent colour reserved for a single action — completing a se
   detection, streaks, charts) running in TypeScript on the phone.
 - **Private by construction.** Because there is no server, your data can't be
   collected, sold, or breached. It backs up with your normal device backup
-  (iCloud), and you can **export** a JSON/CSV copy anytime.
+  (iCloud on iPhone, Google's device backup on Android), and you can **export**
+  a JSON/CSV copy anytime.
 - **Yours to build.** MIT-licensed. Clone it, build it, run it, change it.
 
 ## Features
@@ -35,10 +40,15 @@ tap away, and the accent colour reserved for a single action — completing a se
 - **Profile** stats — workouts, volume lifted, weekly training bars, streaks.
 - **Apple Watch** companion (mirror + control a live workout), **Live Activity**
   on the Lock Screen, and **Apple Health** (heart-rate read, workout write).
+- On Android: a **Wear OS** companion (follow the phone's workout, log sets and
+  control rest from the wrist), an **ongoing workout notification** with the
+  rest countdown and actions, and **Health Connect** (workout write; heart rate,
+  active calories, bodyweight and body fat read).
 - **Export / import** — a JSON or workout CSV, for backup or moving in
   from another tracker.
 - **Bodyweight movements count toward volume** — set your weight manually or pull
-  it from Apple Health, snapshotted per workout so past sessions keep their numbers.
+  it from Apple Health or Health Connect, snapshotted per workout so past sessions
+  keep their numbers.
 - **Merge duplicate exercises** without losing history or PRs.
 - **736-exercise catalog** bundled in the app — names, muscles and instructions
   from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (public
@@ -53,21 +63,49 @@ tap away, and the accent colour reserved for a single action — completing a se
 
 ## Platform support
 
-**iPhone first, Android in testing.** Ischys is built and tested on iPhone (iOS 26,
-Expo SDK 57), and its headline extras — Live Activity, the Apple Watch companion,
-and Apple Health — are iOS-only with no Android equivalents yet.
+**iPhone on the App Store; Android and Wear OS in closed testing on Google Play.**
+Ischys is built and tested on iPhone first (iOS 26, Expo SDK 57), with its Apple
+Watch companion, Live Activity and Apple Health.
 
-The core app also runs on Android: logging, routines, the rest timer, records,
-import and export. It builds from the same source (`npm run release:android`,
-see `frontend/scripts/build-android-release.mjs`) and is in testing on Google
-Play. It has had far less use there than on iPhone, so expect rough edges.
+The same codebase now also runs on Android. The full core app is there: logging
+sets, routines, the rest timer with an on-time alert, personal records, history,
+the exercise catalog and custom exercises, merging duplicates, measurements, the
+plate and 1RM calculators, CSV import, CSV/JSON export, share-as-image and accent
+themes. The iOS extras have Android counterparts:
+
+| iPhone | Android |
+| --- | --- |
+| Apple Health | **Health Connect** — saves finished workouts; reads bodyweight, body fat, and the heart rate and active calories another device recorded during a workout |
+| Live Activity | **Ongoing workout notification** with the rest countdown and actions (a Live Update on Android 16) |
+| Apple Watch app | **Wear OS app** — follows the phone's workout, logs sets and controls rest from the wrist, live heart rate and calories |
+
+**Where it stands.** The Android phone app is in closed testing on Google Play
+and is not publicly listed yet. The Wear OS app has been submitted to its own
+closed testing track and is awaiting Google's review. Google requires a new
+developer account to run a closed test before a public release, so both will be
+publicly available soon, but there is no date. When it is public, the listing
+will be at `play.google.com/store/apps/details?id=app.ischys.mobile`.
+
+**How Android differs today.**
+
+- It has had far less real-world use than the iPhone app, so expect rough edges.
+- The workout notification is a standard system notification, not a custom card
+  with artwork like the Live Activity.
+- Without the watch app there is no live heart rate on the phone. Health Connect
+  supplies what another device recorded, not a live stream.
+- With the phone app fully closed, the Wear OS watch can finish or discard a
+  workout but cannot start one or log sets.
+- The Wear OS app has been verified on an emulator paired with a real phone, not
+  yet on real watch hardware.
 
 ## Stack
 
 React Native + **Expo SDK 57** (New Architecture), **expo-sqlite** + **Drizzle
-ORM** for the on-device database, TypeScript throughout. Native modules for the
-Watch companion, Live Activity, and HealthKit live under `frontend/modules/` and
-`frontend/targets/`.
+ORM** for the on-device database, TypeScript throughout. Native modules for
+HealthKit and Health Connect, the Live Activity and the Android workout
+notification, and the phone's link to the Wear OS app live under
+`frontend/modules/`. The Apple Watch app and the Live Activity widget are in
+`frontend/targets/` (Swift); the Wear OS app is in `frontend/wear/` (Kotlin).
 
 ```
 Ischys/
@@ -78,8 +116,9 @@ Ischys/
     │   ├── data/       local repository (the app's data layer)
     │   ├── domain/     pure training logic (stats, records, streaks…) + tests
     │   └── components/ UI
-    ├── modules/        local native modules (Live Activity, HealthKit)
-    └── targets/        Apple Watch app + Live Activity widget
+    ├── modules/        local native modules (health, workout card, Wear OS link, exact alarms)
+    ├── targets/        Apple Watch app + Live Activity widget
+    └── wear/           Wear OS app (its own Gradle project)
 ```
 
 ## Build & run
@@ -95,6 +134,21 @@ npm install
 npx expo run:ios --device   # build + install on a connected iPhone
 # or drop --device to run in the iOS Simulator
 ```
+
+For Android you'll need **JDK 17** and the **Android SDK**:
+
+```bash
+cd frontend
+npm install
+npx expo run:android        # build + install on a connected phone or emulator
+```
+
+The signed bundles Google Play takes are built with `npm run release:android`
+for the phone (after `npx expo prebuild -p android`; see
+`frontend/scripts/build-android-release.mjs`) and `node wear/build-release.mjs`
+for the watch. Both read the upload key from an untracked
+`frontend/signing.local.json` — copy `signing.local.example.json`. The watch app
+must be signed with the same key as the phone app, or the two will not connect.
 
 The app opens straight to your training — there's no server to point at and no
 sign-in. `npm run typecheck` and `npm test` (pure-logic unit tests, run in both

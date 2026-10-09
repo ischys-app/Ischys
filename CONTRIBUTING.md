@@ -15,6 +15,11 @@ npm test             # also runs lint:la
 TZ=Europe/Athens npm test   # timestamps are timezone-sensitive; see below
 ```
 
+Two suites sit outside `npm test` because they need more than Node:
+`npm run test:watch` (the Apple Watch's decision logic; needs Swift) and
+`./gradlew :app:testDebugUnitTest` in `frontend/wear/` (the Wear OS app's; needs JDK 17
+and the Android SDK).
+
 There is no backend — the app runs entirely on-device (SQLite + Drizzle). The
 whole suite is `frontend`.
 
@@ -86,6 +91,24 @@ exist. Signing needs an untracked `frontend/signing.local.json` (copy
 `signing.local.example.json`); without it the script tells you what to write, and ordinary
 development is unaffected since Debug stays on automatic signing.
 
+Android follows the same rule. `frontend/android/` is generated too, and the version comes
+from `expo.version` and `expo.android.versionCode` in `app.json`:
+
+```bash
+cd frontend
+# bump expo.android.versionCode in app.json, then:
+npx expo prebuild -p android
+npm run release:android        # the phone's App Bundle; fails on a version mismatch
+node wear/build-release.mjs    # the Wear OS app's App Bundle
+```
+
+Both need JDK 17 on `JAVA_HOME`, the Android SDK on `ANDROID_HOME`, and the `android` block
+of the same `signing.local.json`. The Wear OS app (`frontend/wear/`, its own Gradle project,
+not generated) reads its version from `app.json` as well, shares the phone app's
+application id, and must be signed with the same key: the Wearable Data Layer only connects
+two apps that match on both, and when they do not, the watch simply never hears from the
+phone.
+
 **4. `db.transaction(async …)` is not a transaction.**
 
 The expo-sqlite driver is synchronous: it commits the moment the callback returns, which
@@ -119,6 +142,13 @@ Node's ESM loader needs the explicit extension: `import { x } from './y.ts'`.
   "the app minimised itself" or "the button does nothing". Suspect a crash before logic.
   Reproducing the suspect call in a standalone `swiftc -O` binary and checking the exit code
   is faster than another device round-trip. (`134` is `SIGABRT`.)
+
+## Android and Wear OS have had far less use
+
+The Android app, its workout notification, Health Connect and the Wear OS app are in closed
+testing and are much newer than their iOS counterparts. The Wear OS app has been verified on
+an emulator paired with a real phone, not yet on real watch hardware. A report from a real
+device, with the model and Android version, is worth a lot.
 
 ## Commits
 

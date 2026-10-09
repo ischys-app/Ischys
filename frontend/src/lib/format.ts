@@ -83,6 +83,15 @@ export function addDays(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 }
 
+/**
+ * Whole days from one local midnight to another. Rounded, not floored: a span
+ * that crosses the spring clock change is an hour short of a whole number of
+ * days, and flooring it filed every later day one day early.
+ */
+export function daysBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000);
+}
+
 /** Parse an ISO string as a local Date (mirrors internal parse()). */
 export function parseIso(iso: string): Date {
   return parse(iso);

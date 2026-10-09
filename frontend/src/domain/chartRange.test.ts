@@ -2,7 +2,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { axisTicks, CHART_RANGES, gapKind, rangeSince, trendPerMonth } from './chartRange.ts';
+import {
+  axisTicks,
+  CHART_RANGES,
+  gapKind,
+  rangeSince,
+  selectionWithin,
+  trendPerMonth,
+} from './chartRange.ts';
 
 const DAY = 86400000;
 const NOW = Date.UTC(2026, 8, 29, 12);
@@ -99,4 +106,15 @@ test('ticks sit proportionally along the axis', () => {
 test('no ticks without a span to lay them along', () => {
   assert.deepEqual(axisTicks([], '3M'), []);
   assert.deepEqual(axisTicks([Date.UTC(2026, 0, 1)], '3M'), []);
+});
+
+test('a selection survives only while its point is still on the chart', () => {
+  assert.equal(selectionWithin(3, 10), 3);
+  assert.equal(selectionWithin(0, 1), 0);
+  // The range got shorter under a tapped point: 40 sessions became 8.
+  assert.equal(selectionWithin(39, 8), null);
+  assert.equal(selectionWithin(8, 8), null);
+  assert.equal(selectionWithin(null, 8), null);
+  assert.equal(selectionWithin(-1, 8), null);
+  assert.equal(selectionWithin(0, 0), null);
 });

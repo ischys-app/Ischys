@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  addDays,
+  daysBetween,
   fmtHeaderDate,
   fmtHistoryGroupTitle,
   fmtShortDayUpper,
@@ -90,4 +92,14 @@ test('the short day reads weekday, day, month in capitals', () => {
   // Built from local parts, so it holds in any timezone.
   assert.equal(fmtShortDayUpper(new Date(2025, 8, 30, 18, 4)), 'TUE 30 SEP');
   assert.equal(fmtShortDayUpper(new Date(2026, 0, 4)), 'SUN 4 JAN');
+});
+
+test('days between local midnights count calendar days, across a clock change too', () => {
+  // Every day of a year from its first: whatever the timezone, the spring and
+  // autumn changes both fall inside, and neither may shift a day.
+  const first = new Date(2026, 0, 1);
+  for (let n = 0; n < 365; n += 1) {
+    assert.equal(daysBetween(first, addDays(first, n)), n, `day ${n}`);
+  }
+  assert.equal(daysBetween(addDays(first, 3), first), -3);
 });

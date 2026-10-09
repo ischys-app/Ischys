@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { accentA, color, font } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 import { fmtClock } from './workout/types';
 
 /**
@@ -54,13 +55,13 @@ export function ResumeWorkoutBar({ name, startedAt, onPress }: Props) {
               <View style={styles.dot} />
             </View>
             <View style={styles.middle}>
-              <Text style={styles.title}>Workout in progress</Text>
-              <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
+              <Text maxFontSizeMultiplier={textScale.display} style={styles.title}>Workout in progress</Text>
+              <Text maxFontSizeMultiplier={textScale.display} style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
                 {name} · {fmtClock(seconds)}
               </Text>
             </View>
             <View style={styles.pill}>
-              <Text style={styles.pillLabel}>Resume</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.pillLabel}>Resume</Text>
               <Svg width={13} height={13} viewBox="0 0 24 24">
                 <Path
                   d="M9 6l6 6-6 6"

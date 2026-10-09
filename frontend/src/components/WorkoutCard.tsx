@@ -5,6 +5,7 @@ import { formatVolume } from '../domain/units';
 import { fmtDuration, fmtWorkoutDate } from '../lib/format';
 import { useWeightUnit } from '../lib/weightUnit';
 import { color, font } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
 
@@ -37,10 +38,10 @@ export function WorkoutCard({
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.name} numberOfLines={1}>
             {workout.name}
           </Text>
-          <Text style={styles.date}>{fmtWorkoutDate(workout.started_at)}</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.date}>{fmtWorkoutDate(workout.started_at)}</Text>
         </View>
         {workout.pr_count > 0 ? <PrPill count={workout.pr_count} /> : null}
       </View>
@@ -65,8 +66,8 @@ export function WorkoutCard({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{label}</Text>
+      <Text maxFontSizeMultiplier={textScale.display} style={styles.statValue}>{value}</Text>
     </View>
   );
 }

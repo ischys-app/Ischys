@@ -407,6 +407,8 @@ final class WorkoutModel: ObservableObject {
     nextSetLabel = s.nextSetLabel
     restTotal = s.restTotal
     volume = s.volume
+    // A set logged while the session is paused resumes it (`SessionPause`).
+    if s.screen == .session { WorkoutManager.shared.setsChanged(from: setsDone, to: s.setsDone) }
     setsDone = s.setsDone
     setsTotal = s.setsTotal
     summary = s.summary

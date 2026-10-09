@@ -454,7 +454,7 @@ function Connected({
           </View>
           {/* Denied → toggle is disabled. Leaving it flippable would imply
               Ischys can grant itself access. */}
-          <Toggle value={!denied && prefs.writeWorkouts} disabled={denied} onPress={() => onTogglePref('writeWorkouts', !prefs.writeWorkouts)} />
+          <Toggle label="Save finished workouts" value={!denied && prefs.writeWorkouts} disabled={denied} onPress={() => onTogglePref('writeWorkouts', !prefs.writeWorkouts)} />
         </View>
         {denied && (
           <View style={styles.explainerBlockLast}>
@@ -608,7 +608,7 @@ function ReadRow({
           <Text style={[styles.rowLabel, kind === 'off' && styles.rowLabelOff]}>{label}</Text>
           <View style={styles.receiptWrap}>{receiptNode}</View>
         </Pressable>
-        <Toggle value={enabled} onPress={() => onTogglePref(!enabled)} />
+        <Toggle label={label} value={enabled} onPress={() => onTogglePref(!enabled)} />
       </View>
 
       {uncertain && expanded && (
@@ -639,10 +639,13 @@ function ReadRow({
 // --- Toggle ---------------------------------------------------------------
 
 function Toggle({
+  label,
   value,
   disabled,
   onPress,
 }: {
+  /** What the switch turns on, for a screen reader: the row's own title. */
+  label: string;
   value: boolean;
   disabled?: boolean;
   onPress: () => void;
@@ -653,6 +656,7 @@ function Toggle({
       disabled={disabled}
       hitSlop={8}
       accessibilityRole="switch"
+      accessibilityLabel={label}
       accessibilityState={{ checked: value, disabled: !!disabled }}
       style={[
         styles.toggleTrack,

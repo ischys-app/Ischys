@@ -15,7 +15,7 @@ import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { getRoutine, getRoutineHistory, type RoutineHistory } from '../../../src/api/routines';
 import type { RoutineOut } from '../../../src/api/types';
-import { startWorkout } from '../../../src/api/workouts';
+import { beginWorkout } from '../../../src/lib/startWorkoutFlow';
 import { PlayFilledIcon, PlusIcon } from '../../../src/components/icons';
 import { PressableScale } from '../../../src/components/PressableScale';
 import { fmtRest, typeMeta } from '../../../src/components/workout/types';
@@ -92,14 +92,18 @@ export default function RoutineView() {
           if (cancelled) return;
           setRoutine(r);
           setHistory(h);
-        } catch (e) {
-          console.warn(e);
+        } catch {
+          // No routine has this id (a stale link, or it was just deleted):
+          // there is nothing to view or start, so leave.
+          if (cancelled) return;
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)');
         }
       })();
       return () => {
         cancelled = true;
       };
-    }, [routineId]),
+    }, [routineId, router]),
   );
 
   const blocks = useMemo<ViewBlock[]>(() => {
@@ -156,9 +160,14 @@ export default function RoutineView() {
     if (!routineId || starting) return;
     setStarting(true);
     try {
-      const w = await startWorkout({ routine_id: routineId });
+      const begun = await beginWorkout({ routine_id: routineId });
+      if (!begun) {
+        // Cancelled with another workout running: still here, able to start.
+        setStarting(false);
+        return;
+      }
       // Replace, so Back from the workout returns to Home rather than here.
-      router.replace(`/workout/${w.id}`);
+      router.replace(`/workout/${begun.workoutId}`);
     } catch (e) {
       console.warn(e);
       setStarting(false);

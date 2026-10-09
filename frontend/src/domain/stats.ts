@@ -126,7 +126,10 @@ export function sessionMetric(
   const weighted = working.filter((s) => s.weight !== null && s.reps !== null);
   if (weighted.length === 0) return null;
   if (metric === 'best_set') {
-    return round1(Math.max(...weighted.map((s) => s.weight as number)));
+    // The weight as stored, not rounded here: a tenth of a kilogram is a
+    // quarter of a pound, so rounding before the chart converts drew a 225 lb
+    // set as 225.1. The chart rounds once, in the unit it shows.
+    return Math.max(...weighted.map((s) => s.weight as number));
   }
   // est_1rm and any unknown metric. Sets past the ceiling are dropped rather
   // than clamped, so a high-rep-only session plots no point instead of a
@@ -135,5 +138,6 @@ export function sessionMetric(
     .filter((s) => (s.reps as number) <= EST_1RM_MAX_REPS)
     .map((s) => estimated1rm(s.weight, s.reps))
     .filter((o): o is number => o !== null);
-  return ones.length ? round1(Math.max(...ones)) : null;
+  // Left at `estimated1rm`'s two decimals, for the same reason as best_set.
+  return ones.length ? Math.max(...ones) : null;
 }

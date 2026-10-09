@@ -40,6 +40,40 @@ private enum LA {
   static let controlsTop: CGFloat = 8
 }
 
+// MARK: - Dynamic Island
+
+/// The workout's elapsed time for the island's compact trailing slot: "12:03",
+/// then "1:02:03".
+///
+/// The Lock Screen card spells it out ("12 min, 3 sec"), and has the width to.
+/// Here that sentence, and any self-updating text left to size itself, takes
+/// all the room the system will give: the island grew across the status bar,
+/// over the clock and the battery, around a string it then truncated. So the
+/// clock form is used, in the same face, and laid over a hidden template of
+/// its widest reading — the island is as wide as "00:00", whatever the digits.
+private struct CompactElapsed: View {
+  let since: Date
+
+  var body: some View {
+    // Chosen when the island is drawn, which is at every push (each set, each
+    // rest). A minute early, so one drawn at 59 minutes already has room for
+    // the hour; and if it is never redrawn, the text shrinks to fit instead.
+    let template = Date().timeIntervalSince(since) >= 59 * 60 ? "0:00:00" : "00:00"
+    Text(template)
+      .font(.custom("JetBrainsMono-Regular", size: 13.5))
+      .monospacedDigit()
+      .hidden()
+      .overlay(alignment: .trailing) {
+        Text(since, style: .timer)
+          .font(.custom("JetBrainsMono-Regular", size: 13.5))
+          .monospacedDigit()
+          .multilineTextAlignment(.trailing)
+          .lineLimit(1)
+          .minimumScaleFactor(0.6)
+      }
+  }
+}
+
 // MARK: - Live Activity
 
 struct WorkoutLiveActivity: Widget {
@@ -60,10 +94,7 @@ struct WorkoutLiveActivity: Widget {
           .fill(LA.accent)
           .frame(width: 6, height: 6)
       } compactTrailing: {
-        Text(context.attributes.workoutStartedAt, style: .relative)
-          .font(.custom("JetBrainsMono-Regular", size: 13.5))
-          .monospacedDigit()
-          .lineLimit(1)
+        CompactElapsed(since: context.attributes.workoutStartedAt)
       } minimal: {
         Circle()
           .fill(LA.accent)

@@ -12,6 +12,8 @@ import {
 import type { EffortRowLine } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
 import { color, font } from '../../theme/tokens';
+import { textScale } from '../../theme/textScale';
+import { doneToggleLabel, repsFieldLabel, weightFieldLabel } from '../../lib/setRowLabels';
 
 /**
  * Native id of the "Done" bar shown above the weight/reps keypads. Those are
@@ -169,7 +171,7 @@ export function SetRow({
             accessibilityLabel={`Set ${badge}, ${set.type}`}
             accessibilityHint="Tap to change set type."
           >
-            <Text style={[styles.badgeText, { color: meta.color }]}>{badge}</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.badgeText, { color: meta.color }]}>{badge}</Text>
           </Pressable>
         </View>
 
@@ -190,13 +192,13 @@ export function SetRow({
               accessibilityLabel={`Set ${badge}, ${edit.was}`}
               accessibilityHint="Switches this set between done and not done"
             >
-              <Text style={styles.wasText} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.wasText} numberOfLines={1}>
                 {edit.was}
               </Text>
             </Pressable>
           ) : (
             <View style={styles.wasCell}>
-              <Text style={styles.wasText} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.wasText} numberOfLines={1}>
                 {edit.was}
               </Text>
             </View>
@@ -215,17 +217,17 @@ export function SetRow({
             }
             accessibilityHint="Opens the effort scale"
           >
-            <Text style={styles.prevText} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.prevText} numberOfLines={1}>
               {prev}
             </Text>
-            <Text style={[styles.effortText, effortStyles[effortTap.kind]]} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.effortText, effortStyles[effortTap.kind]]} numberOfLines={1}>
               {effortTap.text}
             </Text>
           </Pressable>
         ) : (
           <View style={styles.prevCell}>
             <Pressable onPress={onUsePrev} hitSlop={{ top: 6, bottom: 2 }}>
-              <Text style={styles.prevText} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.prevText} numberOfLines={1}>
                 {prev}
               </Text>
             </Pressable>
@@ -240,6 +242,7 @@ export function SetRow({
                 accessibilityHint="Fills this set with the suggestion"
               >
                 <Text
+                  maxFontSizeMultiplier={textScale.fixed}
                   style={[
                     styles.suggestText,
                     // Dimmed once the user has typed something: it stays visible
@@ -258,7 +261,7 @@ export function SetRow({
               // `last @9` is a reference and does nothing; the done row's line —
               // the rating, or `+ RPE` — opens the scale.
               effortLine.kind === 'last' || !onEffortPress ? (
-                <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
                   {effortLine.text}
                 </Text>
               ) : (
@@ -271,7 +274,7 @@ export function SetRow({
                   }
                   accessibilityHint="Opens the effort scale"
                 >
-                  <Text style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
+                  <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
                     {effortLine.text}
                   </Text>
                 </Pressable>
@@ -298,6 +301,8 @@ export function SetRow({
           // makes the next keypress overwrite instead of forcing a backspace hold.
           selectTextOnFocus
           inputAccessoryViewID={accessoryId}
+          accessibilityLabel={weightFieldLabel(badge, unit)}
+          maxFontSizeMultiplier={textScale.fixed}
           style={[styles.input, styles.weightInput, weightFocused && styles.inputFocused]}
         />
 
@@ -315,6 +320,8 @@ export function SetRow({
           keyboardType="number-pad"
           selectTextOnFocus
           inputAccessoryViewID={accessoryId}
+          accessibilityLabel={repsFieldLabel(badge)}
+          maxFontSizeMultiplier={textScale.fixed}
           style={[styles.input, styles.repsInput, repsFocused && styles.inputFocused]}
         />
 
@@ -335,6 +342,9 @@ export function SetRow({
             <Pressable
               onPress={onToggleDone}
               style={[styles.check, set.done ? styles.checkDone : styles.checkIdle]}
+              accessibilityRole="button"
+              accessibilityLabel={doneToggleLabel(badge, set.done)}
+              accessibilityState={{ checked: set.done }}
             >
               <CheckIcon
                 size={18}

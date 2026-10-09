@@ -11,20 +11,16 @@
  */
 import * as SecureStore from 'expo-secure-store';
 
+import { bodyweightInRange, bodyweightToStore } from './bodyweightValue';
+
 const KEY = 'ischys.bodyweightKg';
-
-/** Plausible human bodyweight bounds (kg). Outside this, treat as unset. */
-const BW_MIN = 20;
-const BW_MAX = 500;
-
-const inRange = (n: number): boolean => Number.isFinite(n) && n >= BW_MIN && n <= BW_MAX;
 
 /** The stored bodyweight in kg, or null when unset (or stored out of range). */
 export async function getBodyweightKg(): Promise<number | null> {
   const raw = await SecureStore.getItemAsync(KEY);
   if (raw == null) return null;
   const n = Number(raw);
-  return inRange(n) ? n : null;
+  return bodyweightInRange(n) ? n : null;
 }
 
 /** Persist a bodyweight (kg), or clear it with null. Out-of-range values are ignored. */
@@ -33,9 +29,9 @@ export async function setBodyweightKg(kg: number | null): Promise<void> {
     await SecureStore.deleteItemAsync(KEY);
     return;
   }
-  if (!inRange(kg)) return;
-  // One decimal is plenty for bodyweight; avoids float noise in the stored string.
-  await SecureStore.setItemAsync(KEY, String(Math.round(kg * 10) / 10));
+  const stored = bodyweightToStore(kg);
+  if (stored == null) return;
+  await SecureStore.setItemAsync(KEY, String(stored));
 }
 
 /**

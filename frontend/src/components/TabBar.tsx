@@ -7,6 +7,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { accentA, color } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 import { HistoryIcon, HomeIcon, ProfileIcon } from './icons';
 
 /** Minimal shape of the navigation tabBar props we consume. */
@@ -49,7 +50,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
               style={[styles.tab, focused && styles.tabActive]}
             >
               <meta.Icon size={24} color={tint} strokeWidth={2} />
-              <Text style={[styles.label, { color: tint }]}>{meta.label}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.label, { color: tint }]}>{meta.label}</Text>
             </Pressable>
           );
         })}

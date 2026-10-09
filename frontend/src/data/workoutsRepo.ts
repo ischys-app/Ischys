@@ -5,7 +5,7 @@
  * DB (drizzle/expo) — never node-tested. No FK cascades in the schema, so child
  * rows are deleted explicitly.
  */
-import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt } from 'drizzle-orm';
 
 import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
@@ -55,18 +55,29 @@ export async function getWorkout(id: string): Promise<WorkoutOut> {
   return w;
 }
 
+/** Newest first. `offset` skips that many, for reading the list a page at a time. */
 export async function listWorkouts(
-  params: { limit?: number; status?: string } = {},
+  params: { limit?: number; offset?: number; status?: string } = {},
 ): Promise<WorkoutListItem[]> {
   const where = params.status ? eq(schema.workouts.status, params.status) : undefined;
   const rows = await db
     .select()
     .from(schema.workouts)
     .where(where)
-    .orderBy(desc(schema.workouts.startedAt))
-    .limit(params.limit ?? 50);
+    // The id breaks a tie between two that began in the same millisecond (an
+    // import can write those), so paging never repeats or skips one of them.
+    .orderBy(desc(schema.workouts.startedAt), desc(schema.workouts.id))
+    .limit(params.limit ?? 50)
+    .offset(params.offset ?? 0);
   const tags = await muscleTagsByWorkout(rows.map((w) => w.id));
   return rows.map((w) => toWorkoutListItem(w as WorkoutRow, tags.get(w.id) ?? []));
+}
+
+/** How many workouts there are, of one status or of any. */
+export async function countWorkouts(status?: string): Promise<number> {
+  const where = status ? eq(schema.workouts.status, status) : undefined;
+  const [row] = await db.select({ n: count() }).from(schema.workouts).where(where);
+  return row?.n ?? 0;
 }
 
 export async function getActivityMap(weeks = 12): Promise<ReturnType<typeof activityMap>> {

@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { color, font } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 
 /** Green streak pill shown in the weekly-summary row. */
 export function StreakPill({ days }: { days: number }) {
   return (
     <View style={styles.pill}>
       <View style={styles.dot} />
-      <Text style={styles.text}>{days}-day streak</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.text}>{days}-day streak</Text>
     </View>
   );
 }

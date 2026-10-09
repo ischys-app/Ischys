@@ -221,3 +221,16 @@ test('session_metric bodyweight has reps but no weight metric', () => {
   assert.equal(sessionMetric(sets, 'best_set'), null);
   assert.equal(sessionMetric(sets, 'best_volume'), null);
 });
+
+test('a weight typed in pounds charts as the number typed', () => {
+  // 225 lb is stored as 102.0583 kg. Rounded to a tenth of a kilogram first,
+  // it came back as 225.1 lb; so did 100 lb (100.1) and 135 lb (134.9).
+  const LB = 0.45359237;
+  for (const lb of [45, 100, 135, 225, 315]) {
+    const kg = Math.round(lb * LB * 10000) / 10000;
+    const best = sessionMetric([s('normal', kg, 5)], 'best_set') as number;
+    assert.equal(Math.round((best / LB) * 10) / 10, lb, `best set ${lb} lb`);
+    const single = sessionMetric([s('normal', kg, 1)], 'est_1rm') as number;
+    assert.equal(Math.round((single / LB) * 10) / 10, lb, `single at ${lb} lb`);
+  }
+});

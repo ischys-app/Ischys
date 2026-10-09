@@ -61,8 +61,10 @@ import {
   rememberLiveActivityHint,
 } from '../../src/lib/liveActivityHint';
 import { parseServerDate } from '../../src/lib/serverTime';
+import { workoutScreenTarget } from '../../src/lib/workoutScreenTarget';
 import {
   forgetActiveWorkout,
+  recallActiveWorkout,
   rememberActiveWorkout,
 } from '../../src/lib/activeWorkout';
 import { saveRest, loadRest, clearRest } from '../../src/lib/restSession';
@@ -120,6 +122,7 @@ import { getBodyweightKg } from '../../src/lib/bodyweight';
 import { getCountWarmups } from '../../src/lib/warmupVolume';
 import type { WatchAction } from '../../modules/health';
 import { color, font } from '../../src/theme/tokens';
+import { textScale } from '../../src/theme/textScale';
 import { CheckIcon } from '../../src/components/icons';
 import { EmptyWorkout } from '../../src/components/workout/EmptyWorkout';
 import { ExerciseCard } from '../../src/components/workout/ExerciseCard';
@@ -340,22 +343,26 @@ export default function ActiveWorkout() {
     void startWatchSession();
   }, [watchSessionWanted]);
 
-  // Load a real workout on mount; fall back to the offline demo seed on failure.
+  // Load the workout on mount. Only one in progress belongs on this screen: an
+  // id with nothing behind it, or with a workout that is over, is left again
+  // (see workoutScreenTarget) rather than shown as running.
   useEffect(() => {
     if (isDemo) return;
     let cancelled = false;
     (async () => {
-      let w: WorkoutOut;
-      try {
-        w = await getWorkout(routeId);
-      } catch {
-        if (cancelled) return;
-        setExercises(seedWorkout());
-        setEntryUnit('kg'); // the seed is written in kilograms
-        setPersist(false); // load failed → offline, don't write back
-        setName('Upper');
-        setStartedAt(Date.now() - START_ELAPSED * 1000);
-        setLoading(false);
+      const w = await getWorkout(routeId).catch(() => null);
+      if (cancelled) return;
+      const target = workoutScreenTarget(w ? w.status : null);
+      if (!w || target !== 'workout') {
+        // The root layout may be finishing this one from the wrist at the same
+        // moment (`completedByWatch`); whichever gets here first leaves.
+        if (finishStarted.current) return;
+        finishStarted.current = true;
+        // So the next launch does not come straight back here.
+        if (recallActiveWorkout() === routeId) forgetActiveWorkout();
+        if (target === 'summary') router.replace(`/summary/${routeId}`);
+        else if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)');
         return;
       }
       // Best-effort previous-session hints (sets + note), in parallel; failures → empty.
@@ -391,7 +398,7 @@ export default function ActiveWorkout() {
     return () => {
       cancelled = true;
     };
-  }, [isDemo, routeId]);
+  }, [isDemo, routeId, router]);
 
   // Reopen here after a relaunch. Cleared the moment the user chooses to leave.
   useEffect(() => {
@@ -1894,7 +1901,7 @@ export default function ActiveWorkout() {
               {/* One header per group, then a rail down the screen margin tying
                   the partners together. No new colour: a 2pt text3 line. */}
               {supersetHeaderFor(ex.id) ? (
-                <Text style={styles.ssHeader}>{supersetHeaderFor(ex.id)}</Text>
+                <Text maxFontSizeMultiplier={textScale.control} style={styles.ssHeader}>{supersetHeaderFor(ex.id)}</Text>
               ) : null}
               {ex.supersetGroup != null ? <View style={styles.ssRail} /> : null}
             <ExerciseCard
@@ -1972,8 +1979,8 @@ export default function ActiveWorkout() {
               );
             }}
           >
-            <Text style={styles.addExercisePlus}>+</Text>
-            <Text style={styles.addExerciseText}>Add Exercise</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.addExercisePlus}>+</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.addExerciseText}>Add Exercise</Text>
           </PressableScale>
 
           <View
@@ -2003,7 +2010,7 @@ export default function ActiveWorkout() {
               accessibilityRole="button"
               accessibilityLabel="Back to the keypad bar"
             >
-              <Text style={styles.kbdAccessoryAction}>Back</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Back</Text>
             </Pressable>
             {/* Nothing to clear on an unrated set, so the key isn't there. */}
             {keypadEffort.rpe != null ? (
@@ -2013,7 +2020,7 @@ export default function ActiveWorkout() {
                 accessibilityRole="button"
                 accessibilityLabel="Clear rating"
               >
-                <Text style={styles.kbdAccessoryAction}>Clear rating</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Clear rating</Text>
               </Pressable>
             ) : null}
           </View>
@@ -2035,7 +2042,7 @@ export default function ActiveWorkout() {
                   accessibilityRole="button"
                   accessibilityLabel="Plate calculator"
                 >
-                  <Text style={styles.kbdAccessoryAction}>Plates</Text>
+                  <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Plates</Text>
                 </Pressable>
               ) : null}
               <Pressable
@@ -2044,7 +2051,7 @@ export default function ActiveWorkout() {
                 accessibilityRole="button"
                 accessibilityLabel="Rate this set"
               >
-                <Text style={styles.kbdAccessoryAction}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
               </Pressable>
             </View>
           ) : plateExercise ? (
@@ -2054,7 +2061,7 @@ export default function ActiveWorkout() {
               accessibilityRole="button"
               accessibilityLabel="Plate calculator"
             >
-              <Text style={styles.kbdAccessoryAction}>Plates</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Plates</Text>
             </Pressable>
           ) : (
             <View />
@@ -2065,7 +2072,7 @@ export default function ActiveWorkout() {
             accessibilityRole="button"
             accessibilityLabel="Hide keyboard"
           >
-            <Text style={styles.kbdAccessoryDone}>Done</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryDone}>Done</Text>
           </Pressable>
         </View>
       ) : null}
@@ -2180,7 +2187,7 @@ export default function ActiveWorkout() {
               onFinish();
             }}
           >
-            <Text style={styles.doneFinishText}>Finish Workout</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneFinishText}>Finish Workout</Text>
           </PressableScale>
           <Pressable
             onPress={() => {
@@ -2191,7 +2198,7 @@ export default function ActiveWorkout() {
             style={({ pressed }) => [styles.doneAdd, pressed && styles.doneAddPressed]}
             accessibilityRole="button"
           >
-            <Text style={styles.doneAddText}>Add another exercise</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneAddText}>Add another exercise</Text>
           </Pressable>
         </View>
       </DraggableSheet>

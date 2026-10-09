@@ -8,8 +8,19 @@
  * So do the exercises of the workouts it skips as already stored.
  */
 
-/** A completed workout's identity: the same name at the same instant is the same workout. */
-export const workoutKey = (name: string, startedAt: number): string => `${name}@@${startedAt}`;
+/**
+ * A completed workout's identity: the same name, started in the same minute,
+ * is the same workout.
+ *
+ * To the minute, because that is all a CSV says. The app stores a start to the
+ * millisecond and its own CSV export writes "10 Jul 2026, 09:00", so matched
+ * on the exact instant a workout logged here never equalled its own exported
+ * row, and importing the export back wrote every workout a second time. The
+ * minute is the one a clock in UTC shows, so it is the same wherever the file
+ * is read. Two workouts of one name cannot begin inside one minute.
+ */
+export const workoutKey = (name: string, startedAt: number): string =>
+  `${name}@@${Math.floor(startedAt / 60_000)}`;
 
 /** An exercise's identity by name: case and surrounding space do not make a new one. */
 export const exerciseKey = (name: string): string => name.trim().toLowerCase();

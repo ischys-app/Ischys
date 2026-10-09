@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { WeekBar } from '../api/types';
 import { color, font } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 
 const MAX_BAR_PX = 68;
 
@@ -22,7 +23,7 @@ export function WeekBars({ week }: { week: WeekBar[] }) {
         return (
           <View key={i} style={styles.col}>
             <View style={[styles.bar, { height: heightPx }, barStyle]} />
-            <Text style={[styles.label, { color: d.today ? color.accent : color.text3 }]}>{d.label}</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.label, { color: d.today ? color.accent : color.text3 }]}>{d.label}</Text>
           </View>
         );
       })}

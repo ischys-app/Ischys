@@ -142,15 +142,20 @@ export default function RoutineBuilder() {
           })),
         );
       } catch {
-        // best-effort — leave empty and let the user rebuild
-      } finally {
-        if (!cancelled) setLoading(false);
+        // The routine could not be read, most often because no routine has
+        // this id. An empty editor here would save over a routine that exists
+        // or write rows for one that does not, so leave instead.
+        if (cancelled) return;
+        if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)');
+        return;
       }
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [isNew, routeId]);
+  }, [isNew, routeId, router]);
 
   /** Set while the library is picking a replacement, so the drain swaps instead of appends. */
   const replaceTarget = useRef<string | null>(null);

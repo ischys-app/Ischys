@@ -31,8 +31,8 @@ import {
   getDashboard,
   getSettings,
   listWorkouts,
-  startWorkout,
 } from '../src/api/workouts';
+import { beginWorkout } from '../src/lib/startWorkoutFlow';
 import { setHapticsEnabled } from '../src/lib/haptics';
 import { getThemeId } from '../src/lib/themePref';
 import { setEffortMode } from '../src/lib/effortMode';
@@ -89,10 +89,6 @@ function useLiveActivityActions() {
  * that could miss) and navigates into the workout, which then mirrors to the
  * Watch. Other Watch actions (log set, rest…) are handled by the workout screen.
  */
-// A start the Watch asked for that is still being written: a second tap in
-// that moment must not begin a second workout.
-let watchStartInFlight = false;
-
 function useWatchStart() {
   useEffect(
     () =>
@@ -127,29 +123,21 @@ function useWatchStart() {
           return;
         }
         if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
-        // A second tap while the first start is still being written.
-        if (watchStartInFlight) return;
-        watchStartInFlight = true;
         void (async () => {
           try {
-            // One workout at a time. A start can arrive with one already
-            // running — tapped twice, or a Watch that never heard the first
-            // had begun — and a second active workout would sit behind the
-            // first, unseen, until it was found and discarded. Open the one
-            // there is instead; its screen puts the wrist back in it.
-            const [active] = await listWorkouts({ status: 'active', limit: 1 });
-            if (active) {
-              if (!screenHoldsWatchFinish()) router.push(`/workout/${active.id}`);
-              return;
-            }
-            const w = await startWorkout(
+            // One workout at a time (startGuard.ts). A start can arrive with
+            // one already running — tapped twice, or a Watch that never heard
+            // the first had begun. The one there is is opened instead; its
+            // screen puts the wrist back in it.
+            const begun = await beginWorkout(
               a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
+              { from: 'watch' },
             );
-            router.push(`/workout/${w.id}`);
+            if (!begun) return;
+            if (begun.resumed && screenHoldsWatchFinish()) return; // already on screen
+            router.push(`/workout/${begun.workoutId}`);
           } catch {
-            // No server / not signed in — nothing to start.
-          } finally {
-            watchStartInFlight = false;
+            // Nothing could be started; the Watch stays on its Start screen.
           }
         })();
       }),

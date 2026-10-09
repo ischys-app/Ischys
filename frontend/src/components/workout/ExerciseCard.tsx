@@ -5,6 +5,7 @@ import { effortRowLine, type EffortScaleKind } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
 import { exerciseArt } from '../../lib/exerciseArt';
 import { color, font } from '../../theme/tokens';
+import { textScale } from '../../theme/textScale';
 import { ExerciseArt } from '../ExerciseArt';
 import { PressableScale } from '../PressableScale';
 import { ChevronRightIcon, ClockRowIcon, StarIcon } from '../icons';
@@ -126,7 +127,13 @@ export function ExerciseCard({
     <View style={styles.card}>
       {/* Header */}
       <View style={[styles.header, edit && styles.headerEdit]}>
-        <Pressable style={styles.avatar} onPress={onOpenDetail} disabled={!onOpenDetail}>
+        <Pressable
+          style={styles.avatar}
+          onPress={onOpenDetail}
+          disabled={!onOpenDetail}
+          accessibilityRole="button"
+          accessibilityLabel={`About ${exercise.name}`}
+        >
           {(() => {
             // Line art when we have it for this movement, initials otherwise.
             // Held on the first frame here: this is a dense list mid-workout, so a
@@ -141,13 +148,13 @@ export function ExerciseCard({
                 animate={false}
               />
             ) : (
-              <Text style={styles.avatarText}>{exercise.initials}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.avatarText}>{exercise.initials}</Text>
             );
           })()}
         </Pressable>
         <Pressable style={styles.headerText} onPress={onOpenDetail} disabled={!onOpenDetail}>
           {/* A long name wraps to two lines while editing (E7); live keeps one. */}
-          <Text style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : 1}>
+          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : 1}>
             {exercise.name}
           </Text>
           <View style={styles.metaRow}>
@@ -155,17 +162,23 @@ export function ExerciseCard({
                 colour — surface3 on the existing grey. */}
             {supersetTag ? (
               <View style={styles.ssTag}>
-                <Text style={styles.ssTagText}>{supersetTag}</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.ssTagText}>{supersetTag}</Text>
               </View>
             ) : null}
-            <Text style={styles.meta} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.meta} numberOfLines={1}>
               {edit ? titleCase(exercise.equipment) : exerciseMeta(exercise)}
             </Text>
           </View>
         </Pressable>
         <View style={styles.menuAnchor}>
-          <Pressable onPress={onToggleMenu} style={styles.menuButton} hitSlop={6}>
-            <Text style={styles.menuGlyph}>{'⋯'}</Text>
+          <Pressable
+            onPress={onToggleMenu}
+            style={styles.menuButton}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${exercise.name}`}
+          >
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.menuGlyph}>{'⋯'}</Text>
           </Pressable>
           {menuOpen && (
             <ExerciseMenu
@@ -187,7 +200,7 @@ export function ExerciseCard({
             <View style={styles.recordStar}>
               <StarIcon size={13} color={color.text2} strokeWidth={2.4} />
             </View>
-            <Text style={styles.recordText}>{edit.recordLine}</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.recordText}>{edit.recordLine}</Text>
           </View>
         ) : null
       ) : (
@@ -198,6 +211,7 @@ export function ExerciseCard({
             onChangeText={onNoteChange}
             placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
             placeholderTextColor={color.text3}
+            accessibilityLabel={`Notes for ${exercise.name}`}
             multiline
             style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
           />
@@ -205,9 +219,9 @@ export function ExerciseCard({
           {/* Rest timer row */}
           <Pressable onPress={onOpenRest} style={styles.restRow}>
             <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-            <Text style={styles.restLabel}>Rest Timer</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.restLabel}>Rest Timer</Text>
             <View style={styles.restRight}>
-              <Text style={styles.restValue}>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restValue}>
                 {restOverrideLabel ?? restLabel(exercise.rest)}
               </Text>
               <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
@@ -218,10 +232,10 @@ export function ExerciseCard({
 
       {/* Column labels */}
       <View style={[styles.colHeader, edit && styles.colHeaderEdit]}>
-        <Text style={[styles.colLabel, styles.colSet]}>SET</Text>
-        <Text style={[styles.colLabel, styles.colPrev]}>{edit ? 'WAS' : 'PREV'}</Text>
-        <Text style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
-        <Text style={[styles.colLabel, styles.colReps]}>REPS</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colSet]}>SET</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colPrev]}>{edit ? 'WAS' : 'PREV'}</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colReps]}>REPS</Text>
         <View style={styles.colCheck} />
       </View>
 
@@ -307,7 +321,7 @@ export function ExerciseCard({
           isn't there, rather than sitting disabled. */}
       <View style={styles.footerRow}>
         <PressableScale onPress={onAddSet} style={[styles.addSet, styles.footerHalf]}>
-          <Text style={styles.addSetText}>+ Add Set</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.addSetText}>+ Add Set</Text>
         </PressableScale>
         {onWarmup && (
           <PressableScale
@@ -318,7 +332,7 @@ export function ExerciseCard({
           >
             {/* Warning is the warm-up set-type colour, so the button matches the
                 W badges it creates. */}
-            <Text style={[styles.addSetText, styles.warmupText]}>Warm-up</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={[styles.addSetText, styles.warmupText]}>Warm-up</Text>
           </PressableScale>
         )}
       </View>

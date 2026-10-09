@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { RoutineListItem } from '../api/types';
 import { color, font, TAP_TARGET } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 import { PressableScale } from './PressableScale';
 import { PlayFilledIcon } from './icons';
 
@@ -32,13 +33,13 @@ export function RoutineCard({
           accessibilityLabel={`View ${routine.name}`}
         >
           <View style={styles.avatar}>
-            <Text style={styles.initials}>{routine.initials}</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.initials}>{routine.initials}</Text>
           </View>
           <View style={styles.info}>
-            <Text style={styles.name} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={textScale.display} style={styles.name} numberOfLines={1}>
               {routine.name}
             </Text>
-            <Text style={styles.detail} numberOfLines={2}>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.detail} numberOfLines={2}>
               {routine.detail}
             </Text>
           </View>
@@ -46,14 +47,16 @@ export function RoutineCard({
         <Pressable
           onPress={onOverflow}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`More options for ${routine.name}`}
           style={({ pressed }) => [styles.overflow, pressed && styles.overflowPressed]}
         >
-          <Text style={styles.overflowGlyph}>⋯</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.overflowGlyph}>⋯</Text>
         </Pressable>
       </View>
       <PressableScale onPress={onStart} style={styles.cta}>
         <PlayFilledIcon size={16} color={color.accentFg} />
-        <Text style={styles.ctaLabel}>Start Routine</Text>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.ctaLabel}>Start Routine</Text>
       </PressableScale>
     </View>
   );

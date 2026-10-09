@@ -206,6 +206,8 @@ export default function ExerciseDetail() {
             onPress={() => router.back()}
             style={styles.iconBtn}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
           >
             <Svg width={9} height={15} viewBox="0 0 9 15" fill="none">
               <Path

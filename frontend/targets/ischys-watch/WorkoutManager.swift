@@ -15,11 +15,17 @@ final class WorkoutManager: NSObject, ObservableObject {
   private var session: HKWorkoutSession?
   private var builder: HKLiveWorkoutBuilder?
   private var sessionStart: Date?
-  /// Set before ending when the workout is being thrown away, so the session's
-  /// end delegate discards the builder instead of saving an HKWorkout.
-  private var pendingDiscard = false
+  /// The current session's ending: asked for once, discarded or saved, and
+  /// cleaned up here if HealthKit never confirms it (see `SessionEnd`).
+  private var ending = SessionEnd()
+  /// A workout the phone launched us into while the previous session was still
+  /// ending. Started as soon as that one is closed.
+  private var startWhenClosed: HKWorkoutConfiguration?
+  private var pause = SessionPause()
 
   @Published private(set) var isRunning = false
+  /// The session is paused from Controls (see `SessionPause`).
+  @Published private(set) var isPaused = false
 
   private var hrType: HKQuantityType? { HKObjectType.quantityType(forIdentifier: .heartRate) }
   private var energyType: HKQuantityType? {
@@ -47,7 +53,14 @@ final class WorkoutManager: NSObject, ObservableObject {
   }
 
   func start(with config: HKWorkoutConfiguration) {
-    guard !isRunning, HKHealthStore.isHealthDataAvailable() else { return }
+    guard HKHealthStore.isHealthDataAvailable() else { return }
+    if isRunning {
+      // The last session is on its way out and this is the next workout: it
+      // gets a session of its own the moment that one is closed. A session
+      // simply running is the one this request is for already.
+      if ending.isEnding { startWhenClosed = config }
+      return
+    }
     do {
       let session = try HKWorkoutSession(healthStore: store, configuration: config)
       let builder = session.associatedWorkoutBuilder()
@@ -57,6 +70,8 @@ final class WorkoutManager: NSObject, ObservableObject {
 
       self.session = session
       self.builder = builder
+      self.ending = SessionEnd()
+      self.pause.reset()
 
       let start = Date()
       self.sessionStart = start
@@ -89,6 +104,8 @@ final class WorkoutManager: NSObject, ObservableObject {
     builder.delegate = self
     self.session = session
     self.builder = builder
+    self.ending = SessionEnd()
+    self.pause.reset()
     self.isRunning = true
   }
 
@@ -112,24 +129,116 @@ final class WorkoutManager: NSObject, ObservableObject {
     }
   }
 
-  func pause() { session?.pause() }
-  func resume() { session?.resume() }
+  /// Pause, or Resume: whichever the session is not doing (`SessionPause`).
+  /// `isPaused` changes when HealthKit reports the new state, not here.
+  func togglePause() {
+    switch pause.toggle {
+    case .pause: session?.pause()
+    case .resume: session?.resume()
+    }
+  }
+
+  /// The number of sets logged changed, on the wrist or on the phone. Logging
+  /// a set while paused resumes the session.
+  func setsChanged(from before: Int, to after: Int) {
+    if pause.resumesOnSets(from: before, to: after) { session?.resume() }
+  }
 
   /// End and save the session as an HKWorkout.
   ///
   /// Not what the Finish button calls: that asks the phone first and ends only
   /// once the workout is stored there (`WorkoutModel.requestFinish`). This runs
   /// on the phone's word, or when the phone could not be asked or did not answer.
-  func end() {
-    pendingDiscard = false
-    session?.end()
-  }
+  func end() { requestEnd(discard: false) }
 
   /// End and throw the session away — nothing is written to Health. Used when the
   /// user discards, whether they tap Discard on the Watch or on the phone.
-  func discard() {
-    pendingDiscard = true
-    session?.end()
+  func discard() { requestEnd(discard: true) }
+
+  /// Tells the session to end, once. A repeat — the phone echoing a discard
+  /// that began on the wrist — only records that the recording is discarded.
+  private func requestEnd(discard: Bool) {
+    guard let session, ending.request(discard: discard, now: Date()) else { return }
+    session.end()
+    // HealthKit confirms through the delegate, normally within a couple of
+    // seconds. If it never does, close the session here instead.
+    DispatchQueue.main.asyncAfter(deadline: .now() + SessionEnd.timeout) { [weak self] in
+      DispatchQueue.main.async { self?.closeIfUnconfirmed(session) }
+    }
+  }
+
+  @MainActor private func closeIfUnconfirmed(_ asked: HKWorkoutSession) {
+    guard asked === session, ending.timedOut(now: Date()), let outcome = ending.settle() else {
+      return
+    }
+    close(outcome, endedAt: Date(), confirmed: false)
+  }
+
+  /// The session is over: save or discard its recording, forget it, and leave
+  /// the workout's pages. Runs once per session, on the main queue.
+  ///
+  /// `confirmed` is false when HealthKit never reported the end. The recording
+  /// is then discarded outright, whatever was asked for, and without first
+  /// closing its collection:
+  ///
+  /// - Closing and saving both answer through callbacks of their own, and with
+  ///   the session stuck they do not arrive either. A recording left open like
+  ///   that is one HealthKit saves by itself when the app is next closed —
+  ///   which is how a discarded workout reached Health.
+  /// - Nothing is lost by it. The phone waits for our "saved" and, hearing
+  ///   nothing, writes the workout to Health itself, with the times it has and
+  ///   the heart rate and energy already in Health (`syncFinishedWorkout`). A
+  ///   save of ours that came through late would make that entry a second one.
+  @MainActor
+  private func close(_ outcome: SessionEnd.Outcome, endedAt date: Date, confirmed: Bool) {
+    let builder = self.builder
+    if !confirmed {
+      builder?.discardWorkout()
+    } else {
+      builder?.endCollection(withEnd: date) { _, _ in
+        switch outcome {
+        case .discard:
+          builder?.discardWorkout()
+        case .save:
+          builder?.finishWorkout { workout, _ in
+            // Confirm the save to the phone so it doesn't write a duplicate. If
+            // this never arrives — the save failed, auth was missing, we crashed —
+            // the phone times out waiting and writes the workout itself, so a
+            // finished workout is never silently lost.
+            //
+            // The phone is usually already waiting when this is sent: it stored
+            // the finish first and then told us to end (#95). How long it waits
+            // is tied to `FinishHandshake.verdictTimeout`.
+            //
+            // The UUID goes with it: the phone records which Health entry is this
+            // workout's and that the Watch wrote it, so a later edit to the
+            // workout's time leaves this recording alone. HealthKit keeps the
+            // UUID when the workout syncs to the phone.
+            if let workout { PhoneLink.shared.workoutSaved(uuid: workout.uuid.uuidString) }
+          }
+        }
+      }
+    }
+    session = nil
+    self.builder = nil
+    sessionStart = nil
+    pause.reset()
+    isPaused = false
+    isRunning = false
+    WorkoutModel.shared.stopTicking()
+    // Nothing is waiting on a finish, or reporting a failed one, once the
+    // session it was about has ended.
+    WorkoutModel.shared.finishSettled()
+    // Leave the workout UI when our session ends — whether ended here, from the
+    // phone, or discarded as an orphan — so the Watch can't stay stuck on the
+    // session screen if the phone never pushes the next state.
+    WorkoutModel.shared.screen = .start
+
+    // The next workout was asked for while this one was still ending.
+    if let next = startWhenClosed {
+      startWhenClosed = nil
+      start(with: next)
+    }
   }
 }
 
@@ -140,47 +249,25 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
     from fromState: HKWorkoutSessionState,
     date: Date
   ) {
-    guard toState == .ended else { return }
-    // A session that lasted under 3s is a phantom — the phone-launch handoff
-    // starting then immediately dropping it. Saving it pollutes Health with a
-    // 0–1s workout, so discard instead of finishing it. A user discard likewise
-    // must not be written (pendingDiscard, set by `discard()`).
-    let tooShort = sessionStart.map { date.timeIntervalSince($0) < 3 } ?? false
-    let shouldDiscard = pendingDiscard || tooShort
-    pendingDiscard = false
-    builder?.endCollection(withEnd: date) { _, _ in
-      if shouldDiscard {
-        self.builder?.discardWorkout()
-      } else {
-        self.builder?.finishWorkout { workout, _ in
-          // Confirm the save to the phone so it doesn't write a duplicate. If
-          // this never arrives — the save failed, auth was missing, we crashed —
-          // the phone times out waiting and writes the workout itself, so a
-          // finished workout is never silently lost.
-          //
-          // The phone is usually already waiting when this is sent: it stored
-          // the finish first and then told us to end (#95). How long it waits
-          // is tied to `FinishHandshake.verdictTimeout`.
-          //
-          // The UUID goes with it: the phone records which Health entry is this
-          // workout's and that the Watch wrote it, so a later edit to the
-          // workout's time leaves this recording alone. HealthKit keeps the
-          // UUID when the workout syncs to the phone.
-          if let workout { PhoneLink.shared.workoutSaved(uuid: workout.uuid.uuidString) }
-        }
-      }
-    }
-    sessionStart = nil
+    // HealthKit calls back off the main queue; everything below is main-only.
     DispatchQueue.main.async {
-      self.isRunning = false
-      WorkoutModel.shared.stopTicking()
-      // Nothing is waiting on a finish, or reporting a failed one, once the
-      // session it was about has ended.
-      WorkoutModel.shared.finishSettled()
-      // Leave the workout UI when our session ends — whether ended here, from the
-      // phone, or discarded as an orphan — so the Watch can't stay stuck on the
-      // session screen if the phone never pushes the next state.
-      WorkoutModel.shared.screen = .start
+      // A session already closed here (its end went unconfirmed and timed out)
+      // or replaced: whatever it reports now is about nothing we still hold.
+      guard session === self.session else { return }
+      guard toState == .ended else {
+        if toState == .paused || toState == .running {
+          self.pause.sessionChanged(paused: toState == .paused)
+          self.isPaused = self.pause.paused
+        }
+        return
+      }
+      // A session that lasted under 3s is a phantom — the phone-launch handoff
+      // starting then immediately dropping it. Saving it pollutes Health with a
+      // 0–1s workout, so discard instead of finishing it. A user discard likewise
+      // must not be written (`SessionEnd`).
+      let tooShort = self.sessionStart.map { date.timeIntervalSince($0) < 3 } ?? false
+      guard let outcome = self.ending.settle(tooShort: tooShort) else { return }
+      self.close(outcome, endedAt: date, confirmed: true)
     }
   }
 

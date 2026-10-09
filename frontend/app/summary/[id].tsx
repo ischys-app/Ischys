@@ -48,10 +48,12 @@ import { maybeRequestReviewAfterFinish } from '../../src/lib/reviewPrompt';
 import { getSummary } from '../../src/lib/summaryCache';
 import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
 import { effortLabel, type EffortScaleKind } from '../../src/domain/effort';
+import { countWorkingSets } from '../../src/domain/stats';
 import { type Unit, volumeText, weightText } from '../../src/domain/units';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
+import { textScale } from '../../src/theme/textScale';
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -73,7 +75,9 @@ function formatWhen(startedAt: string, endedAt: string | null | undefined): stri
  */
 function bestSetLine(sets: WorkoutSetOut[], unit: Unit, effort: EffortScaleKind | null): string {
   const working = sets.filter((s) => s.done && s.type !== 'warmup');
-  if (working.length === 0) return `${sets.filter((s) => s.done).length} sets`;
+  // No working set done: the same count the row's right-hand figure and the
+  // header use, so a warm-up alone does not read as a set here and not there.
+  if (working.length === 0) return `${countWorkingSets(sets)} sets`;
   let best = working[0];
   for (const s of working) {
     const bw = s.weight ?? -Infinity;
@@ -199,13 +203,16 @@ export default function WorkoutSummary() {
         const w = await getWorkout(workoutId);
         if (!cancelled) setFallbackWorkout(w);
       } catch {
-        // ignore — screen renders an empty shell
+        // No workout has this id: an empty shell says nothing, so leave.
+        if (cancelled) return;
+        if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)');
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [summary, workoutId]);
+  }, [summary, workoutId, router]);
 
   // Coming back from Edit (#83): show the workout as it now is. Whichever of
   // the two sources this screen was already rendering is the one refreshed, so
@@ -438,10 +445,16 @@ export default function WorkoutSummary() {
     return (
       <View style={styles.root}>
         <View style={[styles.header, { paddingTop: 56 + insets.top }]}>
-          <Pressable style={styles.headerBtn} onPress={onClose} hitSlop={8}>
+          <Pressable
+          style={styles.headerBtn}
+          onPress={onClose}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
             <CloseIcon tint={color.text2} />
           </Pressable>
-          <Text style={styles.headerTitle} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
             WORKOUT
           </Text>
           {/* Layout spacer only — no surface fill, no press target. */}
@@ -505,8 +518,8 @@ export default function WorkoutSummary() {
           <View style={styles.checkBadge}>
             <CheckIcon size={30} color={color.accentFg} strokeWidth={3} />
           </View>
-          <Text style={styles.workoutName}>{workout.name}</Text>
-          <Text style={styles.workoutWhen}>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.workoutName}>{workout.name}</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.workoutWhen}>
             {formatWhen(workout.started_at, workout.ended_at)}
           </Text>
         </View>
@@ -514,22 +527,22 @@ export default function WorkoutSummary() {
         {/* STAT GRID */}
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
-            <Text style={styles.statLabel}>DURATION</Text>
-            <Text style={styles.statValue}>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>DURATION</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>
               {fmtDuration(workout.duration_seconds)}
-              <Text style={styles.statUnit}></Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statUnit}></Text>
             </Text>
           </View>
           <View style={styles.statCell}>
-            <Text style={styles.statLabel}>VOLUME</Text>
-            <Text style={styles.statValue}>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>VOLUME</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>
               {volumeText(workout.total_volume, unit)}
-              <Text style={styles.statUnit}> {unit}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statUnit}> {unit}</Text>
             </Text>
           </View>
           <View style={styles.statCell}>
-            <Text style={styles.statLabel}>SETS</Text>
-            <Text style={styles.statValue}>{workout.total_sets}</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>SETS</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{workout.total_sets}</Text>
           </View>
         </View>
 
@@ -538,19 +551,19 @@ export default function WorkoutSummary() {
           <View style={styles.prBanner}>
             <View style={styles.prHeader}>
               <StarIcon size={17} color={color.success} strokeWidth={2.4} />
-              <Text style={styles.prHeaderText}>
+              <Text maxFontSizeMultiplier={textScale.control} style={styles.prHeaderText}>
                 {`${prs.length} New Personal Record${prs.length === 1 ? '' : 's'}`}
               </Text>
             </View>
             <View style={styles.prRows}>
               {prs.map((pr, i) => (
                 <View key={`${pr.exercise_id}-${pr.metric}-${i}`} style={styles.prRow}>
-                  <Text style={styles.prName} numberOfLines={1} ellipsizeMode="tail">
+                  <Text maxFontSizeMultiplier={textScale.display} style={styles.prName} numberOfLines={1} ellipsizeMode="tail">
                     {pr.exercise_name}
                   </Text>
-                  <Text style={styles.prValue}>
+                  <Text maxFontSizeMultiplier={textScale.display} style={styles.prValue}>
                     {recordDisplay(pr.metric, pr.value, pr.display, unit)}{' '}
-                    <Text style={styles.prDelta}>
+                    <Text maxFontSizeMultiplier={textScale.display} style={styles.prDelta}>
                       {recordDeltaDisplay(pr.metric, pr.delta, unit)}
                     </Text>
                   </Text>
@@ -561,7 +574,7 @@ export default function WorkoutSummary() {
         )}
 
         {/* EXERCISE BREAKDOWN */}
-        <Text style={styles.sectionLabel}>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.sectionLabel}>
           {`EXERCISES · ${workout.exercises.length}`}
         </Text>
         <View style={styles.exerciseList}>
@@ -570,16 +583,18 @@ export default function WorkoutSummary() {
             return (
               <View key={we.id} style={styles.exerciseRow}>
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{we.exercise.initials}</Text>
+                  <Text maxFontSizeMultiplier={textScale.fixed} style={styles.avatarText}>{we.exercise.initials}</Text>
                 </View>
                 <View style={styles.exerciseText}>
-                  <Text style={styles.exerciseName} numberOfLines={1} ellipsizeMode="tail">
+                  <Text maxFontSizeMultiplier={textScale.display} style={styles.exerciseName} numberOfLines={1} ellipsizeMode="tail">
                     {we.exercise.name}
                   </Text>
-                  <Text style={styles.exerciseBest}>{bestSetLine(we.sets, unit, effortKind)}</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.exerciseBest}>{bestSetLine(we.sets, unit, effortKind)}</Text>
                 </View>
                 {anyPr && <StarIcon size={15} color={color.success} strokeWidth={2.4} />}
-                <Text style={styles.exerciseSetCount}>{`${we.sets.length} sets`}</Text>
+                {/* Sets done, by the header's rule (countWorkingSets): one planned
+                    and left unticked is not a set, and neither is a warm-up. */}
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.exerciseSetCount}>{`${countWorkingSets(we.sets)} sets`}</Text>
               </View>
             );
           })}
@@ -588,15 +603,15 @@ export default function WorkoutSummary() {
         {/* MUSCLE SPLIT */}
         {muscles.length > 0 && (
           <>
-            <Text style={styles.sectionLabel}>VOLUME BY MUSCLE</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.sectionLabel}>VOLUME BY MUSCLE</Text>
             <View style={styles.muscleCard}>
               {muscles.map((m) => {
                 const pct = maxSets > 0 ? (m.sets / maxSets) * 100 : 0;
                 return (
                   <View key={m.name} style={styles.muscleRow}>
                     <View style={styles.muscleHeader}>
-                      <Text style={styles.muscleName}>{m.name}</Text>
-                      <Text style={styles.muscleSets}>{`${m.sets} sets`}</Text>
+                      <Text maxFontSizeMultiplier={textScale.control} style={styles.muscleName}>{m.name}</Text>
+                      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.muscleSets}>{`${m.sets} sets`}</Text>
                     </View>
                     <View style={styles.muscleTrack}>
                       <View style={[styles.muscleBar, { width: `${pct}%` }]} />
@@ -631,14 +646,14 @@ export default function WorkoutSummary() {
               </Text>
               <View style={styles.routineActions}>
                 <Pressable style={styles.deloadAccept} onPress={() => void onAcceptDeload()}>
-                  <Text style={styles.deloadAcceptText}>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.deloadAcceptText}>
                     {advice.reason === 'stall'
                       ? `Ease off for ${DELOAD_DAYS} days`
                       : `Hold for ${DELOAD_DAYS} days`}
                   </Text>
                 </Pressable>
                 <Pressable style={styles.keepBtn} onPress={() => void onDismissDeload()}>
-                  <Text style={styles.keepBtnText}>Not now</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.keepBtnText}>Not now</Text>
                 </Pressable>
               </View>
             </View>
@@ -663,14 +678,14 @@ export default function WorkoutSummary() {
               <View style={styles.routineHeader}>
                 <View style={styles.routineDot} />
                 <Text style={styles.routineTitle}>You changed this routine</Text>
-                <Text style={styles.routineCount}>{plural(diff.length, 'change')}</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.routineCount}>{plural(diff.length, 'change')}</Text>
               </View>
               <View style={styles.routineRows}>
                 {visibleRows.map((row) => (
                   <View key={row.key} style={styles.routineRow}>
                     <View style={styles.routineMarker}>
-                      {row.marker === 'added' && <Text style={styles.markerAdd}>+</Text>}
-                      {row.marker === 'removed' && <Text style={styles.markerRemove}>{'−'}</Text>}
+                      {row.marker === 'added' && <Text maxFontSizeMultiplier={textScale.fixed} style={styles.markerAdd}>+</Text>}
+                      {row.marker === 'removed' && <Text maxFontSizeMultiplier={textScale.fixed} style={styles.markerRemove}>{'−'}</Text>}
                       {row.marker === 'changed' && (
                         <ReorderArrowsIcon size={13} color={color.text2} strokeWidth={2.2} />
                       )}
@@ -692,10 +707,10 @@ export default function WorkoutSummary() {
               </View>
               <View style={styles.routineActions}>
                 <Pressable style={styles.updateBtn} onPress={() => void onUpdateRoutine()}>
-                  <Text style={styles.updateBtnText}>Update routine</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.updateBtnText}>Update routine</Text>
                 </Pressable>
                 <Pressable style={styles.keepBtn} onPress={onKeepAsIs}>
-                  <Text style={styles.keepBtnText}>Keep as-is</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.keepBtnText}>Keep as-is</Text>
                 </Pressable>
               </View>
               <Pressable onPress={() => void onSaveAsNew()} hitSlop={6}>
@@ -726,14 +741,14 @@ export default function WorkoutSummary() {
           )}
 
           <PressableScale style={styles.doneBtn} onPress={onDone}>
-            <Text style={styles.doneBtnText}>Done</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneBtnText}>Done</Text>
           </PressableScale>
           {/* A session started from a routine already has one; offering to save
               it again would just duplicate that routine. Exception: the source
               routine was deleted mid-session — then this is the correct fallback. */}
           {(!workout.routine_id || routineDeleted) && (
             <Pressable style={styles.saveRoutineBtn} onPress={onSaveAsRoutine}>
-              <Text style={styles.saveRoutineBtnText}>Save as Routine</Text>
+              <Text maxFontSizeMultiplier={textScale.control} style={styles.saveRoutineBtnText}>Save as Routine</Text>
             </Pressable>
           )}
         </View>
@@ -741,10 +756,16 @@ export default function WorkoutSummary() {
 
       {/* HEADER (absolute, on top of scroll) */}
       <View style={[styles.header, { paddingTop: 56 + insets.top }]}>
-        <Pressable style={styles.headerBtn} onPress={onClose} hitSlop={8}>
+        <Pressable
+          style={styles.headerBtn}
+          onPress={onClose}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
           <CloseIcon tint={color.text2} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
           WORKOUT
         </Text>
         {/* Edit sits before Share and is surface2 like it, so Done stays the
@@ -758,7 +779,7 @@ export default function WorkoutSummary() {
             accessibilityLabel="Edit workout"
           >
             <PencilIcon size={14} color={color.text1} strokeWidth={2.2} />
-            <Text style={styles.editBtnText}>Edit</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.editBtnText}>Edit</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -767,7 +788,7 @@ export default function WorkoutSummary() {
           hitSlop={HEADER_SLOP}
         >
           <ShareIcon tint={color.text2} />
-          <Text style={styles.shareBtnText}>Share</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.shareBtnText}>Share</Text>
         </Pressable>
       </View>
 

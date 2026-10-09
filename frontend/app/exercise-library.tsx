@@ -354,6 +354,7 @@ export default function ExerciseLibrary() {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder="Search exercises"
+            accessibilityLabel="Search exercises"
             placeholderTextColor={color.text3}
             returnKeyType="search"
             autoCorrect={false}

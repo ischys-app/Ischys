@@ -1,15 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { color, font } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 
 /** A single stat cell in the 2×2 weekly-summary grid. */
 export function StatTile({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <View style={styles.cell}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.label}>{label}</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.value}>
         {value}
-        {unit ? <Text style={styles.unit}>{unit}</Text> : null}
+        {unit ? <Text maxFontSizeMultiplier={textScale.fixed} style={styles.unit}>{unit}</Text> : null}
       </Text>
     </View>
   );

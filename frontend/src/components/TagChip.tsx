@@ -1,10 +1,11 @@
 import { StyleSheet, Text } from 'react-native';
 
 import { color, font } from '../theme/tokens';
+import { textScale } from '../theme/textScale';
 
 /** Muscle-group chip on a workout card. */
 export function TagChip({ label }: { label: string }) {
-  return <Text style={styles.chip}>{label}</Text>;
+  return <Text maxFontSizeMultiplier={textScale.fixed} style={styles.chip}>{label}</Text>;
 }
 
 const styles = StyleSheet.create({

@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { deleteRoutine, duplicateRoutine, updateRoutine } from '../../src/api/routines';
 import type { Dashboard, RoutineListItem, WorkoutListItem } from '../../src/api/types';
-import { getDashboard, listWorkouts, startWorkout } from '../../src/api/workouts';
+import { getDashboard, listWorkouts } from '../../src/api/workouts';
+import { beginWorkout } from '../../src/lib/startWorkoutFlow';
 import { pushWatchState } from '../../src/lib/healthSync';
 import { DumbbellIcon, PlusIcon, SearchIcon } from '../../src/components/icons';
 import { PressableScale } from '../../src/components/PressableScale';
@@ -21,6 +22,7 @@ import { fmtDuration, fmtHeaderDate, fmtVolumeShort } from '../../src/lib/format
 import { onWatchFinished } from '../../src/lib/watchFinish';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font } from '../../src/theme/tokens';
+import { textScale } from '../../src/theme/textScale';
 
 /** Home / dashboard — reads the local dashboard, laid out from Home.dc.html. */
 export default function Home() {
@@ -70,8 +72,8 @@ export default function Home() {
 
   const startEmpty = async () => {
     try {
-      const w = await startWorkout({});
-      router.push(`/workout/${w.id}`);
+      const begun = await beginWorkout({});
+      if (begun) router.push(`/workout/${begun.workoutId}`);
     } catch (e) {
       console.warn(e);
     }
@@ -95,8 +97,8 @@ export default function Home() {
 
   const startRoutine = async (r: RoutineListItem) => {
     try {
-      const w = await startWorkout({ routine_id: r.id });
-      router.push(`/workout/${w.id}`);
+      const begun = await beginWorkout({ routine_id: r.id });
+      if (begun) router.push(`/workout/${begun.workoutId}`);
     } catch (e) {
       console.warn(e);
     }
@@ -173,7 +175,7 @@ export default function Home() {
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
         <View style={styles.wordmark}>
-          <Text style={styles.wordmarkText}>Ischys</Text>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.wordmarkText}>Ischys</Text>
           <View style={styles.wordmarkDot} />
         </View>
       </View>
@@ -213,8 +215,8 @@ function Populated({
       {/* Weekly summary heading */}
       <View style={styles.summaryHead}>
         <View>
-          <Text style={styles.dateLabel}>{fmtHeaderDate(data.date)}</Text>
-          <Text style={styles.thisWeek}>This week</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.dateLabel}>{fmtHeaderDate(data.date)}</Text>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.thisWeek}>This week</Text>
         </View>
         <StreakPill days={data.stats.streak_days} />
       </View>
@@ -246,13 +248,13 @@ function Populated({
       <SectionLabel style={styles.quickStartLabel}>Quick Start</SectionLabel>
       <PressableScale onPress={onStartEmpty} style={styles.quickStart}>
         <PlusIcon size={16} color={color.accent} strokeWidth={2.4} />
-        <Text style={styles.quickStartText}>Start Empty Workout</Text>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.quickStartText}>Start Empty Workout</Text>
       </PressableScale>
 
       {/* My routines */}
       <View style={styles.sectionHead}>
         <SectionLabel>
-          My Routines <Text style={styles.count}>({data.routines.length})</Text>
+          My Routines <Text maxFontSizeMultiplier={textScale.control} style={styles.count}>({data.routines.length})</Text>
         </SectionLabel>
         <View style={styles.pillRow}>
           <Pressable
@@ -260,14 +262,14 @@ function Populated({
             style={({ pressed }) => [styles.smallPill, pressed && styles.smallPillPressed]}
           >
             <PlusIcon size={13} color={color.text1} strokeWidth={2.4} />
-            <Text style={styles.smallPillText}>New</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.smallPillText}>New</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/exercise-library?browse=1')}
             style={({ pressed }) => [styles.smallPill, pressed && styles.smallPillPressed]}
           >
             <SearchIcon size={13} color={color.text1} strokeWidth={2.2} />
-            <Text style={styles.smallPillText}>Explore</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.smallPillText}>Explore</Text>
           </Pressable>
         </View>
       </View>
@@ -286,7 +288,7 @@ function Populated({
       {/* Recent */}
       <View style={styles.sectionHead}>
         <SectionLabel>Recent</SectionLabel>
-        <Text style={styles.allHistory} onPress={() => router.navigate('/(tabs)/history')}>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.allHistory} onPress={() => router.navigate('/(tabs)/history')}>
           All history
         </Text>
       </View>

@@ -7,6 +7,7 @@ import SwiftUI
 /// elapsed clock keeps the accent, as everywhere else.
 struct MetricsView: View {
   @EnvironmentObject var model: WorkoutModel
+  @ObservedObject private var session = WorkoutManager.shared
 
   var body: some View {
     ScrollView {
@@ -56,10 +57,12 @@ struct MetricsView: View {
 
   private var elapsedBlock: some View {
     VStack(spacing: 2) {
-      Text("ELAPSED")
+      // The workout's clock keeps running through a pause: it is the phone's.
+      // What has stopped is the measuring, and this says so.
+      Text(session.isPaused ? "PAUSED" : "ELAPSED")
         .font(Ischys.mono(10))
         .tracking(1.8)
-        .foregroundStyle(Ischys.text3)
+        .foregroundStyle(session.isPaused ? Ischys.warning : Ischys.text3)
       Text(Ischys.clock(model.elapsedSec))
         .font(Ischys.mono(56, .semibold))
         .monospacedDigit()

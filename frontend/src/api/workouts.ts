@@ -19,6 +19,7 @@ export {
   startWorkout,
   getWorkout,
   listWorkouts,
+  countWorkouts,
   getActivityMap,
   patchSet,
   addSetApi,

@@ -10,6 +10,7 @@ import {
   type EffortScaleKind,
 } from '../../domain/effort';
 import { color, font } from '../../theme/tokens';
+import { textScale } from '../../theme/textScale';
 import { ClockBarIcon } from '../icons';
 import { EffortScale } from './EffortScale';
 import { fmtRest } from './types';
@@ -69,17 +70,17 @@ export function RestBar({
           {effort ? <EffortSection effort={effort} onHeight={onEffortHeight} /> : null}
           <View style={styles.cardRow}>
             <Pressable onPress={onMinus15} style={styles.adjust}>
-              <Text style={styles.adjustText}>{'−15'}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.adjustText}>{'−15'}</Text>
             </Pressable>
             <View style={styles.center}>
-              <Text style={styles.restKicker}>REST</Text>
-              <Text style={styles.restTimer}>{fmtRest(remaining)}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restKicker}>REST</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restTimer}>{fmtRest(remaining)}</Text>
             </View>
             <Pressable onPress={onPlus15} style={styles.adjust}>
-              <Text style={styles.adjustText}>+15</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.adjustText}>+15</Text>
             </Pressable>
             <Pressable onPress={onSkip} style={styles.skip}>
-              <Text style={styles.skipText}>Skip</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.skipText}>Skip</Text>
             </Pressable>
           </View>
           <View style={styles.track}>
@@ -89,7 +90,7 @@ export function RestBar({
       ) : (
         <Pressable onPress={onStart} style={styles.idle}>
           <ClockBarIcon size={15} color={color.accent} strokeWidth={2.2} />
-          <Text style={styles.idleText}>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.idleText}>
             Rest Timer <Text style={styles.idleHint}>— tap to start</Text>
           </Text>
         </Pressable>
@@ -118,7 +119,7 @@ export function EffortSection({
   if (effort.saved && effort.rpe != null) {
     return (
       <View style={[styles.effort, styles.effortFolded]} onLayout={onLayout}>
-        <Text style={styles.effortAsk}>{effortSavedLabel(effort.rpe, effort.kind)}</Text>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.effortAsk}>{effortSavedLabel(effort.rpe, effort.kind)}</Text>
       </View>
     );
   }
@@ -126,7 +127,7 @@ export function EffortSection({
   return (
     <View style={styles.effort} onLayout={onLayout}>
       <View style={styles.effortHead}>
-        <Text style={styles.effortAsk} numberOfLines={1}>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.effortAsk} numberOfLines={1}>
           {effortAsk(effort.badge, effort.kind)}
         </Text>
         <Text style={[styles.effortHint, preview != null && styles.effortHintLive]} numberOfLines={1}>

@@ -3,7 +3,7 @@ import SwiftUI
 /// S5 — Controls. A 2×2 grid of circular actions for the running session:
 /// Finish asks the phone to finish and closes the Watch's `HKWorkoutSession`
 /// once it has (`WorkoutModel.requestFinish`); Discard closes it at once and
-/// tells the phone; Pause holds the session; Add asks the phone to append a set. The phone remains the source of truth for the data —
+/// tells the phone; Pause holds the session and becomes Resume; Add asks the phone to append a set. The phone remains the source of truth for the data —
 /// these buttons only send intents (see `PhoneLink`).
 ///
 /// DECISION 2 (resolved — see `EndOfWorkoutState` in `ActiveSetView`): this was
@@ -14,6 +14,7 @@ import SwiftUI
 /// moves to `water` to match E1's "Add from iPhone" and keep accent to one action.
 struct ControlsView: View {
   @EnvironmentObject var model: WorkoutModel
+  @ObservedObject private var session = WorkoutManager.shared
 
   var body: some View {
     VStack(spacing: 0) {
@@ -24,8 +25,14 @@ struct ControlsView: View {
         controlButton(color: Ischys.accent, icon: "stop.fill", label: "Finish") {
           model.requestFinish()
         }
-        controlButton(color: Ischys.warning, icon: "pause.fill", label: "Pause") {
-          WorkoutManager.shared.pause()
+        // One button, two states: what it does is whatever the session is
+        // not doing (`SessionPause`). It used to pause and stay "Pause".
+        controlButton(
+          color: Ischys.warning,
+          icon: session.isPaused ? "play.fill" : "pause.fill",
+          label: session.isPaused ? "Resume" : "Pause"
+        ) {
+          session.togglePause()
         }
         controlButton(color: Ischys.error, icon: "trash", label: "Discard") {
           // No waiting for the phone here, unlike Finish. A discard saves

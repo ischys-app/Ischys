@@ -4,6 +4,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { color, font, TAP_TARGET } from '../../theme/tokens';
+import { textScale } from '../../theme/textScale';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { BackChevronIcon, HeartFilledIcon, TrashIcon } from '../icons';
@@ -93,14 +94,14 @@ function ConfirmDiscardSheet({
           accessibilityRole="button"
           accessibilityLabel="Discard workout"
         >
-          <Text style={styles.sheetDiscardText}>Discard workout</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.sheetDiscardText}>Discard workout</Text>
         </Pressable>
         <Pressable
           onPress={onCancel}
           style={({ pressed }) => [styles.sheetCancel, pressed && styles.sheetCancelPressed]}
           accessibilityRole="button"
         >
-          <Text style={styles.sheetCancelText}>Keep going</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.sheetCancelText}>Keep going</Text>
         </Pressable>
       </View>
     </DraggableSheet>
@@ -129,7 +130,14 @@ export function WorkoutHeader({
   return (
     <View style={[styles.header, { paddingTop: topInset }]}>
       <View style={styles.topRow}>
-        <Pressable onPress={onBack} style={styles.back} hitSlop={6}>
+        <Pressable
+          onPress={onBack}
+          style={styles.back}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Minimise workout"
+          accessibilityHint="Keeps it running and goes back"
+        >
           <BackChevronIcon color={color.text2} strokeWidth={2.2} />
         </Pressable>
         {onDiscard && (
@@ -146,44 +154,44 @@ export function WorkoutHeader({
           </Pressable>
         )}
         <View style={styles.titleWrap}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.name} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={styles.status}>{status}</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.status}>{status}</Text>
         </View>
         <PressableScale onPress={onFinish} style={styles.finish}>
-          <Text style={styles.finishText}>Finish</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.finishText}>Finish</Text>
         </PressableScale>
       </View>
 
       <View style={styles.strip}>
         <View style={styles.statTime}>
-          <Text style={styles.statLabel}>TIME</Text>
-          <Text style={styles.statValue}>{time}</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>TIME</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{time}</Text>
         </View>
         <View style={styles.statVolume}>
-          <Text style={styles.statLabel}>VOLUME</Text>
-          <Text style={styles.statValue}>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>VOLUME</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>
             {volume}
-            <Text style={styles.statUnit}> {unit}</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statUnit}> {unit}</Text>
           </Text>
         </View>
         <View style={styles.statSets}>
-          <Text style={styles.statLabel}>SETS</Text>
-          <Text style={styles.statValue}>{sets}</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>SETS</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{sets}</Text>
         </View>
         {watchConnected && (
           <>
             <View style={styles.statHr}>
               <View style={styles.hrLabelRow}>
                 <PulsingHeart size={9} />
-                <Text style={styles.statLabel}>HR</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>HR</Text>
               </View>
-              <Text style={styles.statValue}>{String(heartRate)}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{String(heartRate)}</Text>
             </View>
             <View style={styles.statCal}>
-              <Text style={styles.statLabel}>CAL</Text>
-              <Text style={styles.statValue}>{String(activeCal ?? 0)}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>CAL</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{String(activeCal ?? 0)}</Text>
             </View>
           </>
         )}

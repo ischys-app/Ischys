@@ -1,10 +1,11 @@
 import { Link, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Alert, Platform, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ActivityDay, ActivityMapOut, WorkoutListItem } from '../../src/api/types';
-import { deleteWorkout, getActivityMap, listWorkouts, startWorkout } from '../../src/api/workouts';
+import { countWorkouts, deleteWorkout, getActivityMap, listWorkouts } from '../../src/api/workouts';
+import { beginWorkout } from '../../src/lib/startWorkoutFlow';
 import { ClockCenteredIcon, PlayIcon } from '../../src/components/icons';
 import { WorkoutCard } from '../../src/components/WorkoutCard';
 import {
@@ -16,10 +17,18 @@ import {
   startOfIsoWeek,
 } from '../../src/lib/format';
 import { haptics } from '../../src/lib/haptics';
+import {
+  appendPage,
+  hasMorePages,
+  HISTORY_PAGE_SIZE,
+  refreshLimit,
+} from '../../src/lib/historyPaging';
 import { accentA, color, font } from '../../src/theme/tokens';
 
 const HEAT_WEEKS = 12;
 const HEAT_DAYS = HEAT_WEEKS * 7; // 84
+/** Rows per query when the list is re-read on focus. */
+const RELOAD_CHUNK = 500;
 
 /** Shade for a heat-map cell given its 0..3 intensity. */
 function shadeForIntensity(i: number): string {
@@ -29,10 +38,12 @@ function shadeForIntensity(i: number): string {
   return color.surface3;
 }
 
+type HistorySection = { title: string; data: WorkoutListItem[] };
+
 /** Bucket workouts into ordered groups by their group title (THIS/LAST WEEK, else month). */
-function groupWorkouts(workouts: WorkoutListItem[]): { title: string; items: WorkoutListItem[] }[] {
+function groupWorkouts(workouts: WorkoutListItem[]): HistorySection[] {
   const now = new Date();
-  const groups: { title: string; items: WorkoutListItem[] }[] = [];
+  const groups: HistorySection[] = [];
   const byTitle = new Map<string, WorkoutListItem[]>();
   for (const w of workouts) {
     const title = fmtHistoryGroupTitle(w.started_at, now);
@@ -40,7 +51,7 @@ function groupWorkouts(workouts: WorkoutListItem[]): { title: string; items: Wor
     if (!bucket) {
       bucket = [];
       byTitle.set(title, bucket);
-      groups.push({ title, items: bucket });
+      groups.push({ title, data: bucket });
     }
     bucket.push(w);
   }
@@ -77,20 +88,71 @@ export default function History() {
   // trusting a hardcoded padding that only happened to fit one inset.
   const [headerH, setHeaderH] = useState(0);
   const [workouts, setWorkouts] = useState<WorkoutListItem[] | null>(null);
+  // Every completed workout, not just the ones read so far: the header's count.
+  const [total, setTotal] = useState(0);
   const [activity, setActivity] = useState<ActivityMapOut | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(
-    () =>
-      Promise.all([listWorkouts({ limit: 100, status: 'completed' }), getActivityMap(HEAT_WEEKS)])
-        .then(([ws, a]) => {
-          setWorkouts(ws);
-          setActivity(a);
-          setError(null);
-        })
-        .catch((e) => setError(String(e))),
-    [],
-  );
+  // The list is read a page at a time as it is scrolled (historyPaging.ts).
+  // `shown` is how many rows are held, for the reads that happen outside a
+  // render; `reading` keeps two reads from overlapping.
+  const shown = useRef(0);
+  const reading = useRef(false);
+
+  // Re-reads as much as was showing, so the list keeps its length under a
+  // scroll position. In chunks: one query for a few thousand rows would bind
+  // more values than SQLite allows.
+  const reload = useCallback(async () => {
+    if (reading.current) return;
+    reading.current = true;
+    try {
+      const want = refreshLimit(shown.current);
+      const [count, a] = await Promise.all([countWorkouts('completed'), getActivityMap(HEAT_WEEKS)]);
+      let rows: WorkoutListItem[] = [];
+      for (let offset = 0; offset < want; offset += RELOAD_CHUNK) {
+        const chunk = await listWorkouts({
+          status: 'completed',
+          limit: Math.min(RELOAD_CHUNK, want - offset),
+          offset,
+        });
+        rows = appendPage(rows, chunk);
+        if (chunk.length < RELOAD_CHUNK) break;
+      }
+      shown.current = rows.length;
+      setWorkouts(rows);
+      setTotal(count);
+      setActivity(a);
+      setError(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      reading.current = false;
+    }
+  }, []);
+
+  /** The next page down, when the end of what is held scrolls into reach. */
+  const loadMore = useCallback(async () => {
+    if (reading.current || !hasMorePages(shown.current, total)) return;
+    reading.current = true;
+    try {
+      const page = await listWorkouts({
+        status: 'completed',
+        limit: HISTORY_PAGE_SIZE,
+        offset: shown.current,
+      });
+      setWorkouts((prev) => {
+        const next = appendPage(prev ?? [], page);
+        shown.current = next.length;
+        return next;
+      });
+      // Nothing came back: the count was ahead of the table. Stop asking.
+      if (page.length === 0) setTotal(shown.current);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      reading.current = false;
+    }
+  }, [total]);
 
   // On focus, not just on mount: a workout finished or deleted elsewhere must be
   // reflected when we come back to this tab.
@@ -112,7 +174,12 @@ export default function History() {
           style: 'destructive',
           onPress: async () => {
             // Optimistic: the card disappears immediately, then we resync.
-            setWorkouts((prev) => prev?.filter((x) => x.id !== w.id) ?? prev);
+            setWorkouts((prev) => {
+              const next = prev?.filter((x) => x.id !== w.id) ?? prev;
+              if (next) shown.current = next.length;
+              return next;
+            });
+            setTotal((n) => Math.max(0, n - 1));
             try {
               await deleteWorkout(w.id);
             } catch (e) {
@@ -126,110 +193,112 @@ export default function History() {
   };
 
   const loaded = workouts !== null && activity !== null;
-  const totalCount = workouts?.length ?? 0;
-  const groups = useMemo(() => (workouts ? groupWorkouts(workouts) : []), [workouts]);
+  const totalCount = total;
+  const sections = useMemo(() => (workouts ? groupWorkouts(workouts) : []), [workouts]);
   const heatColumns = useMemo(() => (activity ? buildHeatColumns(activity.days) : []), [activity]);
 
   return (
     <View style={styles.root}>
-      <ScrollView
+      {/* A virtualised list: only the cards near the screen are mounted, so a
+          history of thousands scrolls like one of ten. The heatmap rides at
+          the top as its header and the groups are its sections. */}
+      <SectionList
+        sections={loaded && totalCount > 0 ? sections : []}
+        keyExtractor={(w) => w.id}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
         contentContainerStyle={[styles.content, headerH ? { paddingTop: headerH } : null]}
-      >
-        {error && <Text style={styles.error}>{error}</Text>}
-        {!loaded && !error && <Text style={styles.loading}>Loading…</Text>}
+        onEndReached={() => void loadMore()}
+        onEndReachedThreshold={1.5}
+        initialNumToRender={8}
+        windowSize={9}
+        ListHeaderComponent={
+          <>
+            {error && <Text style={styles.error}>{error}</Text>}
+            {!loaded && !error && <Text style={styles.loading}>Loading…</Text>}
 
-        {loaded && totalCount === 0 && (
-          <EmptyState
-            onStart={async () => {
-              try {
-                const w = await startWorkout({});
-                router.push(`/workout/${w.id}`);
-              } catch {
-                router.navigate('/(tabs)');
-              }
-            }}
-          />
-        )}
+            {loaded && totalCount === 0 && (
+              <EmptyState
+                onStart={async () => {
+                  try {
+                    const begun = await beginWorkout({});
+                    if (begun) router.push(`/workout/${begun.workoutId}`);
+                  } catch {
+                    router.navigate('/(tabs)');
+                  }
+                }}
+              />
+            )}
 
-        {loaded && totalCount > 0 && (
-          <View>
-            {/* Activity heatmap */}
-            <View style={styles.heatCard}>
-              <View style={styles.heatHeader}>
-                <Text style={styles.heatLabel}>LAST 12 WEEKS</Text>
-                <Text style={styles.heatSessions}>{`${activity?.sessions ?? 0} sessions`}</Text>
-              </View>
-              <View style={styles.heatGrid}>
-                {heatColumns.map((cells, colIdx) => (
-                  <View key={colIdx} style={styles.heatCol}>
-                    {cells.map((intensity, rowIdx) => (
-                      <View
-                        key={rowIdx}
-                        style={[styles.heatCell, { backgroundColor: shadeForIntensity(intensity) }]}
-                      />
-                    ))}
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Grouped workout list */}
-            {groups.map((g) => (
-              <View key={g.title} style={styles.group}>
-                <Text style={styles.groupTitle}>{g.title}</Text>
-                <View style={styles.groupItems}>
-                  {g.items.map((w) =>
-                    Platform.OS === 'ios' ? (
-                      // Long-press opens the system context menu (13a, E1).
-                      // The row is a Link so the menu is expo-router's own —
-                      // no extra native dependency — and a tap still goes to
-                      // the Summary, as before. Delete keeps its place here:
-                      // long-press used to mean only that.
-                      // The wrapping View keeps the list's gap per row: the
-                      // Link renders its menu as a second, empty sibling, which
-                      // otherwise took a gap of its own under every card.
-                      <View key={w.id}>
-                        <Link href={`/summary/${w.id}`} asChild>
-                          <Link.Trigger>
-                            <WorkoutCard
-                              workout={w}
-                              accessibilityHint="Long-press for more actions."
-                            />
-                          </Link.Trigger>
-                          <Link.Menu>
-                            <Link.MenuAction
-                              icon="pencil"
-                              onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
-                            >
-                              Edit workout
-                            </Link.MenuAction>
-                            <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
-                              Delete workout
-                            </Link.MenuAction>
-                          </Link.Menu>
-                        </Link>
-                      </View>
-                    ) : (
-                      // The context menu is iOS-only; elsewhere long-press
-                      // keeps doing what it did. Editing is on the Summary.
-                      <WorkoutCard
-                        key={w.id}
-                        workout={w}
-                        onPress={() => router.push(`/summary/${w.id}`)}
-                        onLongPress={() => {
-                          haptics.longPress(); // the menu's own tap, on iOS
-                          confirmDelete(w);
-                        }}
-                      />
-                    ),
-                  )}
+            {loaded && totalCount > 0 && (
+              // Activity heatmap
+              <View style={styles.heatCard}>
+                <View style={styles.heatHeader}>
+                  <Text style={styles.heatLabel}>LAST 12 WEEKS</Text>
+                  <Text style={styles.heatSessions}>{`${activity?.sessions ?? 0} sessions`}</Text>
+                </View>
+                <View style={styles.heatGrid}>
+                  {heatColumns.map((cells, colIdx) => (
+                    <View key={colIdx} style={styles.heatCol}>
+                      {cells.map((intensity, rowIdx) => (
+                        <View
+                          key={rowIdx}
+                          style={[styles.heatCell, { backgroundColor: shadeForIntensity(intensity) }]}
+                        />
+                      ))}
+                    </View>
+                  ))}
                 </View>
               </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+            )}
+          </>
+        }
+        renderSectionHeader={({ section }) => <Text style={styles.groupTitle}>{section.title}</Text>}
+        // The space under a group's last card, before the next group's title.
+        renderSectionFooter={() => <View style={styles.groupEnd} />}
+        ItemSeparatorComponent={ItemGap}
+        renderItem={({ item: w }) =>
+          Platform.OS === 'ios' ? (
+            // Long-press opens the system context menu (13a, E1).
+            // The row is a Link so the menu is expo-router's own —
+            // no extra native dependency — and a tap still goes to
+            // the Summary, as before. Delete keeps its place here:
+            // long-press used to mean only that.
+            // The wrapping View keeps the list's gap per row: the
+            // Link renders its menu as a second, empty sibling, which
+            // otherwise took a gap of its own under every card.
+            <View>
+              <Link href={`/summary/${w.id}`} asChild>
+                <Link.Trigger>
+                  <WorkoutCard workout={w} accessibilityHint="Long-press for more actions." />
+                </Link.Trigger>
+                <Link.Menu>
+                  <Link.MenuAction
+                    icon="pencil"
+                    onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
+                  >
+                    Edit workout
+                  </Link.MenuAction>
+                  <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
+                    Delete workout
+                  </Link.MenuAction>
+                </Link.Menu>
+              </Link>
+            </View>
+          ) : (
+            // The context menu is iOS-only; elsewhere long-press
+            // keeps doing what it did. Editing is on the Summary.
+            <WorkoutCard
+              workout={w}
+              onPress={() => router.push(`/summary/${w.id}`)}
+              onLongPress={() => {
+                haptics.longPress(); // the menu's own tap, on iOS
+                confirmDelete(w);
+              }}
+            />
+          )
+        }
+      />
 
       {/* Fixed header overlay */}
       <View
@@ -243,6 +312,11 @@ export default function History() {
       </View>
     </View>
   );
+}
+
+/** The gap between two cards of a group. */
+function ItemGap() {
+  return <View style={styles.itemGap} />;
 }
 
 function EmptyState({ onStart }: { onStart: () => void }) {
@@ -338,7 +412,7 @@ const styles = StyleSheet.create({
   heatCell: { aspectRatio: 1, borderRadius: 3 },
 
   // Groups
-  group: { marginBottom: 22 },
+  groupEnd: { height: 22 },
   groupTitle: {
     fontFamily: font.monoRegular,
     fontSize: 11,
@@ -348,7 +422,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     paddingBottom: 12,
   },
-  groupItems: { flexDirection: 'column', gap: 10 },
+  itemGap: { height: 10 },
 
   // Empty state
   empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 80, paddingHorizontal: 16 },

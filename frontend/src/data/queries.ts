@@ -130,7 +130,8 @@ export async function loadWorkout(id: string): Promise<WorkoutOut | null> {
   }
 
   const exRows = wes.length
-    ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, wes.map((we) => we.exerciseId)))
+    ? // Each exercise once: a long history names the same few hundred thousands of times.
+      await db.select().from(schema.exercises).where(inArray(schema.exercises.id, [...new Set(wes.map((we) => we.exerciseId))]))
     : [];
   const exById = await hydrateExercises(exRows as ExerciseRow[]);
 
@@ -161,7 +162,8 @@ export async function muscleTagsByWorkout(workoutIds: string[]): Promise<Map<str
     .where(inArray(schema.workoutExercises.workoutId, workoutIds))
     .orderBy(asc(schema.workoutExercises.position));
   const exRows = wes.length
-    ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, wes.map((we) => we.exerciseId)))
+    ? // Each exercise once: a long history names the same few hundred thousands of times.
+      await db.select().from(schema.exercises).where(inArray(schema.exercises.id, [...new Set(wes.map((we) => we.exerciseId))]))
     : [];
   const muscleRows = await db.select().from(schema.muscles);
   const muscleById = new Map(muscleRows.map((m) => [m.id, m as MuscleRow]));

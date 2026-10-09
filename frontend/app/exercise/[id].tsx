@@ -38,6 +38,7 @@ import {
   CHART_RANGES,
   gapKind,
   rangeSince,
+  selectionWithin,
   trendPerMonth,
   type ChartRangeId,
 } from '../../src/domain/chartRange';
@@ -533,7 +534,15 @@ function ChartsTab({
             </View>
             <View style={styles.chartCard}>
               <View style={styles.chartRegion}>
-                <MiniChart values={values} labels={series?.labels ?? []} times={times} unit={chartUnit(metric, unit)} />
+                {/* Keyed on the range: a point tapped in one range is a
+                    different session, or none, in the next. */}
+                <MiniChart
+                  key={range ?? 'none'}
+                  values={values}
+                  labels={series?.labels ?? []}
+                  times={times}
+                  unit={chartUnit(metric, unit)}
+                />
               </View>
               {/* Month (or year) ticks, placed where they fall in time. One
                   label per session stopped working once points were spaced by
@@ -613,8 +622,10 @@ function MiniChart({
   times: number[];
   unit: string;
 }) {
-  const [sel, setSel] = useState<number | null>(null);
+  const [tapped, setSel] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
+  // The series can be replaced under a tapped point (a shorter range loads).
+  const sel = selectionWithin(tapped, values.length);
 
   const W = 320;
   const H = 150;

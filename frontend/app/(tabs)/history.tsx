@@ -9,6 +9,7 @@ import { ClockCenteredIcon, PlayIcon } from '../../src/components/icons';
 import { WorkoutCard } from '../../src/components/WorkoutCard';
 import {
   addDays,
+  daysBetween,
   fmtHistoryGroupTitle,
   parseIso,
   startOfDay,
@@ -58,7 +59,7 @@ function buildHeatColumns(days: ActivityDay[]): number[][] {
   const grid: number[][] = Array.from({ length: HEAT_WEEKS }, () => Array(7).fill(0));
   for (const d of days) {
     const dt = startOfDay(parseIso(d.date));
-    const diff = Math.floor((dt.getTime() - firstMon.getTime()) / 86_400_000);
+    const diff = daysBetween(firstMon, dt);
     if (diff < 0 || diff >= HEAT_DAYS) continue;
     const col = Math.floor(diff / 7);
     const row = diff % 7;

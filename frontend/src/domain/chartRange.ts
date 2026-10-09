@@ -127,3 +127,15 @@ export function axisTicks(times: number[], range: ChartRangeId): AxisTick[] {
   }
   return ticks;
 }
+
+/**
+ * The tapped point, if the series still has one there.
+ *
+ * A chart keeps its selection as an index, and the series under it is replaced
+ * when the range changes. An index past the end of a shorter series is no
+ * point at all, and reading it took the whole screen down.
+ */
+export function selectionWithin(selected: number | null, count: number): number | null {
+  if (selected == null || !Number.isInteger(selected)) return null;
+  return selected >= 0 && selected < count ? selected : null;
+}

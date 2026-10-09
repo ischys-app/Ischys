@@ -13,7 +13,7 @@ build you ran yourself is ideal. Expect an acknowledgement within a week.
 Ischys runs **entirely on the device**. There is no server, no account, and no network
 service the app depends on. Your training log lives in a local SQLite database on your
 phone and never leaves it except through actions you take (an **export** file you save
-or share, and your normal device backup, e.g. iCloud).
+or share, and your normal device backup, e.g. iCloud or Google's device backup).
 
 That collapses most of the usual attack surface — there is no API to authenticate against,
 no cross-user data access, no tokens in flight, no server to misconfigure. What remains is
@@ -34,8 +34,10 @@ URLs reach the video player).
 - Anything that would cause data to **leave the device** unexpectedly — an unintended
   network request, a broadened export, telemetry.
 - Third-party dependencies shipped in the app (`npm audit`) and the native modules under
-  `frontend/modules` / `frontend/targets`.
+  `frontend/modules` / `frontend/targets` / `frontend/wear`.
 - The Apple Watch ↔ phone WatchConnectivity messages and HealthKit read/write scope.
+- On Android: the Wear OS ↔ phone Data Layer messages (`frontend/modules/wear-link`,
+  `frontend/wear`) and the Health Connect read/write scope.
 
 ## Out of scope
 

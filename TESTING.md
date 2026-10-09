@@ -33,6 +33,14 @@ npx expo run:ios --configuration Release  # standalone build, JS embedded, no Me
   Go also pins one SDK per release and refuses an SDK 57 project. Use `expo run:ios` (Xcode +
   CocoaPods on macOS) or `eas build --profile development`.
 
+Android needs JDK 17 and the Android SDK, and the same rule about Expo Go applies:
+
+```bash
+cd frontend
+npx expo run:android                      # debug dev client (needs Metro running)
+npx expo run:android --variant release    # standalone build, JS embedded, no Metro
+```
+
 After changing native config in `app.json`, regenerate `ios/` — `expo run:ios` reuses an
 existing one and won't update `Info.plist`:
 
@@ -82,6 +90,9 @@ Persistence check: add sets, then force-quit and reopen — the workout and its 
   skipped and reported.
 - **Apple Health** (macOS + dev build + HealthKit entitlements): finished workouts are written
   as `HKWorkout`; heart rate is read live from a recording Apple Watch.
+- **Health Connect** (Android): finished workouts are saved to it; bodyweight and body fat
+  are read from it, and so are the heart rate and active calories another device recorded
+  during a workout. There is no live heart rate on the phone without the Wear OS app.
 
 ### 6. Editing a live workout
 - **Delete a set** — long-press a set's type badge → confirm. Remaining sets renumber so PREV
@@ -102,6 +113,20 @@ These need a **physical device** (the simulator will not do) and are the most fi
   launches, flips to the live session, and streams HR back. End / Pause / Discard / Add / log
   set all work from the wrist and stay in sync with the phone. A session orphaned by a rebuild
   is discarded automatically on the next Watch app launch.
+
+## Wear OS + the Android workout notification
+
+Newer and far less used than the Apple pair above, so test these with more suspicion.
+
+- **Workout notification:** a running workout shows as an ongoing notification with the rest
+  countdown and its actions (a Live Update on Android 16). It is a standard system
+  notification, so there is no custom card or artwork to check.
+- **Wear OS companion** (`frontend/wear/`, built with Gradle, not by Expo): start a workout
+  on the phone — the watch follows it, logs sets, controls rest, and shows live heart rate
+  and calories. With the phone app fully closed the watch can still finish or discard the
+  workout, but cannot start one or log sets. The watch and phone builds must be signed with
+  the same key or they will not connect. So far this has been verified on an emulator paired
+  with a real phone, not on real watch hardware.
 
 ## Known gaps (deferred)
 

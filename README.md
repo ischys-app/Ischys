@@ -1,8 +1,16 @@
 # Ischys · ΙΣΧΥΣ
 
-**A private, on-device workout tracker.** _Ischys_ (ἰσχύς) is Ancient Greek for
-*strength*. Your entire training log lives on **your phone** — no account, no
-server, no cloud. Nothing ever leaves the device.
+**A free, open-source workout tracker and gym log that runs entirely on your
+phone.** _Ischys_ (ἰσχύς) is Ancient Greek for *strength*. Your entire training
+log lives on **your phone** — no account, no server, no cloud, no subscription.
+Nothing ever leaves the device.
+
+<p align="center">
+  <img src="docs/screenshots/home.png" width="200" alt="Home screen with weekly volume and recent workouts">
+  <img src="docs/screenshots/workout.png" width="200" alt="Active workout with set rows and the rest timer">
+  <img src="docs/screenshots/summary.png" width="200" alt="Workout summary with total volume and new personal records">
+  <img src="docs/screenshots/exercise.png" width="200" alt="Exercise detail with a progress chart and history">
+</p>
 
 **[⬇︎ Download on the App Store](https://apps.apple.com/app/id6790443643)** ·
 free · iPhone. Or [build it from source](#build--run) — it's open, MIT-licensed,
@@ -17,6 +25,13 @@ mid-set with sweaty hands. Big number targets, previous-session references one
 tap away, and the accent colour reserved for a single action — completing a set.
 
 ---
+
+## Why it exists
+
+I wanted a workout app that sent my data to no one, was fully mine, and lacked
+nothing next to the well-known ones. So I built it, and open-sourced it because
+there was no reason not to. There is no premium tier: every feature is in the
+free app.
 
 ## What it is
 

@@ -7,8 +7,8 @@ Nothing ever leaves the device.
 
 <p align="center">
   <img src="docs/screenshots/home.png" width="190" alt="Home screen with this week's workouts, volume, streak and routines">
-  <img src="docs/screenshots/workout.png" width="190" alt="Active workout with set rows and a running rest timer">
-  <img src="docs/screenshots/summary.png" width="190" alt="Workout summary with duration, total volume and the best set for each exercise">
+  <img src="docs/screenshots/workout.gif" width="190" alt="Starting a routine, ticking off sets and the rest timer starting">
+  <img src="docs/screenshots/live-activity.jpg" width="190" alt="Lock Screen Live Activity showing the rest countdown with skip and 15-second buttons">
   <img src="docs/screenshots/exercise.png" width="190" alt="Exercise detail with best-set stats and a one-year progress chart">
 </p>
 

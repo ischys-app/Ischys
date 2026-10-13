@@ -1,10 +1,10 @@
 /**
- * When to ask iOS for the App Store review prompt.
+ * When to ask the store for its review prompt.
  *
  * The first ask comes after a few finished workouts. After that the app may ask
- * again, but rarely: only on a newer version, and only once enough time and
- * enough training have passed that the person has something new to rate. iOS
- * itself shows the real prompt a handful of times a year at most and may show
+ * again, but rarely: only on a different version, and only once enough time and
+ * enough training have passed that the person has something new to rate. The
+ * system shows the real prompt a handful of times a year at most and may show
  * nothing at all, so a single ask is easily wasted.
  *
  * Pure: the caller supplies the counters, the clock and the app version.

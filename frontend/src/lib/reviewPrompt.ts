@@ -33,7 +33,7 @@ const KEY_ASKED_COUNT = 'ischys.reviewAskedCount';
 /** App version we last asked on. */
 const KEY_ASKED_VERSION = 'ischys.reviewAskedVersion';
 
-const APP_VERSION = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '';
+const APP_VERSION = Constants.expoConfig?.version ?? '';
 
 /**
  * Call after a real workout finish (i.e. the Summary screen was reached with
@@ -62,7 +62,7 @@ export async function maybeRequestReviewAfterFinish(workoutId: string): Promise<
     const now = Date.now();
     const askedAtIso = await SecureStore.getItemAsync(KEY_ASKED_AT);
     const askedCount = await SecureStore.getItemAsync(KEY_ASKED_COUNT);
-    // An unreadable timestamp counts as "just asked", so it can only delay an ask.
+    // An unreadable timestamp counts as "just asked" every time, so it blocks further asks.
     const askedAtMs = askedAtIso ? Date.parse(askedAtIso) : NaN;
     const ask = shouldAskForReview({
       count,

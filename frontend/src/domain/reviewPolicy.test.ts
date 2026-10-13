@@ -52,3 +52,11 @@ test('an install that asked before the version was recorded can be asked again',
 test('an unknown app version never triggers a second ask', () => {
   assert.equal(shouldAskForReview(state({ appVersion: '' })), false);
 });
+
+test('the first ask does not depend on knowing the app version', () => {
+  assert.equal(shouldAskForReview({ ...neverAsked(3), appVersion: '' }), true);
+});
+
+test('a clock set back before the last ask only delays the next one', () => {
+  assert.equal(shouldAskForReview(state({ now: NOW - 200 * DAY })), false);
+});

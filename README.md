@@ -5,13 +5,6 @@ phone.** _Ischys_ (ἰσχύς) is Ancient Greek for *strength*. Your entire tra
 log lives on **your phone** — no account, no server, no cloud, no subscription.
 Nothing ever leaves the device.
 
-<p align="center">
-  <img src="docs/screenshots/home.png" width="200" alt="Home screen with weekly volume and recent workouts">
-  <img src="docs/screenshots/workout.png" width="200" alt="Active workout with set rows and the rest timer">
-  <img src="docs/screenshots/summary.png" width="200" alt="Workout summary with total volume and new personal records">
-  <img src="docs/screenshots/exercise.png" width="200" alt="Exercise detail with a progress chart and history">
-</p>
-
 **[⬇︎ Download on the App Store](https://apps.apple.com/app/id6790443643)** ·
 free · iPhone. Or [build it from source](#build--run) — it's open, MIT-licensed,
 and the whole thing runs on-device either way.

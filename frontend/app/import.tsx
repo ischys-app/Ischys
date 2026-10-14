@@ -642,7 +642,7 @@ function FilePickState({
         <ChecklistRow text="Every set with weight × reps" />
         <ChecklistRow text="Workout names, dates, and exercise groupings" />
         <ChecklistRow text="Set types (warmup / drop / failure) mapped to Ischys" />
-        <ChecklistRow text="Notes on workouts and exercises" />
+        <ChecklistRow text="Effort ratings (RPE), when the file has them" />
       </View>
 
       <Text style={styles.smallPrint}>

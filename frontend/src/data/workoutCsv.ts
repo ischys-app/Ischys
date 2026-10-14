@@ -154,6 +154,8 @@ export type ParsedWorkoutCsv = {
     }[];
   }[];
   rowsSkipped: number;
+  /** Rows with neither weight nor reps — cardio and rest rows, which are not stored. */
+  cardioSkipped: number;
   /** True when the header stated its weight unit (`weight_kg` / `weight_lb`). */
   weightUnitKnown: boolean;
   /** True when no exercise-name column resolved, so nothing in the file is importable. */
@@ -234,22 +236,34 @@ function resolveColumns(header: string[]) {
 export function parseWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): ParsedWorkoutCsv {
   const rows = parseCsv(text);
   if (rows.length === 0) {
-    return { workouts: [], rowsSkipped: 0, weightUnitKnown: false, unmapped: true };
+    return { workouts: [], rowsSkipped: 0, cardioSkipped: 0, weightUnitKnown: false, unmapped: true };
   }
   const idx = resolveColumns(rows[0]);
   const weightUnitKnown = idx.statedUnit !== null;
   // No exercise column means no row can become a set. Report that instead of
   // skipping all of them, which used to surface as a successful import of nothing.
   if (idx.exercise < 0) {
-    return { workouts: [], rowsSkipped: rows.length - 1, weightUnitKnown, unmapped: true };
+    return { workouts: [], rowsSkipped: rows.length - 1, cardioSkipped: 0, weightUnitKnown, unmapped: true };
   }
   const unit: Unit = idx.statedUnit ?? opts?.weightUnit ?? 'kg';
   const byWorkout = new Map<string, ParsedWorkoutCsv['workouts'][number]>();
   let rowsSkipped = 0;
+  let cardioSkipped = 0;
+  const num = (v: string | undefined) => {
+    if (v === undefined || v.trim() === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null; // non-numeric cell -> null, never NaN
+  };
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const exTitle = (r[idx.exercise] ?? '').trim();
     if (!exTitle) { rowsSkipped++; continue; }
+    const weight = toKg(num(r[idx.weight]), unit);
+    const reps = num(r[idx.reps]);
+    // A row with neither is a run, a rowing piece or a rest: there is no set to store. It is
+    // dropped before it can open a workout, so a cardio-only session is not imported
+    // as an empty one.
+    if (!(weight !== null && weight > 0) && !(reps !== null && reps > 0)) { cardioSkipped++; continue; }
     const startRaw = (r[idx.start] ?? '').trim();
     // Some exports carry no workout-name column; an unnamed workout must not cost
     // the user the row.
@@ -278,11 +292,6 @@ export function parseWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Par
       };
       byWorkout.set(key, w);
     }
-    const num = (v: string | undefined) => {
-      if (v === undefined || v.trim() === '') return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null; // non-numeric cell -> null, never NaN
-    };
     let ex = w.exercises[w.exercises.length - 1];
     if (!ex || ex.title !== exTitle) {
       // A non-numeric superset_id (some tools use letters) must become null, not NaN.
@@ -291,19 +300,19 @@ export function parseWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Par
     }
     ex.sets.push({
       type: SET_TYPE_IN[(r[idx.type] ?? '').trim()] ?? 'normal',
-      weight: toKg(num(r[idx.weight]), unit),
-      reps: num(r[idx.reps]),
+      weight,
+      reps,
       rpe: normalizeRpe(num(r[idx.rpe])),
     });
   }
-  return { workouts: [...byWorkout.values()], rowsSkipped, weightUnitKnown, unmapped: false };
+  return { workouts: [...byWorkout.values()], rowsSkipped, cardioSkipped, weightUnitKnown, unmapped: false };
 }
 
 export type WorkoutCsvSummary = {
   workouts: number;
   exercises: number;
   sets: number;
-  /** Sets with neither weight nor reps — cardio rows this importer cannot store. */
+  /** Rows with neither weight nor reps — cardio rows this importer does not store. */
   cardioSkipped: number;
   rowsSkipped: number;
   weightUnitKnown: boolean;
@@ -320,18 +329,12 @@ export function summarizeWorkoutCsv(text: string, opts?: { weightUnit?: Unit }):
   const exercises = new Set<string>();
   const firstWorkouts: { name: string; count: number }[] = [];
   let sets = 0;
-  let cardioSkipped = 0;
   for (const w of parsed.workouts) {
     let count = 0;
     for (const ex of w.exercises) {
       exercises.add(ex.title);
-      for (const s of ex.sets) {
-        sets++;
-        count++;
-        const hasWeight = s.weight !== null && s.weight > 0;
-        const hasReps = s.reps !== null && s.reps > 0;
-        if (!hasWeight && !hasReps) cardioSkipped++;
-      }
+      sets += ex.sets.length;
+      count += ex.sets.length;
     }
     if (firstWorkouts.length < 5) firstWorkouts.push({ name: w.title, count });
   }
@@ -339,7 +342,7 @@ export function summarizeWorkoutCsv(text: string, opts?: { weightUnit?: Unit }):
     workouts: parsed.workouts.length,
     exercises: exercises.size,
     sets,
-    cardioSkipped,
+    cardioSkipped: parsed.cardioSkipped,
     rowsSkipped: parsed.rowsSkipped,
     weightUnitKnown: parsed.weightUnitKnown,
     unmapped: parsed.unmapped,

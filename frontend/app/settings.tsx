@@ -66,11 +66,10 @@ import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvi
  * The shipped version, read from the build rather than retyped — these strings
  * silently said 0.1.0 through the whole 0.2.0 release.
  *
- * `nativeAppVersion` is CFBundleShortVersionString straight from the bundle,
- * which is the number the App Store actually shows; `expoConfig` is the manifest
- * and can be null in a bare release build.
+ * `expoConfig` is the app config embedded at build time, so its version is the
+ * one in app.json that the release was cut from.
  */
-const APP_VERSION = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '';
+const APP_VERSION = Constants.expoConfig?.version ?? '';
 
 const DEFAULT_SETTINGS: SettingsOut = {
   unit: 'kg',

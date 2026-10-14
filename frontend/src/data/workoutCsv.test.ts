@@ -255,3 +255,29 @@ test('a workout with neither duration nor end time reports null, not zero', () =
   assert.equal(w.durationSeconds, null);
   assert.equal(w.endedAt, null);
 });
+
+/** A lift, a run with only distance and time, and a second workout that is cardio alone. */
+const MIXED_CSV = [
+  'title,start_time,exercise_title,set_type,weight_kg,reps,distance_km,duration_seconds',
+  'Gym,"10 Jul 2026, 09:00",Bench,normal,60,8,,',
+  'Gym,"10 Jul 2026, 09:00",Treadmill,normal,,,5,1500',
+  'Gym,"10 Jul 2026, 09:00",Pull Up,normal,,10,,',
+  'Run,"11 Jul 2026, 07:00",Running,normal,,,10,3000',
+].join('\n');
+
+test('cardio-only rows are left out of the parse, not imported as empty sets', () => {
+  const parsed = parseWorkoutCsv(MIXED_CSV);
+  assert.equal(parsed.cardioSkipped, 2);
+  assert.deepEqual(parsed.workouts.map((w) => w.title), ['Gym']);
+  assert.deepEqual(parsed.workouts[0].exercises.map((e) => e.title), ['Bench', 'Pull Up']);
+  assert.deepEqual(parsed.workouts[0].exercises.map((e) => e.sets.length), [1, 1]);
+});
+
+test('the preview counts cardio rows as skipped and leaves them out of the totals', () => {
+  const s = summarizeWorkoutCsv(MIXED_CSV);
+  assert.equal(s.cardioSkipped, 2);
+  assert.equal(s.workouts, 1);
+  assert.equal(s.exercises, 2);
+  assert.equal(s.sets, 2);
+  assert.deepEqual(s.firstWorkouts, [{ name: 'Gym', count: 2 }]);
+});

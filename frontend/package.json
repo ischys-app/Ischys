@@ -27,7 +27,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-store-review": "57.0.0",
     "expo-video": "~57.0.2",
-    "react": "19.2.8",
+    "react": "19.3.0",
     "react-native": "0.86.2",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-get-random-values": "~2.0.0",
@@ -40,7 +40,7 @@
     "uuid": "^14.0.2"
   },
   "devDependencies": {
-    "@types/react": "~19.2.2",
+    "@types/react": "~19.3.0",
     "babel-plugin-inline-import": "^3.0.0",
     "drizzle-kit": "^0.31.11",
     "typescript": "~6.0.3"

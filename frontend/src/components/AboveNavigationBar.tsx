@@ -17,6 +17,7 @@ import { Platform, View } from 'react-native';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { color } from '../theme/tokens';
+import { useThemed } from '../theme/ThemeProvider';
 
 const NavigationBarInsetContext = createContext(0);
 
@@ -26,6 +27,7 @@ export function useNavigationBarInset(): number {
 }
 
 export function AboveNavigationBar({ children }: { children: ReactNode }) {
+  useThemed();
   const insets = useSafeAreaInsets();
   const { top, left, right, bottom } = insets;
   const screenInsets = useMemo(() => ({ top, left, right, bottom: 0 }), [top, left, right]);

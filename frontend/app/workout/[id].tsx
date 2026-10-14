@@ -121,7 +121,7 @@ import { groupLabels, restAfterSet, roundOfSet } from '../../src/domain/superset
 import { getBodyweightKg } from '../../src/lib/bodyweight';
 import { getCountWarmups } from '../../src/lib/warmupVolume';
 import type { WatchAction } from '../../modules/health';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
 import { CheckIcon } from '../../src/components/icons';
 import { EmptyWorkout } from '../../src/components/workout/EmptyWorkout';
@@ -149,6 +149,7 @@ import {
   TYPE_CYCLE,
   type Exercise,
 } from '../../src/components/workout/types';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 const START_ELAPSED = 12 * 60 + 47; // seeded "12:47"
 const DEFAULT_REST = 120;
@@ -198,6 +199,7 @@ function mapExercise(
 }
 
 export default function ActiveWorkout() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -2217,165 +2219,167 @@ export default function ActiveWorkout() {
 /** Room under the list for the rest bar's plain card. */
 const SPACER_HEIGHT = 90;
 
-const styles = StyleSheet.create({
-  loading: { paddingVertical: 48, alignItems: 'center' },
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
-  scrollContent: {
-    paddingTop: 14,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    gap: 12,
-  },
-  addExercise: {
-    marginTop: 6,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  addExercisePlus: { fontFamily: font.titleSemi, fontSize: 20, lineHeight: 20, color: color.accent },
-  addExerciseText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    loading: { paddingVertical: 48, alignItems: 'center' },
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
+    scrollContent: {
+      paddingTop: 14,
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+      gap: 12,
+    },
+    addExercise: {
+      marginTop: 6,
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      padding: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    addExercisePlus: { fontFamily: font.titleSemi, fontSize: 20, lineHeight: 20, color: color.accent },
+    addExerciseText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
 
-  // End-of-workout prompt (#45)
-  doneSheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-  },
-  doneGrabberWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  doneGrabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  doneBody: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
-  doneCheck: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(45,216,129,0.15)',
-  },
-  doneTitle: {
-    marginTop: 12,
-    fontFamily: font.titleSemi,
-    fontSize: 18,
-    letterSpacing: -0.18,
-    color: color.text1,
-  },
-  doneStat: {
-    marginTop: 5,
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  doneFinish: {
-    marginTop: 18,
-    width: '100%',
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.accent,
-  },
-  doneFinishText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  doneAdd: {
-    marginTop: 10,
-    width: '100%',
-    height: 50,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  doneAddPressed: { borderColor: color.text3 },
-  doneAddText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
-  spacer: { height: SPACER_HEIGHT },
-  kbdAccessory: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    // `bottom` is set inline to the live keyboard height so the bar floats just
-    // above the keyboard.
-    height: 44,
-    flexDirection: 'row',
-    // Plates sits left, Done right. With no Plates an empty View holds the slot
-    // so Done stays where the thumb already expects it.
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: color.surface2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-  },
-  kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  // The bar while it is rating a set: the rest card's effort section (board
-  // 14a, F2) on the card's own surface, over a row of keys the bar's height.
-  kbdEffort: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    backgroundColor: color.surface3,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-  },
-  kbdEffortKeys: {
-    height: 44,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  kbdEffortKey: { height: 44, justifyContent: 'center' },
-  // Partners sit 4pt apart and share a rail in the screen margin.
-  ssMember: { position: 'relative', marginBottom: 4 },
-  ssHeader: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-    paddingTop: 10,
-    paddingBottom: 6,
-    paddingLeft: 7,
-  },
-  ssRail: {
-    position: 'absolute',
-    left: 7,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    borderRadius: 1,
-    backgroundColor: color.text3,
-  },
-  kbdAccessoryAction: {
-    fontFamily: font.bodyMedium,
-    fontSize: 16,
-    color: color.text1,
-    paddingHorizontal: 6,
-  },
-  kbdAccessoryDone: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    color: color.accent,
-    paddingHorizontal: 6,
-  },
-});
+    // End-of-workout prompt (#45)
+    doneSheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+    },
+    doneGrabberWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    doneGrabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    doneBody: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
+    doneCheck: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: withAlpha(color.success, 0.15),
+    },
+    doneTitle: {
+      marginTop: 12,
+      fontFamily: font.titleSemi,
+      fontSize: 18,
+      letterSpacing: -0.18,
+      color: color.text1,
+    },
+    doneStat: {
+      marginTop: 5,
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    doneFinish: {
+      marginTop: 18,
+      width: '100%',
+      height: 52,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.accent,
+    },
+    doneFinishText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    doneAdd: {
+      marginTop: 10,
+      width: '100%',
+      height: 50,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+    },
+    doneAddPressed: { borderColor: color.text3 },
+    doneAddText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
+    spacer: { height: SPACER_HEIGHT },
+    kbdAccessory: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      // `bottom` is set inline to the live keyboard height so the bar floats just
+      // above the keyboard.
+      height: 44,
+      flexDirection: 'row',
+      // Plates sits left, Done right. With no Plates an empty View holds the slot
+      // so Done stays where the thumb already expects it.
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: color.surface2,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border,
+    },
+    kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    // The bar while it is rating a set: the rest card's effort section (board
+    // 14a, F2) on the card's own surface, over a row of keys the bar's height.
+    kbdEffort: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      backgroundColor: color.surface3,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border,
+    },
+    kbdEffortKeys: {
+      height: 44,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    kbdEffortKey: { height: 44, justifyContent: 'center' },
+    // Partners sit 4pt apart and share a rail in the screen margin.
+    ssMember: { position: 'relative', marginBottom: 4 },
+    ssHeader: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+      paddingTop: 10,
+      paddingBottom: 6,
+      paddingLeft: 7,
+    },
+    ssRail: {
+      position: 'absolute',
+      left: 7,
+      top: 0,
+      bottom: 0,
+      width: 2,
+      borderRadius: 1,
+      backgroundColor: color.text3,
+    },
+    kbdAccessoryAction: {
+      fontFamily: font.bodyMedium,
+      fontSize: 16,
+      color: color.text1,
+      paddingHorizontal: 6,
+    },
+    kbdAccessoryDone: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      color: color.accent,
+      paddingHorizontal: 6,
+    },
+  }),
+);

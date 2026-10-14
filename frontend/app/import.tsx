@@ -41,7 +41,8 @@ import { CheckIcon, ChevronDownIcon, UploadIcon } from '../src/components/icons'
 import { PressableScale } from '../src/components/PressableScale';
 import { Segment, SelectCircle, type SegmentOption } from '../src/components/ui';
 import { haptics } from '../src/lib/haptics';
-import { accentA, color, font } from '../src/theme/tokens';
+import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 type Step = 'file_pick' | 'preview' | 'progress' | 'success' | 'error';
 
@@ -100,6 +101,7 @@ function summarizeJson(text: string): ParsePayload {
 
 /** Slim chevron-left glyph matching the header back button in `settings.tsx`. */
 function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
+  useThemed();
   return (
     <Svg width={9} height={15} viewBox="0 0 9 15">
       <Path
@@ -116,6 +118,7 @@ function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
 
 /** X close glyph — 14dp, used by the Import header left slot. */
 function XGlyph({ color: strokeColor }: { color: string }) {
+  useThemed();
   return (
     <Svg width={14} height={14} viewBox="0 0 24 24">
       <Path
@@ -245,6 +248,7 @@ type RoutinePicks = ReturnType<typeof useRoutinePicks>;
 
 /** The vertical fade that lifts the pinned CTA off the scrolling list. */
 function FooterFade() {
+  useThemed();
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
       <Defs>
@@ -272,6 +276,7 @@ function RoutineCandidateRow({
   dateLabel: string;
   onToggle: () => void;
 }) {
+  useThemed();
   return (
     // The whole row is the tap target — a 24pt circle alone is not a thumb target,
     // and people tap the name expecting it to tick.
@@ -303,6 +308,7 @@ function RoutineCandidateRow({
 }
 
 function RoutinesCard({ picks }: { picks: RoutinePicks }) {
+  useThemed();
   const { candidates, rows, seenOnce, expanded, picked, newestAt } = picks;
   return (
     <View style={styles.routinesCard}>
@@ -368,6 +374,7 @@ function SuccessFooter({
   onLayoutHeight: (h: number) => void;
   bottomInset: number;
 }) {
+  useThemed();
   const count = offerRoutines ? picks.picked.size : 0;
   const label = picks.retrying ? 'Retry' : createRoutinesLabel(count);
   // 34dp is the design's home-indicator allowance; a deeper inset wins.
@@ -404,6 +411,7 @@ function SuccessFooter({
 }
 
 export default function ImportScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -606,6 +614,7 @@ function FilePickState({
   onPick: () => void;
   errorMsg: string | null;
 }) {
+  useThemed();
   return (
     <View style={styles.pickWrap}>
       <View style={styles.dropzone}>
@@ -651,6 +660,7 @@ function FilePickState({
 }
 
 function ChecklistRow({ text }: { text: string }) {
+  useThemed();
   return (
     <View style={styles.checklistRow}>
       <CheckIcon size={16} color={color.accent} strokeWidth={2.6} />
@@ -674,6 +684,7 @@ function PreviewState({
   onChangeFile: () => void;
   onImport: () => void;
 }) {
+  useThemed();
   const workoutCount = parse && parse.supported ? parse.workouts : 0;
   // When the file doesn't name its unit, name it on the button itself. The unit is
   // the one irreversible choice in this flow — a re-import is refused as a
@@ -796,6 +807,7 @@ function PreviewState({
 }
 
 function StatCell({ label, value }: { label: string; value: number }) {
+  useThemed();
   return (
     <View style={styles.statCell}>
       <Text style={styles.statLabel}>{label}</Text>
@@ -806,6 +818,7 @@ function StatCell({ label, value }: { label: string; value: number }) {
 
 /** 118dp progress ring with a rotating arc + faked percentage counter. */
 function ProgressState() {
+  useThemed();
   const spin = useRef(new Animated.Value(0)).current;
   const [pct, setPct] = useState(0);
 
@@ -888,6 +901,7 @@ function SuccessState({
   result: ImportResult;
   picks: RoutinePicks | null;
 }) {
+  useThemed();
   return (
     <View style={styles.successWrap}>
       <View style={styles.successBadge}>
@@ -925,6 +939,7 @@ function ErrorState({
   message: string;
   onRetry: () => void;
 }) {
+  useThemed();
   return (
     <View style={styles.pickWrap}>
       <View style={styles.errorBanner}>
@@ -947,575 +962,577 @@ function ErrorState({
 
 // --- Styles ---------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
 
-  // Header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  backBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backBtnPressed: { opacity: 0.7 },
-  backBtnDisabled: { opacity: 0.5 },
-  headerSpacer: {
-    width: 30,
-    height: 30,
-  },
-  title: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
+    // Header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    backBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backBtnPressed: { opacity: 0.7 },
+    backBtnDisabled: { opacity: 0.5 },
+    headerSpacer: {
+      width: 30,
+      height: 30,
+    },
+    title: {
+      flex: 1,
+      textAlign: 'center',
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
 
-  // Scroll
-  scrollContent: {
-    paddingHorizontal: 16,
-    flexGrow: 1,
-  },
+    // Scroll
+    scrollContent: {
+      paddingHorizontal: 16,
+      flexGrow: 1,
+    },
 
-  // --- File pick state ---
-  pickWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  dropzone: {
-    alignSelf: 'stretch',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    paddingTop: 28,
-    paddingBottom: 32,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    backgroundColor: color.surface1,
-    marginTop: 8,
-  },
-  dropzoneIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 15,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  dropzoneTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.36,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  dropzoneSub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text2,
-    lineHeight: 21,
-    maxWidth: 280,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  chooseBtn: {
-    height: 50,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 22,
-  },
-  checklistLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-    marginTop: 22,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-    paddingLeft: 2,
-  },
-  checklistCard: {
-    alignSelf: 'stretch',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 14,
-    gap: 12,
-  },
-  checklistRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  checklistText: {
-    flex: 1,
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    color: color.text2,
-    lineHeight: 20,
-  },
-  smallPrint: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 22,
-    lineHeight: 18,
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-  smallPrintStrong: {
-    color: color.text2,
-    fontFamily: font.monoSemi,
-    fontWeight: '600',
-  },
+    // --- File pick state ---
+    pickWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    dropzone: {
+      alignSelf: 'stretch',
+      borderRadius: 20,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      paddingTop: 28,
+      paddingBottom: 32,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      backgroundColor: color.surface1,
+      marginTop: 8,
+    },
+    dropzoneIconWrap: {
+      width: 60,
+      height: 60,
+      borderRadius: 15,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 14,
+    },
+    dropzoneTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 18,
+      fontWeight: '700',
+      letterSpacing: -0.36,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    dropzoneSub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text2,
+      lineHeight: 21,
+      maxWidth: 280,
+      marginTop: 8,
+      textAlign: 'center',
+    },
+    chooseBtn: {
+      height: 50,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      marginTop: 22,
+    },
+    checklistLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      textTransform: 'uppercase',
+      marginTop: 22,
+      marginBottom: 8,
+      alignSelf: 'flex-start',
+      paddingLeft: 2,
+    },
+    checklistCard: {
+      alignSelf: 'stretch',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 14,
+      gap: 12,
+    },
+    checklistRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
+    checklistText: {
+      flex: 1,
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      color: color.text2,
+      lineHeight: 20,
+    },
+    smallPrint: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 22,
+      lineHeight: 18,
+      textAlign: 'center',
+      paddingHorizontal: 8,
+    },
+    smallPrintStrong: {
+      color: color.text2,
+      fontFamily: font.monoSemi,
+      fontWeight: '600',
+    },
 
-  // Primary button (shared shell)
-  primaryBtn: {
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  primaryBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
+    // Primary button (shared shell)
+    primaryBtn: {
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+    },
+    primaryBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
 
-  // --- Preview state ---
-  previewWrap: { flexDirection: 'column' },
-  label: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-    paddingLeft: 2,
-  },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  fileName: {
-    flex: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 14,
-    color: color.text1,
-  },
-  changeBtn: {
-    height: 30,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  changeBtnPressed: { borderColor: color.text3 },
-  changeBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: color.text2,
-  },
-  parseHint: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 18,
-    textAlign: 'center',
-  },
-  summaryCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 22,
-    gap: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'flex-start',
-    gap: 4,
-  },
-  statLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 22,
-    fontWeight: '600',
-    letterSpacing: -0.44,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  cardioSkip: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-  },
-  unitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  firstLabel: { marginTop: 16 },
-  previewList: { flexDirection: 'column', gap: 8 },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  previewName: {
-    flex: 1,
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    fontWeight: '500',
-    color: color.text1,
-    paddingRight: 10,
-  },
-  previewCount: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  importBtn: {
-    height: 54,
-    borderRadius: 13,
-    marginTop: 22,
-    alignSelf: 'stretch',
-  },
-  importBtnDisabled: {
-    opacity: 0.4,
-  },
-  importBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.16,
-    color: color.accentFg,
-  },
+    // --- Preview state ---
+    previewWrap: { flexDirection: 'column' },
+    label: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+      paddingLeft: 2,
+    },
+    fileRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    fileName: {
+      flex: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 14,
+      color: color.text1,
+    },
+    changeBtn: {
+      height: 30,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    changeBtnPressed: { borderColor: color.text3 },
+    changeBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: color.text2,
+    },
+    parseHint: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 18,
+      textAlign: 'center',
+    },
+    summaryCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 22,
+      gap: 12,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    statCell: {
+      flex: 1,
+      alignItems: 'flex-start',
+      gap: 4,
+    },
+    statLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      textTransform: 'uppercase',
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 22,
+      fontWeight: '600',
+      letterSpacing: -0.44,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    cardioSkip: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+    },
+    unitRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    firstLabel: { marginTop: 16 },
+    previewList: { flexDirection: 'column', gap: 8 },
+    previewRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    previewName: {
+      flex: 1,
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      fontWeight: '500',
+      color: color.text1,
+      paddingRight: 10,
+    },
+    previewCount: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    importBtn: {
+      height: 54,
+      borderRadius: 13,
+      marginTop: 22,
+      alignSelf: 'stretch',
+    },
+    importBtnDisabled: {
+      opacity: 0.4,
+    },
+    importBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: -0.16,
+      color: color.accentFg,
+    },
 
-  // --- Progress state ---
-  progressWrap: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  ring: {
-    width: 118,
-    height: 118,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringArc: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 118,
-    height: 118,
-  },
-  ringCenter: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringPct: {
-    fontFamily: font.monoBold,
-    fontSize: 26,
-    fontWeight: '700',
-    color: color.accent,
-    fontVariant: ['tabular-nums'],
-  },
-  progressCaption: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 16,
-    textAlign: 'center',
-  },
+    // --- Progress state ---
+    progressWrap: {
+      flex: 1,
+      alignItems: 'center',
+      paddingTop: 60,
+    },
+    ring: {
+      width: 118,
+      height: 118,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ringArc: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: 118,
+      height: 118,
+    },
+    ringCenter: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ringPct: {
+      fontFamily: font.monoBold,
+      fontSize: 26,
+      fontWeight: '700',
+      color: color.accent,
+      fontVariant: ['tabular-nums'],
+    },
+    progressCaption: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 16,
+      textAlign: 'center',
+    },
 
-  // --- Success state ---
-  successWrap: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  successBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 17,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: color.accent,
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: 10 },
-      },
-      android: { elevation: 12 },
-      default: {},
-    }),
-  },
-  successTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.48,
-    color: color.text1,
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  successStats: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text2,
-    marginTop: 8,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  successSkipped: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 4,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  // --- Routines from imported history (board 12a) ---
-  routinesCard: {
-    alignSelf: 'stretch',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 28,
-  },
-  routinesLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54, // 0.14em
-    color: color.text3,
-  },
-  routinesHeading: {
-    fontFamily: font.titleSemi,
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.4,
-    color: color.text1,
-    marginTop: 8,
-  },
-  routinesBody: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: color.text2,
-    marginTop: 6,
-  },
-  routinesListHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 28,
-    marginTop: 14,
-    paddingHorizontal: 4,
-  },
-  routinesListHeadText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.1, // 0.1em
-    color: color.text3,
-  },
-  routinesListHeadLeft: { flex: 1 },
-  // The list bleeds 8dp past the card padding so a selected row's tint reads as a
-  // row rather than as a box inside a box.
-  routinesList: { marginHorizontal: -8, gap: 2 },
-  candidateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 56,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  candidateText: { flex: 1, minWidth: 0 },
-  candidateName: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: -0.15,
-    color: color.text1,
-  },
-  candidateMeta: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 0.66, // 0.06em
-    color: color.text3,
-    marginTop: 2,
-    fontVariant: ['tabular-nums'],
-  },
-  candidateDate: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    fontVariant: ['tabular-nums'],
-  },
-  seenOnceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  seenOnceChevron: { width: 24, alignItems: 'center' },
-  seenOnceText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    letterSpacing: 0.92, // 0.08em
-    color: color.text2,
-  },
-  routinesFootnote: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-    textAlign: 'center',
-    marginTop: 14,
-  },
+    // --- Success state ---
+    successWrap: {
+      flex: 1,
+      alignItems: 'center',
+      paddingTop: 60,
+    },
+    successBadge: {
+      width: 60,
+      height: 60,
+      borderRadius: 17,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Platform.select({
+        ios: {
+          shadowColor: color.accent,
+          shadowOpacity: 0.5,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 10 },
+        },
+        android: { elevation: 12 },
+        default: {},
+      }),
+    },
+    successTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 24,
+      fontWeight: '700',
+      letterSpacing: -0.48,
+      color: color.text1,
+      marginTop: 16,
+      textAlign: 'center',
+    },
+    successStats: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text2,
+      marginTop: 8,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    successSkipped: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 4,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    // --- Routines from imported history (board 12a) ---
+    routinesCard: {
+      alignSelf: 'stretch',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 28,
+    },
+    routinesLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54, // 0.14em
+      color: color.text3,
+    },
+    routinesHeading: {
+      fontFamily: font.titleSemi,
+      fontSize: 20,
+      fontWeight: '600',
+      letterSpacing: -0.4,
+      color: color.text1,
+      marginTop: 8,
+    },
+    routinesBody: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      marginTop: 6,
+    },
+    routinesListHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 28,
+      marginTop: 14,
+      paddingHorizontal: 4,
+    },
+    routinesListHeadText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.1, // 0.1em
+      color: color.text3,
+    },
+    routinesListHeadLeft: { flex: 1 },
+    // The list bleeds 8dp past the card padding so a selected row's tint reads as a
+    // row rather than as a box inside a box.
+    routinesList: { marginHorizontal: -8, gap: 2 },
+    candidateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: 56,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+    },
+    candidateText: { flex: 1, minWidth: 0 },
+    candidateName: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      fontWeight: '600',
+      letterSpacing: -0.15,
+      color: color.text1,
+    },
+    candidateMeta: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 0.66, // 0.06em
+      color: color.text3,
+      marginTop: 2,
+      fontVariant: ['tabular-nums'],
+    },
+    candidateDate: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      fontVariant: ['tabular-nums'],
+    },
+    seenOnceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: 48,
+      paddingHorizontal: 12,
+    },
+    seenOnceChevron: { width: 24, alignItems: 'center' },
+    seenOnceText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      letterSpacing: 0.92, // 0.08em
+      color: color.text2,
+    },
+    routinesFootnote: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+      textAlign: 'center',
+      marginTop: 14,
+    },
 
-  // --- Pinned success footer ---
-  successFooter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingTop: 36,
-    paddingHorizontal: 16,
-  },
-  routinesCta: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  routinesCtaText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  skipBtn: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  skipBtnText: {
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    fontWeight: '500',
-    color: color.text2,
-  },
-  failureNote: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.warning,
-    textAlign: 'center',
-    marginTop: 8,
-  },
+    // --- Pinned success footer ---
+    successFooter: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingTop: 36,
+      paddingHorizontal: 16,
+    },
+    routinesCta: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    routinesCtaText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    skipBtn: {
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    skipBtnText: {
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      fontWeight: '500',
+      color: color.text2,
+    },
+    failureNote: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.warning,
+      textAlign: 'center',
+      marginTop: 8,
+    },
 
-  // --- Error banner + retry ---
-  errorBanner: {
-    alignSelf: 'stretch',
-    backgroundColor: 'rgba(255,77,77,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,77,77,0.28)',
-    borderRadius: 11,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 22,
-  },
-  errorText: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.error,
-  },
-  retryBtn: {
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    alignSelf: 'center',
-  },
-  retryBtnPressed: { borderColor: color.text3 },
-  retryBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    fontWeight: '600',
-    color: color.text1,
-  },
-});
+    // --- Error banner + retry ---
+    errorBanner: {
+      alignSelf: 'stretch',
+      backgroundColor: withAlpha(color.error, 0.08),
+      borderWidth: 1,
+      borderColor: withAlpha(color.error, 0.28),
+      borderRadius: 11,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginTop: 22,
+    },
+    errorText: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.error,
+    },
+    retryBtn: {
+      height: 44,
+      paddingHorizontal: 18,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      alignSelf: 'center',
+    },
+    retryBtnPressed: { borderColor: color.text3 },
+    retryBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      fontWeight: '600',
+      color: color.text1,
+    },
+  }),
+);

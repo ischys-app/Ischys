@@ -9,11 +9,12 @@ import {
   effortSavedLabel,
   type EffortScaleKind,
 } from '../../domain/effort';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed, withAlpha } from '../../theme/tokens';
 import { textScale } from '../../theme/textScale';
 import { ClockBarIcon } from '../icons';
 import { EffortScale } from './EffortScale';
 import { fmtRest } from './types';
+import { useThemed } from '../../theme/ThemeProvider';
 
 /**
  * The question the rest bar asks about the set just ticked (#84, board 14a
@@ -61,6 +62,7 @@ export function RestBar({
   effort,
   onEffortHeight,
 }: Props) {
+  useThemed();
   const pct = total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
 
   return (
@@ -110,6 +112,7 @@ export function EffortSection({
   effort: RestBarEffort;
   onHeight?: (height: number) => void;
 }) {
+  useThemed();
   // The value under the thumb, so the prompt can say what it means.
   const [preview, setPreview] = useState<number | null>(null);
   const onLayout = onHeight
@@ -152,107 +155,109 @@ const shadow = {
   elevation: 14,
 };
 
-const styles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 40,
-    paddingHorizontal: 12,
-    paddingBottom: 26,
-  },
-  idle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: 'rgba(23,23,26,0.9)',
-    ...shadow,
-  },
-  idleText: { fontFamily: font.titleSemi, fontSize: 13, color: color.text2 },
-  idleHint: { fontFamily: font.bodyMedium, color: color.text3 },
+const styles = themed(() =>
+  StyleSheet.create({
+    wrap: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 40,
+      paddingHorizontal: 12,
+      paddingBottom: 26,
+    },
+    idle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      width: '100%',
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: withAlpha(color.surface2, 0.9),
+      ...shadow,
+    },
+    idleText: { fontFamily: font.titleSemi, fontSize: 13, color: color.text2 },
+    idleHint: { fontFamily: font.bodyMedium, color: color.text3 },
 
-  card: {
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    overflow: 'hidden',
-    ...shadow,
-  },
-  // Effort section, above the countdown.
-  effort: {
-    paddingTop: 11,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: color.border,
-  },
-  effortFolded: { paddingBottom: 11 },
-  effortHead: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 9,
-  },
-  effortAsk: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 1.52,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  effortHint: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 1.2,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  // While scrubbing this is the answer, not a hint: one step brighter.
-  effortHintLive: { color: color.text2 },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
-  adjust: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  adjustText: {
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  center: { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 1 },
-  restKicker: { fontFamily: font.monoMedium, fontSize: 9.5, letterSpacing: 1.52, color: color.accent },
-  restTimer: {
-    fontFamily: font.monoSemi,
-    fontSize: 26,
-    lineHeight: 28,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  skip: {
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  skipText: { fontFamily: font.titleSemi, fontSize: 13, color: color.accentFg },
-  track: { height: 3, backgroundColor: color.surface2 },
-  fill: { height: '100%', backgroundColor: color.accent },
-});
+    card: {
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      overflow: 'hidden',
+      ...shadow,
+    },
+    // Effort section, above the countdown.
+    effort: {
+      paddingTop: 11,
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: color.border,
+    },
+    effortFolded: { paddingBottom: 11 },
+    effortHead: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 9,
+    },
+    effortAsk: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 1.52,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    effortHint: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 1.2,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    // While scrubbing this is the answer, not a hint: one step brighter.
+    effortHintLive: { color: color.text2 },
+    cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
+    adjust: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    adjustText: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    center: { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 1 },
+    restKicker: { fontFamily: font.monoMedium, fontSize: 9.5, letterSpacing: 1.52, color: color.accent },
+    restTimer: {
+      fontFamily: font.monoSemi,
+      fontSize: 26,
+      lineHeight: 28,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    skip: {
+      height: 40,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    skipText: { fontFamily: font.titleSemi, fontSize: 13, color: color.accentFg },
+    track: { height: 3, backgroundColor: color.surface2 },
+    fill: { height: '100%', backgroundColor: color.accent },
+  }),
+);

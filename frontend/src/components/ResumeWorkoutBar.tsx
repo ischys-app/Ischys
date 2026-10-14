@@ -11,9 +11,10 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { accentA, color, font } from '../theme/tokens';
+import { accentA, color, font, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
 import { fmtClock } from './workout/types';
+import { useThemed } from '../theme/ThemeProvider';
 
 /**
  * The HTML pins this at `bottom: 104px` above a tab bar at `bottom: 22px` — a
@@ -34,6 +35,7 @@ type Props = {
 const elapsedSeconds = (startedAt: string): number => secondsSince(startedAt);
 
 export function ResumeWorkoutBar({ name, startedAt, onPress }: Props) {
+  const scheme = useThemed();
   const [seconds, setSeconds] = useState(() => elapsedSeconds(startedAt));
   const insets = useSafeAreaInsets();
   // Mirrors TabBar's own `Math.max(insets.bottom, 12) + 10`.
@@ -48,7 +50,7 @@ export function ResumeWorkoutBar({ name, startedAt, onPress }: Props) {
   return (
     <View style={[styles.shadow, { bottom }]} pointerEvents="box-none">
       <Pressable onPress={onPress}>
-        <BlurView intensity={20} tint="dark" style={[styles.clip, Platform.OS === 'android' && styles.clipAndroid]}>
+        <BlurView intensity={20} tint={scheme} style={[styles.clip, Platform.OS === 'android' && styles.clipAndroid]}>
           <View style={styles.tint} />
           <View style={styles.row}>
             <View style={styles.halo}>
@@ -80,76 +82,78 @@ export function ResumeWorkoutBar({ name, startedAt, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  // Outer wrapper carries the drop shadow (a clipped View cannot draw one).
-  shadow: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 29,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.8,
-    shadowRadius: 17,
-    elevation: 12,
-  },
-  // Inner blur/clip layer.
-  clip: {
-    borderRadius: 15,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: accentA(0.4),
-  },
-  // Android's BlurView only tints; give the bar a solid base there so the
-  // routine cards underneath do not read through it.
-  clipAndroid: { backgroundColor: 'rgba(20,20,23,0.97)' },
-  tint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: accentA(0.12) },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  // 4px accent halo ring around the live dot (box-shadow: 0 0 0 4px).
-  halo: {
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    backgroundColor: accentA(0.18),
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  dot: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: color.accent },
-  middle: { flex: 1, minWidth: 0 },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-    letterSpacing: -0.14,
-  },
-  subtitle: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text2,
-    marginTop: 1,
-    fontVariant: ['tabular-nums'],
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 34,
-    paddingHorizontal: 15,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    flexShrink: 0,
-  },
-  pillLabel: {
-    fontFamily: font.displayBold,
-    fontSize: 13,
-    color: color.accentFg,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    // Outer wrapper carries the drop shadow (a clipped View cannot draw one).
+    shadow: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      zIndex: 29,
+      borderRadius: 15,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 14 },
+      shadowOpacity: 0.8,
+      shadowRadius: 17,
+      elevation: 12,
+    },
+    // Inner blur/clip layer.
+    clip: {
+      borderRadius: 15,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: accentA(0.4),
+    },
+    // Android's BlurView only tints; give the bar a solid base there so the
+    // routine cards underneath do not read through it.
+    clipAndroid: { backgroundColor: color.chromeSolid },
+    tint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: accentA(0.12) },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    // 4px accent halo ring around the live dot (box-shadow: 0 0 0 4px).
+    halo: {
+      width: 17,
+      height: 17,
+      borderRadius: 8.5,
+      backgroundColor: accentA(0.18),
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    dot: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: color.accent },
+    middle: { flex: 1, minWidth: 0 },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+      letterSpacing: -0.14,
+    },
+    subtitle: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text2,
+      marginTop: 1,
+      fontVariant: ['tabular-nums'],
+    },
+    pill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      height: 34,
+      paddingHorizontal: 15,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      flexShrink: 0,
+    },
+    pillLabel: {
+      fontFamily: font.displayBold,
+      fontSize: 13,
+      color: color.accentFg,
+    },
+  }),
+);

@@ -50,6 +50,13 @@
       "when": 1790000400000,
       "tag": "0006_add_pr_backfill_version",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790000500000,
+      "tag": "0007_add_settings_appearance",
+      "breakpoints": true
     }
   ]
 }

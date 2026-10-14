@@ -7,7 +7,7 @@
  * (`weightText`); the screen tracks which unit the strings are currently in.
  */
 import { type Unit, unitLabel } from '../../domain/units';
-import { color } from '../../theme/tokens';
+import { color, themed, withAlpha } from '../../theme/tokens';
 
 export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
 
@@ -48,12 +48,12 @@ export interface Exercise {
 }
 
 /** Set-type → badge color + row tint. */
-export const typeMeta: Record<SetType, { color: string; tintBg: string }> = {
+export const typeMeta: Record<SetType, { color: string; tintBg: string }> = themed(() => ({
   normal: { color: color.text2, tintBg: 'transparent' },
-  warmup: { color: color.warning, tintBg: 'rgba(255,194,75,0.10)' },
-  drop: { color: '#4C8DFF', tintBg: 'rgba(76,141,255,0.10)' },
-  failure: { color: color.error, tintBg: 'rgba(255,77,77,0.10)' },
-};
+  warmup: { color: color.warning, tintBg: withAlpha(color.warning, 0.10) },
+  drop: { color: color.drop, tintBg: withAlpha(color.drop, 0.10) },
+  failure: { color: color.error, tintBg: withAlpha(color.error, 0.10) },
+}));
 
 export const TYPE_CYCLE: SetType[] = ['normal', 'warmup', 'drop', 'failure'];
 

@@ -23,7 +23,8 @@ import {
   HISTORY_PAGE_SIZE,
   refreshLimit,
 } from '../../src/lib/historyPaging';
-import { accentA, color, font } from '../../src/theme/tokens';
+import { accentA, color, font, themed } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 const HEAT_WEEKS = 12;
 const HEAT_DAYS = HEAT_WEEKS * 7; // 84
@@ -81,6 +82,7 @@ function buildHeatColumns(days: ActivityDay[]): number[][] {
 
 /** History tab — completed workouts + 12-week activity heatmap. */
 export default function History() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Header is an absolute overlay of variable height (safe-area inset + content).
@@ -316,10 +318,12 @@ export default function History() {
 
 /** The gap between two cards of a group. */
 function ItemGap() {
+  useThemed();
   return <View style={styles.itemGap} />;
 }
 
 function EmptyState({ onStart }: { onStart: () => void }) {
+  useThemed();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
@@ -340,134 +344,136 @@ function EmptyState({ onStart }: { onStart: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
-  loading: { fontFamily: font.bodyRegular, fontSize: 14, color: color.text3, textAlign: 'center' },
-  error: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.error,
-    marginTop: 12,
-    textAlign: 'center',
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
+    loading: { fontFamily: font.bodyRegular, fontSize: 14, color: color.text3, textAlign: 'center' },
+    error: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.error,
+      marginTop: 12,
+      textAlign: 'center',
+    },
 
-  // Fixed header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: color.bg,
-  },
-  title: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-  },
-  count: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
+    // Fixed header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      backgroundColor: color.bg,
+    },
+    title: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+    },
+    count: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Heatmap card
-  heatCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  heatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  heatLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  heatSessions: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  heatGrid: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
-  heatCol: { flex: 1, flexDirection: 'column', gap: 4 },
-  heatCell: { aspectRatio: 1, borderRadius: 3 },
+    // Heatmap card
+    heatCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+    },
+    heatHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    heatLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+      textTransform: 'uppercase',
+    },
+    heatSessions: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    heatGrid: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+    heatCol: { flex: 1, flexDirection: 'column', gap: 4 },
+    heatCell: { aspectRatio: 1, borderRadius: 3 },
 
-  // Groups
-  groupEnd: { height: 22 },
-  groupTitle: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    textTransform: 'uppercase',
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  itemGap: { height: 10 },
+    // Groups
+    groupEnd: { height: 22 },
+    groupTitle: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      textTransform: 'uppercase',
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    itemGap: { height: 10 },
 
-  // Empty state
-  empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 80, paddingHorizontal: 16 },
-  emptyIcon: {
-    width: 66,
-    height: 66,
-    borderRadius: 18,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 22,
-  },
-  emptyTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 22,
-    letterSpacing: -0.44,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14.5,
-    color: color.text2,
-    lineHeight: 22,
-    maxWidth: 260,
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 26,
-    height: 48,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: color.accent,
-  },
-  ctaPressed: { opacity: 0.9 },
-  ctaLabel: {
-    fontFamily: font.displayBold,
-    fontSize: 14.5,
-    color: color.accentFg,
-  },
-});
+    // Empty state
+    empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 80, paddingHorizontal: 16 },
+    emptyIcon: {
+      width: 66,
+      height: 66,
+      borderRadius: 18,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 22,
+    },
+    emptyTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 22,
+      letterSpacing: -0.44,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14.5,
+      color: color.text2,
+      lineHeight: 22,
+      maxWidth: 260,
+      marginTop: 10,
+      textAlign: 'center',
+    },
+    cta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 26,
+      height: 48,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      backgroundColor: color.accent,
+    },
+    ctaPressed: { opacity: 0.9 },
+    ctaLabel: {
+      fontFamily: font.displayBold,
+      fontSize: 14.5,
+      color: color.accentFg,
+    },
+  }),
+);

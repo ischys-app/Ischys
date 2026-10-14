@@ -48,7 +48,8 @@ import {
 import { type Unit, inputToKg, unitLabel, weightText } from '../../src/domain/units';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 const DEFAULT_REST_SECONDS = 120;
 
@@ -95,6 +96,7 @@ function numStr(n: number | null | undefined): string {
 }
 
 export default function RoutineBuilder() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -439,6 +441,7 @@ export default function RoutineBuilder() {
 }
 
 function EmptyBuilder() {
+  useThemed();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIconWrap}>
@@ -482,6 +485,7 @@ function ExerciseCardBuilder({
   onWeightChange: (setId: string, t: string) => void;
   onRepsChange: (setId: string, t: string) => void;
 }) {
+  useThemed();
   const ex = rex.exercise;
   const muscleLine = ex.category?.name ?? ex.primary_muscle?.name ?? ex.equipment;
   const wLabel = weightColumnLabelFor(ex.kind, unit);
@@ -626,338 +630,340 @@ const COL_SET = 40;
 const COL_WEIGHT = 74;
 const COL_REPS = 64;
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  cancel: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text2,
-  },
-  headerTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    letterSpacing: -0.16,
-    color: color.text1,
-    maxWidth: 200,
-    textAlign: 'center',
-  },
-  saveBtn: {
-    height: 32,
-    paddingHorizontal: 16,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.accentFg,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    cancel: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text2,
+    },
+    headerTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      letterSpacing: -0.16,
+      color: color.text1,
+      maxWidth: 200,
+      textAlign: 'center',
+    },
+    saveBtn: {
+      height: 32,
+      paddingHorizontal: 16,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    saveText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.accentFg,
+    },
 
-  // Title + meta ------------------------------------------------------
-  titleInput: {
-    width: '100%',
-    backgroundColor: 'transparent',
-    color: color.text1,
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    paddingHorizontal: 2,
-    paddingVertical: 0,
-  },
-  nameError: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.error,
-    marginTop: 8,
-    marginHorizontal: 2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-    marginHorizontal: 2,
-    marginBottom: 22,
-  },
-  metaText: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
+    // Title + meta ------------------------------------------------------
+    titleInput: {
+      width: '100%',
+      backgroundColor: 'transparent',
+      color: color.text1,
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      paddingHorizontal: 2,
+      paddingVertical: 0,
+    },
+    nameError: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.error,
+      marginTop: 8,
+      marginHorizontal: 2,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+      marginHorizontal: 2,
+      marginBottom: 22,
+    },
+    metaText: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Empty state ------------------------------------------------------
-  empty: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    paddingTop: 30,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    borderRadius: 16,
-  },
-  emptyIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 15,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    letterSpacing: -0.17,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    color: color.text2,
-    lineHeight: 20,
-    maxWidth: 250,
-    marginTop: 6,
-    textAlign: 'center',
-  },
+    // Empty state ------------------------------------------------------
+    empty: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      paddingTop: 30,
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      borderRadius: 16,
+    },
+    emptyIconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 15,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      letterSpacing: -0.17,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      color: color.text2,
+      lineHeight: 20,
+      maxWidth: 250,
+      marginTop: 6,
+      textAlign: 'center',
+    },
 
-  // Exercise cards ---------------------------------------------------
-  exList: { flexDirection: 'column', gap: 12 },
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingTop: 14,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingHorizontal: 2,
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 13,
-    color: color.accent,
-  },
-  headerText: { flex: 1, minWidth: 0 },
-  exName: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accent,
-  },
-  exMuscle: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 1,
-  },
-  removeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Exercise cards ---------------------------------------------------
+    exList: { flexDirection: 'column', gap: 12 },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingTop: 14,
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingHorizontal: 2,
+      marginBottom: 12,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 13,
+      color: color.accent,
+    },
+    headerText: { flex: 1, minWidth: 0 },
+    exName: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accent,
+    },
+    exMuscle: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 1,
+    },
+    removeBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  // Note
-  noteInput: {
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 10,
-    color: color.warning,
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 20,
-    minHeight: 40,
-    textAlignVertical: 'top',
-  },
-  noteInputFilled: {
-    backgroundColor: 'rgba(255,194,75,0.07)',
-    borderColor: 'rgba(255,194,75,0.22)',
-  },
+    // Note
+    noteInput: {
+      marginBottom: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 10,
+      color: color.warning,
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 20,
+      minHeight: 40,
+      textAlignVertical: 'top',
+    },
+    noteInputFilled: {
+      backgroundColor: withAlpha(color.warning, 0.07),
+      borderColor: withAlpha(color.warning, 0.22),
+    },
 
-  // Rest row
-  restRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 40,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    borderRadius: 10,
-  },
-  restLabel: {
-    fontFamily: font.bodyMedium,
-    fontSize: 13,
-    color: color.text2,
-  },
-  restValueWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 'auto',
-  },
-  restValue: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
+    // Rest row
+    restRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: 40,
+      paddingHorizontal: 12,
+      marginBottom: 12,
+      borderRadius: 10,
+    },
+    restLabel: {
+      fontFamily: font.bodyMedium,
+      fontSize: 13,
+      color: color.text2,
+    },
+    restValueWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginLeft: 'auto',
+    },
+    restValue: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Column labels
-  colLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingBottom: 6,
-  },
-  colLabelText: {
-    fontFamily: font.monoMedium,
-    fontSize: 9.5,
-    letterSpacing: 0.76,
-    color: color.text3,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
+    // Column labels
+    colLabels: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingBottom: 6,
+    },
+    colLabelText: {
+      fontFamily: font.monoMedium,
+      fontSize: 9.5,
+      letterSpacing: 0.76,
+      color: color.text3,
+      textTransform: 'uppercase',
+      textAlign: 'center',
+    },
 
-  colSet: { width: COL_SET, alignItems: 'center' },
-  colType: { flex: 1, alignItems: 'flex-start' },
-  colWeight: { width: COL_WEIGHT, alignItems: 'center' },
-  colReps: { width: COL_REPS, alignItems: 'center' },
+    colSet: { width: COL_SET, alignItems: 'center' },
+    colType: { flex: 1, alignItems: 'flex-start' },
+    colWeight: { width: COL_WEIGHT, alignItems: 'center' },
+    colReps: { width: COL_REPS, alignItems: 'center' },
 
-  // Set rows
-  setsList: { flexDirection: 'column', gap: 2 },
-  setRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    height: 46,
-    borderRadius: 9,
-    // Opaque (same tone as the card it sits on) so the swipe-revealed delete
-    // panel stays hidden behind the row until it slides away.
-    backgroundColor: color.surface1,
-  },
-  badge: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: color.hair,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12.5,
-  },
-  typeLabelText: {
-    fontFamily: font.monoRegular,
-    fontSize: 12.5,
-    color: color.text3,
-  },
-  numInput: {
-    width: '100%',
-    height: 36,
-    textAlign: 'center',
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    borderRadius: 8,
-    color: color.text1,
-    fontFamily: font.monoMedium,
-    fontSize: 15,
-    fontVariant: ['tabular-nums'],
-    paddingVertical: 0,
-  },
+    // Set rows
+    setsList: { flexDirection: 'column', gap: 2 },
+    setRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      height: 46,
+      borderRadius: 9,
+      // Opaque (same tone as the card it sits on) so the swipe-revealed delete
+      // panel stays hidden behind the row until it slides away.
+      backgroundColor: color.surface1,
+    },
+    badge: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: color.hair,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12.5,
+    },
+    typeLabelText: {
+      fontFamily: font.monoRegular,
+      fontSize: 12.5,
+      color: color.text3,
+    },
+    numInput: {
+      width: '100%',
+      height: 36,
+      textAlign: 'center',
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+      borderRadius: 8,
+      color: color.text1,
+      fontFamily: font.monoMedium,
+      fontSize: 15,
+      fontVariant: ['tabular-nums'],
+      paddingVertical: 0,
+    },
 
-  // + Add Set
-  addSet: {
-    marginTop: 8,
-    width: '100%',
-    height: 36,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addSetText: {
-    fontFamily: font.titleSemi,
-    fontSize: 12.5,
-    color: color.text2,
-  },
+    // + Add Set
+    addSet: {
+      marginTop: 8,
+      width: '100%',
+      height: 36,
+      borderRadius: 9,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addSetText: {
+      fontFamily: font.titleSemi,
+      fontSize: 12.5,
+      color: color.text2,
+    },
 
-  // + Add Exercise
-  addExercise: {
-    marginTop: 12,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  addExercisePlus: {
-    fontFamily: font.titleSemi,
-    fontSize: 20,
-    lineHeight: 20,
-    color: color.accent,
-  },
-  addExerciseText: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text1,
-  },
-});
+    // + Add Exercise
+    addExercise: {
+      marginTop: 12,
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      padding: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    addExercisePlus: {
+      fontFamily: font.titleSemi,
+      fontSize: 20,
+      lineHeight: 20,
+      color: color.accent,
+    },
+    addExerciseText: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text1,
+    },
+  }),
+);

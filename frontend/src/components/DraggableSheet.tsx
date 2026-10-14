@@ -31,6 +31,7 @@ import Animated, {
 
 import { haptics } from '../lib/haptics';
 import { useNavigationBarInset } from './AboveNavigationBar';
+import { useThemed } from '../theme/ThemeProvider';
 
 const SCREEN_H = Dimensions.get('window').height;
 const SPRING = { dampingRatio: 0.82, duration: 340 } as const;
@@ -52,6 +53,7 @@ type Props = {
 };
 
 export function DraggableSheet({ visible, onClose, children, sheetStyle, handleOnly }: Props) {
+  useThemed();
   // Stay mounted through the exit animation.
   const [rendered, setRendered] = useState(visible);
 

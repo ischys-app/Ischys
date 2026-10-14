@@ -16,7 +16,6 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Alert, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -61,6 +60,7 @@ import {
 } from '../src/lib/watchFinish';
 import { parseServerDate } from '../src/lib/serverTime';
 import { color } from '../src/theme/tokens';
+import { ThemeProvider, useThemed } from '../src/theme/ThemeProvider';
 
 /**
  * Live Activity taps are drained here, not in the workout screen: an intent can
@@ -328,146 +328,158 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
-      <AboveNavigationBar>
-      <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: color.bg },
-          }}
-        >
-          <Stack.Screen
-            name="exercise-library"
-            options={{
-              presentation: 'modal',
-              headerShown: false,
-              animation: 'slide_from_bottom',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="exercise/new"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="exercise/[id]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="summary/[id]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_bottom',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="workout/edit/[id]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_bottom',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="routine/[id]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_bottom',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="routine/view/[id]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="settings"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="health"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="import"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="measurements"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="measurement/[metric]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="muscle-map"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="one-rep-max"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="plates"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-          <Stack.Screen
-            name="merge-duplicates"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: color.bg },
-            }}
-          />
-        </Stack>
-      </AboveNavigationBar>
+      <ThemeProvider>
+        <AboveNavigationBar>
+          <AppStack />
+        </AboveNavigationBar>
+      </ThemeProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/**
+ * The navigator, inside ThemeProvider so the screen background follows the
+ * appearance: `contentStyle` is read again on every theme change.
+ */
+function AppStack() {
+  useThemed();
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: color.bg },
+      }}
+    >
+      <Stack.Screen
+        name="exercise-library"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="exercise/new"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="exercise/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="summary/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="workout/edit/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="routine/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="routine/view/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="health"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="import"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="measurements"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="measurement/[metric]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="muscle-map"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="one-rep-max"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="plates"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="merge-duplicates"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+    </Stack>
   );
 }

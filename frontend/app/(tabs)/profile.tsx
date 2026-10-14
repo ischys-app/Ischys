@@ -18,13 +18,15 @@ import { formatMeasurement, type MetricId } from '../../src/domain/measurements'
 import { recordDisplay } from '../../src/domain/records';
 import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { useWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 const BAR_MAX_HEIGHT = 56;
 const BAR_MIN_HEIGHT = 3;
 
 /** Profile tab — identity, aggregate stats, weekly bars, PRs, sync status. */
 export default function Profile() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Header is an absolute overlay of variable height (safe-area inset + content).
@@ -384,6 +386,7 @@ export default function Profile() {
 }
 
 function StatCell({ label, value, unit }: { label: string; value: string; unit: string }) {
+  useThemed();
   return (
     <View style={styles.statCell}>
       <Text style={styles.statLabel}>{label}</Text>
@@ -398,329 +401,331 @@ function StatCell({ label, value, unit }: { label: string; value: string; unit: 
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
-  loading: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text3,
-    textAlign: 'center',
-    marginTop: 24,
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
+    loading: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text3,
+      textAlign: 'center',
+      marginTop: 24,
+    },
 
-  // Fixed header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: color.bg,
-  },
-  title: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  healthChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    height: 30,
-    paddingHorizontal: 11,
-    borderRadius: 999,
-    backgroundColor: 'rgba(45,216,129,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(45,216,129,0.24)',
-  },
-  healthChipPressed: { opacity: 0.75 },
-  healthChipText: {
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    fontWeight: '600',
-    color: color.success,
-  },
-  settingsButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsButtonPressed: { borderColor: color.text3 },
+    // Fixed header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      backgroundColor: color.bg,
+    },
+    title: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    healthChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      height: 30,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      backgroundColor: withAlpha(color.success, 0.10),
+      borderWidth: 1,
+      borderColor: withAlpha(color.success, 0.24),
+    },
+    healthChipPressed: { opacity: 0.75 },
+    healthChipText: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      fontWeight: '600',
+      color: color.success,
+    },
+    settingsButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingsButtonPressed: { borderColor: color.text3 },
 
-  // Identity row
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    marginBottom: 22,
-    paddingHorizontal: 2,
-  },
-  avatar: {
-    width: 62,
-    height: 62,
-    borderRadius: 18,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarText: {
-    fontFamily: font.monoBold,
-    fontSize: 22,
-    color: color.accent,
-  },
-  identityText: { flex: 1, minWidth: 0 },
-  name: {
-    fontFamily: font.displayBold,
-    fontSize: 20,
-    letterSpacing: -0.4,
-    color: color.text1,
-  },
-  nameInput: {
-    padding: 0,
-    marginVertical: -2, // keep the row height stable when swapping Text -> TextInput
-  },
-  subtitle: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 3,
-  },
+    // Identity row
+    identity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 15,
+      marginBottom: 22,
+      paddingHorizontal: 2,
+    },
+    avatar: {
+      width: 62,
+      height: 62,
+      borderRadius: 18,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    avatarText: {
+      fontFamily: font.monoBold,
+      fontSize: 22,
+      color: color.accent,
+    },
+    identityText: { flex: 1, minWidth: 0 },
+    name: {
+      fontFamily: font.displayBold,
+      fontSize: 20,
+      letterSpacing: -0.4,
+      color: color.text1,
+    },
+    nameInput: {
+      padding: 0,
+      marginVertical: -2, // keep the row height stable when swapping Text -> TextInput
+    },
+    subtitle: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 3,
+    },
 
-  // Stats grid
-  grid: { flexDirection: 'column', gap: 10, marginBottom: 12 },
-  gridRow: { flexDirection: 'row', gap: 10 },
-  statCell: {
-    flex: 1,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 15,
-    padding: 15,
-  },
-  statLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 0.95,
-    color: color.text3,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  statValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 13,
-    color: color.text3,
-    letterSpacing: 0,
-  },
+    // Stats grid
+    grid: { flexDirection: 'column', gap: 10, marginBottom: 12 },
+    gridRow: { flexDirection: 'row', gap: 10 },
+    statCell: {
+      flex: 1,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 15,
+      padding: 15,
+    },
+    statLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 0.95,
+      color: color.text3,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+    },
+    statValueRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 13,
+      color: color.text3,
+      letterSpacing: 0,
+    },
 
-  // Weekly bars card
-  barsCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  barsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  barsLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  barsAvg: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.success,
-    fontVariant: ['tabular-nums'],
-  },
-  barsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 3,
-    height: 60,
-  },
-  bar: {
-    flex: 1,
-    borderRadius: 2,
-    minHeight: BAR_MIN_HEIGHT,
-  },
-  axisRow: {
-    flexDirection: 'row',
-    gap: 3,
-    marginTop: 7,
-  },
-  axisCell: {
-    flex: 1,
-    alignItems: 'center',
-    // Let a month label spill past its thin bar cell rather than clip.
-    overflow: 'visible',
-  },
-  axisLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-    // Wider than the cell on purpose: without a width of its own Android
-    // wraps the label to the bar's few pixels, one letter per line.
-    width: 28,
-    textAlign: 'center',
-  },
+    // Weekly bars card
+    barsCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+    },
+    barsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    barsLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+      textTransform: 'uppercase',
+    },
+    barsAvg: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.success,
+      fontVariant: ['tabular-nums'],
+    },
+    barsRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 3,
+      height: 60,
+    },
+    bar: {
+      flex: 1,
+      borderRadius: 2,
+      minHeight: BAR_MIN_HEIGHT,
+    },
+    axisRow: {
+      flexDirection: 'row',
+      gap: 3,
+      marginTop: 7,
+    },
+    axisCell: {
+      flex: 1,
+      alignItems: 'center',
+      // Let a month label spill past its thin bar cell rather than clip.
+      overflow: 'visible',
+    },
+    axisLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+      // Wider than the cell on purpose: without a width of its own Android
+      // wraps the label to the bar's few pixels, one letter per line.
+      width: 28,
+      textAlign: 'center',
+    },
 
-  // Records
-  recordsLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    textTransform: 'uppercase',
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  recordsList: { flexDirection: 'column', gap: 8, marginBottom: 24 },
-  recordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 13,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  recordName: {
-    flex: 1,
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    color: color.text1,
-  },
-  recordValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 13.5,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  emptyRecords: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-    textAlign: 'center',
-    paddingVertical: 12,
-  },
+    // Records
+    recordsLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      textTransform: 'uppercase',
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    recordsList: { flexDirection: 'column', gap: 8, marginBottom: 24 },
+    recordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 13,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    recordName: {
+      flex: 1,
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      color: color.text1,
+    },
+    recordValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 13.5,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    emptyRecords: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+      textAlign: 'center',
+      paddingVertical: 12,
+    },
 
-  // On-device status (neutral)
-  muscleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-  muscleText: { flex: 1, gap: 2 },
-  muscleTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
-  muscleSub: { fontFamily: font.bodyRegular, fontSize: 12, lineHeight: 17, color: color.text3 },
-  toolsList: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  toolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    height: 56,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hair,
-  },
-  toolRowFirst: { borderTopWidth: 0 },
-  toolText: { gap: 1 },
-  toolLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
-  toolSub: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3 },
-  statusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  statusTile: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statusText: { flex: 1, minWidth: 0 },
-  statusTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 13.5,
-    color: color.text1,
-  },
-  statusSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    marginTop: 2,
-  },
-  statusBadge: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    flexShrink: 0,
-  },
-});
+    // On-device status (neutral)
+    muscleCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 16,
+    },
+    muscleText: { flex: 1, gap: 2 },
+    muscleTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+    muscleSub: { fontFamily: font.bodyRegular, fontSize: 12, lineHeight: 17, color: color.text3 },
+    toolsList: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 16,
+    },
+    toolRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 56,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.hair,
+    },
+    toolRowFirst: { borderTopWidth: 0 },
+    toolText: { gap: 1 },
+    toolLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
+    toolSub: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3 },
+    statusCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    statusTile: {
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    statusText: { flex: 1, minWidth: 0 },
+    statusTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 13.5,
+      color: color.text1,
+    },
+    statusSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      marginTop: 2,
+    },
+    statusBadge: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      flexShrink: 0,
+    },
+  }),
+);

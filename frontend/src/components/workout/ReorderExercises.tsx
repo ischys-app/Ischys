@@ -18,8 +18,9 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import type { Exercise } from './types';
+import { useThemed } from '../../theme/ThemeProvider';
 
 const ROW_SLOT = 70; // row height (60) + marginBottom (10)
 const SHIFT_DURATION = 180;
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export function ReorderExercises({ visible, exercises, topInset, onDone, onReorder }: Props) {
+  useThemed();
   const [items, setItems] = useState<Exercise[]>(exercises);
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -187,106 +189,108 @@ export function ReorderExercises({ visible, exercises, topInset, onDone, onReord
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 80,
-    backgroundColor: color.bg,
-    flexDirection: 'column',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
-  done: {
-    height: 34,
-    paddingHorizontal: 18,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.accentFg,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingTop: 14,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  row: {
-    height: 60,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingLeft: 12,
-    paddingRight: 4,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderRadius: 12,
-  },
-  rowDragged: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.8,
-    shadowRadius: 17,
-    elevation: 12,
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12,
-    color: color.accent,
-  },
-  middle: {
-    flex: 1,
-    minWidth: 0,
-  },
-  name: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    letterSpacing: -0.145,
-    color: color.text1,
-  },
-  setsLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 1,
-    fontVariant: ['tabular-nums'],
-  },
-  grip: {
-    width: 46,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    root: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      zIndex: 80,
+      backgroundColor: color.bg,
+      flexDirection: 'column',
+    },
+    header: {
+      paddingHorizontal: 16,
+      paddingBottom: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
+    done: {
+      height: 34,
+      paddingHorizontal: 18,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    doneText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.accentFg,
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      paddingTop: 14,
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
+    row: {
+      height: 60,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingLeft: 12,
+      paddingRight: 4,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderRadius: 12,
+    },
+    rowDragged: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 14 },
+      shadowOpacity: 0.8,
+      shadowRadius: 17,
+      elevation: 12,
+    },
+    avatar: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12,
+      color: color.accent,
+    },
+    middle: {
+      flex: 1,
+      minWidth: 0,
+    },
+    name: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      letterSpacing: -0.145,
+      color: color.text1,
+    },
+    setsLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 1,
+      fontVariant: ['tabular-nums'],
+    },
+    grip: {
+      width: 46,
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  }),
+);

@@ -32,7 +32,7 @@ import { DemoSlot } from '../../src/components/DemoSlot';
 import { mediaUrl } from '../../src/lib/media';
 import { CheckIcon, PlusIcon, StarIcon } from '../../src/components/icons';
 import { fmtDateOnly } from '../../src/lib/format';
-import { accentA, color, font } from '../../src/theme/tokens';
+import { accentA, color, font, themed } from '../../src/theme/tokens';
 import {
   axisTicks,
   CHART_RANGES,
@@ -50,6 +50,7 @@ import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { PressableScale } from '../../src/components/PressableScale';
 import { pickerIsActive, pickerIsSelected, pickerToggle } from '../../src/lib/exercisePicker';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 type TabKey = 'about' | 'history' | 'charts';
 
@@ -69,6 +70,7 @@ const chartUnit = (metric: RecordMetric, unit: Unit): string =>
   metric === 'max_reps' ? 'reps' : unit;
 
 export default function ExerciseDetail() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; pick?: string }>();
@@ -284,6 +286,7 @@ export default function ExerciseDetail() {
 // ---------------------------------------------------------------------------
 
 function AboutTab({ exercise }: { exercise: ExerciseOut | null }) {
+  useThemed();
   if (!exercise) return null;
   const primary = exercise.primary_muscle?.name ?? '—';
   const secondary = exercise.secondary_muscles?.[0]?.name ?? '—';
@@ -328,6 +331,7 @@ function AboutTab({ exercise }: { exercise: ExerciseOut | null }) {
 }
 
 function ChipCard({ label, value }: { label: string; value: string }) {
+  useThemed();
   return (
     <View style={styles.chip}>
       <Text style={styles.chipLabel}>{label}</Text>
@@ -360,6 +364,7 @@ function fmtSetValue(s: HistorySetOut, unit: Unit): string {
 }
 
 function HistoryTab({ history }: { history: HistorySessionOut[] }) {
+  useThemed();
   const unit = useWeightUnit();
   // Effort per set (#84): a column on the right, blank for an unrated set and
   // absent altogether with the setting Off or in a session nobody rated.
@@ -435,6 +440,7 @@ function ChartsTab({
   range: ChartRangeId | null;
   onRangeChange: (r: ChartRangeId) => void;
 }) {
+  useThemed();
   const router = useRouter();
   const unit = useWeightUnit();
   const byMetric = useMemo(() => {
@@ -577,6 +583,7 @@ function RecordCard({
   record?: RecordOut;
   onPress?: () => void;
 }) {
+  useThemed();
   const unit = useWeightUnit();
   const body = (
     <>
@@ -624,6 +631,7 @@ function MiniChart({
   times: number[];
   unit: string;
 }) {
+  useThemed();
   const [tapped, setSel] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
   // The series can be replaced under a tapped point (a shorter range loads).
@@ -756,366 +764,368 @@ function MiniChart({
 // Styles
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
-  loading: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text3,
-    textAlign: 'center',
-    paddingVertical: 40,
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
+    loading: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text3,
+      textAlign: 'center',
+      paddingVertical: 40,
+    },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSpacer: { width: 34, height: 34 },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.text1,
-    maxWidth: 220,
-    textAlign: 'center',
-  },
-  tabs: { flexDirection: 'row', gap: 4 },
-  tab: {
-    flex: 1,
-    height: 42,
-    borderBottomWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13.5,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    iconBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerSpacer: { width: 34, height: 34 },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.text1,
+      maxWidth: 220,
+      textAlign: 'center',
+    },
+    tabs: { flexDirection: 'row', gap: 4 },
+    tab: {
+      flex: 1,
+      height: 42,
+      borderBottomWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tabText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13.5,
+    },
 
-  // About -------------------------------------------------------------
-  demoWrap: {
-    marginBottom: 18,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 22,
-  },
-  chip: {
-    flex: 1,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 13,
-    padding: 12,
-  },
-  chipLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9,
-    letterSpacing: 0.9,
-    color: color.text3,
-    marginBottom: 6,
-  },
-  chipValue: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
-  sectionLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    marginBottom: 12,
-  },
-  emptyStep: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text3,
-  },
-  steps: {
-    flexDirection: 'column',
-    gap: 14,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 13,
-  },
-  stepBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  stepBadgeText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12,
-    color: color.accent,
-  },
-  stepText: {
-    flex: 1,
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: color.text2,
-    paddingTop: 2,
-  },
+    // About -------------------------------------------------------------
+    demoWrap: {
+      marginBottom: 18,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 22,
+    },
+    chip: {
+      flex: 1,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 13,
+      padding: 12,
+    },
+    chipLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9,
+      letterSpacing: 0.9,
+      color: color.text3,
+      marginBottom: 6,
+    },
+    chipValue: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
+    sectionLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      marginBottom: 12,
+    },
+    emptyStep: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text3,
+    },
+    steps: {
+      flexDirection: 'column',
+      gap: 14,
+    },
+    stepRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 13,
+    },
+    stepBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    stepBadgeText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12,
+      color: color.accent,
+    },
+    stepText: {
+      flex: 1,
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      paddingTop: 2,
+    },
 
-  // History -----------------------------------------------------------
-  emptyHistory: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text3,
-    textAlign: 'center',
-    paddingVertical: 40,
-  },
-  historyCol: {
-    flexDirection: 'column',
-    gap: 12,
-  },
-  sessionCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 15,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  sessionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sessionDate: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
-  prPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  prText: {
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    color: color.success,
-  },
-  sessionSets: {
-    flexDirection: 'column',
-    gap: 6,
-  },
-  setRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  setIdx: {
-    width: 20,
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-  },
-  setValue: {
-    fontFamily: font.monoMedium,
-    fontSize: 14,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  bestPill: {
-    borderWidth: 1,
-    borderColor: accentA(0.3),
-    borderRadius: 5,
-    paddingVertical: 1,
-    paddingHorizontal: 5,
-  },
-  bestText: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.accent,
-  },
-  // Effort column (board 14a, decision D): right-aligned, text3.
-  sessionRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  effortHead: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-  },
-  effortCell: {
-    marginLeft: 'auto',
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
+    // History -----------------------------------------------------------
+    emptyHistory: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text3,
+      textAlign: 'center',
+      paddingVertical: 40,
+    },
+    historyCol: {
+      flexDirection: 'column',
+      gap: 12,
+    },
+    sessionCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 15,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    sessionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    sessionDate: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
+    prPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    prText: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      color: color.success,
+    },
+    sessionSets: {
+      flexDirection: 'column',
+      gap: 6,
+    },
+    setRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    setIdx: {
+      width: 20,
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+    },
+    setValue: {
+      fontFamily: font.monoMedium,
+      fontSize: 14,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    bestPill: {
+      borderWidth: 1,
+      borderColor: accentA(0.3),
+      borderRadius: 5,
+      paddingVertical: 1,
+      paddingHorizontal: 5,
+    },
+    bestText: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.accent,
+    },
+    // Effort column (board 14a, decision D): right-aligned, text3.
+    sessionRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    effortHead: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+    },
+    effortCell: {
+      marginLeft: 'auto',
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Charts ------------------------------------------------------------
-  recordsGrid: {
-    flexDirection: 'column',
-    gap: 10,
-    marginBottom: 22,
-  },
-  recordsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  recordCard: {
-    flex: 1,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    padding: 14,
-  },
-  recordLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9,
-    letterSpacing: 0.9,
-    color: color.text3,
-    marginBottom: 8,
-  },
-  recordValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 22,
-    letterSpacing: -0.44,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  tapColumn: { position: 'absolute', top: 0, bottom: 0 },
-  chartAxis: { height: 18, marginTop: 6 },
-  axisTick: { position: 'absolute', top: 0 },
-  rangeRow: {
-    flexDirection: 'row',
-    backgroundColor: color.surface2,
-    borderRadius: 9,
-    padding: 3,
-    gap: 3,
-    marginBottom: 16,
-  },
-  rangeItem: { flex: 1, height: 32, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  rangeItemOn: { backgroundColor: color.surface3 },
-  rangeText: { fontFamily: font.monoMedium, fontSize: 12, color: color.text2 },
-  rangeTextOn: { color: color.text1 },
-  chartHead: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  // Trends are text2 whichever way they point: a falling lift is information,
-  // not an error, and colouring it red would make the chart shout.
-  trend: { fontFamily: font.monoRegular, fontSize: 11, color: color.text2 },
-  // Sits above the home indicator; content gets 116pt of bottom padding so
-  // nothing hides under it.
-  pickBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: color.bg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hair,
-  },
-  pickButton: {
-    height: 52,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  pickButtonOff: { backgroundColor: color.accent },
-  // Already-selected is a quieter surface: removing is not the action this
-  // screen is encouraging.
-  pickButtonOn: { backgroundColor: color.surface2 },
-  pickText: { fontFamily: font.titleSemi, fontSize: 16 },
-  chartBlock: {
-    marginBottom: 22,
-  },
-  chartCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingTop: 18,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
-  chartRegion: {
-    height: 150,
-  },
-  chartTapRow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-  },
-  tooltip: {
-    position: 'absolute',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  tooltipValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  tooltipLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.text3,
-    marginTop: 1,
-  },
-  chartEmpty: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text3,
-    textAlign: 'center',
-    paddingVertical: 60,
-  },
-  chartLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.text3,
-  },
-});
+    // Charts ------------------------------------------------------------
+    recordsGrid: {
+      flexDirection: 'column',
+      gap: 10,
+      marginBottom: 22,
+    },
+    recordsRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    recordCard: {
+      flex: 1,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      padding: 14,
+    },
+    recordLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9,
+      letterSpacing: 0.9,
+      color: color.text3,
+      marginBottom: 8,
+    },
+    recordValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 22,
+      letterSpacing: -0.44,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    tapColumn: { position: 'absolute', top: 0, bottom: 0 },
+    chartAxis: { height: 18, marginTop: 6 },
+    axisTick: { position: 'absolute', top: 0 },
+    rangeRow: {
+      flexDirection: 'row',
+      backgroundColor: color.surface2,
+      borderRadius: 9,
+      padding: 3,
+      gap: 3,
+      marginBottom: 16,
+    },
+    rangeItem: { flex: 1, height: 32, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+    rangeItemOn: { backgroundColor: color.surface3 },
+    rangeText: { fontFamily: font.monoMedium, fontSize: 12, color: color.text2 },
+    rangeTextOn: { color: color.text1 },
+    chartHead: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    // Trends are text2 whichever way they point: a falling lift is information,
+    // not an error, and colouring it red would make the chart shout.
+    trend: { fontFamily: font.monoRegular, fontSize: 11, color: color.text2 },
+    // Sits above the home indicator; content gets 116pt of bottom padding so
+    // nothing hides under it.
+    pickBar: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      backgroundColor: color.bg,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.hair,
+    },
+    pickButton: {
+      height: 52,
+      borderRadius: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    pickButtonOff: { backgroundColor: color.accent },
+    // Already-selected is a quieter surface: removing is not the action this
+    // screen is encouraging.
+    pickButtonOn: { backgroundColor: color.surface2 },
+    pickText: { fontFamily: font.titleSemi, fontSize: 16 },
+    chartBlock: {
+      marginBottom: 22,
+    },
+    chartCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingTop: 18,
+      paddingHorizontal: 16,
+      paddingBottom: 14,
+    },
+    chartRegion: {
+      height: 150,
+    },
+    chartTapRow: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      flexDirection: 'row',
+    },
+    tooltip: {
+      position: 'absolute',
+      alignItems: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderRadius: 10,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+    },
+    tooltipValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    tooltipLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.text3,
+      marginTop: 1,
+    },
+    chartEmpty: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text3,
+      textAlign: 'center',
+      paddingVertical: 60,
+    },
+    chartLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.text3,
+    },
+  }),
+);

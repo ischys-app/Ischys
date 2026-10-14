@@ -6,9 +6,10 @@ import { BlurView } from 'expo-blur';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { accentA, color } from '../theme/tokens';
+import { accentA, color, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
 import { HistoryIcon, HomeIcon, ProfileIcon } from './icons';
+import { useThemed } from '../theme/ThemeProvider';
 
 /** Minimal shape of the navigation tabBar props we consume. */
 type TabBarProps = {
@@ -26,11 +27,12 @@ const TABS: Record<string, { label: string; Icon: typeof HomeIcon }> = {
 };
 
 export function TabBar({ state, navigation }: TabBarProps) {
+  const scheme = useThemed();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 10 }]} pointerEvents="box-none">
-      <BlurView intensity={26} tint="dark" style={[styles.bar, Platform.OS === 'android' && styles.barAndroid]}>
+      <BlurView intensity={26} tint={scheme} style={[styles.bar, Platform.OS === 'android' && styles.barAndroid]}>
         <View style={styles.tint} />
         {state.routes.map((route, index) => {
           const meta = TABS[route.name];
@@ -59,36 +61,38 @@ export function TabBar({ state, navigation }: TabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 16, right: 16, zIndex: 30 },
-  // Android's BlurView does not blur, it only tints, so the list scrolling
-  // underneath reads straight through the bar. Make it near-opaque there.
-  barAndroid: { backgroundColor: 'rgba(20,20,23,0.97)' },
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 4,
-    padding: 6,
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.09)',
-    // drop shadow (iOS) + elevation (Android)
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 18,
-  },
-  tint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(30,30,36,0.55)' },
-  tab: {
-    flex: 1,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 10,
-  },
-  tabActive: { backgroundColor: accentA(0.12) },
-  label: { fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 10, letterSpacing: 0.1, lineHeight: 10 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    wrap: { position: 'absolute', left: 16, right: 16, zIndex: 30 },
+    // Android's BlurView does not blur, it only tints, so the list scrolling
+    // underneath reads straight through the bar. Make it near-opaque there.
+    barAndroid: { backgroundColor: color.chromeSolid },
+    bar: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      gap: 4,
+      padding: 6,
+      borderRadius: 22,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: color.chromeBorder,
+      // drop shadow (iOS) + elevation (Android)
+      shadowColor: '#000',
+      shadowOpacity: 0.6,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 14 },
+      elevation: 18,
+    },
+    tint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.chromeTint },
+    tab: {
+      flex: 1,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      paddingVertical: 10,
+    },
+    tabActive: { backgroundColor: accentA(0.12) },
+    label: { fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 10, letterSpacing: 0.1, lineHeight: 10 },
+  }),
+);

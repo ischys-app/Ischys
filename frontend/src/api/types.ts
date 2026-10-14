@@ -281,10 +281,14 @@ export type Unit = 'kg' | 'lb';
 /** Effort per set: hidden, or shown as RPE or as RIR. */
 export type EffortMode = 'off' | 'rpe' | 'rir';
 
+/** Dark, light, or whatever the phone is set to. */
+export type Appearance = 'dark' | 'light' | 'system';
+
 /** Full locally-persisted settings payload. */
 export type SettingsOut = {
   unit: Unit;
   effort_mode: EffortMode;
+  appearance: Appearance;
   auto_start_rest_timer: boolean;
   rest_timer_alerts: boolean;
   haptic_feedback: boolean;

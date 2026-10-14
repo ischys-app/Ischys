@@ -15,7 +15,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import {
   loadToKg,
   setupUnit,
@@ -25,6 +25,7 @@ import {
   type PlateStack,
 } from '../../domain/plateMath';
 import { toDisplay, type Unit } from '../../domain/units';
+import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
   visible: boolean;
@@ -67,6 +68,7 @@ const plateWidth = (kg: number, full: number): number =>
   Math.round(Math.min(18, Math.max(7, 18 * (kg / full) ** 0.45)));
 
 function PlateDrawing({ plates, unit }: { plates: PlateStack; unit: Unit }) {
+  useThemed();
   const full = FULL_PLATE[unit];
   const each = plates.flatMap((p) => Array<number>(p.n).fill(p.kg));
   if (each.length === 0) return null;
@@ -84,6 +86,7 @@ function PlateDrawing({ plates, unit }: { plates: PlateStack; unit: Unit }) {
 }
 
 function LoadDetail({ load, unit }: { load: PlateLoad; unit: Unit }) {
+  useThemed();
   return (
     <>
       <View style={styles.eachSideRow}>
@@ -107,6 +110,7 @@ function LoadDetail({ load, unit }: { load: PlateLoad; unit: Unit }) {
 }
 
 export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClose }: Props) {
+  useThemed();
   // Everything the solver returns is in the rack's unit, and so is every label.
   const unit = setupUnit(setup);
   const solution = useMemo(
@@ -205,92 +209,94 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingBottom: 16,
-  },
-  grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
-  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  barChip: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    letterSpacing: 0.5,
-    color: color.text2,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    overflow: 'hidden',
-  },
-  body: { maxHeight: 420 },
-  bodyContent: { paddingHorizontal: 16, paddingBottom: 8 },
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingBottom: 16,
+    },
+    grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
+    grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    barChip: {
+      fontFamily: font.monoMedium,
+      fontSize: 11,
+      letterSpacing: 0.5,
+      color: color.text2,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      overflow: 'hidden',
+    },
+    body: { maxHeight: 420 },
+    bodyContent: { paddingHorizontal: 16, paddingBottom: 8 },
 
-  warning: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text2 },
+    warning: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text2 },
 
-  options: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  option: {
-    flex: 1,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 12,
-  },
-  // Selection is a lighter surface and a brighter edge, not accent — the accent
-  // in this sheet belongs to Use, which is the action that changes the set.
-  optionSelected: { backgroundColor: color.surface3, borderColor: color.text2 },
-  optionTag: { fontFamily: font.monoMedium, fontSize: 9, letterSpacing: 0.5, color: color.text3 },
-  optionKg: { fontFamily: font.monoSemi, fontSize: 22, color: color.text1, marginTop: 4 },
-  optionDetail: { fontFamily: font.monoRegular, fontSize: 11, color: color.text2, marginTop: 2 },
+    options: { flexDirection: 'row', gap: 10, marginTop: 12 },
+    option: {
+      flex: 1,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 12,
+    },
+    // Selection is a lighter surface and a brighter edge, not accent — the accent
+    // in this sheet belongs to Use, which is the action that changes the set.
+    optionSelected: { backgroundColor: color.surface3, borderColor: color.text2 },
+    optionTag: { fontFamily: font.monoMedium, fontSize: 9, letterSpacing: 0.5, color: color.text3 },
+    optionKg: { fontFamily: font.monoSemi, fontSize: 22, color: color.text1, marginTop: 4 },
+    optionDetail: { fontFamily: font.monoRegular, fontSize: 11, color: color.text2, marginTop: 2 },
 
-  eachSideRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  eachSideLabel: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text3 },
-  eachSideValue: { fontFamily: font.monoSemi, fontSize: 20, color: color.text1 },
+    eachSideRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      marginTop: 20,
+    },
+    eachSideLabel: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text3 },
+    eachSideValue: { fontFamily: font.monoSemi, fontSize: 20, color: color.text1 },
 
-  drawing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 100,
-    marginTop: 10,
-    gap: 3,
-  },
-  sleeve: { width: 28, height: 6, borderRadius: 3, backgroundColor: color.surface3 },
-  plate: { borderRadius: 2, backgroundColor: color.text2 },
+    drawing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 100,
+      marginTop: 10,
+      gap: 3,
+    },
+    sleeve: { width: 28, height: 6, borderRadius: 3, backgroundColor: color.surface3 },
+    plate: { borderRadius: 2, backgroundColor: color.text2 },
 
-  plateList: { marginTop: 10, gap: 2 },
-  plateRow: { fontFamily: font.monoRegular, fontSize: 13, color: color.text2 },
+    plateList: { marginTop: 10, gap: 2 },
+    plateRow: { fontFamily: font.monoRegular, fontSize: 13, color: color.text2 },
 
-  belowBar: { paddingVertical: 8, gap: 6 },
-  belowBarTitle: { fontFamily: font.titleSemi, fontSize: 16, color: color.text1 },
-  belowBarBody: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text2 },
-  switchBar: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text1, marginTop: 4 },
+    belowBar: { paddingVertical: 8, gap: 6 },
+    belowBarTitle: { fontFamily: font.titleSemi, fontSize: 16, color: color.text1 },
+    belowBarBody: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text2 },
+    switchBar: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text1, marginTop: 4 },
 
-  use: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  useText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
-});
+    use: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    useText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
+  }),
+);

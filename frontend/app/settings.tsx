@@ -424,7 +424,7 @@ export default function Settings() {
               label="Appearance"
               sub={
                 theme.appearance === 'system'
-                  ? `Following iPhone · ${theme.systemScheme === 'dark' ? 'Dark' : 'Light'}`
+                  ? `Following ${Platform.OS === 'ios' ? 'iPhone' : 'phone'} · ${theme.systemScheme === 'dark' ? 'Dark' : 'Light'}`
                   : undefined
               }
               options={APPEARANCE_OPTIONS}

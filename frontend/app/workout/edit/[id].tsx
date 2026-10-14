@@ -101,7 +101,8 @@ import { haptics } from '../../../src/lib/haptics';
 import { loadHealthEditState, syncEditedWorkout } from '../../../src/lib/healthSync';
 import { takePendingSelection } from '../../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../../src/lib/weightUnit';
-import { color, font } from '../../../src/theme/tokens';
+import { color, font, themed } from '../../../src/theme/tokens';
+import { useThemed } from '../../../src/theme/ThemeProvider';
 
 // The board's 56pt header inset is the status bar plus this.
 const HEADER_TOP = 8;
@@ -112,6 +113,7 @@ const CONTENT_GAP = 10;
 
 /** The page background fading out under the header, as on the board. */
 function HeaderFade() {
+  useThemed();
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
       <Defs>
@@ -149,6 +151,7 @@ const COLLAPSE = LayoutAnimation.create(
 );
 
 export default function EditWorkout() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; from?: string }>();
@@ -799,6 +802,7 @@ function WhenCell({
   was: string | null;
   onPress: () => void;
 }) {
+  useThemed();
   return (
     <Pressable
       onPress={onPress}
@@ -833,177 +837,179 @@ function WhenCell({
 
 const tabular: ['tabular-nums'] = ['tabular-nums'];
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
-  content: { paddingHorizontal: 16 },
-  loading: { paddingVertical: 48, alignItems: 'center' },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
+    content: { paddingHorizontal: 16 },
+    loading: { paddingVertical: 48, alignItems: 'center' },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: HEADER_BOTTOM,
-  },
-  cancel: {
-    height: HEADER_ROW,
-    paddingHorizontal: 14,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    justifyContent: 'center',
-  },
-  cancelText: { fontFamily: font.titleSemi, fontSize: 13, color: color.text2 },
-  headerMid: { flex: 1, minWidth: 0, alignItems: 'center', gap: 1 },
-  editing: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 1.33,
-    color: color.text3,
-  },
-  headerTitle: {
-    maxWidth: '100%',
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    letterSpacing: -0.145,
-    color: color.text1,
-  },
-  save: {
-    height: HEADER_ROW,
-    paddingHorizontal: 16,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    justifyContent: 'center',
-  },
-  saveOn: { backgroundColor: color.accent },
-  saveText: { fontFamily: font.displayBold, fontSize: 13, color: color.text3 },
-  saveTextOn: { color: color.accentFg },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingBottom: HEADER_BOTTOM,
+    },
+    cancel: {
+      height: HEADER_ROW,
+      paddingHorizontal: 14,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      justifyContent: 'center',
+    },
+    cancelText: { fontFamily: font.titleSemi, fontSize: 13, color: color.text2 },
+    headerMid: { flex: 1, minWidth: 0, alignItems: 'center', gap: 1 },
+    editing: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 1.33,
+      color: color.text3,
+    },
+    headerTitle: {
+      maxWidth: '100%',
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      letterSpacing: -0.145,
+      color: color.text1,
+    },
+    save: {
+      height: HEADER_ROW,
+      paddingHorizontal: 16,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      justifyContent: 'center',
+    },
+    saveOn: { backgroundColor: color.accent },
+    saveText: { fontFamily: font.displayBold, fontSize: 13, color: color.text3 },
+    saveTextOn: { color: color.accentFg },
 
-  // Date · start · duration -------------------------------------------
-  whenRow: { flexDirection: 'row', gap: 8 },
-  whenCell: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 66,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    gap: 5,
-  },
-  whenCellPressed: { backgroundColor: color.surface2 },
-  whenLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  whenLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9,
-    letterSpacing: 0.9,
-    color: color.text3,
-  },
-  whenValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 15,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  whenWas: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.text3,
-    fontVariant: tabular,
-  },
+    // Date · start · duration -------------------------------------------
+    whenRow: { flexDirection: 'row', gap: 8 },
+    whenCell: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 66,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+      gap: 5,
+    },
+    whenCellPressed: { backgroundColor: color.surface2 },
+    whenLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    whenLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9,
+      letterSpacing: 0.9,
+      color: color.text3,
+    },
+    whenValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 15,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    whenWas: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.text3,
+      fontVariant: tabular,
+    },
 
-  // Cards --------------------------------------------------------------
-  list: { gap: LIST_GAP, marginTop: 14 },
-  // Supersets keep their rail and tags (11a), drawn as board 13b's E11 has
-  // them: the label over the group, the rail in the page margin.
-  ssMember: { position: 'relative' },
-  ssHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: SS_HEADER_HEIGHT,
-    marginBottom: SS_HEADER_GAP,
-    paddingHorizontal: 2,
-  },
-  ssLabel: {
-    flexShrink: 0,
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text2,
-  },
-  ssNote: {
-    flexShrink: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-  },
-  ssRail: {
-    position: 'absolute',
-    left: -9,
-    width: 2,
-    borderRadius: 2,
-    backgroundColor: color.text3,
-  },
-  emptyCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  emptyTitle: { fontFamily: font.titleSemi, fontSize: 16, color: color.text1, textAlign: 'center' },
-  emptyBody: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    lineHeight: 20.25,
-    color: color.text2,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  addExercise: {
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  addExerciseText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
+    // Cards --------------------------------------------------------------
+    list: { gap: LIST_GAP, marginTop: 14 },
+    // Supersets keep their rail and tags (11a), drawn as board 13b's E11 has
+    // them: the label over the group, the rail in the page margin.
+    ssMember: { position: 'relative' },
+    ssHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: SS_HEADER_HEIGHT,
+      marginBottom: SS_HEADER_GAP,
+      paddingHorizontal: 2,
+    },
+    ssLabel: {
+      flexShrink: 0,
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text2,
+    },
+    ssNote: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    ssRail: {
+      position: 'absolute',
+      left: -9,
+      width: 2,
+      borderRadius: 2,
+      backgroundColor: color.text3,
+    },
+    emptyCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingVertical: 24,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+    },
+    emptyTitle: { fontFamily: font.titleSemi, fontSize: 16, color: color.text1, textAlign: 'center' },
+    emptyBody: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      lineHeight: 20.25,
+      color: color.text2,
+      marginTop: 6,
+      textAlign: 'center',
+    },
+    addExercise: {
+      height: 46,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    addExerciseText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
 
-  // The live workout's Done bar, with nothing on its left.
-  kbdAccessory: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 44,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: color.surface2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-  },
-  // text1, where the live bar is accent: Save is this screen's one accent.
-  kbdAccessoryDone: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    color: color.text1,
-    paddingHorizontal: 6,
-  },
-});
+    // The live workout's Done bar, with nothing on its left.
+    kbdAccessory: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      height: 44,
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: color.surface2,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border,
+    },
+    // text1, where the live bar is accent: Save is this screen's one accent.
+    kbdAccessoryDone: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      color: color.text1,
+      paddingHorizontal: 6,
+    },
+  }),
+);

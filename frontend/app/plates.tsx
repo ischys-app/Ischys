@@ -16,11 +16,13 @@ import { SectionLabel } from '../src/components/SectionLabel';
 import { BAR_OPTIONS, defaultBarSetup, setupUnit, type BarSetup } from '../src/domain/plateMath';
 import { getPlateSetup, setPlateSetup } from '../src/lib/plateSetup';
 import { useWeightUnit } from '../src/lib/weightUnit';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 
 export default function PlatesScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Each unit has its own rack: a pound user edits pound plates here, and the
@@ -144,75 +146,77 @@ export default function PlatesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
 
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
 
-  segment: { flexDirection: 'row', padding: 6, gap: 6 },
-  segmentItem: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Selected uses surface3, matching the shipped Units segment — the accent on
-  // this screen would compete with nothing and mean nothing.
-  segmentItemOn: { backgroundColor: color.surface3 },
-  segmentText: { fontFamily: font.monoMedium, fontSize: 14, color: color.text2 },
-  segmentTextOn: { color: color.text1 },
+    segment: { flexDirection: 'row', padding: 6, gap: 6 },
+    segmentItem: {
+      flex: 1,
+      height: 40,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Selected uses surface3, matching the shipped Units segment — the accent on
+    // this screen would compete with nothing and mean nothing.
+    segmentItemOn: { backgroundColor: color.surface3 },
+    segmentText: { fontFamily: font.monoMedium, fontSize: 14, color: color.text2 },
+    segmentTextOn: { color: color.text1 },
 
-  plateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    height: 52,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: color.hair,
-  },
-  plateRowLast: { borderBottomWidth: 0 },
-  plateKg: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
+    plateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 52,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: color.hair,
+    },
+    plateRowLast: { borderBottomWidth: 0 },
+    plateKg: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
 
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  stepBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface2,
-  },
-  stepGlyph: { fontFamily: font.titleSemi, fontSize: 18, color: color.text1, lineHeight: 22 },
-  stepCount: {
-    fontFamily: font.monoSemi,
-    fontSize: 16,
-    color: color.text1,
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  stepCountOff: { color: color.text3 },
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    stepBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.surface2,
+    },
+    stepGlyph: { fontFamily: font.titleSemi, fontSize: 18, color: color.text1, lineHeight: 22 },
+    stepCount: {
+      fontFamily: font.monoSemi,
+      fontSize: 16,
+      color: color.text1,
+      minWidth: 30,
+      textAlign: 'center',
+    },
+    stepCountOff: { color: color.text3 },
 
-  hint: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginTop: -8 },
+    hint: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginTop: -8 },
 
-  reset: { marginTop: 28, alignItems: 'center', paddingVertical: 12 },
-  resetText: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text2 },
-});
+    reset: { marginTop: 28, alignItems: 'center', paddingVertical: 12 },
+    resetText: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text2 },
+  }),
+);

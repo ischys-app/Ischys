@@ -1,10 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { color, font } from '../theme/tokens';
+import { color, font, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
+import { useThemed } from '../theme/ThemeProvider';
 
 /** A single stat cell in the 2×2 weekly-summary grid. */
 export function StatTile({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  useThemed();
   return (
     <View style={styles.cell}>
       <Text maxFontSizeMultiplier={textScale.fixed} style={styles.label}>{label}</Text>
@@ -16,27 +18,29 @@ export function StatTile({ label, value, unit }: { label: string; value: string;
   );
 }
 
-const styles = StyleSheet.create({
-  cell: { flexDirection: 'column', gap: 3 },
-  label: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  value: {
-    fontFamily: font.monoSemi,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  unit: {
-    fontFamily: font.monoMedium,
-    fontSize: 14,
-    letterSpacing: 0,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    cell: { flexDirection: 'column', gap: 3 },
+    label: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      textTransform: 'uppercase',
+    },
+    value: {
+      fontFamily: font.monoSemi,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    unit: {
+      fontFamily: font.monoMedium,
+      fontSize: 14,
+      letterSpacing: 0,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+  }),
+);

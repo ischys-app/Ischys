@@ -13,6 +13,7 @@ import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { color } from '../theme/tokens';
+import { useThemed } from '../theme/ThemeProvider';
 
 /** How long each frame is held before cross-fading to the next. */
 const HOLD_MS = 900;
@@ -39,6 +40,7 @@ export function ExerciseArt({
   animate = true,
   style,
 }: Props) {
+  useThemed();
   // Deliberately NOT gated on Reduce Motion. This is a cross-dissolve between two
   // still drawings — nothing moves, scales, or parallaxes — and a cross-dissolve
   // is the substitution Apple recommends *for* Reduce Motion, so suppressing it

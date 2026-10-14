@@ -33,7 +33,8 @@ import {
 } from '../src/domain/units';
 import { getPlateSetup } from '../src/lib/plateSetup';
 import { useWeightUnit } from '../src/lib/weightUnit';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 const TIER_COPY: Record<EstimateTier, { label: string; note: string }> = {
   close: {
@@ -51,6 +52,7 @@ const TIER_COPY: Record<EstimateTier, { label: string; note: string }> = {
 };
 
 export default function OneRepMaxScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // `weight`/`reps` pre-fill from a record card; `from` names its exercise.
@@ -181,6 +183,7 @@ function Field({
   suffix: string;
   decimal?: boolean;
 }) {
+  useThemed();
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
@@ -203,91 +206,93 @@ function Field({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
-  from: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text2, marginBottom: 12 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
+    from: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text2, marginBottom: 12 },
 
-  inputs: { flexDirection: 'row', gap: 10 },
-  field: { flex: 1 },
-  fieldLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    letterSpacing: 0.5,
-    color: color.text3,
-    marginBottom: 6,
-  },
-  fieldBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  // The one accent on this screen, and it's the shipped focus treatment rather
-  // than a new one — there is no primary action here to claim it.
-  fieldBoxFocused: { borderColor: color.accent },
-  fieldInput: { flex: 1, fontFamily: font.monoMedium, fontSize: 22, color: color.text1, padding: 0 },
-  fieldSuffix: { fontFamily: font.monoRegular, fontSize: 13, color: color.text3, marginLeft: 6 },
+    inputs: { flexDirection: 'row', gap: 10 },
+    field: { flex: 1 },
+    fieldLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 11,
+      letterSpacing: 0.5,
+      color: color.text3,
+      marginBottom: 6,
+    },
+    fieldBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 52,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    // The one accent on this screen, and it's the shipped focus treatment rather
+    // than a new one — there is no primary action here to claim it.
+    fieldBoxFocused: { borderColor: color.accent },
+    fieldInput: { flex: 1, fontFamily: font.monoMedium, fontSize: 22, color: color.text1, padding: 0 },
+    fieldSuffix: { fontFamily: font.monoRegular, fontSize: 13, color: color.text3, marginLeft: 6 },
 
-  estimate: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  estimateRough: { borderColor: color.warning },
-  estimateLabel: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text3 },
-  estimateValue: { fontFamily: font.monoSemi, fontSize: 38, color: color.text1, marginTop: 6 },
-  tier: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text2, marginTop: 4 },
-  tierRough: { color: color.warning },
-  note: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text3, marginTop: 6 },
+    estimate: {
+      marginTop: 18,
+      padding: 16,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    estimateRough: { borderColor: color.warning },
+    estimateLabel: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text3 },
+    estimateValue: { fontFamily: font.monoSemi, fontSize: 38, color: color.text1, marginTop: 6 },
+    tier: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text2, marginTop: 4 },
+    tierRough: { color: color.warning },
+    note: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text3, marginTop: 6 },
 
-  table: {
-    marginTop: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    overflow: 'hidden',
-  },
-  // Dimmed rather than hidden: the numbers are still the honest consequence of
-  // what was typed, they just shouldn't be planned from.
-  tableRough: { opacity: 0.5 },
-  tableHead: {
-    flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headCell: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text3 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 40,
-    paddingHorizontal: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hair,
-  },
-  cell: { fontFamily: font.monoRegular, fontSize: 14, color: color.text2 },
-  cellStrong: { fontFamily: font.monoMedium, color: color.text1 },
-  colPct: { width: 60 },
-  colLoad: { flex: 1 },
-  colReps: { width: 70, textAlign: 'right' },
+    table: {
+      marginTop: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      overflow: 'hidden',
+    },
+    // Dimmed rather than hidden: the numbers are still the honest consequence of
+    // what was typed, they just shouldn't be planned from.
+    tableRough: { opacity: 0.5 },
+    tableHead: {
+      flexDirection: 'row',
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 6,
+    },
+    headCell: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text3 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 40,
+      paddingHorizontal: 14,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.hair,
+    },
+    cell: { fontFamily: font.monoRegular, fontSize: 14, color: color.text2 },
+    cellStrong: { fontFamily: font.monoMedium, color: color.text1 },
+    colPct: { width: 60 },
+    colLoad: { flex: 1 },
+    colReps: { width: 70, textAlign: 'right' },
 
-  footnote: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3, marginTop: 14 },
-});
+    footnote: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3, marginTop: 14 },
+  }),
+);

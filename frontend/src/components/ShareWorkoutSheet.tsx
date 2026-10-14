@@ -30,11 +30,12 @@ import { type Unit, volumeText, weightText } from '../domain/units';
 import { fmtDuration } from '../lib/format';
 import { parseServerDate } from '../lib/serverTime';
 import { useWeightUnit } from '../lib/weightUnit';
-import { accentA, color, font } from '../theme/tokens';
+import { accentA, byScheme, color, font, themed, withAlpha } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { PressableScale } from './PressableScale';
 import { StarIcon } from './icons';
 import { Wordmark } from './Wordmark';
+import { useThemed } from '../theme/ThemeProvider';
 
 type Layout = 'compact' | 'standard' | 'detailed';
 
@@ -79,6 +80,7 @@ function bestLine(
 }
 
 function DownloadIcon({ size = 16, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -94,6 +96,7 @@ function DownloadIcon({ size = 16, tint }: { size?: number; tint: string }) {
 }
 
 function ShareIcon({ size = 16, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -115,6 +118,7 @@ const LAYOUTS: { key: Layout; label: string }[] = [
 ];
 
 export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
+  useThemed();
   const insets = useSafeAreaInsets();
   const [layout, setLayout] = useState<Layout>('standard');
   const [busy, setBusy] = useState(false);
@@ -302,6 +306,7 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
 // ---------------------------------------------------------------------------
 
 function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSummaryOut }) {
+  useThemed();
   const { workout, prs } = summary;
   const dateStr = fmtCardDate(workout.started_at);
   const duration = fmtDuration(workout.duration_seconds);
@@ -381,6 +386,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
 }
 
 function StatCell({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  useThemed();
   return (
     <View style={cardStyles.statCell}>
       <Text style={cardStyles.statLabel}>{label}</Text>
@@ -396,300 +402,304 @@ function StatCell({ label, value, unit }: { label: string; value: string; unit?:
 // Styles
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    maxHeight: '94%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -20 },
-    shadowOpacity: 0.8,
-    shadowRadius: 50,
-    elevation: 20,
-  },
-  grabberWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  grabber: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: color.surface3,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
-  closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  previewShot: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 22,
-    overflow: 'hidden',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  emptyPreview: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  emptyText: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    color: color.text1,
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-  },
-  chip: {
-    flex: 1,
-    minHeight: 38,
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: {
-    borderColor: color.accent,
-    backgroundColor: accentA(0.12),
-  },
-  chipText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    fontWeight: '600',
-    color: color.text2,
-  },
-  chipTextActive: {
-    color: color.accent,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  saveBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  saveBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-    letterSpacing: -0.14,
-  },
-  shareBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: color.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  shareBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 16,
-    color: color.accentFg,
-    letterSpacing: -0.16,
-  },
-  actionDisabled: {
-    opacity: 0.5,
-  },
-  disabledText: {
-    color: color.text3,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      maxHeight: '94%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -20 },
+      shadowOpacity: 0.8,
+      shadowRadius: 50,
+      elevation: 20,
+    },
+    grabberWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    grabber: {
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: color.surface3,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+      paddingHorizontal: 18,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
+    closeBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    body: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    previewShot: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+    },
+    emptyPreview: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    emptyText: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      color: color.text1,
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 14,
+    },
+    chip: {
+      flex: 1,
+      minHeight: 38,
+      height: 38,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipActive: {
+      borderColor: color.accent,
+      backgroundColor: accentA(0.12),
+    },
+    chipText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      fontWeight: '600',
+      color: color.text2,
+    },
+    chipTextActive: {
+      color: color.accent,
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 14,
+    },
+    saveBtn: {
+      flex: 1,
+      height: 50,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    saveBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+      letterSpacing: -0.14,
+    },
+    shareBtn: {
+      flex: 1,
+      height: 50,
+      borderRadius: 12,
+      backgroundColor: color.accent,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    shareBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 16,
+      color: color.accentFg,
+      letterSpacing: -0.16,
+    },
+    actionDisabled: {
+      opacity: 0.5,
+    },
+    disabledText: {
+      color: color.text3,
+    },
+  }),
+);
 
-const cardStyles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#0F0F13',
-    borderRadius: 22,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-  },
-  glow: {
-    position: 'absolute',
-    top: -60,
-    right: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: accentA(0.12),
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  date: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    fontVariant: tabular,
-    letterSpacing: 0.5,
-  },
-  middle: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 14,
-  },
-  name: {
-    fontFamily: font.displayBold,
-    letterSpacing: -0.48,
-    color: color.text1,
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: 16,
-    flexWrap: 'wrap',
-  },
-  statCell: {
-    gap: 4,
-    minWidth: 70,
-  },
-  statLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 9,
-    letterSpacing: 1.1,
-    color: color.text3,
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 17,
-    letterSpacing: -0.34,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    color: color.text3,
-  },
-  compactStat: {
-    gap: 6,
-  },
-  compactStatLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-  },
-  compactStatValue: {
-    fontFamily: font.monoBold,
-    fontSize: 19,
-    letterSpacing: -0.38,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  compactStatUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 12,
-    color: color.text3,
-  },
-  exerciseList: {
-    gap: 3,
-    marginTop: 4,
-  },
-  exerciseLine: {
-    fontFamily: font.monoMedium,
-    fontSize: 12,
-    color: color.text2,
-  },
-  detailedList: {
-    gap: 6,
-    marginTop: 4,
-  },
-  detailedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: color.hair,
-    paddingTop: 6,
-    gap: 12,
-  },
-  detailedName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 12,
-    color: color.text2,
-  },
-  detailedBest: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    fontVariant: tabular,
-  },
-  prChipWrap: {
-    flexDirection: 'row',
-  },
-  prChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(45,216,129,0.12)',
-  },
-  prChipText: {
-    fontFamily: font.monoSemi,
-    fontSize: 10.5,
-    color: color.success,
-    fontVariant: tabular,
-  },
-});
+const cardStyles = themed(() =>
+  StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: byScheme('#0F0F13', color.surface1),
+      borderRadius: 22,
+      justifyContent: 'space-between',
+      overflow: 'hidden',
+    },
+    glow: {
+      position: 'absolute',
+      top: -60,
+      right: -60,
+      width: 220,
+      height: 220,
+      borderRadius: 110,
+      backgroundColor: accentA(0.12),
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    date: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      fontVariant: tabular,
+      letterSpacing: 0.5,
+    },
+    middle: {
+      flex: 1,
+      justifyContent: 'center',
+      gap: 14,
+    },
+    name: {
+      fontFamily: font.displayBold,
+      letterSpacing: -0.48,
+      color: color.text1,
+    },
+    statRow: {
+      flexDirection: 'row',
+      gap: 16,
+      flexWrap: 'wrap',
+    },
+    statCell: {
+      gap: 4,
+      minWidth: 70,
+    },
+    statLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 9,
+      letterSpacing: 1.1,
+      color: color.text3,
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 17,
+      letterSpacing: -0.34,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      color: color.text3,
+    },
+    compactStat: {
+      gap: 6,
+    },
+    compactStatLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+    },
+    compactStatValue: {
+      fontFamily: font.monoBold,
+      fontSize: 19,
+      letterSpacing: -0.38,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    compactStatUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 12,
+      color: color.text3,
+    },
+    exerciseList: {
+      gap: 3,
+      marginTop: 4,
+    },
+    exerciseLine: {
+      fontFamily: font.monoMedium,
+      fontSize: 12,
+      color: color.text2,
+    },
+    detailedList: {
+      gap: 6,
+      marginTop: 4,
+    },
+    detailedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderTopWidth: 1,
+      borderTopColor: color.hair,
+      paddingTop: 6,
+      gap: 12,
+    },
+    detailedName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 12,
+      color: color.text2,
+    },
+    detailedBest: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      fontVariant: tabular,
+    },
+    prChipWrap: {
+      flexDirection: 'row',
+    },
+    prChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: withAlpha(color.success, 0.12),
+    },
+    prChipText: {
+      fontFamily: font.monoSemi,
+      fontSize: 10.5,
+      color: color.success,
+      fontVariant: tabular,
+    },
+  }),
+);
 

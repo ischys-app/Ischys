@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '../db/client';
 import * as schema from '../db/schema';
-import type { SettingsOut, SettingsUpdate, Unit } from '../api/types';
+import type { Appearance, SettingsOut, SettingsUpdate, Unit } from '../api/types';
 import { isEffortMode } from '../domain/effort';
 import { nowMs } from './ids';
 
@@ -15,16 +15,20 @@ export const SETTINGS_ID = 'local';
 
 const bool = (n: number) => n !== 0;
 
+const isAppearance = (v: string): v is Appearance => v === 'dark' || v === 'light' || v === 'system';
+
 function rowToOut(r: {
   unit: string;
   autoStartRestTimer: number;
   restTimerAlerts: number;
   hapticFeedback: number;
   effortMode: string;
+  appearance: string;
 }): SettingsOut {
   return {
     unit: r.unit as Unit,
     effort_mode: isEffortMode(r.effortMode) ? r.effortMode : 'off',
+    appearance: isAppearance(r.appearance) ? r.appearance : 'system',
     auto_start_rest_timer: bool(r.autoStartRestTimer),
     rest_timer_alerts: bool(r.restTimerAlerts),
     haptic_feedback: bool(r.hapticFeedback),
@@ -38,6 +42,7 @@ export async function getSettings(): Promise<SettingsOut> {
   return {
     unit: 'kg',
     effort_mode: 'off',
+    appearance: 'system',
     auto_start_rest_timer: true,
     rest_timer_alerts: true,
     haptic_feedback: true,
@@ -48,6 +53,7 @@ export async function updateSettings(body: SettingsUpdate): Promise<SettingsOut>
   const patch: Record<string, unknown> = { updatedAt: nowMs() };
   if (body.unit !== undefined) patch.unit = body.unit;
   if (body.effort_mode !== undefined) patch.effortMode = body.effort_mode;
+  if (body.appearance !== undefined) patch.appearance = body.appearance;
   if (body.auto_start_rest_timer !== undefined) patch.autoStartRestTimer = body.auto_start_rest_timer ? 1 : 0;
   if (body.rest_timer_alerts !== undefined) patch.restTimerAlerts = body.rest_timer_alerts ? 1 : 0;
   if (body.haptic_feedback !== undefined) patch.hapticFeedback = body.haptic_feedback ? 1 : 0;

@@ -10,8 +10,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { CheckIcon } from '../icons';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import { exerciseMeta, type Exercise } from './types';
+import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
   visible: boolean;
@@ -30,6 +31,7 @@ export function SupersetSheet({
   onConfirm,
   onClose,
 }: Props) {
+  useThemed();
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
   // A fresh open starts empty rather than remembering the last pairing, which
@@ -116,56 +118,58 @@ export function SupersetSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingBottom: 16,
-  },
-  grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
-  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  cancel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text2 },
-  sub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-    paddingHorizontal: 16,
-    marginTop: 2,
-  },
-  list: { maxHeight: 320, marginTop: 12 },
-  listContent: { paddingHorizontal: 16, gap: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  circle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: color.text3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: { flex: 1, minWidth: 0 },
-  rowName: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
-  rowMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
-  empty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, paddingVertical: 12 },
-  cta: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaOff: { backgroundColor: color.surface3 },
-  ctaText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingBottom: 16,
+    },
+    grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
+    grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    cancel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text2 },
+    sub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+      paddingHorizontal: 16,
+      marginTop: 2,
+    },
+    list: { maxHeight: 320, marginTop: 12 },
+    listContent: { paddingHorizontal: 16, gap: 2 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+    circle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      borderColor: color.text3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowText: { flex: 1, minWidth: 0 },
+    rowName: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
+    rowMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
+    empty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, paddingVertical: 12 },
+    cta: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ctaOff: { backgroundColor: color.surface3 },
+    ctaText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
+  }),
+);

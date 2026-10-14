@@ -28,7 +28,8 @@ import {
   type EffortTouchEnd,
 } from '../../domain/effort';
 import { haptics } from '../../lib/haptics';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
+import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
   kind: EffortScaleKind;
@@ -46,6 +47,7 @@ type Props = {
 const CANCEL_SLOP = 40;
 
 export function EffortScale({ kind, value, size = 'bar', onPreview, onCommit }: Props) {
+  useThemed();
   const steps = effortSteps(kind);
   const [active, setActive] = useState<number | null>(null);
   // The gesture callbacks outlive a render, so what they read lives in refs.
@@ -164,39 +166,41 @@ export function EffortScale({ kind, value, size = 'bar', onPreview, onCommit }: 
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    overflow: 'hidden',
-  },
-  barSheet: { height: 52, borderRadius: 12 },
-  cell: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
-  cellDivider: { borderLeftWidth: 1, borderLeftColor: color.hair },
-  cellOn: { backgroundColor: color.surface3 },
-  // The board's `inset 0 0 0 1.5px text1`, drawn as a border on an overlay so
-  // it does not move the label.
-  ring: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderWidth: 1.5,
-    borderColor: color.text1,
-  },
-  label: {
-    fontFamily: font.monoSemi,
-    fontSize: 13.5,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  labelSheet: { fontSize: 15 },
-  // Half steps are smaller and dimmer, so the whole numbers are easy to find.
-  labelHalf: { fontSize: 10.5, color: color.text3 },
-  labelOn: { color: color.text1 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    bar: {
+      flexDirection: 'row',
+      height: 44,
+      borderRadius: 10,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      overflow: 'hidden',
+    },
+    barSheet: { height: 52, borderRadius: 12 },
+    cell: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
+    cellDivider: { borderLeftWidth: 1, borderLeftColor: color.hair },
+    cellOn: { backgroundColor: color.surface3 },
+    // The board's `inset 0 0 0 1.5px text1`, drawn as a border on an overlay so
+    // it does not move the label.
+    ring: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      borderWidth: 1.5,
+      borderColor: color.text1,
+    },
+    label: {
+      fontFamily: font.monoSemi,
+      fontSize: 13.5,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    labelSheet: { fontSize: 15 },
+    // Half steps are smaller and dimmer, so the whole numbers are easy to find.
+    labelHalf: { fontSize: 10.5, color: color.text3 },
+    labelOn: { color: color.text1 },
+  }),
+);

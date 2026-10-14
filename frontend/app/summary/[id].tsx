@@ -52,8 +52,9 @@ import { countWorkingSets } from '../../src/domain/stats';
 import { type Unit, volumeText, weightText } from '../../src/domain/units';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -140,6 +141,7 @@ function workoutToInput(workout: WorkoutOut): RoutineExerciseIn[] {
 }
 
 function CloseIcon({ size = 16, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -155,6 +157,7 @@ function CloseIcon({ size = 16, tint }: { size?: number; tint: string }) {
 }
 
 function ShareIcon({ size = 14, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -170,6 +173,7 @@ function ShareIcon({ size = 14, tint }: { size?: number; tint: string }) {
 }
 
 export default function WorkoutSummary() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; justFinished?: string }>();
@@ -818,527 +822,529 @@ const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
  */
 const HEADER_SLOP = { top: 5, bottom: 5, left: 4, right: 4 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
 
-  // HEADER
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: 'rgba(10,10,11,0.96)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSpacer: { width: 34, height: 34 },
-  headerTitle: {
-    flex: 1,
-    minWidth: 0,
-    textAlign: 'center',
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-  },
-  editBtn: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  editBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text1,
-  },
-  shareBtn: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  shareBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text2,
-  },
+    // HEADER
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      backgroundColor: color.headerBg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerSpacer: { width: 34, height: 34 },
+    headerTitle: {
+      flex: 1,
+      minWidth: 0,
+      textAlign: 'center',
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    editBtn: {
+      height: 34,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    editBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text1,
+    },
+    shareBtn: {
+      height: 34,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    shareBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text2,
+    },
 
-  // SCROLL
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
+    // SCROLL
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
 
-  // HERO
-  hero: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 26,
-  },
-  checkBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 17,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: color.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
-  },
-  workoutName: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  workoutWhen: {
-    fontFamily: font.monoRegular,
-    fontSize: 12.5,
-    color: color.text2,
-    marginTop: 4,
-    textAlign: 'center',
-    fontVariant: tabular,
-  },
+    // HERO
+    hero: {
+      alignItems: 'center',
+      paddingTop: 10,
+      paddingBottom: 26,
+    },
+    checkBadge: {
+      width: 60,
+      height: 60,
+      borderRadius: 17,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      shadowColor: color.accent,
+      shadowOpacity: 0.5,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 12,
+    },
+    workoutName: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    workoutWhen: {
+      fontFamily: font.monoRegular,
+      fontSize: 12.5,
+      color: color.text2,
+      marginTop: 4,
+      textAlign: 'center',
+      fontVariant: tabular,
+    },
 
-  // STAT GRID
-  statGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  statCell: {
-    flex: 1,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    gap: 6,
-  },
-  statLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 9,
-    letterSpacing: 0.9,
-    color: color.text3,
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 21,
-    letterSpacing: -0.42,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    color: color.text3,
-  },
+    // STAT GRID
+    statGrid: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 14,
+    },
+    statCell: {
+      flex: 1,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      gap: 6,
+    },
+    statLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 9,
+      letterSpacing: 0.9,
+      color: color.text3,
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 21,
+      letterSpacing: -0.42,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 11,
+      color: color.text3,
+    },
 
-  // PR BANNER
-  prBanner: {
-    backgroundColor: 'rgba(45,216,129,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(45,216,129,0.28)',
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  prHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    marginBottom: 12,
-  },
-  prHeaderText: {
-    fontFamily: font.displayBold,
-    fontSize: 14,
-    color: color.success,
-  },
-  prRows: {
-    gap: 8,
-  },
-  prRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  prName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 13.5,
-    color: color.text1,
-  },
-  prValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 13,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  prDelta: {
-    color: color.success,
-  },
+    // PR BANNER
+    prBanner: {
+      backgroundColor: withAlpha(color.success, 0.10),
+      borderWidth: 1,
+      borderColor: withAlpha(color.success, 0.28),
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 16,
+      marginBottom: 24,
+    },
+    prHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      marginBottom: 12,
+    },
+    prHeaderText: {
+      fontFamily: font.displayBold,
+      fontSize: 14,
+      color: color.success,
+    },
+    prRows: {
+      gap: 8,
+    },
+    prRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    prName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 13.5,
+      color: color.text1,
+    },
+    prValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 13,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    prDelta: {
+      color: color.success,
+    },
 
-  // EXERCISES
-  sectionLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  exerciseList: {
-    gap: 8,
-    marginBottom: 26,
-  },
-  exerciseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 13,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12,
-    color: color.accent,
-  },
-  exerciseText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  exerciseName: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    letterSpacing: -0.14,
-    color: color.text1,
-  },
-  exerciseBest: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 1,
-    fontVariant: tabular,
-  },
-  exerciseSetCount: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    fontVariant: tabular,
-  },
+    // EXERCISES
+    sectionLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    exerciseList: {
+      gap: 8,
+      marginBottom: 26,
+    },
+    exerciseRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 13,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12,
+      color: color.accent,
+    },
+    exerciseText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    exerciseName: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      letterSpacing: -0.14,
+      color: color.text1,
+    },
+    exerciseBest: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 1,
+      fontVariant: tabular,
+    },
+    exerciseSetCount: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      fontVariant: tabular,
+    },
 
-  // MUSCLE SPLIT
-  muscleCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 26,
-    gap: 13,
-  },
-  muscleRow: {
-    gap: 6,
-  },
-  muscleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  muscleName: {
-    fontFamily: font.bodyMedium,
-    fontSize: 13,
-    color: color.text1,
-  },
-  muscleSets: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    fontVariant: tabular,
-  },
-  muscleTrack: {
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: color.surface3,
-    overflow: 'hidden',
-  },
-  muscleBar: {
-    height: '100%',
-    borderRadius: 6,
-    backgroundColor: color.accent,
-  },
+    // MUSCLE SPLIT
+    muscleCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 26,
+      gap: 13,
+    },
+    muscleRow: {
+      gap: 6,
+    },
+    muscleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    muscleName: {
+      fontFamily: font.bodyMedium,
+      fontSize: 13,
+      color: color.text1,
+    },
+    muscleSets: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      fontVariant: tabular,
+    },
+    muscleTrack: {
+      height: 6,
+      borderRadius: 6,
+      backgroundColor: color.surface3,
+      overflow: 'hidden',
+    },
+    muscleBar: {
+      height: '100%',
+      borderRadius: 6,
+      backgroundColor: color.accent,
+    },
 
-  // ACTIONS
-  actions: {
-    gap: 10,
-  },
-  doneBtn: {
-    height: 50,
-    borderRadius: 13,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  saveRoutineBtn: {
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveRoutineBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
+    // ACTIONS
+    actions: {
+      gap: 10,
+    },
+    doneBtn: {
+      height: 50,
+      borderRadius: 13,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    doneBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    saveRoutineBtn: {
+      height: 46,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    saveRoutineBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
 
-  // ROUTINE-UPDATE PROMPT (Need 2)
-  deloadCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    padding: 16,
-    marginTop: 16,
-    gap: 10,
-  },
-  // Warning, not error: this is the colour the design system already assigns to
-  // "deload, missed", and the advisory is not a failure.
-  deloadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.warning },
-  deloadBody: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text2 },
-  deloadAccept: {
-    flex: 1,
-    height: 42,
-    borderRadius: 11,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deloadAcceptText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
-  routineCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-  },
-  routineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-  },
-  routineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: color.accent,
-    flexShrink: 0,
-  },
-  routineTitle: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.text1,
-  },
-  routineCount: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    flexShrink: 0,
-  },
-  routineRows: {
-    gap: 9,
-    marginTop: 14,
-  },
-  routineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  routineMarker: {
-    width: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  markerAdd: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-    color: color.success,
-    textAlign: 'center',
-  },
-  markerRemove: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-    color: color.error,
-    textAlign: 'center',
-  },
-  routineName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 13.5,
-    color: color.text1,
-  },
-  routineDetail: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    flexShrink: 0,
-    fontVariant: tabular,
-  },
-  routineDetailStrong: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text2,
-    flexShrink: 0,
-    fontVariant: tabular,
-  },
-  routineMoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 3,
-  },
-  routineMore: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    textDecorationLine: 'underline',
-  },
-  routineActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  updateBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  updateBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  keepBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keepBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text2,
-  },
-  saveNewLink: {
-    textAlign: 'center',
-    marginTop: 13,
-    fontFamily: font.bodyMedium,
-    fontSize: 13,
-    color: color.text3,
-    textDecorationLine: 'underline',
-  },
+    // ROUTINE-UPDATE PROMPT (Need 2)
+    deloadCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 16,
+      gap: 10,
+    },
+    // Warning, not error: this is the colour the design system already assigns to
+    // "deload, missed", and the advisory is not a failure.
+    deloadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.warning },
+    deloadBody: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text2 },
+    deloadAccept: {
+      flex: 1,
+      height: 42,
+      borderRadius: 11,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deloadAcceptText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
+    routineCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+    },
+    routineHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+    },
+    routineDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+      backgroundColor: color.accent,
+      flexShrink: 0,
+    },
+    routineTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.text1,
+    },
+    routineCount: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      flexShrink: 0,
+    },
+    routineRows: {
+      gap: 9,
+      marginTop: 14,
+    },
+    routineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    routineMarker: {
+      width: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    markerAdd: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+      color: color.success,
+      textAlign: 'center',
+    },
+    markerRemove: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+      color: color.error,
+      textAlign: 'center',
+    },
+    routineName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 13.5,
+      color: color.text1,
+    },
+    routineDetail: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      flexShrink: 0,
+      fontVariant: tabular,
+    },
+    routineDetailStrong: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text2,
+      flexShrink: 0,
+      fontVariant: tabular,
+    },
+    routineMoreRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingTop: 3,
+    },
+    routineMore: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      textDecorationLine: 'underline',
+    },
+    routineActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 16,
+    },
+    updateBtn: {
+      flex: 1,
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    updateBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    keepBtn: {
+      flex: 1,
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    keepBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text2,
+    },
+    saveNewLink: {
+      textAlign: 'center',
+      marginTop: 13,
+      fontFamily: font.bodyMedium,
+      fontSize: 13,
+      color: color.text3,
+      textDecorationLine: 'underline',
+    },
 
-  // RESOLVED RECEIPT (R3)
-  receiptCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    backgroundColor: 'rgba(45,216,129,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(45,216,129,0.26)',
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-  },
-  receiptCheck: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    backgroundColor: 'rgba(45,216,129,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  receiptText: { flex: 1, minWidth: 0 },
-  receiptTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  receiptSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    marginTop: 2,
-  },
-  receiptUndo: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text2,
-    textDecorationLine: 'underline',
-    flexShrink: 0,
-  },
-});
+    // RESOLVED RECEIPT (R3)
+    receiptCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: withAlpha(color.success, 0.07),
+      borderWidth: 1,
+      borderColor: withAlpha(color.success, 0.26),
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 16,
+    },
+    receiptCheck: {
+      width: 26,
+      height: 26,
+      borderRadius: 999,
+      backgroundColor: withAlpha(color.success, 0.16),
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    receiptText: { flex: 1, minWidth: 0 },
+    receiptTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    receiptSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      marginTop: 2,
+    },
+    receiptUndo: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text2,
+      textDecorationLine: 'underline',
+      flexShrink: 0,
+    },
+  }),
+);

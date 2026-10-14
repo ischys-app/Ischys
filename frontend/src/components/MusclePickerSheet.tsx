@@ -22,9 +22,10 @@ import {
 
 import type { MuscleOut } from '../api/types';
 import { listMuscles } from '../api/workouts';
-import { accentA, color, font } from '../theme/tokens';
+import { accentA, color, font, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, SearchIcon } from './icons';
+import { useThemed } from '../theme/ThemeProvider';
 
 /** Module-scope cache — shared across both mount lifetimes of the sheet. */
 let cachedMuscles: MuscleOut[] | null = null;
@@ -69,6 +70,7 @@ export function MusclePickerSheet({
   onToggleSecondary,
   onClose,
 }: Props) {
+  useThemed();
   const [muscles, setMuscles] = useState<MuscleOut[]>(cachedMuscles ?? []);
   const [loading, setLoading] = useState(!cachedMuscles);
   const [query, setQuery] = useState('');
@@ -249,112 +251,114 @@ export function MusclePickerSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    height: '76%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -20 },
-    shadowOpacity: 0.8,
-    shadowRadius: 50,
-    elevation: 20,
-  },
-  grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
-  done: { fontFamily: font.titleSemi, fontSize: 15, color: color.accent },
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      height: '76%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -20 },
+      shadowOpacity: 0.8,
+      shadowRadius: 50,
+      elevation: 20,
+    },
+    grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+    grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+      paddingHorizontal: 18,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
+    done: { fontFamily: font.titleSemi, fontSize: 15, color: color.accent },
 
-  searchWrap: {
-    position: 'relative',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  searchIcon: { position: 'absolute', left: 29, zIndex: 1 },
-  searchInput: {
-    height: 44,
-    paddingLeft: 38,
-    paddingRight: 14,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 10,
-    color: color.text1,
-    fontFamily: font.bodyRegular,
-    fontSize: 14.5,
-  },
+    searchWrap: {
+      position: 'relative',
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    searchIcon: { position: 'absolute', left: 29, zIndex: 1 },
+    searchInput: {
+      height: 44,
+      paddingLeft: 38,
+      paddingRight: 14,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 10,
+      color: color.text1,
+      fontFamily: font.bodyRegular,
+      fontSize: 14.5,
+    },
 
-  list: { flex: 1 },
-  listContent: { paddingHorizontal: 8, paddingBottom: 24, paddingTop: 4 },
-  loading: { paddingVertical: 40, alignItems: 'center' },
-  empty: {
-    textAlign: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-    color: color.text3,
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-  },
+    list: { flex: 1 },
+    listContent: { paddingHorizontal: 8, paddingBottom: 24, paddingTop: 4 },
+    loading: { paddingVertical: 40, alignItems: 'center' },
+    empty: {
+      textAlign: 'center',
+      paddingVertical: 40,
+      paddingHorizontal: 20,
+      color: color.text3,
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+    },
 
-  group: { marginBottom: 8 },
-  groupLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: color.text3,
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 50,
-    height: 50,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 11,
-  },
-  rowSelected: {
-    backgroundColor: accentA(0.06),
-  },
-  rowName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  primaryMark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    group: { marginBottom: 8 },
+    groupLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.4,
+      color: color.text3,
+      paddingTop: 12,
+      paddingHorizontal: 12,
+      paddingBottom: 6,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 50,
+      height: 50,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 11,
+    },
+    rowSelected: {
+      backgroundColor: accentA(0.06),
+    },
+    rowName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    primaryMark: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 7,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  }),
+);

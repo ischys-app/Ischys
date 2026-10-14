@@ -57,7 +57,8 @@ import {
   type Receipt,
   type WriteStatus,
 } from '../src/lib/healthReceipts';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 // DECISION · HOW MUCH TO SAY ABOUT READS — Option A (recommended): intent switch
 // + data receipt. The switch is what Ischys ASKS for; the receipt is what
@@ -124,6 +125,7 @@ function openHealthApp() {
 }
 
 export default function Health() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -338,6 +340,7 @@ export default function Health() {
 
 /** Up-and-out arrow (external link). Path lifted from board 5a. */
 function ExternalLinkIcon({ size = 12, color: stroke }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
@@ -354,6 +357,7 @@ function ExternalLinkIcon({ size = 12, color: stroke }: { size?: number; color: 
 // --- Disconnected state (H4 · before connecting) --------------------------
 
 function Disconnected({ onConnect }: { onConnect: () => void }) {
+  useThemed();
   return (
     <View style={styles.discRoot}>
       <View style={styles.discHero}>
@@ -418,6 +422,7 @@ function Connected({
   onTogglePref: (k: PrefKey, next: boolean) => void;
   onDisconnect: () => void;
 }) {
+  useThemed();
   // Only 'nothing received' rows can expand their explainer.
   const [expanded, setExpanded] = useState<Record<ReadPref, boolean>>({
     readHR: false,
@@ -558,6 +563,7 @@ function ReadRow({
   onTogglePref: (next: boolean) => void;
   isLast: boolean;
 }) {
+  useThemed();
   const kind = readRowKind(receipt, enabled, allowed);
   // A refused read (Android) explains itself the same way an empty one does.
   const uncertain = kind === 'nothing' || kind === 'denied';
@@ -650,6 +656,7 @@ function Toggle({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  useThemed();
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
@@ -671,406 +678,408 @@ function Toggle({
 
 // --- Styles ---------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
 
-  // Header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backBtnPressed: { opacity: 0.7 },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
+    // Header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    backBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backBtnPressed: { opacity: 0.7 },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
 
-  // --- Disconnected (H4) ---
-  discRoot: {
-    alignItems: 'center',
-    paddingHorizontal: 26,
-    paddingTop: 46,
-    paddingBottom: 30,
-  },
-  discHero: {
-    width: 74,
-    height: 74,
-    borderRadius: 20,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.48,
-    color: color.text1,
-    textAlign: 'center',
-    marginTop: 22,
-  },
-  discCopy: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14.5,
-    lineHeight: 22,
-    color: color.text2,
-    textAlign: 'center',
-    marginTop: 10,
-    maxWidth: 320,
-  },
-  nextCard: {
-    width: '100%',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 22,
-  },
-  nextLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: color.text3,
-  },
-  nextBody: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12.5,
-    lineHeight: 19.5,
-    color: color.text2,
-    marginTop: 8,
-  },
-  nextEmph: { color: color.text1 },
-  connectBtn: {
-    width: '100%',
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
-  },
-  connectBtnPressed: { opacity: 0.9 },
-  connectBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  privacyRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 18,
-    alignSelf: 'stretch',
-  },
-  privacyNote: {
-    flex: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    lineHeight: 17.6,
-    color: color.text3,
-  },
+    // --- Disconnected (H4) ---
+    discRoot: {
+      alignItems: 'center',
+      paddingHorizontal: 26,
+      paddingTop: 46,
+      paddingBottom: 30,
+    },
+    discHero: {
+      width: 74,
+      height: 74,
+      borderRadius: 20,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    discTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 24,
+      fontWeight: '700',
+      letterSpacing: -0.48,
+      color: color.text1,
+      textAlign: 'center',
+      marginTop: 22,
+    },
+    discCopy: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14.5,
+      lineHeight: 22,
+      color: color.text2,
+      textAlign: 'center',
+      marginTop: 10,
+      maxWidth: 320,
+    },
+    nextCard: {
+      width: '100%',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      padding: 14,
+      marginTop: 22,
+    },
+    nextLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.4,
+      color: color.text3,
+    },
+    nextBody: {
+      fontFamily: font.bodyRegular,
+      fontSize: 12.5,
+      lineHeight: 19.5,
+      color: color.text2,
+      marginTop: 8,
+    },
+    nextEmph: { color: color.text1 },
+    connectBtn: {
+      width: '100%',
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 20,
+    },
+    connectBtnPressed: { opacity: 0.9 },
+    connectBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    privacyRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      marginTop: 18,
+      alignSelf: 'stretch',
+    },
+    privacyNote: {
+      flex: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      lineHeight: 17.6,
+      color: color.text3,
+    },
 
-  // --- Connected ---
-  connRoot: {
-    paddingTop: 0,
-    paddingBottom: 32,
-  },
+    // --- Connected ---
+    connRoot: {
+      paddingTop: 0,
+      paddingBottom: 32,
+    },
 
-  // Neutral status card
-  statusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  statusTile: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statusTextCol: { flex: 1, minWidth: 0 },
-  statusTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: color.text1,
-  },
-  statusSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    marginTop: 2,
-  },
+    // Neutral status card
+    statusCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    statusTile: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    statusTextCol: { flex: 1, minWidth: 0 },
+    statusTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 13.5,
+      fontWeight: '600',
+      color: color.text1,
+    },
+    statusSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      marginTop: 2,
+    },
 
-  // Section labels
-  sectionLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    marginTop: 22,
-    marginBottom: 10,
-    paddingHorizontal: 2,
-  },
-  sectionLabelBare: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-  },
-  readsHead: {
-    marginTop: 22,
-    marginBottom: 10,
-    paddingHorizontal: 2,
-  },
-  readsNote: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12,
-    lineHeight: 18,
-    color: color.text3,
-    marginTop: 6,
-  },
+    // Section labels
+    sectionLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      marginTop: 22,
+      marginBottom: 10,
+      paddingHorizontal: 2,
+    },
+    sectionLabelBare: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    readsHead: {
+      marginTop: 22,
+      marginBottom: 10,
+      paddingHorizontal: 2,
+    },
+    readsNote: {
+      fontFamily: font.bodyRegular,
+      fontSize: 12,
+      lineHeight: 18,
+      color: color.text3,
+      marginTop: 6,
+    },
 
-  // Section card
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  cardDenied: { borderColor: 'rgba(255,77,77,0.3)' },
+    // Section card
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    cardDenied: { borderColor: withAlpha(color.error, 0.3) },
 
-  // Rows
-  writeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  readRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  rowTextCol: { flex: 1, minWidth: 0 },
-  rowLabel: {
-    fontFamily: font.bodyMedium,
-    fontSize: 14.5,
-    fontWeight: '500',
-    color: color.text1,
-  },
-  rowLabelOff: { color: color.text2 },
-  rowDesc: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 3,
-  },
-  receiptWrap: { marginTop: 3 },
+    // Rows
+    writeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 13,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    readRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 13,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    rowDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    rowTextCol: { flex: 1, minWidth: 0 },
+    rowLabel: {
+      fontFamily: font.bodyMedium,
+      fontSize: 14.5,
+      fontWeight: '500',
+      color: color.text1,
+    },
+    rowLabelOff: { color: color.text2 },
+    rowDesc: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 3,
+    },
+    receiptWrap: { marginTop: 3 },
 
-  // Receipt / status line
-  statusLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  statusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 999,
-  },
-  statusText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-  },
+    // Receipt / status line
+    statusLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    statusDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 999,
+    },
+    statusText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+    },
 
-  // In-place explainer
-  explainerBlock: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
-  explainerBlockLast: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
-  explainerBox: {
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 13,
-  },
-  explainerText: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12.5,
-    lineHeight: 19.4,
-    color: color.text2,
-  },
-  explainerTextSecondary: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12.5,
-    lineHeight: 19.4,
-    color: color.text2,
-  },
-  explainerCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 11,
-  },
-  explainerCtaText: {
-    fontFamily: font.titleSemi,
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: color.accent,
-  },
-  pressedDim: { opacity: 0.6 },
+    // In-place explainer
+    explainerBlock: {
+      paddingHorizontal: 16,
+      paddingBottom: 14,
+    },
+    explainerBlockLast: {
+      paddingHorizontal: 16,
+      paddingBottom: 14,
+    },
+    explainerBox: {
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 13,
+    },
+    explainerText: {
+      fontFamily: font.bodyRegular,
+      fontSize: 12.5,
+      lineHeight: 19.4,
+      color: color.text2,
+    },
+    explainerTextSecondary: {
+      fontFamily: font.bodyRegular,
+      fontSize: 12.5,
+      lineHeight: 19.4,
+      color: color.text2,
+    },
+    explainerCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 11,
+    },
+    explainerCtaText: {
+      fontFamily: font.titleSemi,
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: color.accent,
+    },
+    pressedDim: { opacity: 0.6 },
 
-  reassure: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    lineHeight: 17.6,
-    color: color.text3,
-    paddingTop: 12,
-    paddingHorizontal: 2,
-  },
+    reassure: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      lineHeight: 17.6,
+      color: color.text3,
+      paddingTop: 12,
+      paddingHorizontal: 2,
+    },
 
-  // Toggle
-  toggleTrack: {
-    width: 44,
-    height: 26,
-    borderRadius: 999,
-    position: 'relative',
-    flexShrink: 0,
-  },
-  toggleTrackDisabled: { opacity: 0.5 },
-  toggleKnob: {
-    position: 'absolute',
-    top: 3,
-    width: 20,
-    height: 20,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-  },
+    // Toggle
+    toggleTrack: {
+      width: 44,
+      height: 26,
+      borderRadius: 999,
+      position: 'relative',
+      flexShrink: 0,
+    },
+    toggleTrackDisabled: { opacity: 0.5 },
+    toggleKnob: {
+      position: 'absolute',
+      top: 3,
+      width: 20,
+      height: 20,
+      borderRadius: 999,
+      backgroundColor: '#FFFFFF',
+    },
 
-  // Privacy shield
-  shieldRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 9,
-    marginTop: 18,
-    paddingHorizontal: 2,
-  },
-  shieldNote: {
-    flex: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    lineHeight: 17.6,
-    color: color.text3,
-  },
+    // Privacy shield
+    shieldRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 9,
+      marginTop: 18,
+      paddingHorizontal: 2,
+    },
+    shieldNote: {
+      flex: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      lineHeight: 17.6,
+      color: color.text3,
+    },
 
-  // Stats block
-  statsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 18,
-  },
-  statCell: { flex: 1, minWidth: 0, gap: 3 },
-  statCellDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: color.hair,
-  },
-  statCellLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 0.95,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  statCellValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 15,
-    fontWeight: '600',
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
+    // Stats block
+    statsCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      padding: 14,
+      marginTop: 18,
+    },
+    statCell: { flex: 1, minWidth: 0, gap: 3 },
+    statCellDivider: {
+      width: 1,
+      height: 30,
+      backgroundColor: color.hair,
+    },
+    statCellLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 0.95,
+      color: color.text3,
+      textTransform: 'uppercase',
+    },
+    statCellValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 15,
+      fontWeight: '600',
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Disconnect
-  disconnectBtn: {
-    alignSelf: 'center',
-    marginTop: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disconnectBtnPressed: { opacity: 0.7 },
-  disconnectBtnText: {
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    fontWeight: '500',
-    color: color.error,
-  },
-});
+    // Disconnect
+    disconnectBtn: {
+      alignSelf: 'center',
+      marginTop: 6,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    disconnectBtnPressed: { opacity: 0.7 },
+    disconnectBtnText: {
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      fontWeight: '500',
+      color: color.error,
+    },
+  }),
+);

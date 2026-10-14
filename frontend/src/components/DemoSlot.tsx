@@ -35,8 +35,9 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { patchExercise } from '../api/workouts';
 import { getDemoUrl, setDemoUrl } from '../lib/exerciseDemoStore';
 import { exerciseArt } from '../lib/exerciseArt';
-import { accentA, color, font } from '../theme/tokens';
+import { accentA, byScheme, color, font, themed } from '../theme/tokens';
 import { ExerciseArt } from './ExerciseArt';
+import { useThemed } from '../theme/ThemeProvider';
 
 /** A demo URL the video player can load. Http(s) only. */
 const isHttpUrl = (u: string) => /^https?:\/\//i.test(u);
@@ -79,6 +80,7 @@ function safeHost(url: string): string {
 // ---------------------------------------------------------------------------
 
 export function DemoSlot({ exerciseId, initialUrl, fallbackImageUrl, imageAuthor }: Props) {
+  useThemed();
   const [url, setUrl] = useState<string | null>(initialUrl && initialUrl.length ? initialUrl : null);
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -151,6 +153,7 @@ function EmptyTile({
   imageAuthor?: string | null;
   exerciseId: string;
 }) {
+  useThemed();
   const onUpload = () =>
     Alert.alert('Coming soon', 'Local file upload will be added in a later release.');
 
@@ -250,6 +253,7 @@ function EmptyTile({
 // ---------------------------------------------------------------------------
 
 function PopulatedTile({ url, onChange }: { url: string; onChange: () => void }) {
+  useThemed();
   const kind = useMemo(() => classify(url), [url]);
   const host = useMemo(() => safeHost(url), [url]);
   return (
@@ -288,6 +292,7 @@ function PopulatedTile({ url, onChange }: { url: string; onChange: () => void })
 
 /** Auto-play muted looping video via expo-video. */
 function VideoTile({ url }: { url: string }) {
+  useThemed();
   const player = useVideoPlayer(url, (p) => {
     p.loop = true;
     p.muted = true;
@@ -305,6 +310,7 @@ function VideoTile({ url }: { url: string }) {
 
 /** YouTube / Vimeo etc — dark tile + big play glyph, taps open the system browser. */
 function EmbedTile({ url }: { url: string }) {
+  useThemed();
   return (
     <Pressable
       style={[styles.mediaFill, styles.embedTile]}
@@ -335,6 +341,7 @@ function UrlEditorModal({
   onCancel: () => void;
   onSave: (value: string) => void;
 }) {
+  useThemed();
   const [value, setValue] = useState(initial);
 
   // Reset the field each time the modal is (re)opened.
@@ -415,215 +422,217 @@ function UrlEditorModal({
 // Styles — verbatim from Exercise Detail Demo.dc.html
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  // Card wrapper (both states share the outer chrome).
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 18,
-    padding: 16,
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    // Card wrapper (both states share the outer chrome).
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 18,
+      padding: 16,
+    },
 
-  // --- Empty state ---
-  tileImage: {
-    width: '100%',
-    height: 190,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  catalogImage: { width: '100%', height: '100%' },
-  attribution: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.text3,
-    marginTop: 8,
-  },
-  artNote: {
-    fontFamily: font.bodyRegular,
-    fontSize: 11.5,
-    lineHeight: 16,
-    color: color.text3,
-    textAlign: 'center',
-    marginTop: 10,
-    paddingHorizontal: 8,
-  },
-  addDemoLink: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    marginTop: 10,
-  },
-  tileDashed: {
-    width: '100%',
-    height: 190,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  addDemoLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    letterSpacing: 1,
-    color: color.text3,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  chipBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-  chipText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text1,
-  },
+    // --- Empty state ---
+    tileImage: {
+      width: '100%',
+      height: 190,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    catalogImage: { width: '100%', height: '100%' },
+    attribution: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.text3,
+      marginTop: 8,
+    },
+    artNote: {
+      fontFamily: font.bodyRegular,
+      fontSize: 11.5,
+      lineHeight: 16,
+      color: color.text3,
+      textAlign: 'center',
+      marginTop: 10,
+      paddingHorizontal: 8,
+    },
+    addDemoLink: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      marginTop: 10,
+    },
+    tileDashed: {
+      width: '100%',
+      height: 190,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    addDemoLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      letterSpacing: 1,
+      color: color.text3,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 12,
+    },
+    chipBtn: {
+      flex: 1,
+      height: 40,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+    },
+    chipText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text1,
+    },
 
-  // --- Populated state ---
-  tileMedia: {
-    width: '100%',
-    height: 190,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: '#141419',
-  },
-  mediaFill: { width: '100%', height: '100%' },
-  embedTile: {
-    backgroundColor: '#141419',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: accentA(0.92),
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: color.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingHorizontal: 2,
-  },
-  sourceCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 1,
-  },
-  sourceText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    flexShrink: 1,
-  },
-  changeText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text2,
-    textDecorationLine: 'underline',
-  },
+    // --- Populated state ---
+    tileMedia: {
+      width: '100%',
+      height: 190,
+      borderRadius: 14,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: byScheme('#141419', color.surface2),
+    },
+    mediaFill: { width: '100%', height: '100%' },
+    embedTile: {
+      backgroundColor: byScheme('#141419', color.surface2),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    playBadge: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: accentA(0.92),
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: color.accent,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.5,
+      shadowRadius: 20,
+      elevation: 12,
+    },
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 12,
+      paddingHorizontal: 2,
+    },
+    sourceCol: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 1,
+    },
+    sourceText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      flexShrink: 1,
+    },
+    changeText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text2,
+      textDecorationLine: 'underline',
+    },
 
-  // --- URL editor modal ---
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.accent,
-    borderRadius: 16,
-    padding: 16,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  sheetTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text1,
-  },
-  closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  input: {
-    width: '100%',
-    height: 46,
-    paddingHorizontal: 13,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 10,
-    color: color.text1,
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-  },
-  inputError: {
-    marginTop: 8,
-    color: color.error,
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-  },
-  sheetActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
-  },
-  saveBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
+    // --- URL editor modal ---
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+    },
+    sheet: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.accent,
+      borderRadius: 16,
+      padding: 16,
+    },
+    sheetHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 12,
+    },
+    sheetTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text1,
+    },
+    closeBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    input: {
+      width: '100%',
+      height: 46,
+      paddingHorizontal: 13,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 10,
+      color: color.text1,
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+    },
+    inputError: {
+      marginTop: 8,
+      color: color.error,
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+    },
+    sheetActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 12,
+    },
+    saveBtn: {
+      flex: 1,
+      height: 44,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    saveText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+  }),
+);

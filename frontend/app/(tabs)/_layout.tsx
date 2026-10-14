@@ -2,9 +2,11 @@ import { Tabs } from 'expo-router';
 
 import { TabBar } from '../../src/components/TabBar';
 import { color } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 /** Tabs render unconditionally — the pure on-device build has no auth gate. */
 export default function TabsLayout() {
+  useThemed();
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}

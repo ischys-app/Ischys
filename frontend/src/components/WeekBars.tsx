@@ -1,13 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { WeekBar } from '../api/types';
-import { color, font } from '../theme/tokens';
+import { color, font, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
+import { useThemed } from '../theme/ThemeProvider';
 
 const MAX_BAR_PX = 68;
 
 /** The 7-day volume bar chart at the foot of the weekly-summary card. */
 export function WeekBars({ week }: { week: WeekBar[] }) {
+  useThemed();
   const max = Math.max(...week.map((d) => d.volume), 1);
 
   return (
@@ -31,33 +33,35 @@ export function WeekBars({ week }: { week: WeekBar[] }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 8,
-    height: 76,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: color.hair,
-  },
-  col: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 7,
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  bar: {
-    width: '100%',
-    maxWidth: 26,
-    borderRadius: 5,
-  },
-  label: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    fontVariant: ['tabular-nums'],
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 8,
+      height: 76,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: color.hair,
+    },
+    col: {
+      flex: 1,
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 7,
+      height: '100%',
+      justifyContent: 'flex-end',
+    },
+    bar: {
+      width: '100%',
+      maxWidth: 26,
+      borderRadius: 5,
+    },
+    label: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      fontVariant: ['tabular-nums'],
+    },
+  }),
+);

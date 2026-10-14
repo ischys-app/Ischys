@@ -36,13 +36,15 @@ import { SelectCircle } from '../src/components/ui';
 import { mediaUrl } from '../src/lib/media';
 import { rankByUsage } from '../src/domain/exerciseRanking';
 import { registerPicker } from '../src/lib/exercisePicker';
-import { accentA, color, font } from '../src/theme/tokens';
+import { accentA, color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 const ALL = 'All';
 const DEFAULT_REST_SECONDS = 120;
 
 /** Merge glyph: two overlapping circles (icons.tsx is owned by another stream). */
 function MergeGlyph({ size = 16, color: stroke }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Circle cx={8} cy={8} r={5} stroke={stroke} strokeWidth={2} fill="none" />
@@ -71,6 +73,7 @@ function groupByLetter(items: ExerciseOut[]): Group[] {
 }
 
 export default function ExerciseLibrary() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ workoutId?: string; pick?: string; browse?: string }>();
@@ -461,6 +464,7 @@ function ExerciseRow({
   selectable: boolean;
   onToggle: () => void;
 }) {
+  useThemed();
   const router = useRouter();
   const category = exercise.category?.name;
   const meta = category ? `${exercise.equipment} · ${category}` : exercise.equipment;
@@ -542,235 +546,237 @@ function ExerciseRow({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  scroll: { flex: 1 },
-  loading: { paddingTop: 40, alignItems: 'center' },
-  searchSpinner: {
-    position: 'absolute',
-    right: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    scroll: { flex: 1 },
+    loading: { paddingTop: 40, alignItems: 'center' },
+    searchSpinner: {
+      position: 'absolute',
+      right: 12,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+    },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.94)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    // topPadding handled inline (54 + insets.top - 44 baseline).
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  cancel: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text2,
-  },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    letterSpacing: -0.16,
-    color: color.text1,
-  },
-  newRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  new: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.accent,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      // topPadding handled inline (54 + insets.top - 44 baseline).
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    cancel: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text2,
+    },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      letterSpacing: -0.16,
+      color: color.text1,
+    },
+    newRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    new: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.accent,
+    },
 
-  // Search ------------------------------------------------------------
-  searchWrap: {
-    position: 'relative',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: 13,
-    zIndex: 1,
-  },
-  searchInput: {
-    height: 44,
-    paddingLeft: 40,
-    paddingRight: 14,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 11,
-    color: color.text1,
-    fontFamily: font.bodyRegular,
-    fontSize: 15,
-    // RN inputs use padding for the text baseline.
-    paddingTop: Platform.OS === 'ios' ? 0 : 6,
-    paddingBottom: Platform.OS === 'ios' ? 0 : 6,
-  },
+    // Search ------------------------------------------------------------
+    searchWrap: {
+      position: 'relative',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    searchIcon: {
+      position: 'absolute',
+      left: 13,
+      zIndex: 1,
+    },
+    searchInput: {
+      height: 44,
+      paddingLeft: 40,
+      paddingRight: 14,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 11,
+      color: color.text1,
+      fontFamily: font.bodyRegular,
+      fontSize: 15,
+      // RN inputs use padding for the text baseline.
+      paddingTop: Platform.OS === 'ios' ? 0 : 6,
+      paddingBottom: Platform.OS === 'ios' ? 0 : 6,
+    },
 
-  errorLine: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.error,
-    marginBottom: 8,
-  },
+    errorLine: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.error,
+      marginBottom: 8,
+    },
 
-  // Chips -------------------------------------------------------------
-  chipsContent: {
-    gap: 8,
-    paddingBottom: 2,
-    paddingRight: 4,
-  },
-  chip: {
-    height: 32,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: {
-    backgroundColor: accentA(0.12),
-    borderColor: color.accent,
-  },
-  chipInactive: {
-    backgroundColor: color.surface2,
-    borderColor: color.border,
-  },
-  chipText: {
-    fontFamily: font.monoMedium,
-    fontSize: 12,
-  },
-  chipTextActive: { color: color.accent },
-  chipTextInactive: { color: color.text2 },
+    // Chips -------------------------------------------------------------
+    chipsContent: {
+      gap: 8,
+      paddingBottom: 2,
+      paddingRight: 4,
+    },
+    chip: {
+      height: 32,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipActive: {
+      backgroundColor: accentA(0.12),
+      borderColor: color.accent,
+    },
+    chipInactive: {
+      backgroundColor: color.surface2,
+      borderColor: color.border,
+    },
+    chipText: {
+      fontFamily: font.monoMedium,
+      fontSize: 12,
+    },
+    chipTextActive: { color: color.accent },
+    chipTextInactive: { color: color.text2 },
 
-  // Groups ------------------------------------------------------------
-  groupLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    paddingTop: 12,
-    paddingHorizontal: 6,
-    paddingBottom: 8,
-    textTransform: 'uppercase',
-  },
-  rowGap: { height: 2 },
+    // Groups ------------------------------------------------------------
+    groupLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingTop: 12,
+      paddingHorizontal: 6,
+      paddingBottom: 8,
+      textTransform: 'uppercase',
+    },
+    rowGap: { height: 2 },
 
-  // Row ---------------------------------------------------------------
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    // The row lays out circle / avatar / text / info directly now that the
-    // inner container (which carried its own gap) is gone.
-    gap: 10,
-    paddingTop: 4,
-    paddingRight: 4,
-    paddingBottom: 4,
-    paddingLeft: 8,
-    borderRadius: 12,
-  },
-  // Full thumb target for the details affordance, matching the checkbox it
-  // replaces in the same slot.
-  infoHit: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-  },
-  rowText: { flex: 1, minWidth: 0 },
-  rowName: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    letterSpacing: -0.145,
-    color: color.text1,
-  },
-  rowMeta: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 2,
-  },
+    // Row ---------------------------------------------------------------
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      // The row lays out circle / avatar / text / info directly now that the
+      // inner container (which carried its own gap) is gone.
+      gap: 10,
+      paddingTop: 4,
+      paddingRight: 4,
+      paddingBottom: 4,
+      paddingLeft: 8,
+      borderRadius: 12,
+    },
+    // Full thumb target for the details affordance, matching the checkbox it
+    // replaces in the same slot.
+    infoHit: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+    },
+    rowText: { flex: 1, minWidth: 0 },
+    rowName: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      letterSpacing: -0.145,
+      color: color.text1,
+    },
+    rowMeta: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 2,
+    },
 
-  // Checkbox ----------------------------------------------------------
+    // Checkbox ----------------------------------------------------------
 
-  // Empty state -------------------------------------------------------
-  empty: {
-    textAlign: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-    color: color.text3,
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-  },
+    // Empty state -------------------------------------------------------
+    empty: {
+      textAlign: 'center',
+      paddingVertical: 60,
+      paddingHorizontal: 20,
+      color: color.text3,
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+    },
 
-  // Floating CTA ------------------------------------------------------
-  ctaWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 30,
-    gap: 10,
-  },
-  mergeCta: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  mergeCtaText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  cta: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: color.accent,
-        shadowOpacity: 0.35,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 14 },
-      },
-      android: { elevation: 12 },
-      default: {},
-    }),
-  },
-  ctaText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-});
+    // Floating CTA ------------------------------------------------------
+    ctaWrap: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      zIndex: 30,
+      gap: 10,
+    },
+    mergeCta: {
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    mergeCtaText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    cta: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Platform.select({
+        ios: {
+          shadowColor: color.accent,
+          shadowOpacity: 0.35,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 14 },
+        },
+        android: { elevation: 12 },
+        default: {},
+      }),
+    },
+    ctaText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+  }),
+);

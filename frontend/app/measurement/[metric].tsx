@@ -22,13 +22,15 @@ import {
 import { measurementHistory, type MeasurementRow } from '../../src/data/measurementsRepo';
 import { getSettings } from '../../src/api/workouts';
 import { fmtDateOnly } from '../../src/lib/format';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 const W = 320;
 const H = 140;
 const PAD = 10;
 
 export default function MeasurementHistoryScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ metric: string }>();
@@ -145,70 +147,72 @@ export default function MeasurementHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
 
-  headline: { gap: 4, marginBottom: 16 },
-  headlineValue: { fontFamily: font.monoSemi, fontSize: 36, color: color.text1 },
-  headlineDelta: { fontFamily: font.monoRegular, fontSize: 13, color: color.text2 },
+    headline: { gap: 4, marginBottom: 16 },
+    headlineValue: { fontFamily: font.monoSemi, fontSize: 36, color: color.text1 },
+    headlineDelta: { fontFamily: font.monoRegular, fontSize: 13, color: color.text2 },
 
-  chartCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  axis: { height: 16, marginTop: 6 },
-  axisTick: {
-    position: 'absolute',
-    top: 0,
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.text3,
-  },
-  empty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginBottom: 16 },
+    chartCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 16,
+    },
+    axis: { height: 16, marginTop: 6 },
+    axisTick: {
+      position: 'absolute',
+      top: 0,
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.text3,
+    },
+    empty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginBottom: 16 },
 
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    height: 48,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hair,
-  },
-  rowFirst: { borderTopWidth: 0 },
-  rowDate: { fontFamily: font.bodyRegular, fontSize: 14, color: color.text2 },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sourceTag: {
-    fontFamily: font.monoMedium,
-    fontSize: 9,
-    letterSpacing: 0.5,
-    color: color.text3,
-    backgroundColor: color.surface3,
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    overflow: 'hidden',
-  },
-  rowValue: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
-});
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 48,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.hair,
+    },
+    rowFirst: { borderTopWidth: 0 },
+    rowDate: { fontFamily: font.bodyRegular, fontSize: 14, color: color.text2 },
+    rowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    sourceTag: {
+      fontFamily: font.monoMedium,
+      fontSize: 9,
+      letterSpacing: 0.5,
+      color: color.text3,
+      backgroundColor: color.surface3,
+      borderRadius: 4,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+      overflow: 'hidden',
+    },
+    rowValue: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
+  }),
+);

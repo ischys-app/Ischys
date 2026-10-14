@@ -40,12 +40,14 @@ import { reconcilePrs, prMetricLabel, type MergeReason } from '../src/lib/mergeD
 import { haptics } from '../src/lib/haptics';
 import { recordDisplay } from '../src/domain/records';
 import { useWeightUnit } from '../src/lib/weightUnit';
-import { accentA, color, font } from '../src/theme/tokens';
+import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 // --- Local glyphs (icons.tsx is owned by another stream) ------------------
 
 /** Merge glyph: two overlapping circles (board M1/M2/M6). */
 function MergeGlyph({ size = 24, color: stroke, strokeWidth = 2 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Circle cx={8} cy={8} r={5} stroke={stroke} strokeWidth={strokeWidth} fill="none" />
@@ -55,6 +57,7 @@ function MergeGlyph({ size = 24, color: stroke, strokeWidth = 2 }: { size?: numb
 }
 
 function ChevronRight({ size = 15, color: stroke, strokeWidth = 2.2 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M9 6l6 6-6 6" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -63,6 +66,7 @@ function ChevronRight({ size = 15, color: stroke, strokeWidth = 2.2 }: { size?: 
 }
 
 function BackChevron({ color: stroke }: { color: string }) {
+  useThemed();
   return (
     <Svg width={9} height={15} viewBox="0 0 9 15">
       <Path d="M7 2L2 7.5 7 13" stroke={stroke} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -71,6 +75,7 @@ function BackChevron({ color: stroke }: { color: string }) {
 }
 
 function Check({ size = 12, color: stroke, strokeWidth = 3.6 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M20 6L9 17l-5-5" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -79,6 +84,7 @@ function Check({ size = 12, color: stroke, strokeWidth = 3.6 }: { size?: number;
 }
 
 function PencilGlyph({ size = 14, color: stroke }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -95,12 +101,12 @@ function PencilGlyph({ size = 14, color: stroke }: { size?: number; color: strin
 
 // --- Reason tag -----------------------------------------------------------
 
-const REASON_META: Record<MergeReason, { label: string; fg: string; bg: string }> = {
+const REASON_META: Record<MergeReason, { label: string; fg: string; bg: string }> = themed(() => ({
   same_name: { label: 'SAME NAME', fg: color.text3, bg: color.surface3 },
   // tokens.ts names the #4C8DFF "water" accent `drop`.
-  same_import: { label: 'SAME IMPORT', fg: color.drop, bg: 'rgba(76,141,255,0.1)' },
-  similar_name: { label: 'SIMILAR NAME', fg: color.warning, bg: 'rgba(255,194,75,0.1)' },
-};
+  same_import: { label: 'SAME IMPORT', fg: color.drop, bg: withAlpha(color.drop, 0.1) },
+  similar_name: { label: 'SIMILAR NAME', fg: color.warning, bg: withAlpha(color.warning, 0.1) },
+}));
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -113,6 +119,7 @@ function sinceLabel(ms: number | null): string {
 type Step = 'loading' | 'list' | 'detail' | 'success';
 
 export default function MergeDuplicates() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const unit = useWeightUnit();
@@ -394,6 +401,7 @@ export default function MergeDuplicates() {
 // --- Group card (M2) ------------------------------------------------------
 
 function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?: boolean; onPress: () => void }) {
+  useThemed();
   const meta = REASON_META[group.reason];
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, dimmed && { opacity: 0.65 }, pressed && { opacity: 0.85 }]}>
@@ -422,6 +430,7 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
 // --- Merged receipt (M5) --------------------------------------------------
 
 function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: () => void }) {
+  useThemed();
   const unit = useWeightUnit();
   const gained = result.gainedPr;
   return (
@@ -455,6 +464,7 @@ function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: ()
 }
 
 function ReceiptRow({ label, value, success }: { label: string; value: string; success?: boolean }) {
+  useThemed();
   return (
     <View style={styles.receiptRow}>
       <Text style={styles.receiptRowLabel}>{label}</Text>
@@ -466,6 +476,7 @@ function ReceiptRow({ label, value, success }: { label: string; value: string; s
 // --- Empty state (M6) -----------------------------------------------------
 
 function EmptyState({ total }: { total: number }) {
+  useThemed();
   const scope =
     total > 0
       ? `Ischys compares names, equipment and import source across all ${total} exercises.`
@@ -487,157 +498,159 @@ function EmptyState({ total }: { total: number }) {
 
 // --- Styles ---------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  loading: { paddingTop: 40, alignItems: 'center' },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    loading: { paddingTop: 40, alignItems: 'center' },
 
-  // Header (M2/M5/M6)
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.94)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
+    // Header (M2/M5/M6)
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    backBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
 
-  // Detail header (M3): Cancel / title / spacer
-  detailHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.94)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cancel: { fontFamily: font.titleSemi, fontSize: 15, color: color.text2, width: 52 },
-  detailTitle: { fontFamily: font.titleSemi, fontSize: 16, letterSpacing: -0.16, color: color.text1 },
+    // Detail header (M3): Cancel / title / spacer
+    detailHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    cancel: { fontFamily: font.titleSemi, fontSize: 15, color: color.text2, width: 52 },
+    detailTitle: { fontFamily: font.titleSemi, fontSize: 16, letterSpacing: -0.16, color: color.text1 },
 
-  intro: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, paddingHorizontal: 2, paddingBottom: 16 },
-  errorLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.error, marginTop: 12 },
+    intro: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, paddingHorizontal: 2, paddingBottom: 16 },
+    errorLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.error, marginTop: 12 },
 
-  sectionLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    paddingHorizontal: 2,
-    paddingBottom: 10,
-    textTransform: 'uppercase',
-  },
+    sectionLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingHorizontal: 2,
+      paddingBottom: 10,
+      textTransform: 'uppercase',
+    },
 
-  // --- M2 group card ---
-  card: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, padding: 14 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  reasonTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
-  reasonText: { fontFamily: font.monoRegular, fontSize: 9.5, letterSpacing: 1.52 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  memberDivider: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: color.hair },
-  tile: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
-  memberName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
-  memberMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
+    // --- M2 group card ---
+    card: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, padding: 14 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    reasonTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+    reasonText: { fontFamily: font.monoRegular, fontSize: 9.5, letterSpacing: 1.52 },
+    memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    memberDivider: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: color.hair },
+    tile: {
+      width: 40,
+      height: 40,
+      borderRadius: 11,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tileText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
+    memberName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
+    memberMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
 
-  // --- M3 keep rows ---
-  keepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderWidth: 1 },
-  keepRowSel: { backgroundColor: accentA(0.07), borderColor: color.accent },
-  keepRowUnsel: { backgroundColor: color.surface1, borderColor: color.border },
-  radio: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  radioSel: { backgroundColor: color.accent },
-  radioUnsel: { borderWidth: 1.5, borderColor: color.border },
-  keepName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
-  keepMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
-  reasonLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, paddingHorizontal: 2, paddingTop: 8 },
+    // --- M3 keep rows ---
+    keepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderWidth: 1 },
+    keepRowSel: { backgroundColor: accentA(0.07), borderColor: color.accent },
+    keepRowUnsel: { backgroundColor: color.surface1, borderColor: color.border },
+    radio: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+    radioSel: { backgroundColor: color.accent },
+    radioUnsel: { borderWidth: 1.5, borderColor: color.border },
+    keepName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
+    keepMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
+    reasonLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, paddingHorizontal: 2, paddingTop: 8 },
 
-  // --- M3 what combines ---
-  combineCard: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16, gap: 11 },
-  combineRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  combineText: { flex: 1, fontFamily: font.bodyRegular, fontSize: 13.5, color: color.text1 },
-  prBlock: { borderTopWidth: 1, borderTopColor: color.hair, paddingTop: 11 },
-  prHeader: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3, marginBottom: 9 },
-  prRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  prMetric: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
-  prValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1, fontVariant: ['tabular-nums'] },
-  prTag: { fontFamily: font.monoRegular, fontSize: 10, color: color.text3, width: 62, textAlign: 'right' },
-  finePrint: { fontFamily: font.bodyRegular, fontSize: 12.5, lineHeight: 18.75, color: color.text3, paddingHorizontal: 2, paddingTop: 12 },
+    // --- M3 what combines ---
+    combineCard: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16, gap: 11 },
+    combineRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    combineText: { flex: 1, fontFamily: font.bodyRegular, fontSize: 13.5, color: color.text1 },
+    prBlock: { borderTopWidth: 1, borderTopColor: color.hair, paddingTop: 11 },
+    prHeader: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3, marginBottom: 9 },
+    prRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    prMetric: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
+    prValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1, fontVariant: ['tabular-nums'] },
+    prTag: { fontFamily: font.monoRegular, fontSize: 10, color: color.text3, width: 62, textAlign: 'right' },
+    finePrint: { fontFamily: font.bodyRegular, fontSize: 12.5, lineHeight: 18.75, color: color.text3, paddingHorizontal: 2, paddingTop: 12 },
 
-  // Footer CTA (M3)
-  footer: { position: 'absolute', left: 16, right: 16, bottom: 0 },
-  primaryCta: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: { shadowColor: color.accent, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 14 } },
-      android: { elevation: 12 },
-      default: {},
-    }),
-  },
-  primaryCtaText: { fontFamily: font.displayBold, fontSize: 15, letterSpacing: -0.15, color: color.accentFg, paddingHorizontal: 16 },
+    // Footer CTA (M3)
+    footer: { position: 'absolute', left: 16, right: 16, bottom: 0 },
+    primaryCta: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Platform.select({
+        ios: { shadowColor: color.accent, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 14 } },
+        android: { elevation: 12 },
+        default: {},
+      }),
+    },
+    primaryCtaText: { fontFamily: font.displayBold, fontSize: 15, letterSpacing: -0.15, color: color.accentFg, paddingHorizontal: 16 },
 
-  // --- M4 sheet ---
-  sheet: { backgroundColor: color.surface1, borderTopWidth: 1, borderTopColor: color.border, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 26 },
-  grabberWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  sheetBody: { paddingHorizontal: 20, paddingTop: 14 },
-  sheetTitle: { fontFamily: font.displayBold, fontSize: 19, letterSpacing: -0.38, color: color.text1 },
-  sheetText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21.7, color: color.text2, marginTop: 10 },
-  sheetStrong: { fontFamily: font.titleSemi, color: color.text1 },
-  sheetWarn: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.warning, marginTop: 12 },
-  cancelBtn: { height: 48, borderRadius: 13, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
-  cancelBtnText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+    // --- M4 sheet ---
+    sheet: { backgroundColor: color.surface1, borderTopWidth: 1, borderTopColor: color.border, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 26 },
+    grabberWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
+    grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    sheetBody: { paddingHorizontal: 20, paddingTop: 14 },
+    sheetTitle: { fontFamily: font.displayBold, fontSize: 19, letterSpacing: -0.38, color: color.text1 },
+    sheetText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21.7, color: color.text2, marginTop: 10 },
+    sheetStrong: { fontFamily: font.titleSemi, color: color.text1 },
+    sheetWarn: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.warning, marginTop: 12 },
+    cancelBtn: { height: 48, borderRadius: 13, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
+    cancelBtnText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
 
-  // --- M5 receipt ---
-  receipt: { backgroundColor: 'rgba(45,216,129,0.07)', borderWidth: 1, borderColor: 'rgba(45,216,129,0.26)', borderRadius: 16, padding: 16 },
-  receiptTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  receiptDisc: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(45,216,129,0.16)', alignItems: 'center', justifyContent: 'center' },
-  receiptTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
-  receiptSub: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3, marginTop: 2 },
-  receiptRows: { gap: 7, marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: 'rgba(45,216,129,0.18)' },
-  receiptRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  receiptRowLabel: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
-  receiptRowValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1 },
-  renameBtn: { height: 44, borderRadius: 12, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16 },
-  renameText: { fontFamily: font.titleSemi, fontSize: 13.5, color: color.text1 },
+    // --- M5 receipt ---
+    receipt: { backgroundColor: withAlpha(color.success, 0.07), borderWidth: 1, borderColor: withAlpha(color.success, 0.26), borderRadius: 16, padding: 16 },
+    receiptTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    receiptDisc: { width: 30, height: 30, borderRadius: 15, backgroundColor: withAlpha(color.success, 0.16), alignItems: 'center', justifyContent: 'center' },
+    receiptTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+    receiptSub: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3, marginTop: 2 },
+    receiptRows: { gap: 7, marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: withAlpha(color.success, 0.18) },
+    receiptRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    receiptRowLabel: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
+    receiptRowValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1 },
+    renameBtn: { height: 44, borderRadius: 12, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16 },
+    renameText: { fontFamily: font.titleSemi, fontSize: 13.5, color: color.text1 },
 
-  // --- M6 empty ---
-  empty: { alignItems: 'center', paddingTop: 50, paddingHorizontal: 12 },
-  emptyIcon: { width: 62, height: 62, borderRadius: 17, backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { fontFamily: font.displayBold, fontSize: 20, letterSpacing: -0.4, color: color.text1, marginTop: 16, textAlign: 'center' },
-  emptyBody: { fontFamily: font.bodyRegular, fontSize: 13.5, lineHeight: 21, color: color.text2, marginTop: 9, textAlign: 'center' },
-  emptyCard: { width: '100%', backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 14, padding: 14, marginTop: 26 },
-  emptyCardLabel: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3 },
-  emptyCardText: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, marginTop: 8 },
-});
+    // --- M6 empty ---
+    empty: { alignItems: 'center', paddingTop: 50, paddingHorizontal: 12 },
+    emptyIcon: { width: 62, height: 62, borderRadius: 17, backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
+    emptyTitle: { fontFamily: font.displayBold, fontSize: 20, letterSpacing: -0.4, color: color.text1, marginTop: 16, textAlign: 'center' },
+    emptyBody: { fontFamily: font.bodyRegular, fontSize: 13.5, lineHeight: 21, color: color.text2, marginTop: 9, textAlign: 'center' },
+    emptyCard: { width: '100%', backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 14, padding: 14, marginTop: 26 },
+    emptyCardLabel: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3 },
+    emptyCardText: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, marginTop: 8 },
+  }),
+);

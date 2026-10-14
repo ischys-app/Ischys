@@ -21,11 +21,13 @@ import { WorkoutCard } from '../../src/components/WorkoutCard';
 import { fmtDuration, fmtHeaderDate, fmtVolumeShort } from '../../src/lib/format';
 import { onWatchFinished } from '../../src/lib/watchFinish';
 import { useWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 /** Home / dashboard — reads the local dashboard, laid out from Home.dc.html. */
 export default function Home() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Header is an absolute overlay of variable height (safe-area inset + content).
@@ -207,6 +209,7 @@ function Populated({
   onStartRoutine: (r: RoutineListItem) => void;
   onOverflow: (r: RoutineListItem) => void;
 }) {
+  useThemed();
   const router = useRouter();
   const unit = useWeightUnit();
   const vol = fmtVolumeShort(data.stats.volume, unit);
@@ -302,6 +305,7 @@ function Populated({
 }
 
 function EmptyState({ onStartEmpty }: { onStartEmpty: () => void }) {
+  useThemed();
   const router = useRouter();
   return (
     <View style={styles.empty}>
@@ -332,202 +336,204 @@ function EmptyState({ onStartEmpty }: { onStartEmpty: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
-  loading: { fontFamily: font.bodyRegular, fontSize: 16, color: color.text3 },
-  error: { fontFamily: font.bodyRegular, fontSize: 13, color: color.error },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
+    loading: { fontFamily: font.bodyRegular, fontSize: 16, color: color.text3 },
+    error: { fontFamily: font.bodyRegular, fontSize: 13, color: color.error },
 
-  // Fixed header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: color.bg,
-  },
-  wordmark: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
-  wordmarkText: {
-    fontFamily: font.displayBold,
-    fontSize: 22,
-    letterSpacing: -0.66,
-    color: color.text1,
-  },
-  wordmarkDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.accent },
+    // Fixed header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      backgroundColor: color.bg,
+    },
+    wordmark: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+    wordmarkText: {
+      fontFamily: font.displayBold,
+      fontSize: 22,
+      letterSpacing: -0.66,
+      color: color.text1,
+    },
+    wordmarkDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.accent },
 
-  // Weekly summary heading
-  summaryHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingHorizontal: 2,
-  },
-  dateLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: color.text3,
-    textTransform: 'uppercase',
-    fontVariant: ['tabular-nums'],
-  },
-  thisWeek: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-    marginTop: 2,
-  },
+    // Weekly summary heading
+    summaryHead: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+      paddingHorizontal: 2,
+    },
+    dateLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.4,
+      color: color.text3,
+      textTransform: 'uppercase',
+      fontVariant: ['tabular-nums'],
+    },
+    thisWeek: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+      marginTop: 2,
+    },
 
-  // Stat card
-  statCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 18,
-    paddingTop: 18,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    marginBottom: 24,
-  },
-  grid: { flexDirection: 'column', gap: 16, marginBottom: 18 },
-  gridRow: { flexDirection: 'row', gap: 12 },
-  gridCell: { flex: 1 },
+    // Stat card
+    statCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 18,
+      paddingTop: 18,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      marginBottom: 24,
+    },
+    grid: { flexDirection: 'column', gap: 16, marginBottom: 18 },
+    gridRow: { flexDirection: 'row', gap: 12 },
+    gridCell: { flex: 1 },
 
-  // Quick start
-  quickStartLabel: { paddingHorizontal: 2, paddingBottom: 10 },
-  quickStart: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    marginBottom: 26,
-  },
-  quickStartPressed: { borderColor: color.text3 },
-  quickStartText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text2,
-  },
+    // Quick start
+    quickStartLabel: { paddingHorizontal: 2, paddingBottom: 10 },
+    quickStart: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      width: '100%',
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      marginBottom: 26,
+    },
+    quickStartPressed: { borderColor: color.text3 },
+    quickStartText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text2,
+    },
 
-  // Section header row
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  count: { color: color.text2 },
-  pillRow: { flexDirection: 'row', gap: 8 },
-  smallPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  smallPillPressed: { borderColor: color.accent },
-  smallPillText: {
-    fontFamily: font.titleSemi,
-    fontSize: 12.5,
-    color: color.text1,
-  },
+    // Section header row
+    sectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    count: { color: color.text2 },
+    pillRow: { flexDirection: 'row', gap: 8 },
+    smallPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      height: 32,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    smallPillPressed: { borderColor: color.accent },
+    smallPillText: {
+      fontFamily: font.titleSemi,
+      fontSize: 12.5,
+      color: color.text1,
+    },
 
-  routineList: { flexDirection: 'column', gap: 12, marginBottom: 26 },
+    routineList: { flexDirection: 'column', gap: 12, marginBottom: 26 },
 
-  allHistory: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text2,
-  },
-  recentList: { flexDirection: 'column', gap: 10 },
+    allHistory: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text2,
+    },
+    recentList: { flexDirection: 'column', gap: 10 },
 
-  // Empty state
-  empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 44, paddingHorizontal: 8 },
-  emptyIcon: {
-    width: 66,
-    height: 66,
-    borderRadius: 18,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 22,
-  },
-  emptyTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 25,
-    letterSpacing: -0.5,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14.5,
-    color: color.text2,
-    lineHeight: 22,
-    maxWidth: 290,
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  emptyButtons: { flexDirection: 'column', gap: 10, width: '100%', marginTop: 28 },
-  emptyPrimary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-    height: 50,
-    borderRadius: 13,
-    backgroundColor: color.accent,
-  },
-  emptyPrimaryText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  emptySecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  emptySecondaryPressed: { borderColor: color.text3 },
-  emptySecondaryText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  emptyImport: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 22,
-    textAlign: 'center',
-  },
-  emptyImportLink: { color: color.accent },
-});
+    // Empty state
+    empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 44, paddingHorizontal: 8 },
+    emptyIcon: {
+      width: 66,
+      height: 66,
+      borderRadius: 18,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 22,
+    },
+    emptyTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 25,
+      letterSpacing: -0.5,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14.5,
+      color: color.text2,
+      lineHeight: 22,
+      maxWidth: 290,
+      marginTop: 10,
+      textAlign: 'center',
+    },
+    emptyButtons: { flexDirection: 'column', gap: 10, width: '100%', marginTop: 28 },
+    emptyPrimary: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      width: '100%',
+      height: 50,
+      borderRadius: 13,
+      backgroundColor: color.accent,
+    },
+    emptyPrimaryText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    emptySecondary: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '100%',
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    emptySecondaryPressed: { borderColor: color.text3 },
+    emptySecondaryText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    emptyImport: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 22,
+      textAlign: 'center',
+    },
+    emptyImportLink: { color: color.accent },
+  }),
+);

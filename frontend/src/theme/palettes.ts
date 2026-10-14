@@ -2,9 +2,14 @@
  * Accent palettes (#72).
  *
  * A theme in Ischys is `accent` + `accentFg` and nothing else. Surfaces, text
- * and the status colours never change — the app's one rule is that accent marks
- * exactly one action per screen, and a theme that moved the greys would be
- * restyling the app rather than recolouring that one mark.
+ * and the status colours never change with it — the app's one rule is that
+ * accent marks exactly one action per screen, and a theme that moved the greys
+ * would be restyling the app rather than recolouring that one mark. Those move
+ * with the appearance instead (light mode, 7b), which is a separate setting.
+ *
+ * Each palette carries a value per appearance. `accent`/`accentFg` are the dark
+ * ones, and the only ones the Watch and the Live Activity ever use: both stay
+ * black whatever the phone is set to.
  *
  * The contrast and hue rules the design set are enforced by the tests beside
  * this file, not by prose, so a future palette can't be added that quietly
@@ -19,6 +24,8 @@ export type Palette = {
   accent: string;
   /** Text and icons drawn ON the accent. */
   accentFg: string;
+  /** The same accent for light surfaces: darker, so it still reads on white. */
+  light: { accent: string; accentFg: string };
   /**
    * Excused from the "30° from every status colour" rule, with a reason. Only
    * ember carries this: it predates the rule and ships anyway.
@@ -30,12 +37,38 @@ export const PALETTES: Palette[] = [
   // The original. 12° from `error`, which breaks the hue rule — kept because
   // error never fills a button: it appears as text and light tints only, so the
   // two never read as the same thing.
-  { id: 'ember', name: 'Ember', accent: '#FF4A1C', accentFg: '#0B0B0C', hueExempt: true },
-  { id: 'volt', name: 'Volt', accent: '#C6F135', accentFg: '#0B0B0C' },
-  { id: 'ion', name: 'Ion', accent: '#C58BFF', accentFg: '#0B0B0C' },
+  {
+    id: 'ember',
+    name: 'Ember',
+    accent: '#FF4A1C',
+    accentFg: '#0B0B0C',
+    light: { accent: '#D9380B', accentFg: '#FFFFFF' },
+    hueExempt: true,
+  },
+  {
+    id: 'volt',
+    name: 'Volt',
+    accent: '#C6F135',
+    accentFg: '#0B0B0C',
+    light: { accent: '#4E7A00', accentFg: '#FFFFFF' },
+  },
+  {
+    id: 'ion',
+    name: 'Ion',
+    accent: '#C58BFF',
+    accentFg: '#0B0B0C',
+    light: { accent: '#7A3FD6', accentFg: '#FFFFFF' },
+  },
   // Highest contrast of the four, and the same value as text1 — a primary
-  // button stands out because it is filled, not because of its colour.
-  { id: 'chalk', name: 'Chalk', accent: '#F4F4F5', accentFg: '#0B0B0C' },
+  // button stands out because it is filled, not because of its colour. On a
+  // light surface "no hue" means ink, not white.
+  {
+    id: 'chalk',
+    name: 'Chalk',
+    accent: '#F4F4F5',
+    accentFg: '#0B0B0C',
+    light: { accent: '#0A0A0B', accentFg: '#FFFFFF' },
+  },
 ];
 
 export const DEFAULT_THEME_ID: ThemeId = 'ember';
@@ -47,6 +80,11 @@ export const STATUS_HUES = {
   error: 0, // #FF4D4D
   drop: 219, // #4C8DFF
 } as const;
+
+/** The accent pair a palette uses under an appearance. */
+export function accentFor(p: Palette, scheme: 'dark' | 'light'): { accent: string; accentFg: string } {
+  return scheme === 'light' ? p.light : { accent: p.accent, accentFg: p.accentFg };
+}
 
 /** Stored ids outlive builds, so anything unrecognised falls back to the default. */
 export function paletteById(id: string | null | undefined): Palette {

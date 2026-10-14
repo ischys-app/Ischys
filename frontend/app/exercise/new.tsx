@@ -32,7 +32,8 @@ import {
 import { ChevronRightIcon } from '../../src/components/icons';
 import { MusclePickerSheet } from '../../src/components/MusclePickerSheet';
 import { PressableScale } from '../../src/components/PressableScale';
-import { accentA, color, font } from '../../src/theme/tokens';
+import { accentA, color, font, themed } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
 
 const EQUIPMENT_OPTIONS: { label: string; value: ExerciseEquipment }[] = [
   { label: 'Barbell', value: 'barbell' },
@@ -51,6 +52,7 @@ const KIND_OPTIONS: { label: string; value: ExerciseKind }[] = [
 ];
 
 export default function NewExercise() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -361,186 +363,188 @@ export default function NewExercise() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  scroll: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    scroll: { flex: 1 },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cancel: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text2,
-  },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    letterSpacing: -0.16,
-    color: color.text1,
-  },
-  saveBtn: {
-    height: 32,
-    paddingHorizontal: 16,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 60,
-  },
-  saveBtnDisabled: { opacity: 0.4 },
-  saveText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.accentFg,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    cancel: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text2,
+    },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      letterSpacing: -0.16,
+      color: color.text1,
+    },
+    saveBtn: {
+      height: 32,
+      paddingHorizontal: 16,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 60,
+    },
+    saveBtnDisabled: { opacity: 0.4 },
+    saveText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.accentFg,
+    },
 
-  // Form --------------------------------------------------------------
-  label: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    marginBottom: 9,
-    textTransform: 'uppercase',
-  },
-  hint: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-  },
+    // Form --------------------------------------------------------------
+    label: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      marginBottom: 9,
+      textTransform: 'uppercase',
+    },
+    hint: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+    },
 
-  nameInput: {
-    height: 54,
-    paddingHorizontal: 14,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 12,
-    color: color.text1,
-    fontFamily: font.monoMedium,
-    fontSize: 15,
-    fontVariant: ['tabular-nums'],
-  },
+    nameInput: {
+      height: 54,
+      paddingHorizontal: 14,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 12,
+      color: color.text1,
+      fontFamily: font.monoMedium,
+      fontSize: 15,
+      fontVariant: ['tabular-nums'],
+    },
 
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: {
-    backgroundColor: accentA(0.12),
-    borderColor: color.accent,
-  },
-  chipInactive: {
-    backgroundColor: color.surface1,
-    borderColor: color.border,
-  },
-  chipText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13.5,
-    fontWeight: '600',
-  },
-  chipTextActive: { color: color.accent },
-  chipTextInactive: { color: color.text2 },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    chip: {
+      height: 38,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipActive: {
+      backgroundColor: accentA(0.12),
+      borderColor: color.accent,
+    },
+    chipInactive: {
+      backgroundColor: color.surface1,
+      borderColor: color.border,
+    },
+    chipText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13.5,
+      fontWeight: '600',
+    },
+    chipTextActive: { color: color.accent },
+    chipTextInactive: { color: color.text2 },
 
-  // Muscles card (single surface-1 card wrapping the two rows)
-  musclesCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  muscleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    height: 56,
-    paddingHorizontal: 14,
-  },
-  muscleDivider: {
-    height: 1,
-    backgroundColor: color.hair,
-  },
-  linkLabel: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
-  linkValue: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text3,
-    maxWidth: 160,
-    fontVariant: ['tabular-nums'],
-  },
+    // Muscles card (single surface-1 card wrapping the two rows)
+    musclesCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    muscleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      height: 56,
+      paddingHorizontal: 14,
+    },
+    muscleDivider: {
+      height: 1,
+      backgroundColor: color.hair,
+    },
+    linkLabel: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
+    linkValue: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text3,
+      maxWidth: 160,
+      fontVariant: ['tabular-nums'],
+    },
 
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: color.surface2,
-    borderRadius: 11,
-    padding: 4,
-    gap: 4,
-  },
-  segmentOption: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentOptionActive: {
-    backgroundColor: color.surface3,
-  },
-  segmentText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+    segment: {
+      flexDirection: 'row',
+      backgroundColor: color.surface2,
+      borderRadius: 11,
+      padding: 4,
+      gap: 4,
+    },
+    segmentOption: {
+      flex: 1,
+      height: 40,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    segmentOptionActive: {
+      backgroundColor: color.surface3,
+    },
+    segmentText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      fontWeight: '600',
+    },
 
-  howto: {
-    minHeight: 120,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 12,
-    color: color.text1,
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 22,
-  },
+    howto: {
+      minHeight: 120,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 12,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 12,
+      color: color.text1,
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 22,
+    },
 
-  errorLine: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.error,
-  },
-});
+    errorLine: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.error,
+    },
+  }),
+);

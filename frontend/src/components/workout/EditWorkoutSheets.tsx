@@ -41,10 +41,11 @@ import {
   type When,
 } from '../../domain/workoutEdit';
 import { haptics } from '../../lib/haptics';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { HeartFilledIcon, StarIcon } from '../icons';
+import { useThemed } from '../../theme/ThemeProvider';
 
 // --- shell -------------------------------------------------------------------
 
@@ -70,6 +71,7 @@ function EditSheet({
   secondary,
   footnoted,
 }: ShellProps) {
+  useThemed();
   const insets = useSafeAreaInsets();
   return (
     <DraggableSheet
@@ -131,6 +133,7 @@ type WheelProps = {
  * has come to rest, never mid-drag.
  */
 function Wheel({ items, index, onChange, width, accessibilityLabel }: WheelProps) {
+  useThemed();
   const ref = useRef<ScrollView>(null);
   const safe = Math.min(Math.max(index, 0), items.length - 1);
   const [shown, setShown] = useState(safe);
@@ -249,6 +252,7 @@ type WhenSheetProps = {
 };
 
 export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: WhenSheetProps) {
+  useThemed();
   const [active, setActive] = useState<WhenField>(field ?? 'duration');
   const [draft, setDraft] = useState<When>(when);
 
@@ -438,6 +442,7 @@ type SaveSheetProps = {
 };
 
 export function SaveRecordsSheet({ visible, changes, unit, saving, onSave, onClose }: SaveSheetProps) {
+  useThemed();
   return (
     <EditSheet
       visible={visible}
@@ -492,6 +497,7 @@ type DiscardSheetProps = {
 };
 
 export function DiscardSheet({ visible, changeCount, onDiscard, onClose }: DiscardSheetProps) {
+  useThemed();
   const what = changeCount === 1 ? '1 change' : `${changeCount} changes`;
   return (
     <EditSheet
@@ -507,192 +513,194 @@ export function DiscardSheet({ visible, changeCount, onDiscard, onClose }: Disca
 
 const tabular: ['tabular-nums'] = ['tabular-nums'];
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingTop: 10,
-    paddingHorizontal: 18,
-    maxHeight: '90%',
-  },
-  grabber: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: color.surface3,
-    alignSelf: 'center',
-    marginBottom: 18,
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 20, letterSpacing: -0.2, color: color.text1 },
-  body: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: color.text2,
-    marginTop: 6,
-  },
-  actions: { gap: 10, marginTop: 18 },
-  actionsFootnoted: { marginTop: 16 },
-  primary: {
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryError: { backgroundColor: color.error },
-  primaryText: { fontFamily: font.displayBold, fontSize: 15, color: color.accentFg },
-  primaryTextError: { color: '#fff' },
-  secondary: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryPressed: { borderColor: color.text3 },
-  secondaryText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingTop: 10,
+      paddingHorizontal: 18,
+      maxHeight: '90%',
+    },
+    grabber: {
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: color.surface3,
+      alignSelf: 'center',
+      marginBottom: 18,
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 20, letterSpacing: -0.2, color: color.text1 },
+    body: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      marginTop: 6,
+    },
+    actions: { gap: 10, marginTop: 18 },
+    actionsFootnoted: { marginTop: 16 },
+    primary: {
+      height: 50,
+      borderRadius: 12,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryError: { backgroundColor: color.error },
+    primaryText: { fontFamily: font.displayBold, fontSize: 15, color: color.accentFg },
+    primaryTextError: { color: '#fff' },
+    secondary: {
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    secondaryPressed: { borderColor: color.text3 },
+    secondaryText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
 
-  // E4
-  rows: { marginTop: 14, borderTopWidth: 1, borderTopColor: color.hair },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 52,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  rowLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
-  rowValue: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    justifyContent: 'center',
-  },
-  rowValueActive: { backgroundColor: color.surface3 },
-  rowValueText: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  wheels: {
-    height: WHEEL_HEIGHT,
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 28,
-  },
-  wheelBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: WHEEL_PAD,
-    height: WHEEL_ITEM,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-  },
-  wheel: { height: WHEEL_HEIGHT, flexGrow: 0 },
-  wheelContent: { paddingVertical: WHEEL_PAD },
-  wheelItem: { height: WHEEL_ITEM, alignItems: 'center', justifyContent: 'center' },
-  wheelText: {
-    fontFamily: font.monoRegular,
-    fontSize: 16,
-    color: color.text3,
-    fontVariant: tabular,
-  },
-  wheelFar: { opacity: 0 },
-  wheelSelected: {
-    fontFamily: font.monoSemi,
-    fontSize: 20,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  wheelUnit: { fontFamily: font.monoRegular, fontSize: 13, color: color.text3 },
-  ends: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    textAlign: 'center',
-    marginBottom: 14,
-    fontVariant: tabular,
-  },
-  // E12–E14: the Health line takes over the space under the end time.
-  endsFootnoted: { marginBottom: 0 },
-  health: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 9,
-    marginTop: 14,
-    paddingTop: 12,
-    paddingHorizontal: 2,
-    borderTopWidth: 1,
-    borderTopColor: color.hair,
-  },
-  healthIcon: { flexShrink: 0, marginTop: 3 },
-  healthText: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 18.85,
-    color: color.text2,
-  },
+    // E4
+    rows: { marginTop: 14, borderTopWidth: 1, borderTopColor: color.hair },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 52,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    rowLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
+    rowValue: {
+      height: 34,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      justifyContent: 'center',
+    },
+    rowValueActive: { backgroundColor: color.surface3 },
+    rowValueText: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    wheels: {
+      height: WHEEL_HEIGHT,
+      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 28,
+    },
+    wheelBar: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: WHEEL_PAD,
+      height: WHEEL_ITEM,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+    },
+    wheel: { height: WHEEL_HEIGHT, flexGrow: 0 },
+    wheelContent: { paddingVertical: WHEEL_PAD },
+    wheelItem: { height: WHEEL_ITEM, alignItems: 'center', justifyContent: 'center' },
+    wheelText: {
+      fontFamily: font.monoRegular,
+      fontSize: 16,
+      color: color.text3,
+      fontVariant: tabular,
+    },
+    wheelFar: { opacity: 0 },
+    wheelSelected: {
+      fontFamily: font.monoSemi,
+      fontSize: 20,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    wheelUnit: { fontFamily: font.monoRegular, fontSize: 13, color: color.text3 },
+    ends: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      textAlign: 'center',
+      marginBottom: 14,
+      fontVariant: tabular,
+    },
+    // E12–E14: the Health line takes over the space under the end time.
+    endsFootnoted: { marginBottom: 0 },
+    health: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 9,
+      marginTop: 14,
+      paddingTop: 12,
+      paddingHorizontal: 2,
+      borderTopWidth: 1,
+      borderTopColor: color.hair,
+    },
+    healthIcon: { flexShrink: 0, marginTop: 3 },
+    healthText: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 18.85,
+      color: color.text2,
+    },
 
-  // E5
-  records: { marginTop: 16, flexGrow: 0, flexShrink: 1 },
-  recordsContent: { gap: 8 },
-  record: {
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  recordHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  recordName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
-  recordValues: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginTop: 6,
-  },
-  recordMetric: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1,
-    color: color.text3,
-    fontVariant: tabular,
-  },
-  recordTo: {
-    flexShrink: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  recordFrom: { color: color.text3 },
-  recordNote: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 4,
-  },
-  recordNoteGained: { color: color.success },
-});
+    // E5
+    records: { marginTop: 16, flexGrow: 0, flexShrink: 1 },
+    recordsContent: { gap: 8 },
+    record: {
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    recordHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    recordName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
+    recordValues: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginTop: 6,
+    },
+    recordMetric: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1,
+      color: color.text3,
+      fontVariant: tabular,
+    },
+    recordTo: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    recordFrom: { color: color.text3 },
+    recordNote: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 4,
+    },
+    recordNoteGained: { color: color.success },
+  }),
+);

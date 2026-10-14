@@ -24,7 +24,8 @@ import Animated, {
 
 import { haptics } from '../../lib/haptics';
 import { TrashIcon } from '../icons';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
+import { useThemed } from '../../theme/ThemeProvider';
 
 const OPEN_X = -72; // resting reveal
 const MAX_X = -84; // hard bound before rubber-banding
@@ -58,6 +59,7 @@ export function SwipeToDelete({
   rowStyle,
   children,
 }: Props) {
+  useThemed();
   const swipeEnabled = !!onDelete;
 
   const tx = useSharedValue(isOpen ? OPEN_X : 0);
@@ -135,26 +137,28 @@ export function SwipeToDelete({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  deletePanel: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 76,
-    backgroundColor: color.error,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  deleteLabel: {
-    color: '#fff',
-    fontFamily: font.titleSemi,
-    fontSize: 11,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    container: {
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    deletePanel: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: 76,
+      backgroundColor: color.error,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+    },
+    deleteLabel: {
+      color: '#fff',
+      fontFamily: font.titleSemi,
+      fontSize: 11,
+    },
+  }),
+);

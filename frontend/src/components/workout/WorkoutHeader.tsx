@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { color, font, TAP_TARGET } from '../../theme/tokens';
+import { color, font, TAP_TARGET, themed, withAlpha } from '../../theme/tokens';
 import { textScale } from '../../theme/textScale';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { BackChevronIcon, HeartFilledIcon, TrashIcon } from '../icons';
+import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
   topInset: number;
@@ -29,6 +30,7 @@ type Props = {
 
 /** Pulsing heart glyph. Scale 1 → 1.28 → 1 over a 1s loop. */
 function PulsingHeart({ size = 9 }: { size?: number }) {
+  useThemed();
   const scale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -72,6 +74,7 @@ function ConfirmDiscardSheet({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  useThemed();
   const insets = useSafeAreaInsets();
   return (
     <DraggableSheet
@@ -122,6 +125,7 @@ export function WorkoutHeader({
   heartRate,
   activeCal,
 }: Props) {
+  useThemed();
   const [confirmOpen, setConfirmOpen] = useState(false);
   // A Watch feeding live HR is the signal a Watch is connected; HR + CAL ride
   // in the data strip (mono label + tabular value) instead of tinted chips.
@@ -211,134 +215,136 @@ export function WorkoutHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.86)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  back: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Far left, beside the collapse chevron — opposite end from the primary Finish.
-  discard: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discardPressed: { borderColor: 'rgba(255,77,77,0.4)' },
-  titleWrap: { flex: 1, minWidth: 0 },
-  name: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
-  status: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
-  finish: {
-    height: 34,
-    paddingHorizontal: 18,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  finishText: { fontFamily: font.titleSemi, fontSize: 14, color: color.accentFg },
+const styles = themed(() =>
+  StyleSheet.create({
+    header: {
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    topRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+    back: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Far left, beside the collapse chevron — opposite end from the primary Finish.
+    discard: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    discardPressed: { borderColor: withAlpha(color.error, 0.4) },
+    titleWrap: { flex: 1, minWidth: 0 },
+    name: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
+    status: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
+    finish: {
+      height: 34,
+      paddingHorizontal: 18,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    finishText: { fontFamily: font.titleSemi, fontSize: 14, color: color.accentFg },
 
-  strip: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
-  statTime: { flex: 1, flexDirection: 'column', gap: 2 },
-  statVolume: { flex: 1.3, flexDirection: 'column', gap: 2 },
-  statSets: { flex: 0.8, flexDirection: 'column', gap: 2 },
-  statHr: { flex: 0.85, flexDirection: 'column', gap: 2 },
-  statCal: { flex: 0.85, flexDirection: 'column', gap: 2 },
-  hrLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 9.5,
-    letterSpacing: 1.14,
-    color: color.text3,
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 18,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    color: color.text3,
-  },
+    strip: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
+    statTime: { flex: 1, flexDirection: 'column', gap: 2 },
+    statVolume: { flex: 1.3, flexDirection: 'column', gap: 2 },
+    statSets: { flex: 0.8, flexDirection: 'column', gap: 2 },
+    statHr: { flex: 0.85, flexDirection: 'column', gap: 2 },
+    statCal: { flex: 0.85, flexDirection: 'column', gap: 2 },
+    hrLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    statLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 9.5,
+      letterSpacing: 1.14,
+      color: color.text3,
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 18,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 11,
+      color: color.text3,
+    },
 
-  // Confirm-discard sheet
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -20 },
-    shadowOpacity: 0.8,
-    shadowRadius: 50,
-    elevation: 20,
-  },
-  grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  sheetBody: { paddingHorizontal: 20, paddingTop: 10 },
-  sheetTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 19,
-    letterSpacing: -0.19,
-    color: color.text1,
-  },
-  sheetText: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: color.text2,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  sheetDiscard: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.error,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: TAP_TARGET,
-  },
-  sheetDiscardPressed: { opacity: 0.9 },
-  sheetDiscardText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: '#FFFFFF',
-  },
-  sheetCancel: {
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    minHeight: TAP_TARGET,
-  },
-  sheetCancelPressed: { borderColor: color.text3 },
-  sheetCancelText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-});
+    // Confirm-discard sheet
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -20 },
+      shadowOpacity: 0.8,
+      shadowRadius: 50,
+      elevation: 20,
+    },
+    grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+    grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    sheetBody: { paddingHorizontal: 20, paddingTop: 10 },
+    sheetTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 19,
+      letterSpacing: -0.19,
+      color: color.text1,
+    },
+    sheetText: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      marginTop: 10,
+      marginBottom: 20,
+    },
+    sheetDiscard: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.error,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: TAP_TARGET,
+    },
+    sheetDiscardPressed: { opacity: 0.9 },
+    sheetDiscardText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: '#FFFFFF',
+    },
+    sheetCancel: {
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 10,
+      minHeight: TAP_TARGET,
+    },
+    sheetCancelPressed: { borderColor: color.text3 },
+    sheetCancelText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+  }),
+);

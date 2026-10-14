@@ -23,7 +23,8 @@ import {
   type MuscleWorkEntry,
 } from '../src/domain/muscleMap';
 import { muscleWorkEntries } from '../src/data/muscleMapRepo';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 const WINDOWS = [
   { days: 7 as const, label: '7 DAYS' },
@@ -33,6 +34,7 @@ const WINDOWS = [
 const fmtSets = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 export default function MuscleMapScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [windowDays, setWindowDays] = useState<7 | 28>(7);
@@ -159,55 +161,57 @@ export default function MuscleMapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
 
-  segment: { flexDirection: 'row', backgroundColor: color.surface2, borderRadius: 9, padding: 3, gap: 3 },
-  segmentItem: { flex: 1, height: 34, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  segmentItemOn: { backgroundColor: color.surface3 },
-  segmentText: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text2 },
-  segmentTextOn: { color: color.text1 },
-  scaleNote: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3, marginTop: 8 },
+    segment: { flexDirection: 'row', backgroundColor: color.surface2, borderRadius: 9, padding: 3, gap: 3 },
+    segmentItem: { flex: 1, height: 34, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+    segmentItemOn: { backgroundColor: color.surface3 },
+    segmentText: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text2 },
+    segmentTextOn: { color: color.text1 },
+    scaleNote: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3, marginTop: 8 },
 
-  figures: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 16 },
-  figure: { alignItems: 'center', gap: 8 },
-  figureLabel: { fontFamily: font.monoMedium, fontSize: 10, letterSpacing: 1.2, color: color.text3 },
+    figures: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 16 },
+    figure: { alignItems: 'center', gap: 8 },
+    figureLabel: { fontFamily: font.monoMedium, fontSize: 10, letterSpacing: 1.2, color: color.text3 },
 
-  legend: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 20 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendSwatch: { width: 10, height: 10, borderRadius: 3 },
-  legendText: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
+    legend: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 20 },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    legendSwatch: { width: 10, height: 10, borderRadius: 3 },
+    legendText: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
 
-  sectionLabel: { marginTop: 24, marginBottom: 8 },
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 14,
-  },
-  neglectedText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21, color: color.warning },
+    sectionLabel: { marginTop: 24, marginBottom: 8 },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 14,
+    },
+    neglectedText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21, color: color.warning },
 
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 28,
-  },
-  grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 10 },
-  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
-  sheetTitle: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  sheetValue: { fontFamily: font.monoSemi, fontSize: 28, color: color.text1, marginTop: 6 },
-  sheetNote: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text3, marginTop: 8 },
-});
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingHorizontal: 16,
+      paddingBottom: 28,
+    },
+    grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 10 },
+    grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    sheetTitle: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    sheetValue: { fontFamily: font.monoSemi, fontSize: 28, color: color.text1, marginTop: 6 },
+    sheetNote: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text3, marginTop: 8 },
+  }),
+);

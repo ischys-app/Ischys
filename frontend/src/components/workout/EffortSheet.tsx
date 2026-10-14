@@ -12,9 +12,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { effortSentence, type EffortScaleKind } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import { DraggableSheet } from '../DraggableSheet';
 import { EffortScale } from './EffortScale';
+import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
   visible: boolean;
@@ -59,6 +60,7 @@ export function EffortSheet({
   onRate,
   onClose,
 }: Props) {
+  useThemed();
   const insets = useSafeAreaInsets();
   const [preview, setPreview] = useState<number | null>(null);
   useEffect(() => {
@@ -115,64 +117,66 @@ export function EffortSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingTop: 10,
-    paddingHorizontal: 18,
-  },
-  grabber: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: color.surface3,
-    alignSelf: 'center',
-    marginBottom: 18,
-  },
-  title: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  value: {
-    fontFamily: font.monoMedium,
-    fontSize: 28,
-    color: color.text1,
-    marginTop: 6,
-    fontVariant: ['tabular-nums'],
-  },
-  valueJoin: { fontSize: 15, color: color.text3 },
-  scale: { marginTop: 18 },
-  ends: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  end: {
-    fontFamily: font.monoRegular,
-    fontSize: 10.5,
-    letterSpacing: 0.84,
-    color: color.text3,
-  },
-  meaning: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 19.5,
-    color: color.text2,
-    marginTop: 14,
-  },
-  clear: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  clearPressed: { borderColor: color.text3 },
-  clearText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text2 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingTop: 10,
+      paddingHorizontal: 18,
+    },
+    grabber: {
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: color.surface3,
+      alignSelf: 'center',
+      marginBottom: 18,
+    },
+    title: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    value: {
+      fontFamily: font.monoMedium,
+      fontSize: 28,
+      color: color.text1,
+      marginTop: 6,
+      fontVariant: ['tabular-nums'],
+    },
+    valueJoin: { fontSize: 15, color: color.text3 },
+    scale: { marginTop: 18 },
+    ends: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+    end: {
+      fontFamily: font.monoRegular,
+      fontSize: 10.5,
+      letterSpacing: 0.84,
+      color: color.text3,
+    },
+    meaning: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 19.5,
+      color: color.text2,
+      marginTop: 14,
+    },
+    clear: {
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+    },
+    clearPressed: { borderColor: color.text3 },
+    clearText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text2 },
+  }),
+);

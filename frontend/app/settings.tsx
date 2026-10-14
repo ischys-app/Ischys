@@ -12,7 +12,7 @@ import Constants from 'expo-constants';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { EffortMode, SettingsOut, SettingsUpdate, Unit } from '../src/api/types';
+import type { Appearance, EffortMode, SettingsOut, SettingsUpdate, Unit } from '../src/api/types';
 import {
   countDuplicateGroups,
   exportData,
@@ -56,11 +56,11 @@ import {
   UploadIcon,
 } from '../src/components/icons';
 import { getDeloadState, setDeloadState } from '../src/lib/deloadState';
-import { PALETTES, type ThemeId } from '../src/theme/palettes';
-import { getThemeId, setThemeId } from '../src/lib/themePref';
+import { accentFor, PALETTES } from '../src/theme/palettes';
 import { setEffortMode } from '../src/lib/effortMode';
 import { setWeightUnit } from '../src/lib/weightUnit';
-import { accentA, color, font } from '../src/theme/tokens';
+import { accentA, color, font, themed } from '../src/theme/tokens';
+import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvider';
 
 /**
  * The shipped version, read from the build rather than retyped — these strings
@@ -75,10 +75,17 @@ const APP_VERSION = Constants.nativeAppVersion ?? Constants.expoConfig?.version 
 const DEFAULT_SETTINGS: SettingsOut = {
   unit: 'kg',
   effort_mode: 'off',
+  appearance: 'system',
   auto_start_rest_timer: true,
   rest_timer_alerts: true,
   haptic_feedback: true,
 };
+
+const APPEARANCE_OPTIONS: SegmentOption<Appearance>[] = [
+  { label: 'Dark', value: 'dark' },
+  { label: 'Light', value: 'light' },
+  { label: 'System', value: 'system' },
+];
 
 const UNIT_OPTIONS: SegmentOption<Unit>[] = [
   { label: 'KG', value: 'kg' },
@@ -101,6 +108,7 @@ const EFFORT_HELP: Record<EffortMode, string> = {
 
 /** Merge glyph: two overlapping circles (icons.tsx is owned by another stream). */
 function MergeIcon({ size = 19, color: strokeColor, strokeWidth = 2 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Circle cx={8} cy={8} r={5} stroke={strokeColor} strokeWidth={strokeWidth} fill="none" />
@@ -109,8 +117,35 @@ function MergeIcon({ size = 19, color: strokeColor, strokeWidth = 2 }: { size?: 
   );
 }
 
+/** A circle with its left half filled (7b). */
+function AppearanceIcon({ color: c }: { color: string }) {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9} stroke={c} strokeWidth={2} fill="none" />
+      <Path d="M12 3a9 9 0 000 18z" fill={c} />
+    </Svg>
+  );
+}
+
+/** Painter's palette (7b). */
+function PaletteIcon({ color: c }: { color: string }) {
+  const stroke = { stroke: c, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' } as const;
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Path
+        d="M12 3a9 9 0 100 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H17a4 4 0 004-4c0-4.4-4-8.1-9-8.1z"
+        {...stroke}
+      />
+      <Circle cx={7.5} cy={11} r={1} {...stroke} />
+      <Circle cx={10.5} cy={7.5} r={1} {...stroke} />
+      <Circle cx={15} cy={8} r={1} {...stroke} />
+    </Svg>
+  );
+}
+
 /** Slim chevron-left glyph matching the design (viewBox 0 0 9 15). */
 function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
+  useThemed();
   return (
     <Svg width={9} height={15} viewBox="0 0 9 15">
       <Path
@@ -126,6 +161,7 @@ function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
 }
 
 export default function Settings() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -158,7 +194,8 @@ export default function Settings() {
   // once on mount. When on, warmup sets contribute to volume and the best_volume PR.
   const [countWarmups, setCountWarmupsState] = useState(false);
   const [deloadOn, setDeloadOn] = useState(true);
-  const [theme, setThemeState] = useState<ThemeId>('ember');
+  const theme = useTheme();
+  const [themeOpen, setThemeOpen] = useState(false);
   useEffect(() => {
     void getCountWarmups().then(setCountWarmupsState);
   }, []);
@@ -166,7 +203,6 @@ export default function Settings() {
   useEffect(() => {
     let cancelled = false;
     void getDeloadState().then((d) => setDeloadOn(d.enabled));
-    void getThemeId().then(setThemeState);
     getSettings()
       .then((s) => {
         if (!cancelled) setSettings(s);
@@ -295,37 +331,6 @@ export default function Settings() {
           { paddingTop: 116 + insets.top },
         ]}
       >
-        {/* APPEARANCE — accent only. Surfaces, text and the status colours
-            never move with a theme: the app's rule is that accent marks one
-            action per screen, and a theme that restyled the greys would be
-            recolouring the app rather than that mark. */}
-        <Section title="APPEARANCE">
-          <View style={styles.themeRow}>
-            {PALETTES.map((p) => {
-              const on = p.id === theme;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    setThemeState(p.id);
-                    void setThemeId(p.id);
-                  }}
-                  style={[styles.themeSwatchWrap, on && styles.themeSwatchOn]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={p.name}
-                >
-                  <View style={[styles.themeSwatch, { backgroundColor: p.accent }]} />
-                  <Text style={[styles.themeName, on && styles.themeNameOn]}>{p.name}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={styles.themeNote}>
-            Applies when you next open Ischys.
-          </Text>
-        </Section>
-
         {/* TRAINING */}
         <Section
           title="TRAINING"
@@ -407,6 +412,58 @@ export default function Settings() {
             onPress={openBw}
             isLast
           />
+        </Section>
+
+        {/* APPEARANCE (7b). Two independent settings: the appearance swaps
+            surfaces, text and status colours; the theme swaps only the accent,
+            which marks one action per screen. Both apply at once. */}
+        <Section title="APPEARANCE">
+          {LIGHT_MODE_ENABLED && (
+            <SegmentRow
+              icon={<AppearanceIcon color={color.text2} />}
+              label="Appearance"
+              sub={
+                theme.appearance === 'system'
+                  ? `Following iPhone · ${theme.systemScheme === 'dark' ? 'Dark' : 'Light'}`
+                  : undefined
+              }
+              options={APPEARANCE_OPTIONS}
+              value={theme.appearance}
+              onChange={theme.setAppearance}
+              padX={9}
+              isLast={false}
+            />
+          )}
+          <LinkRow
+            icon={<PaletteIcon color={color.text2} />}
+            label="Theme"
+            value={theme.palette.name}
+            onPress={() => setThemeOpen((o) => !o)}
+            isLast={!themeOpen}
+          />
+          {themeOpen && (
+            <View style={styles.themeRow}>
+              {PALETTES.map((p) => {
+                const on = p.id === theme.palette.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => theme.setTheme(p.id)}
+                    style={[styles.themeSwatchWrap, on && styles.themeSwatchOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={p.name}
+                  >
+                    {/* The swatch for the appearance showing now. */}
+                    <View
+                      style={[styles.themeSwatch, { backgroundColor: accentFor(p, theme.scheme).accent }]}
+                    />
+                    <Text style={[styles.themeName, on && styles.themeNameOn]}>{p.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </Section>
 
         {/* Health is the only thing in this section: Apple Health on iOS, and
@@ -574,6 +631,7 @@ export default function Settings() {
 
 /** Flame glyph for the Count-warmups-in-volume row. */
 function WarmupIcon({ size = 20, color: c }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
@@ -599,6 +657,7 @@ function TargetRow({
   onChange: (n: number) => void;
   isLast: boolean;
 }) {
+  useThemed();
   const step = (delta: number) => {
     const next = Math.min(MAX_WEEKLY_TARGET, Math.max(MIN_WEEKLY_TARGET, value + delta));
     if (next !== value) onChange(next);
@@ -642,6 +701,7 @@ function TargetRow({
 
 /** Concentric-rings target glyph for the Weekly goal row. */
 function TargetIcon({ size = 20, color: c }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={9} stroke={c} strokeWidth={1.8} />
@@ -653,6 +713,7 @@ function TargetIcon({ size = 20, color: c }: { size?: number; color: string }) {
 
 /** Bathroom-scale glyph for the Bodyweight row. */
 function BodyweightIcon({ size = 20, color: c }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
@@ -678,6 +739,7 @@ function Section({
   footer?: string;
   children: React.ReactNode;
 }) {
+  useThemed();
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -700,6 +762,7 @@ function EffortRow({
   value: EffortMode;
   onChange: (next: EffortMode) => void;
 }) {
+  useThemed();
   return (
     <View style={[styles.effortRow, styles.rowDivider]}>
       <View style={styles.effortTop}>
@@ -753,6 +816,7 @@ function RowShell({
   right?: React.ReactNode;
   onPress?: () => void;
 }) {
+  useThemed();
   const content = (
     <View style={[styles.row, !isLast && styles.rowDivider]}>
       <View style={styles.rowIcon}>{icon}</View>
@@ -799,6 +863,7 @@ function ToggleRow({
   onChange: (next: boolean) => void;
   isLast: boolean;
 }) {
+  useThemed();
   return (
     <RowShell
       icon={icon}
@@ -827,24 +892,30 @@ function ToggleRow({
 function SegmentRow<T extends string>({
   icon,
   label,
+  sub,
   options,
   value,
   onChange,
+  padX,
   isLast,
 }: {
   icon: React.ReactNode;
   label: string;
+  sub?: string;
   options: SegmentOption<T>[];
   value: T;
   onChange: (next: T) => void;
+  padX?: number;
   isLast: boolean;
 }) {
+  useThemed();
   return (
     <RowShell
       icon={icon}
       label={label}
+      sub={sub}
       isLast={isLast}
-      right={<Segment options={options} value={value} onChange={onChange} />}
+      right={<Segment options={options} value={value} onChange={onChange} padX={padX} />}
     />
   );
 }
@@ -867,6 +938,7 @@ function LinkRow({
   isLast: boolean;
   danger?: boolean;
 }) {
+  useThemed();
   return (
     <RowShell
       icon={icon}
@@ -890,6 +962,7 @@ function LinkRow({
  * appears only when duplicates were detected, plus a chevron. Last in DATA.
  */
 function MergeRow({ count, onPress }: { count: number; onPress: () => void }) {
+  useThemed();
   return (
     <RowShell
       icon={<MergeIcon size={19} color={color.text2} />}
@@ -913,331 +986,326 @@ function MergeRow({ count, onPress }: { count: number; onPress: () => void }) {
 
 // --- Styles ---------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
 
-  // Header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backBtnPressed: { opacity: 0.7 },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
+    // Header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    backBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backBtnPressed: { opacity: 0.7 },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
 
-  // Scroll
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
+    // Scroll
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
 
-  // Section
-  section: { marginBottom: 24 },
-  sectionTitle: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    textTransform: 'uppercase',
-    paddingLeft: 2,
-    paddingRight: 2,
-    paddingBottom: 10,
-  },
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  sectionFooter: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12.5,
-    lineHeight: 18.75,
-    color: color.text3,
-    marginTop: 12,
-    paddingHorizontal: 4,
-  },
+    // Section
+    section: { marginBottom: 24 },
+    sectionTitle: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      textTransform: 'uppercase',
+      paddingLeft: 2,
+      paddingRight: 2,
+      paddingBottom: 10,
+    },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    sectionFooter: {
+      fontFamily: font.bodyRegular,
+      fontSize: 12.5,
+      lineHeight: 18.75,
+      color: color.text3,
+      marginTop: 12,
+      paddingHorizontal: 4,
+    },
 
-  // Effort per set (board 14a, F1)
-  effortRow: { paddingTop: 14, paddingRight: 14, paddingBottom: 14, paddingLeft: 16 },
-  // 13 is `row`'s gap, so this label starts where every other one does.
-  effortTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  effortLabel: { flex: 1, minWidth: 0 },
-  effortSegment: {
-    flexDirection: 'row',
-    padding: 3,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    flexShrink: 0,
-  },
-  effortOption: {
-    height: 30,
-    paddingHorizontal: 12,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  effortOptionOn: { backgroundColor: color.surface3 },
-  effortOptionText: {
-    fontFamily: font.monoMedium,
-    fontSize: 12.5,
-    color: color.text3,
-  },
-  effortOptionTextOn: { fontFamily: font.monoSemi, color: color.text1 },
-  effortHelp: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12.5,
-    lineHeight: 18.75,
-    color: color.text2,
-    marginTop: 10,
-  },
+    // Effort per set (board 14a, F1)
+    effortRow: { paddingTop: 14, paddingRight: 14, paddingBottom: 14, paddingLeft: 16 },
+    // 13 is `row`'s gap, so this label starts where every other one does.
+    effortTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+    effortLabel: { flex: 1, minWidth: 0 },
+    effortSegment: {
+      flexDirection: 'row',
+      padding: 3,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      flexShrink: 0,
+    },
+    effortOption: {
+      height: 30,
+      paddingHorizontal: 12,
+      borderRadius: 7,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    effortOptionOn: { backgroundColor: color.surface3 },
+    effortOptionText: {
+      fontFamily: font.monoMedium,
+      fontSize: 12.5,
+      color: color.text3,
+    },
+    effortOptionTextOn: { fontFamily: font.monoSemi, color: color.text1 },
+    effortHelp: {
+      fontFamily: font.bodyRegular,
+      fontSize: 12.5,
+      lineHeight: 18.75,
+      color: color.text2,
+      marginTop: 10,
+    },
 
-  // Row
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  rowPressed: { opacity: 0.85 },
-  rowIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  rowLabelCol: { flex: 1, minWidth: 0 },
-  rowLabel: {
-    fontFamily: font.bodyMedium,
-    fontSize: 14.5,
-    fontWeight: '500',
-    color: color.text1,
-  },
-  rowSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 2,
-  },
+    // Row
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 13,
+      paddingVertical: 15,
+      paddingHorizontal: 16,
+    },
+    rowDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    rowPressed: { opacity: 0.85 },
+    rowIcon: {
+      width: 20,
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    rowLabelCol: { flex: 1, minWidth: 0 },
+    rowLabel: {
+      fontFamily: font.bodyMedium,
+      fontSize: 14.5,
+      fontWeight: '500',
+      color: color.text1,
+    },
+    rowSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 2,
+    },
 
-  // Toggle
-  toggleTrack: {
-    width: 44,
-    height: 26,
-    borderRadius: 999,
-    position: 'relative',
-    flexShrink: 0,
-  },
-  toggleKnob: {
-    position: 'absolute',
-    top: 3,
-    width: 20,
-    height: 20,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-  },
+    // Toggle
+    toggleTrack: {
+      width: 44,
+      height: 26,
+      borderRadius: 999,
+      position: 'relative',
+      flexShrink: 0,
+    },
+    toggleKnob: {
+      position: 'absolute',
+      top: 3,
+      width: 20,
+      height: 20,
+      borderRadius: 999,
+      backgroundColor: '#FFFFFF',
+    },
 
-  // Segment
-  // Link right
-  themeRow: { flexDirection: 'row', gap: 8, padding: 12 },
-  themeSwatchWrap: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  // Selection is a surface and an edge, not the accent — the swatch already
-  // carries the colour, and outlining it in itself would say nothing.
-  themeSwatchOn: { backgroundColor: color.surface2, borderColor: color.border },
-  themeSwatch: { width: 26, height: 26, borderRadius: 13 },
-  themeName: { fontFamily: font.monoMedium, fontSize: 11, color: color.text3 },
-  themeNameOn: { color: color.text1 },
-  themeNote: {
-    fontFamily: font.bodyRegular,
-    fontSize: 12,
-    color: color.text3,
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-  },
-  linkRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
-  },
-  linkValue: {
-    fontFamily: font.monoRegular,
-    fontSize: 12.5,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
+    // Segment
+    // Link right
+    themeRow: { flexDirection: 'row', gap: 8, padding: 12 },
+    themeSwatchWrap: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    // Selection is a surface and an edge, not the accent — the swatch already
+    // carries the colour, and outlining it in itself would say nothing.
+    themeSwatchOn: { backgroundColor: color.surface2, borderColor: color.border },
+    themeSwatch: { width: 26, height: 26, borderRadius: 13 },
+    themeName: { fontFamily: font.monoMedium, fontSize: 11, color: color.text3 },
+    themeNameOn: { color: color.text1 },
+    linkRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
+    },
+    linkValue: {
+      fontFamily: font.monoRegular,
+      fontSize: 12.5,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Weekly-goal stepper
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
-  stepBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepBtnPressed: { borderColor: color.text3 },
-  stepGlyph: { fontFamily: font.titleSemi, fontSize: 16, lineHeight: 19, color: color.text1 },
-  stepGlyphOff: { color: color.text3 },
-  stepValue: {
-    minWidth: 26,
-    textAlign: 'center',
-    fontFamily: font.monoSemi,
-    fontSize: 15,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
+    // Weekly-goal stepper
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
+    stepBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepBtnPressed: { borderColor: color.text3 },
+    stepGlyph: { fontFamily: font.titleSemi, fontSize: 16, lineHeight: 19, color: color.text1 },
+    stepGlyphOff: { color: color.text3 },
+    stepValue: {
+      minWidth: 26,
+      textAlign: 'center',
+      fontFamily: font.monoSemi,
+      fontSize: 15,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Bodyweight entry sheet
-  bwSheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-  },
-  bwGrabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
-  bwGrabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  bwBody: { paddingHorizontal: 20, paddingTop: 10 },
-  bwTitle: { fontFamily: font.titleSemi, fontSize: 19, letterSpacing: -0.19, color: color.text1 },
-  bwText: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: color.text2,
-    marginTop: 8,
-    marginBottom: 18,
-  },
-  bwInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  bwInput: {
-    flex: 1,
-    fontFamily: font.monoSemi,
-    fontSize: 26,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-    padding: 0,
-  },
-  bwUnit: { fontFamily: font.monoMedium, fontSize: 14, color: color.text3 },
-  bwHealth: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    height: 44,
-    borderRadius: 12,
-    marginTop: 10,
-  },
-  bwHealthPressed: { opacity: 0.6 },
-  bwHealthText: { fontFamily: font.titleSemi, fontSize: 14, color: color.drop },
-  bwSave: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  bwSavePressed: { opacity: 0.9 },
-  bwSaveText: { fontFamily: font.displayBold, fontSize: 15, letterSpacing: -0.15, color: color.accentFg },
+    // Bodyweight entry sheet
+    bwSheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+    },
+    bwGrabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+    bwGrabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    bwBody: { paddingHorizontal: 20, paddingTop: 10 },
+    bwTitle: { fontFamily: font.titleSemi, fontSize: 19, letterSpacing: -0.19, color: color.text1 },
+    bwText: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      lineHeight: 20,
+      color: color.text2,
+      marginTop: 8,
+      marginBottom: 18,
+    },
+    bwInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      height: 56,
+    },
+    bwInput: {
+      flex: 1,
+      fontFamily: font.monoSemi,
+      fontSize: 26,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+      padding: 0,
+    },
+    bwUnit: { fontFamily: font.monoMedium, fontSize: 14, color: color.text3 },
+    bwHealth: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      height: 44,
+      borderRadius: 12,
+      marginTop: 10,
+    },
+    bwHealthPressed: { opacity: 0.6 },
+    bwHealthText: { fontFamily: font.titleSemi, fontSize: 14, color: color.drop },
+    bwSave: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    bwSavePressed: { opacity: 0.9 },
+    bwSaveText: { fontFamily: font.displayBold, fontSize: 15, letterSpacing: -0.15, color: color.accentFg },
 
-  // Accent count pill (Merge duplicates row)
-  countPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: accentA(0.12),
-    borderWidth: 1,
-    borderColor: accentA(0.3),
-  },
-  countPillText: {
-    fontFamily: font.monoSemi,
-    fontSize: 11.5,
-    color: color.accent,
-    fontVariant: ['tabular-nums'],
-  },
+    // Accent count pill (Merge duplicates row)
+    countPill: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: accentA(0.12),
+      borderWidth: 1,
+      borderColor: accentA(0.3),
+    },
+    countPillText: {
+      fontFamily: font.monoSemi,
+      fontSize: 11.5,
+      color: color.accent,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Footer
-  footer: {
-    textAlign: 'center',
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 8,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
+    // Footer
+    footer: {
+      textAlign: 'center',
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 8,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
 
-  // Toast
-  toast: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-  },
-  toastText: {
-    fontFamily: font.monoMedium,
-    fontSize: 12,
-    color: color.text1,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    overflow: 'hidden',
-  },
-});
+    // Toast
+    toast: {
+      position: 'absolute',
+      left: 24,
+      right: 24,
+      alignItems: 'center',
+    },
+    toastText: {
+      fontFamily: font.monoMedium,
+      fontSize: 12,
+      color: color.text1,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      overflow: 'hidden',
+    },
+  }),
+);

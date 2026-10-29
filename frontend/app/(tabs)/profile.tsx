@@ -159,11 +159,15 @@ export default function Profile() {
           <View>
             {/* Identity row */}
             <View style={styles.identity}>
-              <ProfileAvatar
-                profile={{ initials: multi ? active.initials : initial }}
-                size={62}
-                tint={color.accent}
-              />
+              {multi ? (
+                <ProfileAvatar profile={active} size={62} tint={color.accent} />
+              ) : (
+                // One profile: today's avatar, exactly (Dynamic Type and
+                // VoiceOver included). The one-profile screen doesn't change.
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </View>
+              )}
               <View style={styles.identityText}>
                 {draft !== null ? (
                   <TextInput
@@ -532,6 +536,22 @@ const styles = themed(() =>
       gap: 15,
       marginBottom: 22,
       paddingHorizontal: 2,
+    },
+    avatar: {
+      width: 62,
+      height: 62,
+      borderRadius: 18,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    avatarText: {
+      fontFamily: font.monoBold,
+      fontSize: 22,
+      color: color.accent,
     },
     identityText: { flex: 1, minWidth: 0 },
     name: {

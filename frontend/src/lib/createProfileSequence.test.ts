@@ -125,7 +125,8 @@ test('a cleanup step that fails does not skip the others, and the first error is
 test('afterCreate: what the screen does after each outcome', () => {
   assert.equal(afterCreate({ created: true, switched: 'ok' }), 'none');
   assert.equal(afterCreate({ created: true, switched: 'threw' }), 'back');
-  assert.equal(afterCreate({ created: true, switched: 'workout' }), 'back');
+  assert.equal(afterCreate({ created: true, switched: 'workout' }), 'finishFirst');
+  assert.equal(afterCreate({ created: true, switched: 'same' }), 'back');
   assert.equal(afterCreate({ created: true, switched: 'busy' }), 'back');
   assert.equal(afterCreate({ created: false }), 'retry');
 });

@@ -168,3 +168,9 @@ export function fmtHistoryGroupTitle(workoutIso: string, now: Date = new Date())
   if (w.getTime() >= lastMon.getTime()) return 'LAST WEEK';
   return `${MONTH_UPPER[w.getMonth()]} ${w.getFullYear()}`;
 }
+
+/** epoch ms → local "HH:MM", e.g. the workout header's `STARTED 18:02`. */
+export function fmtTimeOfDay(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}

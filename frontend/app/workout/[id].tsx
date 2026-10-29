@@ -87,7 +87,9 @@ import {
   syncBodyweightFromHealth,
   syncFinishedWorkout,
 } from '../../src/lib/healthSync';
-import { isOwnerActive } from '../../src/lib/activeProfile';
+import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { firstName } from '../../src/domain/profiles';
+import { fmtTimeOfDay } from '../../src/lib/format';
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
 import {
   claimWatchFinish,
@@ -206,6 +208,7 @@ function mapExercise(
 
 export default function ActiveWorkout() {
   useThemed();
+  const { profile: activeProfileRow, count: profileCount } = useActiveProfile();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -1878,6 +1881,17 @@ export default function ActiveWorkout() {
         // so this can't change under the screen.
         heartRate={isOwnerActive() ? heartRate : null}
         activeCal={isOwnerActive() ? activeCal : null}
+        // With 2+ profiles, whose workout this is (P5). The tab bar that
+        // names them elsewhere is hidden here.
+        who={
+          PROFILES_ENABLED && profileCount > 1 && startedAt != null
+            ? {
+                initials: activeProfileRow.initials,
+                firstName: firstName(activeProfileRow.name) || activeProfileRow.name,
+                started: fmtTimeOfDay(startedAt),
+              }
+            : null
+        }
       />
 
       <KeyboardAvoidingView

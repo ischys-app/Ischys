@@ -334,3 +334,38 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
   next.splice(to, 0, moved);
   return next;
 }
+
+// --- Switching during a workout (P6) ---
+
+/**
+ * How copy names a profile: its first name, or "the phone's owner" for an
+ * owner still called `defaultName` (no pronouns, spec correction 4).
+ */
+export function profileCallName(p: { name: string; isOwner: boolean }, defaultName: string): string {
+  if (p.isOwner && p.name.trim() === defaultName) return "the phone's owner";
+  return firstName(p.name) || p.name.trim() || 'this profile';
+}
+
+/** The P6 sheet's words. `elapsed` is drawn in mono, tabular, between `lead` and `tail`. */
+export type FinishFirstCopy = { title: string; lead: string; elapsed: string; tail: string };
+
+/**
+ * "Finish ‹First›'s workout first" and its body, for a switch to `target`
+ * refused because `running`'s workout is under way. The routine is the
+ * workout's name, or "Your workout" when it has none.
+ */
+export function finishFirstCopy(a: {
+  running: { name: string; isOwner: boolean };
+  target: { name: string; isOwner: boolean };
+  workoutName: string | null;
+  elapsedMs: number;
+  defaultName: string;
+}): FinishFirstCopy {
+  const routine = a.workoutName?.trim() || 'Your workout';
+  return {
+    title: `Finish ${profileCallName(a.running, a.defaultName)}'s workout first`,
+    lead: `${routine} has been running for `,
+    elapsed: clock(a.elapsedMs),
+    tail: `. Only one workout can run at a time. Finish or discard it, then switch to ${profileCallName(a.target, a.defaultName)}.`,
+  };
+}

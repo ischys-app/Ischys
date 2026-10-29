@@ -71,13 +71,17 @@ export type AddOutcome =
 /**
  * What the Add profile screen does next.
  * - `'none'`: the switch went through and dismisses the screen itself.
- * - `'back'`: the profile exists and is whole, but the switch was refused or
- *   failed. Go back (warning haptic); it is in the switcher. Never offer a
- *   retry here: that would create a second profile.
+ * - `'finishFirst'`: the profile exists and is whole, but a workout is
+ *   running, so the switch was refused. Show the P6 "Finish ‹First›'s workout
+ *   first" sheet, then go back once it is dismissed.
+ * - `'back'`: the profile exists and is whole, but the switch was refused
+ *   (busy) or failed. Go back (warning haptic); it is in the switcher. Never
+ *   offer a retry here: that would create a second profile.
  * - `'retry'`: nothing was created (the create cleaned up after itself), so
  *   say so and let Add be pressed again.
  */
-export function afterCreate(o: AddOutcome): 'none' | 'back' | 'retry' {
+export function afterCreate(o: AddOutcome): 'none' | 'finishFirst' | 'back' | 'retry' {
   if (!o.created) return 'retry';
-  return o.switched === 'ok' ? 'none' : 'back';
+  if (o.switched === 'ok') return 'none';
+  return o.switched === 'workout' ? 'finishFirst' : 'back';
 }

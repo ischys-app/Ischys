@@ -20,6 +20,7 @@ import { useEffect, useRef } from 'react';
 import { Alert, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
+import { FinishWorkoutFirstSheet } from '../src/components/FinishWorkoutFirstSheet';
 import { ProfileSwitcher } from '../src/components/ProfileSwitcher';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -41,6 +42,7 @@ import {
   syncFinishedWorkout,
 } from '../src/lib/healthSync';
 import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
+import { takeRouteAfterSwitch } from '../src/lib/finishWorkoutFirst';
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
@@ -323,6 +325,8 @@ export default function RootLayout() {
           <AppStack />
           {/* One switcher sheet for every way in (#117, P2). */}
           {PROFILES_ENABLED && <ProfileSwitcher />}
+          {/* "Finish ‹First›'s workout first" (P6), for a switch refused mid-workout. */}
+          {PROFILES_ENABLED && <FinishWorkoutFirstSheet />}
         </AboveNavigationBar>
       </ThemeProvider>
     </SafeAreaProvider>
@@ -342,6 +346,9 @@ function useDismissOnProfileSwitch() {
     if (seen.current === epoch) return;
     seen.current = epoch;
     if (router.canDismiss()) router.dismissAll();
+    // "Go to workout" (P6) switched into the workout's profile to reach it.
+    const next = takeRouteAfterSwitch();
+    if (next) router.push(next);
   }, [epoch]);
 }
 

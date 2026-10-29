@@ -40,6 +40,7 @@ import {
 import { DEFAULT_NAME, useActiveProfile } from '../../src/lib/activeProfile';
 import { createProfile } from '../../src/lib/createProfile';
 import { afterCreate, type AddOutcome } from '../../src/lib/createProfileSequence';
+import { presentFinishWorkoutFirst } from '../../src/lib/finishWorkoutFirst';
 import { haptics } from '../../src/lib/haptics';
 import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { switchProfile } from '../../src/lib/switchProfile';
@@ -135,6 +136,11 @@ export default function NewProfileScreen() {
     switch (afterCreate(outcome)) {
       case 'none':
         // The switch dismisses this screen itself (app/_layout.tsx).
+        return;
+      case 'finishFirst':
+        // The profile is whole, but a workout is running: say so (P6), then
+        // go back once the sheet is dismissed.
+        await presentFinishWorkoutFirst(createdId.current!, { onDismissed: () => router.back() });
         return;
       case 'back':
         // The profile is whole and in the switcher; only the switch didn't happen.

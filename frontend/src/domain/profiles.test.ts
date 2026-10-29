@@ -16,6 +16,8 @@ import {
   graphemesWith,
   exportFileStem,
   firstName,
+  finishFirstCopy,
+  profileCallName,
   manageSubline,
   ownerLabel,
   parseActiveWorkout,
@@ -273,4 +275,44 @@ test('moveItem: moves one item, leaves the input alone', () => {
   assert.deepEqual(moveItem(a, 0, 2), ['m', 'n', 'owner', 'e']);
   assert.deepEqual(moveItem(a, 2, 2), a);
   assert.deepEqual(a, ['owner', 'm', 'n', 'e']);
+});
+
+test('profileCallName: first name, "the phone\'s owner" for a default-named owner', () => {
+  assert.equal(profileCallName({ name: 'Maria Papadaki', isOwner: false }, 'Athlete'), 'Maria');
+  assert.equal(profileCallName({ name: 'Athlete', isOwner: true }, 'Athlete'), "the phone's owner");
+  // Only the owner falls back: a client really called Athlete keeps the name.
+  assert.equal(profileCallName({ name: 'Athlete', isOwner: false }, 'Athlete'), 'Athlete');
+  assert.equal(profileCallName({ name: 'Μαρία Παπαδάκη', isOwner: false }, 'Athlete'), 'Μαρία');
+  assert.equal(profileCallName({ name: '  ', isOwner: false }, 'Athlete'), 'this profile');
+});
+
+test('finishFirstCopy: the P6 title and body', () => {
+  const c = finishFirstCopy({
+    running: { name: 'Maria Papadaki', isOwner: false },
+    target: { name: 'Kostas', isOwner: true },
+    workoutName: 'Upper',
+    elapsedMs: (12 * 60 + 47) * 1000,
+    defaultName: 'Athlete',
+  });
+  assert.equal(c.title, "Finish Maria's workout first");
+  assert.equal(
+    `${c.lead}${c.elapsed}${c.tail}`,
+    'Upper has been running for 12:47. Only one workout can run at a time. Finish or discard it, then switch to Kostas.',
+  );
+  assert.equal(c.elapsed, '12:47');
+});
+
+test('finishFirstCopy: no workout name, a default-named owner, past an hour', () => {
+  const c = finishFirstCopy({
+    running: { name: 'Athlete', isOwner: true },
+    target: { name: 'Maria Papadaki', isOwner: false },
+    workoutName: '  ',
+    elapsedMs: (3600 + 5 * 60 + 9) * 1000 + 999,
+    defaultName: 'Athlete',
+  });
+  assert.equal(c.title, "Finish the phone's owner's workout first");
+  assert.equal(c.lead, 'Your workout has been running for ');
+  assert.equal(c.elapsed, '1:05:09');
+  assert.match(c.tail, /then switch to Maria\.$/);
+  assert.equal(finishFirstCopy({ ...{ running: { name: 'A', isOwner: false }, target: { name: 'B', isOwner: false } }, workoutName: null, elapsedMs: -5, defaultName: 'X' }).elapsed, '00:00');
 });

@@ -6,6 +6,7 @@ import {
   addDays,
   daysBetween,
   fmtHeaderDate,
+  fmtTimeOfDay,
   fmtHistoryGroupTitle,
   fmtShortDayUpper,
   fmtVolumeLarge,
@@ -102,4 +103,9 @@ test('days between local midnights count calendar days, across a clock change to
     assert.equal(daysBetween(first, addDays(first, n)), n, `day ${n}`);
   }
   assert.equal(daysBetween(addDays(first, 3), first), -3);
+});
+
+test('fmtTimeOfDay: local 24-hour HH:MM', () => {
+  assert.equal(fmtTimeOfDay(new Date(2026, 9, 29, 18, 2, 59).getTime()), '18:02');
+  assert.equal(fmtTimeOfDay(new Date(2026, 9, 29, 7, 5).getTime()), '07:05');
 });

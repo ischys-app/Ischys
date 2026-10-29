@@ -25,6 +25,7 @@ import {
 } from '../domain/profiles';
 import { useActiveProfile } from '../lib/activeProfile';
 import { haptics } from '../lib/haptics';
+import { presentFinishWorkoutFirst } from '../lib/finishWorkoutFirst';
 import { closeProfileSwitcher, useProfileSwitcherOpen } from '../lib/profileSwitcherStore';
 import { parseServerDate } from '../lib/serverTime';
 import { refreshCurrentProfileStats, switchProfile } from '../lib/switchProfile';
@@ -34,6 +35,9 @@ import { useThemed } from '../theme/ThemeProvider';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, HeartFilledIcon, SearchIcon } from './icons';
 import { ProfileAvatar } from './ProfileAvatar';
+
+/** DraggableSheet's 220ms exit, and a beat for the modal to go. */
+const SHEET_EXIT_MS = 300;
 
 /** When the current profile's running workout began, or null. Read from the current file. */
 async function runningSince(): Promise<number | null> {
@@ -54,6 +58,10 @@ export function ProfileSwitcher() {
   const [now, setNow] = useState(() => new Date());
   const [query, setQuery] = useState('');
   const [pressedId, setPressedId] = useState<string | null>(null);
+  // Whether the rows on screen (after a search) overflow the list: measured,
+  // so it holds at any Dynamic Type size. Drives the fade and its rule only.
+  const [listH, setListH] = useState(0);
+  const [contentH, setContentH] = useState(0);
   const switching = useRef(false);
 
   // Fresh each time it opens: the current profile's last workout may have
@@ -89,8 +97,11 @@ export function ProfileSwitcher() {
 
   const all = rows ?? [];
   const hasSearch = all.length >= SWITCHER_SEARCH_FROM;
+  // Decided from the whole list, not the search: flipping handleOnly while
+  // typing would remount the search field and drop the keyboard.
   const scrolls = switcherListScrolls(all.length, windowHeight);
   const shown = useMemo(() => (hasSearch ? filterProfiles(all, query) : all), [all, hasSearch, query]);
+  const overflows = listH > 0 && contentH > listH + 1;
 
   const onPick = useCallback(
     async (p: ProfileRow) => {
@@ -106,9 +117,9 @@ export function ProfileSwitcher() {
         if (result === 'ok' || result === 'same') {
           closeProfileSwitcher();
         } else if (result === 'workout') {
-          // A workout is running in this profile. Task 14 replaces this with
-          // the P6 "Finish ‹Name›'s workout first" sheet.
-          haptics.warning();
+          // A workout is running: the P6 sheet replaces this one, once this
+          // one has left (two sheets are two modals).
+          if (await presentFinishWorkoutFirst(p.id, { delayMs: SHEET_EXIT_MS })) closeProfileSwitcher();
         } else {
           haptics.light();
         }
@@ -176,7 +187,11 @@ export function ProfileSwitcher() {
       <View style={styles.listWrap}>
         <ScrollView
           style={styles.list}
-          scrollEnabled={scrolls}
+          // Always scrollable: Dynamic Type can make rows taller than the 60pt
+          // the estimate assumes, and the bottom rows must stay reachable.
+          bounces={false}
+          onLayout={(e) => setListH(e.nativeEvent.layout.height)}
+          onContentSizeChange={(_, h) => setContentH(h)}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -211,12 +226,12 @@ export function ProfileSwitcher() {
             );
           })}
         </ScrollView>
-        {scrolls && <ListFade />}
+        {overflows && <ListFade />}
       </View>
 
       <Pressable
         onPress={() => go('/profiles/new')}
-        style={({ pressed }) => [styles.addRow, scrolls && styles.addRowRule, pressed && styles.rowPressed]}
+        style={({ pressed }) => [styles.addRow, overflows && styles.addRowRule, pressed && styles.rowPressed]}
         accessibilityRole="button"
         accessibilityLabel="Add profile"
       >

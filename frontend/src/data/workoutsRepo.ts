@@ -5,7 +5,7 @@
  * DB (drizzle/expo) — never node-tested. No FK cascades in the schema, so child
  * rows are deleted explicitly.
  */
-import { and, asc, count, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt, max, min } from 'drizzle-orm';
 
 import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
@@ -71,6 +71,26 @@ export async function listWorkouts(
     .offset(params.offset ?? 0);
   const tags = await muscleTagsByWorkout(rows.map((w) => w.id));
   return rows.map((w) => toWorkoutListItem(w as WorkoutRow, tags.get(w.id) ?? []));
+}
+
+/**
+ * The current file's completed workouts: how many, and when the first and the
+ * latest began. Cached in the profiles registry for the switcher (#117).
+ */
+export async function completedWorkoutStats(): Promise<{
+  workoutCount: number;
+  firstWorkoutAt: number | null;
+  lastWorkoutAt: number | null;
+}> {
+  const [row] = await db
+    .select({
+      n: count(),
+      first: min(schema.workouts.startedAt),
+      last: max(schema.workouts.startedAt),
+    })
+    .from(schema.workouts)
+    .where(eq(schema.workouts.status, 'completed'));
+  return { workoutCount: row?.n ?? 0, firstWorkoutAt: row?.first ?? null, lastWorkoutAt: row?.last ?? null };
 }
 
 /** How many workouts there are, of one status or of any. */

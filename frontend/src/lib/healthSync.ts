@@ -27,6 +27,7 @@ import {
   type HealthEditState,
   type PlannedWhen,
 } from '../domain/healthEntry';
+import { onProfileSwitch } from './activeProfile';
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
 import { watchSaveWaitMs } from './watchFinish';
@@ -112,6 +113,14 @@ export function ensureWatchSaveListener(): void {
 // What a Wear OS watch's session measured (wearSession.ts): the counterpart of
 // the Apple Watch's save confirmation above, heard by the same listener.
 const wearSessions = createWearSessionLog();
+
+// What the Watch reported belongs to the previous profile's workouts (#117).
+// A finish still waiting on it keeps waiting; see `forget`. `healthEdits` is
+// an ordering queue, not data, and the theme and listener flag are the device's.
+onProfileSwitch(() => {
+  watchSaves.forget();
+  wearSessions.forget();
+});
 
 /**
  * Takes in a Wear OS watch's `sessionMetrics`; ignores every other action.

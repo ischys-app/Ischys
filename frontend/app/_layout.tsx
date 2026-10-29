@@ -16,7 +16,7 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Alert, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
@@ -43,6 +43,7 @@ import {
   setWatchThemeId,
   syncFinishedWorkout,
 } from '../src/lib/healthSync';
+import { useActiveProfile } from '../src/lib/activeProfile';
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
@@ -336,11 +337,27 @@ export default function RootLayout() {
 }
 
 /**
+ * After a profile switch, closes every screen open above the tabs: they hold
+ * the previous profile's data (#117). The tabs remount on the same epoch
+ * (app/(tabs)/_layout.tsx) and keep the selected tab.
+ */
+function useDismissOnProfileSwitch() {
+  const { epoch } = useActiveProfile();
+  const seen = useRef(epoch);
+  useEffect(() => {
+    if (seen.current === epoch) return;
+    seen.current = epoch;
+    if (router.canDismiss()) router.dismissAll();
+  }, [epoch]);
+}
+
+/**
  * The navigator, inside ThemeProvider so the screen background follows the
  * appearance: `contentStyle` is read again on every theme change.
  */
 function AppStack() {
   useThemed();
+  useDismissOnProfileSwitch();
   return (
     <Stack
       screenOptions={{

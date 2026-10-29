@@ -22,6 +22,8 @@
  * and double-fire the Health mirror.
  */
 
+import { onProfileSwitch } from './activeProfile.ts';
+
 /**
  * The workout id the mounted workout screen is handling, or null when no screen
  * is mounted. Module state rather than React state on purpose: the root layout's
@@ -70,6 +72,9 @@ export function releaseAllWatchFinishClaims(): void {
   claimedWorkoutId = null;
   completedByFallback.clear();
 }
+
+// Claims and completions name the previous profile's workouts (#117).
+onProfileSwitch(releaseAllWatchFinishClaims);
 
 /** How the fallback completed a workout: stored, or thrown away. */
 export type WatchCompletion = 'finished' | 'discarded';

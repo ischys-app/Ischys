@@ -7,8 +7,12 @@
  * `getWorkout` view when the entry is missing (deep link, refresh, etc.).
  */
 import type { WorkoutSummaryOut } from '../api/types';
+import { onProfileSwitch } from './activeProfile';
 
 const cache = new Map<string, WorkoutSummaryOut>();
+
+// The previous profile's workouts (#117).
+onProfileSwitch(() => cache.clear());
 
 export function saveSummary(workoutId: string, summary: WorkoutSummaryOut): void {
   cache.set(workoutId, summary);

@@ -109,9 +109,14 @@ export function currentConnection(): ProfileConnection {
   return current;
 }
 
-/** Closes a profile's file. The owner's stays open for the app's lifetime. */
+/**
+ * Closes a profile's file. The owner's stays open for the app's lifetime.
+ * Refuses the current connection: `db` would be left on a closed file. Point
+ * `db` elsewhere with `useConnection` first.
+ */
 export function closeConnection(conn: ProfileConnection): void {
   if (conn.id === OWNER_ID) return;
+  if (conn === current) throw new Error(`closeConnection: ${conn.fileName} is the current connection`);
   conn.expo.closeSync();
 }
 

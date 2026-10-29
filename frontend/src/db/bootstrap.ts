@@ -133,7 +133,7 @@ async function enterProfile(id: string): Promise<void> {
  * can only ever add a rating to the screen, never flash one that is hidden).
  * Failing leaves today's defaults; it never blocks launch.
  */
-async function primeSettings(): Promise<void> {
+export async function primeSettings(): Promise<void> {
   try {
     const s = await getSettings();
     setHapticsEnabled(s.haptic_feedback);

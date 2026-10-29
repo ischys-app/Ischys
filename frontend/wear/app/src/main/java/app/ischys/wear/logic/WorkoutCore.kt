@@ -201,8 +201,16 @@ class WorkoutCore(
     stopTicking()
     finishSettled()
     // Leave the workout so the Watch cannot stay on the session screen if the
-    // phone never pushes the next state.
-    update { it.copy(screen = WatchScreen.START, paused = false, heartRate = 0, activeCal = 0) }
+    // phone never pushes the next state. Not for Start when the phone has said
+    // off: that is why the session ended.
+    update {
+      it.copy(
+        screen = if (it.screen == WatchScreen.OFF) WatchScreen.OFF else WatchScreen.START,
+        paused = false,
+        heartRate = 0,
+        activeCal = 0,
+      )
+    }
   }
 
   private fun stopTicking() {
@@ -499,6 +507,10 @@ class WorkoutCore(
     if (wasOff != isOff || isOff && before.profileName != s.profileName) {
       host.persistOff(if (isOff) s.profileName else null)
     }
+    // A session recording when the phone says off — started from a Watch that
+    // did not know yet — is not the owner's workout and has no control left
+    // on the off screen to end it. Thrown away: nothing of it is kept or sent.
+    if (isOff && host.sessionRunning) host.endSession(discard = true)
 
     // Every push goes through the alarm, which is what makes a repeated push
     // harmless, a skip silent, and an adjusted rest buzz at its new end.

@@ -116,6 +116,32 @@ class WorkoutCoreTest {
     assertTrue(relaunched.sessionStartAllowed)
   }
 
+  @Test fun anOffPushEndsARunningSessionAsADiscardAndStaysOff() {
+    startSession(t0)
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0 + 5_000)
+    assertTrue("discardSession" in host.calls)
+    assertFalse("endSession" in host.calls)
+    assertFalse(host.sessionRunning)
+    // The session reporting its end does not take the Watch to Start.
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+    assertEquals("Maria", core.ui.profileName)
+    assertEquals(0, core.ui.heartRate)
+    assertFalse(core.needsTicking)
+    assertFalse(core.sessionStartAllowed)
+  }
+
+  @Test fun anOffPushWithNoSessionEndsNothing() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    assertFalse("discardSession" in host.calls)
+    assertFalse("endSession" in host.calls)
+  }
+
+  @Test fun aSessionEndingWhileOffLeavesTheWatchOff() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    core.sessionEnded()
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+  }
+
   @Test fun theOwnerComingBackAfterARelaunchWhileOffReturnsToStart() {
     val h = FakeHost()
     val relaunched = WorkoutCore(h, offFor = "Maria").also { h.core = it }

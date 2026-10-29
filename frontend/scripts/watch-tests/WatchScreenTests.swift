@@ -77,6 +77,17 @@ check("only an off push ends a running session") {
   WatchScreen.off.endsRunningSession && !WatchScreen.start.endsRunningSession
     && !WatchScreen.session.endsRunningSession && !WatchScreen.summary.endsRunningSession
 }
+check("an off push discards a running session") {
+  WatchScreen.off.discardsSession(isRunning: true, isEnding: false)
+}
+check("an off push leaves an end already in progress alone, so a save stays a save") {
+  !WatchScreen.off.discardsSession(isRunning: true, isEnding: true)
+}
+check("nothing to discard with no session, and only off discards") {
+  !WatchScreen.off.discardsSession(isRunning: false, isEnding: false)
+    && !WatchScreen.start.discardsSession(isRunning: true, isEnding: false)
+    && !WatchScreen.session.discardsSession(isRunning: true, isEnding: false)
+}
 
 if failures > 0 {
   print("\(failures) failed")

@@ -18,6 +18,8 @@ final class WorkoutManager: NSObject, ObservableObject {
   /// The current session's ending: asked for once, discarded or saved, and
   /// cleaned up here if HealthKit never confirms it (see `SessionEnd`).
   private var ending = SessionEnd()
+  /// The session has been asked to end and HealthKit has not confirmed it yet.
+  var isEnding: Bool { ending.isEnding }
   /// A workout the phone launched us into while the previous session was still
   /// ending. Started as soon as that one is closed.
   private var startWhenClosed: HKWorkoutConfiguration?

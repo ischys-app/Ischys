@@ -394,7 +394,8 @@ final class WorkoutModel: ObservableObject {
     // The off screen has no controls, so a session still recording there could
     // not be stopped. Its end keeps the Watch on the off screen
     // (WorkoutManager.close).
-    if s.screen.endsRunningSession && WorkoutManager.shared.isRunning {
+    let manager = WorkoutManager.shared
+    if s.screen.discardsSession(isRunning: manager.isRunning, isEnding: manager.isEnding) {
       WorkoutManager.shared.discard()
     }
     // Once the phone has moved us off Start, any pending hand-off is resolved.

@@ -28,6 +28,14 @@ enum WatchScreen {
   /// not the owner's workout. It is discarded, so nothing reaches Health.
   var endsRunningSession: Bool { self == .off }
 
+  /// Whether a push of this screen discards the session now. Not one already
+  /// ending: that is the owner's own Finish or Discard on its way through
+  /// HealthKit, and a discard requested on top would turn a save into a
+  /// discard (`SessionEnd.request`). It ends as the owner asked.
+  func discardsSession(isRunning: Bool, isEnding: Bool) -> Bool {
+    endsRunningSession && isRunning && !isEnding
+  }
+
   /// The off screen's message. A long name is left whole for the view to wrap;
   /// a blank one (the phone sends the first name, which can be empty) reads as
   /// "this profile".

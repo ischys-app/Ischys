@@ -39,3 +39,16 @@ export function readJsonSet(ps: JsonSet): BackupSet {
     rpe: normalizeRpe(ps.rpe),
   };
 }
+
+/**
+ * The workouts list of a JSON backup, or null when the file has none. Throws
+ * on text that isn't JSON. Every other top-level key is read past, the
+ * `profile` an export from a named profile carries included (#117): an import
+ * always goes into the active profile, whoever the file came from.
+ */
+export function backupWorkouts(text: string): unknown[] | null {
+  const data: unknown = JSON.parse(text);
+  if (data === null || typeof data !== 'object') return null;
+  const workouts = (data as { workouts?: unknown }).workouts;
+  return Array.isArray(workouts) ? workouts : null;
+}

@@ -57,6 +57,9 @@ import {
   type Receipt,
   type WriteStatus,
 } from '../src/lib/healthReceipts';
+import { getProfile } from '../src/data/profilesRepo';
+import { firstName, ownerLabel, OWNER_ID, possessive, type ProfileRow } from '../src/domain/profiles';
+import { DEFAULT_NAME, useActiveProfile } from '../src/lib/activeProfile';
 import { color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 
@@ -124,7 +127,76 @@ function openHealthApp() {
   });
 }
 
+/**
+ * Health and the Watch are the phone owner's only (#117). In another profile
+ * this screen only says so (P10, informational per the spec's correction 1):
+ * nothing here connects, asks for permission or reads Health.
+ */
 export default function Health() {
+  const { profile } = useActiveProfile();
+  return profile.isOwner ? <OwnerHealth /> : <HealthOffForProfile profile={profile} />;
+}
+
+function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
+  useThemed();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [ownerName, setOwnerName] = useState(DEFAULT_NAME);
+  useEffect(() => {
+    let live = true;
+    getProfile(OWNER_ID)
+      .then((o) => {
+        if (live && o) setOwnerName(o.name);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  const first = firstName(profile.name) || profile.name;
+  const owner = ownerLabel(ownerName, DEFAULT_NAME);
+  const ownerPossessive = owner === "the phone's owner" ? "the phone's owner's" : `${owner}'s`;
+
+  return (
+    <View style={styles.root}>
+      <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+          hitSlop={8}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+        >
+          <BackChevronIcon color={color.text2} strokeWidth={2.2} />
+        </Pressable>
+        <Text style={styles.title} numberOfLines={1}>{copy.name}</Text>
+      </View>
+
+      <ScrollView
+        style={styles.flex}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 120 + insets.top }]}
+      >
+        <View style={styles.offHead}>
+          <View style={styles.offBadge}>
+            <HeartFilledIcon size={24} color={color.text3} />
+          </View>
+          <View style={styles.offHeadText}>
+            <Text style={styles.offTitle} accessibilityRole="header">{`Off for ${first}`}</Text>
+            <Text style={styles.offBody}>
+              {`${copy.name} on ${ANDROID ? 'this phone' : 'this iPhone'} belongs to ${owner}. ${possessive(profile.name)} workouts stay in Ischys.`}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.offLine}>
+          {`Health and the Watch work only in ${ownerPossessive} profile.`}
+        </Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+function OwnerHealth() {
   useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -718,6 +790,42 @@ const styles = themed(() =>
       fontWeight: '600',
       letterSpacing: -0.17,
       color: color.text1,
+    },
+
+    // --- Another profile (P10) ---
+    offHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingHorizontal: 2, paddingBottom: 24 },
+    offBadge: {
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    offHeadText: { flex: 1, minWidth: 0 },
+    offTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 20,
+      fontWeight: '700',
+      letterSpacing: -0.4,
+      color: color.text1,
+    },
+    offBody: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      marginTop: 6,
+    },
+    offLine: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      paddingHorizontal: 2,
     },
 
     // --- Disconnected (H4) ---

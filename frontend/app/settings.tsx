@@ -22,7 +22,11 @@ import { Segment, type SegmentOption } from '../src/components/ui';
 import { toDisplay, toKg } from '../src/domain/units';
 import { getBodyweightKg, setBodyweightKg } from '../src/lib/bodyweight';
 import { readBodyweightFromHealth, syncBodyweightFromHealth } from '../src/lib/healthSync';
-import { isOwnerActive } from '../src/lib/activeProfile';
+import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
+import { exportFileStem, firstName, possessive, type ProfileRow } from '../src/domain/profiles';
+import { openProfileSwitcher } from '../src/lib/profileSwitcherStore';
+import { ProfileAvatar } from '../src/components/ProfileAvatar';
+import { SectionLabel, type SectionScope } from '../src/components/SectionLabel';
 import {
   getWeeklyTarget,
   setWeeklyTarget,
@@ -47,6 +51,7 @@ import {
   HapticIcon,
   HeartFilledIcon,
   InfoIcon,
+  PlusIcon,
   ShieldIcon,
   UnitsIcon,
   UploadIcon,
@@ -76,6 +81,11 @@ const DEFAULT_SETTINGS: SettingsOut = {
   rest_timer_alerts: true,
   haptic_feedback: true,
 };
+
+const EFFORT_FOOTER =
+  'Turning this off hides ratings everywhere but keeps them stored. Switching between RPE and RIR converts existing ratings.';
+
+const DEVICE_SCOPE: SectionScope = { kind: 'device' };
 
 const APPEARANCE_OPTIONS: SegmentOption<Appearance>[] = [
   { label: 'Dark', value: 'dark' },
@@ -135,6 +145,33 @@ function PaletteIcon({ color: c }: { color: string }) {
       <Circle cx={7.5} cy={11} r={1} {...stroke} />
       <Circle cx={10.5} cy={7.5} r={1} {...stroke} />
       <Circle cx={15} cy={8} r={1} {...stroke} />
+    </Svg>
+  );
+}
+
+/** Two opposed arrows, the Switch profile row (P3). */
+function SwapIcon({ color: c }: { color: string }) {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Path
+        d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Watch outline, the non-owner Watch row (P9, P10). */
+function WatchIcon({ color: c }: { color: string }) {
+  const stroke = { stroke: c, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' } as const;
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Path d="M9 6h6a3 3 0 013 3v6a3 3 0 01-3 3H9a3 3 0 01-3-3V9a3 3 0 013-3z" {...stroke} />
+      <Path d="M9 6l.5-3h5l.5 3M9 18l.5 3h5l.5-3" {...stroke} />
     </Svg>
   );
 }
@@ -302,6 +339,171 @@ export default function Settings() {
     setBwInput(disp != null ? String(Math.round(disp * 10) / 10) : '');
   };
 
+  // Profiles (#117). Off: today's Settings. One profile: the PROFILE section
+  // (P1b) on top of today's. Two or more: the P9 order, every section labelled
+  // with whose setting it is.
+  const { profile, count } = useActiveProfile();
+  const layout: 'off' | 'single' | 'multi' = !PROFILES_ENABLED ? 'off' : count >= 2 ? 'multi' : 'single';
+  const multi = layout === 'multi';
+  const first = firstName(profile.name) || profile.name;
+  const profileScope: SectionScope = { kind: 'profile', profile };
+  const healthShown = Platform.OS === 'ios' || healthAvailability() !== 'unavailable';
+
+  // The rows, built once and placed by the layout. `last` drops the divider.
+  const unitsRow = (
+    <SegmentRow
+      icon={<UnitsIcon size={20} color={color.text2} />}
+      label="Units"
+      options={UNIT_OPTIONS}
+      value={settings.unit}
+      onChange={(v) => patch({ unit: v })}
+      isLast={false}
+    />
+  );
+  const effortRow = <EffortRow value={settings.effort_mode} onChange={(v) => patch({ effort_mode: v })} />;
+  const autoRestRow = (last: boolean) => (
+    <ToggleRow
+      icon={<ClockRowIcon size={20} color={color.text2} strokeWidth={2} />}
+      label="Auto-start rest timer"
+      value={settings.auto_start_rest_timer}
+      onChange={(v) => patch({ auto_start_rest_timer: v })}
+      isLast={last}
+    />
+  );
+  const restAlertsRow = (last: boolean) => (
+    <ToggleRow
+      icon={<BellIcon size={20} color={color.text2} />}
+      label="Rest timer alerts"
+      value={settings.rest_timer_alerts}
+      onChange={(v) => {
+        patch({ rest_timer_alerts: v });
+        if (v) void maybeAskForExactAlarms(true, { force: true });
+      }}
+      isLast={last}
+    />
+  );
+  const hapticsRow = (last: boolean) => (
+    <ToggleRow
+      icon={<HapticIcon size={20} color={color.text2} />}
+      label="Haptic feedback"
+      value={settings.haptic_feedback}
+      onChange={(v) => patch({ haptic_feedback: v })}
+      isLast={last}
+    />
+  );
+  const warmupsRow = (last: boolean) => (
+    <ToggleRow
+      icon={<WarmupIcon size={20} color={color.text2} />}
+      label="Count warmups in volume"
+      value={countWarmups}
+      onChange={(v) => {
+        setCountWarmupsState(v);
+        void setCountWarmups(v);
+      }}
+      isLast={last}
+    />
+  );
+  const deloadRow = (last: boolean) => (
+    <ToggleRow
+      icon={<WarmupIcon size={20} color={color.text2} />}
+      label="Deload advice"
+      value={deloadOn}
+      onChange={(v) => {
+        setDeloadOn(v);
+        void getDeloadState().then((d) => setDeloadState({ ...d, enabled: v }));
+      }}
+      isLast={last}
+    />
+  );
+  const platesRow = (last: boolean) => (
+    <LinkRow
+      icon={<DumbbellIcon size={19} color={color.text2} />}
+      label="Bar &amp; plates"
+      sub="Used by the plate calculator"
+      onPress={() => router.push('/plates')}
+      isLast={last}
+    />
+  );
+  const targetRow = (last: boolean) => (
+    <TargetRow
+      value={weeklyTarget}
+      onChange={(n) => {
+        setWeeklyTargetState(n);
+        void setWeeklyTarget(n);
+      }}
+      isLast={last}
+    />
+  );
+  const bodyweightRow = (last: boolean) => (
+    <LinkRow
+      icon={<BodyweightIcon size={20} color={color.text2} />}
+      label="Bodyweight"
+      sub="Counts toward volume for bodyweight moves"
+      value={bwDisplay != null ? `${bwDisplay} ${bwUnitLabel}` : 'Not set'}
+      onPress={openBw}
+      isLast={last}
+    />
+  );
+  const appearanceRows = (
+    <>
+      {LIGHT_MODE_ENABLED && (
+        <SegmentRow
+          icon={<AppearanceIcon color={color.text2} />}
+          label="Appearance"
+          sub={
+            theme.appearance === 'system'
+              ? `Following ${Platform.OS === 'ios' ? 'iPhone' : 'phone'} · ${theme.systemScheme === 'dark' ? 'Dark' : 'Light'}`
+              : undefined
+          }
+          options={APPEARANCE_OPTIONS}
+          value={theme.appearance}
+          onChange={theme.setAppearance}
+          padX={9}
+          isLast={false}
+        />
+      )}
+      <LinkRow
+        icon={<PaletteIcon color={color.text2} />}
+        label="Theme"
+        value={theme.palette.name}
+        onPress={() => setThemeOpen((o) => !o)}
+        isLast={!themeOpen}
+      />
+      {themeOpen && (
+        <View style={styles.themeRow}>
+          {PALETTES.map((p) => {
+            const on = p.id === theme.palette.id;
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => theme.setTheme(p.id)}
+                style={[styles.themeSwatchWrap, on && styles.themeSwatchOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={p.name}
+              >
+                {/* The swatch for the appearance showing now. */}
+                <View
+                  style={[styles.themeSwatch, { backgroundColor: accentFor(p, theme.scheme).accent }]}
+                />
+                <Text style={[styles.themeName, on && styles.themeNameOn]}>{p.name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </>
+  );
+  const healthRow = (
+    <LinkRow
+      icon={<HeartFilledIcon size={20} color={color.text2} />}
+      label={healthCopy(Platform.OS).name}
+      sub={healthCopy(Platform.OS).settingsSub}
+      onPress={() => router.push('/health')}
+      isLast
+    />
+  );
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -311,172 +513,155 @@ export default function Settings() {
           { paddingTop: 116 + insets.top },
         ]}
       >
-        {/* TRAINING */}
-        <Section
-          title="TRAINING"
-          footer="Turning this off hides ratings everywhere but keeps them stored. Switching between RPE and RIR converts existing ratings."
-        >
-          <SegmentRow
-            icon={<UnitsIcon size={20} color={color.text2} />}
-            label="Units"
-            options={UNIT_OPTIONS}
-            value={settings.unit}
-            onChange={(v) => patch({ unit: v })}
-            isLast={false}
-          />
-          <EffortRow value={settings.effort_mode} onChange={(v) => patch({ effort_mode: v })} />
-          <ToggleRow
-            icon={<ClockRowIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Auto-start rest timer"
-            value={settings.auto_start_rest_timer}
-            onChange={(v) => patch({ auto_start_rest_timer: v })}
-            isLast={false}
-          />
-          <ToggleRow
-            icon={<BellIcon size={20} color={color.text2} />}
-            label="Rest timer alerts"
-            value={settings.rest_timer_alerts}
-            onChange={(v) => {
-              patch({ rest_timer_alerts: v });
-              if (v) void maybeAskForExactAlarms(true, { force: true });
-            }}
-            isLast={false}
-          />
-          <ToggleRow
-            icon={<HapticIcon size={20} color={color.text2} />}
-            label="Haptic feedback"
-            value={settings.haptic_feedback}
-            onChange={(v) => patch({ haptic_feedback: v })}
-            isLast={false}
-          />
-          <ToggleRow
-            icon={<WarmupIcon size={20} color={color.text2} />}
-            label="Count warmups in volume"
-            value={countWarmups}
-            onChange={(v) => {
-              setCountWarmupsState(v);
-              void setCountWarmups(v);
-            }}
-            isLast={false}
-          />
-          <ToggleRow
-            icon={<WarmupIcon size={20} color={color.text2} />}
-            label="Deload advice"
-            value={deloadOn}
-            onChange={(v) => {
-              setDeloadOn(v);
-              void getDeloadState().then((d) => setDeloadState({ ...d, enabled: v }));
-            }}
-            isLast={false}
-          />
-          <LinkRow
-            icon={<DumbbellIcon size={19} color={color.text2} />}
-            label="Bar &amp; plates"
-            sub="Used by the plate calculator"
-            onPress={() => router.push('/plates')}
-            isLast={false}
-          />
-          <TargetRow
-            value={weeklyTarget}
-            onChange={(n) => {
-              setWeeklyTargetState(n);
-              void setWeeklyTarget(n);
-            }}
-            isLast={false}
-          />
-          <LinkRow
-            icon={<BodyweightIcon size={20} color={color.text2} />}
-            label="Bodyweight"
-            sub="Counts toward volume for bodyweight moves"
-            value={bwDisplay != null ? `${bwDisplay} ${bwUnitLabel}` : 'Not set'}
-            onPress={openBw}
-            isLast
-          />
-        </Section>
-
-        {/* APPEARANCE (7b). Two independent settings: the appearance swaps
-            surfaces, text and status colours; the theme swaps only the accent,
-            which marks one action per screen. Both apply at once. */}
-        <Section title="APPEARANCE">
-          {LIGHT_MODE_ENABLED && (
-            <SegmentRow
-              icon={<AppearanceIcon color={color.text2} />}
-              label="Appearance"
-              sub={
-                theme.appearance === 'system'
-                  ? `Following ${Platform.OS === 'ios' ? 'iPhone' : 'phone'} · ${theme.systemScheme === 'dark' ? 'Dark' : 'Light'}`
-                  : undefined
-              }
-              options={APPEARANCE_OPTIONS}
-              value={theme.appearance}
-              onChange={theme.setAppearance}
-              padX={9}
-              isLast={false}
+        {layout !== 'off' && (
+          <Section
+            title="PROFILE"
+            footer={
+              multi ? undefined : 'Keep separate history for a client or someone you share this phone with.'
+            }
+          >
+            <PersonRow
+              profile={profile}
+              sub={multi ? `${count} PROFILES ON THIS PHONE` : 'JUST YOU'}
+              onPress={() => router.push('/profiles')}
             />
-          )}
-          <LinkRow
-            icon={<PaletteIcon color={color.text2} />}
-            label="Theme"
-            value={theme.palette.name}
-            onPress={() => setThemeOpen((o) => !o)}
-            isLast={!themeOpen}
-          />
-          {themeOpen && (
-            <View style={styles.themeRow}>
-              {PALETTES.map((p) => {
-                const on = p.id === theme.palette.id;
-                return (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => theme.setTheme(p.id)}
-                    style={[styles.themeSwatchWrap, on && styles.themeSwatchOn]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={p.name}
-                  >
-                    {/* The swatch for the appearance showing now. */}
-                    <View
-                      style={[styles.themeSwatch, { backgroundColor: accentFor(p, theme.scheme).accent }]}
-                    />
-                    <Text style={[styles.themeName, on && styles.themeNameOn]}>{p.name}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </Section>
-
-        {/* Health is the only thing in this section: Apple Health on iOS, and
-            Health Connect on an Android that has it or can install it. */}
-        {(Platform.OS === 'ios' || healthAvailability() !== 'unavailable') && (
-          <Section title="DEVICE">
-            <LinkRow
-              icon={<HeartFilledIcon size={20} color={color.text2} />}
-              label={healthCopy(Platform.OS).name}
-              sub={healthCopy(Platform.OS).settingsSub}
-              onPress={() => router.push('/health')}
-              isLast
-            />
+            {multi ? (
+              <LinkRow
+                icon={<SwapIcon color={color.text2} />}
+                label="Switch profile"
+                onPress={openProfileSwitcher}
+                isLast
+              />
+            ) : (
+              <RowShell
+                icon={<PlusIcon size={19} color={color.text2} strokeWidth={2.2} />}
+                label="Add profile"
+                onPress={() => router.push('/profiles/new')}
+                isLast
+              />
+            )}
           </Section>
         )}
 
-        <Section title="DATA">
-          <LinkRow
-            icon={<UploadIcon size={20} color={color.text2} />}
-            label="Export data"
-            value="CSV / JSON"
-            onPress={onExport}
-            isLast={false}
-          />
-          <LinkRow
-            icon={<DownloadIcon size={20} color={color.text2} />}
-            label="Import workout"
-            value="CSV / JSON"
-            onPress={onImport}
-            isLast={false}
-          />
-          <MergeRow count={dupCount} onPress={() => router.push('/merge-duplicates')} />
-        </Section>
+        {multi ? (
+          <>
+            {/* P9: the profile's own sections first, named; then THIS PHONE. */}
+            <Section title="TRAINING" scope={profileScope} footer={EFFORT_FOOTER}>
+              {unitsRow}
+              {effortRow}
+              {targetRow(false)}
+              {bodyweightRow(false)}
+              {platesRow(false)}
+              {autoRestRow(false)}
+              {warmupsRow(false)}
+              {deloadRow(true)}
+            </Section>
+
+            <Section title="DATA" scope={profileScope}>
+              <LinkRow
+                icon={<UploadIcon size={20} color={color.text2} />}
+                label={`Export ${possessive(profile.name)} data`}
+                value="CSV · JSON"
+                sub={exportFileStem(count, profile.name, new Date()).toUpperCase()}
+                onPress={onExport}
+                isLast={false}
+              />
+              <LinkRow
+                icon={<DownloadIcon size={20} color={color.text2} />}
+                label={`Import into ${first}`}
+                onPress={onImport}
+                isLast={false}
+              />
+              <MergeRow
+                count={dupCount}
+                sub={`IN ${possessive(profile.name).toUpperCase()} HISTORY`}
+                onPress={() => router.push('/merge-duplicates')}
+              />
+            </Section>
+
+            <Section
+              title="APPEARANCE"
+              scope={DEVICE_SCOPE}
+              footer="Settings marked THIS PHONE are the same in every profile."
+            >
+              {appearanceRows}
+            </Section>
+
+            <Section title="ALERTS" scope={DEVICE_SCOPE}>
+              {restAlertsRow(false)}
+              {hapticsRow(true)}
+            </Section>
+
+            {healthShown && (
+              <Section title="HEALTH & WATCH" scope={DEVICE_SCOPE}>
+                {profile.isOwner ? (
+                  healthRow
+                ) : (
+                  <>
+                    {/* Health and the Watch are the owner's only (#117, P10). */}
+                    <LinkRow
+                      icon={<HeartFilledIcon size={20} color={color.text2} />}
+                      label={healthCopy(Platform.OS).name}
+                      value={`Off for ${first}`}
+                      onPress={() => router.push('/health')}
+                      isLast={false}
+                    />
+                    <LinkRow
+                      icon={<WatchIcon color={color.text2} />}
+                      label={Platform.OS === 'ios' ? 'Apple Watch' : 'Watch'}
+                      value={`Off for ${first}`}
+                      onPress={() => router.push('/health')}
+                      isLast
+                    />
+                  </>
+                )}
+              </Section>
+            )}
+          </>
+        ) : (
+          <>
+            {/* TRAINING */}
+            <Section title="TRAINING" footer={EFFORT_FOOTER}>
+              {unitsRow}
+              {effortRow}
+              {autoRestRow(false)}
+              {restAlertsRow(false)}
+              {hapticsRow(false)}
+              {warmupsRow(false)}
+              {deloadRow(false)}
+              {platesRow(false)}
+              {targetRow(false)}
+              {bodyweightRow(true)}
+            </Section>
+
+            {/* APPEARANCE (7b). Two independent settings: the appearance swaps
+                surfaces, text and status colours; the theme swaps only the accent,
+                which marks one action per screen. Both apply at once. */}
+            <Section title="APPEARANCE">{appearanceRows}</Section>
+
+            {/* Health is the only thing in this section: Apple Health on iOS, and
+                Health Connect on an Android that has it or can install it. */}
+            {healthShown && <Section title="DEVICE">{healthRow}</Section>}
+
+            <Section title="DATA">
+              <LinkRow
+                icon={<UploadIcon size={20} color={color.text2} />}
+                label="Export data"
+                value="CSV / JSON"
+                onPress={onExport}
+                isLast={false}
+              />
+              <LinkRow
+                icon={<DownloadIcon size={20} color={color.text2} />}
+                label="Import workout"
+                value="CSV / JSON"
+                onPress={onImport}
+                isLast={false}
+              />
+              <MergeRow count={dupCount} onPress={() => router.push('/merge-duplicates')} />
+            </Section>
+          </>
+        )}
 
         {/* ABOUT */}
         <Section title="ABOUT">
@@ -713,17 +898,26 @@ function BodyweightIcon({ size = 20, color: c }: { size?: number; color: string 
 function Section({
   title,
   footer,
+  scope,
   children,
 }: {
   title: string;
   /** A note under the card, for a consequence that belongs to no single row. */
   footer?: string;
+  /** Whose setting this is, with 2+ profiles (P9). Absent: today's plain label. */
+  scope?: SectionScope;
   children: React.ReactNode;
 }) {
   useThemed();
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      {scope ? (
+        <SectionLabel scope={scope} style={styles.sectionTitleBox}>
+          {title}
+        </SectionLabel>
+      ) : (
+        <Text style={styles.sectionTitle}>{title}</Text>
+      )}
       <View style={styles.card}>{children}</View>
       {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
     </View>
@@ -939,16 +1133,46 @@ function LinkRow({
 }
 
 /**
+ * The PROFILE section's first row (P1b, P9): the current profile's 40pt
+ * avatar, initials in the accent as on the Profile tab, its name and a mono
+ * sub line. Opens Manage profiles.
+ */
+function PersonRow({ profile, sub, onPress }: { profile: ProfileRow; sub: string; onPress: () => void }) {
+  useThemed();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.rowPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${profile.name}, manage profiles`}
+    >
+      <View style={[styles.row, styles.personRow, styles.rowDivider]}>
+        <ProfileAvatar profile={profile} size={40} tint={color.accent} />
+        <View style={styles.rowLabelCol}>
+          <Text style={styles.personName} numberOfLines={1}>
+            {profile.name}
+          </Text>
+          <Text style={styles.rowSub} numberOfLines={1}>
+            {sub}
+          </Text>
+        </View>
+        <ChevronRightIcon size={15} color={color.text3} strokeWidth={2.2} />
+      </View>
+    </Pressable>
+  );
+}
+
+/**
  * Merge-duplicates row (board M1): sub-labelled, with an accent count pill that
  * appears only when duplicates were detected, plus a chevron. Last in DATA.
  */
-function MergeRow({ count, onPress }: { count: number; onPress: () => void }) {
+function MergeRow({ count, sub, onPress }: { count: number; sub?: string; onPress: () => void }) {
   useThemed();
   return (
     <RowShell
       icon={<MergeIcon size={19} color={color.text2} />}
       label="Merge duplicates"
-      sub="Same lift saved twice"
+      sub={sub ?? 'Same lift saved twice'}
       isLast
       onPress={onPress}
       right={
@@ -1022,6 +1246,7 @@ const styles = themed(() =>
       paddingRight: 2,
       paddingBottom: 10,
     },
+    sectionTitleBox: { paddingLeft: 2, paddingRight: 2, paddingBottom: 10 },
     card: {
       backgroundColor: color.surface1,
       borderWidth: 1,
@@ -1099,6 +1324,13 @@ const styles = themed(() =>
       fontFamily: font.bodyMedium,
       fontSize: 14.5,
       fontWeight: '500',
+      color: color.text1,
+    },
+    personRow: { paddingVertical: 12 },
+    personName: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      fontWeight: '600',
       color: color.text1,
     },
     rowSub: {

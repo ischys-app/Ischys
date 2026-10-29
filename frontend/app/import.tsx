@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ImportResult } from '../src/api/types';
 import { getSettings, importFile, saveAsRoutine } from '../src/api/workouts';
+import { backupWorkouts } from '../src/data/backupJson';
 import { summarizeWorkoutCsv } from '../src/data/workoutCsv';
 import type { Unit } from '../src/domain/units';
 import {
@@ -40,6 +41,8 @@ import {
 import { CheckIcon, ChevronDownIcon, UploadIcon } from '../src/components/icons';
 import { PressableScale } from '../src/components/PressableScale';
 import { Segment, SelectCircle, type SegmentOption } from '../src/components/ui';
+import { firstName } from '../src/domain/profiles';
+import { PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
 import { haptics } from '../src/lib/haptics';
 import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
@@ -77,8 +80,7 @@ type ParsePayload = ParsedPreview | { supported: false };
 /** Preview summary for an Ischys JSON backup. */
 function summarizeJson(text: string): ParsePayload {
   try {
-    const data = JSON.parse(text);
-    const wk = Array.isArray(data?.workouts) ? data.workouts : null;
+    const wk = backupWorkouts(text) as { name?: string; exercises?: { name?: string; sets?: unknown[] }[] }[] | null;
     if (!wk) return { supported: false };
     const exercises = new Set<string>();
     let sets = 0;
@@ -694,9 +696,13 @@ function PreviewState({
     parse && parse.supported && parse.kind === 'csv' && !parse.weightUnitKnown
       ? ` as ${weightUnit.toUpperCase()}`
       : '';
+  // With 2+ profiles the button names the one the workouts go into (P11).
+  const { profile, count } = useActiveProfile();
+  const first = firstName(profile.name);
+  const into = PROFILES_ENABLED && count >= 2 && first ? ` into ${first}` : '';
   const importLabel =
     parse && parse.supported
-      ? `Import ${workoutCount} workout${workoutCount === 1 ? '' : 's'}${unitSuffix}`
+      ? `Import ${workoutCount} workout${workoutCount === 1 ? '' : 's'}${into}${unitSuffix}`
       : 'Import file';
 
   return (

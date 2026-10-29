@@ -12,7 +12,7 @@ import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
-import { readJsonSet, toJsonSet, type JsonSet } from './backupJson';
+import { backupWorkouts, readJsonSet, toJsonSet, type JsonSet } from './backupJson';
 import { toWorkoutCsv, parseWorkoutCsv, type ExportWorkout } from './workoutCsv';
 import type { Unit } from '../domain/units';
 import { equipmentFromNameSuffix } from '../domain/exerciseNaming';
@@ -396,13 +396,12 @@ type JsonWorkout = {
  * either, so a trusted flag had no count beside it.
  */
 async function importJsonBackup(text: string): Promise<ImportResult> {
-  let data: { workouts?: JsonWorkout[] };
+  let workoutsIn: JsonWorkout[];
   try {
-    data = JSON.parse(text);
+    workoutsIn = (backupWorkouts(text) ?? []) as JsonWorkout[];
   } catch {
     throw new Error('Not a valid Ischys JSON export');
   }
-  const workoutsIn = Array.isArray(data?.workouts) ? data.workouts : [];
 
   const cache = new Map<string, string>();
   let workoutsCreated = 0;

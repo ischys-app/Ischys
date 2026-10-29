@@ -1,0 +1,135 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  OWNER_ID,
+  MAX_NAME,
+  PROFILE_SCOPED_KEYS,
+  deleteBlock,
+  deriveInitials,
+  exportFileStem,
+  firstName,
+  manageSubline,
+  ownerLabel,
+  parseActiveWorkout,
+  profileSlug,
+  referencedCustomExerciseIds,
+  resolveLaunchProfile,
+  scopedKey,
+  switchBlock,
+  switcherSubline,
+  type ProfileRow,
+} from './profiles.ts';
+
+const now = new Date(2026, 9, 29, 12, 0, 0);
+const row: ProfileRow = {
+  id: 'b',
+  name: 'Maria',
+  initials: 'M',
+  sort: 1,
+  isOwner: false,
+  createdAt: new Date(2025, 2, 5).getTime(),
+  workoutCount: 142,
+  firstWorkoutAt: new Date(2025, 2, 10).getTime(),
+  lastWorkoutAt: new Date(2026, 9, 29, 8, 0, 0).getTime(),
+};
+
+test('constants', () => {
+  assert.equal(OWNER_ID, 'owner');
+  assert.equal(MAX_NAME, 40);
+  assert.equal(PROFILE_SCOPED_KEYS.length, 6);
+});
+
+test('deriveInitials', () => {
+  assert.equal(deriveInitials('Maria Papadaki'), 'MP');
+  assert.equal(deriveInitials('Μαρία Παπαδάκη'), 'ΜΠ');
+  assert.equal(deriveInitials('Ζωή'), 'Ζ');
+  assert.equal(deriveInitials('   '), '');
+  assert.equal(deriveInitials('🏋️ Nik'), '🏋️N');
+  assert.equal(deriveInitials('anna maria de luca'), 'AL');
+});
+
+test('firstName', () => {
+  assert.equal(firstName('  Maria   Papadaki '), 'Maria');
+  assert.equal(firstName(' Zoe '), 'Zoe');
+  assert.equal(firstName(''), '');
+});
+
+test('profileSlug', () => {
+  assert.equal(profileSlug('Maria Papadaki'), 'maria-papadaki');
+  assert.equal(profileSlug('Μαρία Παπαδάκη'), 'maria-papadaki');
+  assert.equal(profileSlug('🏋️'), 'profile');
+  assert.equal(profileSlug('  José!! '), 'jose');
+  assert.equal(profileSlug(''), 'profile');
+});
+
+test('exportFileStem', () => {
+  assert.equal(exportFileStem(1, 'Maria', new Date(2026, 9, 29)), 'ischys-export');
+  assert.equal(exportFileStem(0, 'Maria', new Date(2026, 9, 29)), 'ischys-export');
+  assert.equal(
+    exportFileStem(3, 'Maria Papadaki', new Date(2026, 9, 29)),
+    'ischys-maria-papadaki-2026-10-29',
+  );
+  assert.equal(exportFileStem(2, '🏋️', new Date(2026, 0, 5)), 'ischys-profile-2026-01-05');
+});
+
+test('scopedKey', () => {
+  assert.equal(scopedKey('owner', 'ischys.bodyweightKg'), 'ischys.bodyweightKg');
+  assert.equal(scopedKey('abc', 'ischys.plateSetup.lb'), 'ischys.p.abc.plateSetup.lb');
+  assert.equal(scopedKey('abc', 'other'), 'ischys.p.abc.other');
+});
+
+test('switchBlock', () => {
+  const base = { targetId: 'b', currentId: 'a', activeWorkoutProfileId: null, transactionOpen: false };
+  assert.equal(switchBlock({ ...base, targetId: 'a' }), 'same');
+  assert.equal(switchBlock({ ...base, activeWorkoutProfileId: 'a' }), 'workout');
+  assert.equal(switchBlock({ ...base, transactionOpen: true }), 'busy');
+  assert.equal(switchBlock(base), null);
+});
+
+test('deleteBlock', () => {
+  assert.equal(deleteBlock({ profile: { ...row, id: 'owner', isOwner: true }, activeWorkoutProfileId: null }), 'owner');
+  assert.equal(deleteBlock({ profile: { ...row, id: 'b' }, activeWorkoutProfileId: 'b' }), 'workout');
+  assert.equal(deleteBlock({ profile: row, activeWorkoutProfileId: null }), null);
+});
+
+test('resolveLaunchProfile', () => {
+  assert.equal(resolveLaunchProfile({ registryIds: ['owner', 'b'], lastUsedId: 'b', activeWorkoutProfileId: null }), 'b');
+  assert.equal(resolveLaunchProfile({ registryIds: ['owner', 'b', 'c'], lastUsedId: 'b', activeWorkoutProfileId: 'c' }), 'c');
+  assert.equal(resolveLaunchProfile({ registryIds: ['owner'], lastUsedId: 'gone', activeWorkoutProfileId: 'gone' }), 'owner');
+  assert.equal(resolveLaunchProfile({ registryIds: ['owner', 'b'], lastUsedId: null, activeWorkoutProfileId: null }), 'owner');
+});
+
+test('switcherSubline', () => {
+  assert.equal(switcherSubline({ ...row, lastWorkoutAt: null }, now, null), 'NO WORKOUTS YET');
+  assert.equal(switcherSubline(row, now, now.getTime() - 767_000), 'IN WORKOUT · 12:47');
+  assert.equal(switcherSubline(row, now, now.getTime() - 3_725_000), 'IN WORKOUT · 1:02:05');
+  assert.equal(switcherSubline(row, now, null), 'LAST · TODAY');
+  assert.equal(
+    switcherSubline({ ...row, lastWorkoutAt: new Date(2025, 9, 28, 18).getTime() }, now, null),
+    'LAST · TUE 28 OCT',
+  );
+});
+
+test('manageSubline', () => {
+  assert.equal(manageSubline({ ...row, isOwner: true }), 'OWNER · HEALTH · WATCH');
+  assert.equal(manageSubline(row), '142 WORKOUTS · SINCE MAR 2025');
+  assert.equal(manageSubline({ ...row, workoutCount: 1 }), '1 WORKOUT · SINCE MAR 2025');
+  assert.equal(manageSubline({ ...row, workoutCount: 0, firstWorkoutAt: null }), 'NO WORKOUTS YET');
+});
+
+test('ownerLabel', () => {
+  assert.equal(ownerLabel('Athlete', 'Athlete'), "the phone's owner");
+  assert.equal(ownerLabel('Vasilis', 'Athlete'), 'Vasilis');
+});
+
+test('parseActiveWorkout', () => {
+  assert.deepEqual(parseActiveWorkout('w1'), { profileId: 'owner', workoutId: 'w1' });
+  assert.deepEqual(parseActiveWorkout('{"profileId":"b","workoutId":"w2"}'), { profileId: 'b', workoutId: 'w2' });
+  assert.equal(parseActiveWorkout(null), null);
+  assert.equal(parseActiveWorkout(''), null);
+  assert.equal(parseActiveWorkout('{"profileId":1}'), null);
+});
+
+test('referencedCustomExerciseIds', () => {
+  assert.deepEqual(referencedCustomExerciseIds(['cat1', 'cus1', 'cus1'], new Set(['cus1', 'cus2'])), ['cus1']);
+});

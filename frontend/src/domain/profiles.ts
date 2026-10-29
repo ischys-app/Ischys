@@ -362,8 +362,11 @@ export function finishFirstCopy(a: {
   defaultName: string;
 }): FinishFirstCopy {
   const routine = a.workoutName?.trim() || 'Your workout';
+  // The running workout's profile is the one on screen, so a default-named
+  // owner is "you" here, as in copyRoutinesLabel (Ruling R16).
+  const ownerRuns = a.running.isOwner && a.running.name.trim() === a.defaultName;
   return {
-    title: `Finish ${profileCallName(a.running, a.defaultName)}'s workout first`,
+    title: ownerRuns ? 'Finish your workout first' : `Finish ${profileCallName(a.running, a.defaultName)}'s workout first`,
     lead: `${routine} has been running for `,
     elapsed: clock(a.elapsedMs),
     tail: `. Only one workout can run at a time. Finish or discard it, then switch to ${profileCallName(a.target, a.defaultName)}.`,

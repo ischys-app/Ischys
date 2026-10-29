@@ -310,9 +310,18 @@ test('finishFirstCopy: no workout name, a default-named owner, past an hour', ()
     elapsedMs: (3600 + 5 * 60 + 9) * 1000 + 999,
     defaultName: 'Athlete',
   });
-  assert.equal(c.title, "Finish the phone's owner's workout first");
+  assert.equal(c.title, 'Finish your workout first');
   assert.equal(c.lead, 'Your workout has been running for ');
   assert.equal(c.elapsed, '1:05:09');
   assert.match(c.tail, /then switch to Maria\.$/);
+  // A renamed owner is named like anyone else.
+  const renamed = finishFirstCopy({
+    running: { name: 'Kostas Ioannou', isOwner: true },
+    target: { name: 'Maria', isOwner: false },
+    workoutName: null,
+    elapsedMs: 0,
+    defaultName: 'Athlete',
+  });
+  assert.equal(renamed.title, "Finish Kostas's workout first");
   assert.equal(finishFirstCopy({ ...{ running: { name: 'A', isOwner: false }, target: { name: 'B', isOwner: false } }, workoutName: null, elapsedMs: -5, defaultName: 'X' }).elapsed, '00:00');
 });

@@ -185,6 +185,13 @@ class WorkoutCore(
 
   /** This Watch's session started recording. */
   fun sessionStarted(sessionStart: Long, now: Long) {
+    // The phone said off while this session was starting, too late for the
+    // start gate and too early for the off push to see a session to end. Not
+    // the owner's workout: thrown away, and the off screen stays.
+    if (ui.screen == WatchScreen.OFF) {
+      host.endSession(discard = true)
+      return
+    }
     // Only a seed: a `startedAt` already pushed by the phone is the better
     // origin and must not be thrown away by the session starting afterwards.
     if (elapsedOrigin == null) elapsedOrigin = sessionStart

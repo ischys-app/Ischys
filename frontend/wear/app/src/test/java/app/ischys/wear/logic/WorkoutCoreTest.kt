@@ -130,6 +130,19 @@ class WorkoutCoreTest {
     assertFalse(core.sessionStartAllowed)
   }
 
+  @Test fun aSessionThatStartsWhileOffIsDiscardedNotEntered() {
+    // The off push landed while the session was still starting.
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    host.calls.clear()
+    startSession(t0 + 1_000)
+    assertEquals(listOf("discardSession"), host.calls.filter { it.endsWith("Session") })
+    assertFalse("requestState" in host.calls)
+    assertFalse(host.sessionRunning)
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+    assertEquals("Maria", core.ui.profileName)
+    assertFalse(core.needsTicking)
+  }
+
   @Test fun anOffPushWithNoSessionEndsNothing() {
     core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
     assertFalse("discardSession" in host.calls)

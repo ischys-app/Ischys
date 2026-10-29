@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { createProfileWith, type CreateProfileDeps } from './createProfileSequence.ts';
+import { afterCreate, createProfileWith, type CreateProfileDeps } from './createProfileSequence.ts';
 
 type Conn = { id: string };
 type P = { id: string; name: string };
@@ -120,4 +120,12 @@ test('a cleanup step that fails does not skip the others, and the first error is
   await assert.rejects(w.create({ name: 'Maria', initials: 'M', copyRoutines: true }), /copy/);
   assert.ok(w.log.includes('delete row p1'));
   assert.equal(warned.length, 2);
+});
+
+test('afterCreate: what the screen does after each outcome', () => {
+  assert.equal(afterCreate({ created: true, switched: 'ok' }), 'none');
+  assert.equal(afterCreate({ created: true, switched: 'threw' }), 'back');
+  assert.equal(afterCreate({ created: true, switched: 'workout' }), 'back');
+  assert.equal(afterCreate({ created: true, switched: 'busy' }), 'back');
+  assert.equal(afterCreate({ created: false }), 'retry');
 });

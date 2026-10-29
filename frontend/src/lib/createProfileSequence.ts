@@ -2,7 +2,7 @@
  * The order of adding a profile (P4, #117), and what a failure leaves behind.
  *
  * Pure, with every effect passed in, so `node --test` covers it
- * (createProfileSequence.test.ts); data/profilesRepo.ts wires it to the
+ * (createProfileSequence.test.ts); src/lib/createProfile.ts wires it to the
  * registry, the files and the routine copy.
  *
  * The rule: no half-created profile stays in the list. Whatever fails after
@@ -61,4 +61,23 @@ export function createProfileWith<C, P extends { id: string }, Copy>(d: CreatePr
       throw e;
     }
   };
+}
+
+/** How an Add press ended: the create failed, or it succeeded and the switch did what. */
+export type AddOutcome =
+  | { created: false }
+  | { created: true; switched: 'ok' | 'same' | 'workout' | 'busy' | 'threw' };
+
+/**
+ * What the Add profile screen does next.
+ * - `'none'`: the switch went through and dismisses the screen itself.
+ * - `'back'`: the profile exists and is whole, but the switch was refused or
+ *   failed. Go back (warning haptic); it is in the switcher. Never offer a
+ *   retry here: that would create a second profile.
+ * - `'retry'`: nothing was created (the create cleaned up after itself), so
+ *   say so and let Add be pressed again.
+ */
+export function afterCreate(o: AddOutcome): 'none' | 'back' | 'retry' {
+  if (!o.created) return 'retry';
+  return o.switched === 'ok' ? 'none' : 'back';
 }

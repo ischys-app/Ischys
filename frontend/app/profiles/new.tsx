@@ -39,6 +39,7 @@ import {
 } from '../../src/domain/profiles';
 import { DEFAULT_NAME, useActiveProfile } from '../../src/lib/activeProfile';
 import { createProfile } from '../../src/lib/createProfile';
+import { afterCreate, type AddOutcome } from '../../src/lib/createProfileSequence';
 import { haptics } from '../../src/lib/haptics';
 import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { switchProfile } from '../../src/lib/switchProfile';
@@ -78,6 +79,8 @@ export default function NewProfileScreen() {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const busyRef = useRef(false);
+  /** The profile this screen created, once it has. */
+  const createdId = useRef<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -107,21 +110,42 @@ export default function NewProfileScreen() {
     setBusy(true);
     setFailed(false);
     Keyboard.dismiss();
+
+    // Once created, this screen never creates again: a retry would duplicate it.
+    let outcome: AddOutcome;
     try {
-      const p = await createProfile({ name: trimmed, initials, copyRoutines: copy && routineCount > 0 });
-      const result = await switchProfile(p.id);
-      // 'ok': the switch dismisses this screen itself. Anything else (a workout
-      // running in this profile) leaves the new profile in the list; go back.
-      if (result !== 'ok') {
-        haptics.warning();
-        router.back();
+      if (createdId.current === null) {
+        const p = await createProfile({ name: trimmed, initials, copyRoutines: copy && routineCount > 0 });
+        createdId.current = p.id;
       }
     } catch (e) {
       if (__DEV__) console.warn('[profiles] add failed', e);
-      haptics.warning();
-      busyRef.current = false;
-      setBusy(false);
-      setFailed(true);
+    }
+    if (createdId.current === null) {
+      outcome = { created: false };
+    } else {
+      try {
+        outcome = { created: true, switched: await switchProfile(createdId.current) };
+      } catch (e) {
+        if (__DEV__) console.warn('[profiles] switch to the new profile failed', e);
+        outcome = { created: true, switched: 'threw' };
+      }
+    }
+
+    switch (afterCreate(outcome)) {
+      case 'none':
+        // The switch dismisses this screen itself (app/_layout.tsx).
+        return;
+      case 'back':
+        // The profile is whole and in the switcher; only the switch didn't happen.
+        haptics.warning();
+        router.back();
+        return;
+      case 'retry':
+        haptics.warning();
+        busyRef.current = false;
+        setBusy(false);
+        setFailed(true);
     }
   };
 

@@ -195,11 +195,11 @@ test('duplicateProfileName ignores case and outer spaces', () => {
   assert.equal(duplicateProfileName('ΜΑΡΊΑ', [{ name: 'Μαρία' }]), 'Μαρία');
 });
 
-test('copy routines row: sub line and label (no pronouns, default owner)', () => {
+test('copy routines row: sub line and label (R16: "your" for a default-named owner)', () => {
   assert.equal(copyRoutinesSub(6), '6 ROUTINES · COPIES, NOT LINKED');
   assert.equal(copyRoutinesSub(1), '1 ROUTINE · COPIES, NOT LINKED');
   assert.equal(copyRoutinesLabel({ name: 'Kostas Ioannou', isOwner: true }, 'Athlete'), "Copy Kostas's routines");
-  assert.equal(copyRoutinesLabel({ name: 'Athlete', isOwner: true }, 'Athlete'), "Copy the phone's owner's routines");
+  assert.equal(copyRoutinesLabel({ name: 'Athlete', isOwner: true }, 'Athlete'), 'Copy your routines');
   assert.equal(copyRoutinesLabel({ name: 'Maria Papadaki', isOwner: false }, 'Athlete'), "Copy Maria's routines");
 });
 

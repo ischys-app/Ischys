@@ -260,13 +260,12 @@ export function copyRoutinesSub(count: number): string {
 }
 
 /**
- * Whose routines the toggle copies: the current profile's first name, or, for
- * an owner still called `defaultName`, "the phone's owner" (no pronouns).
+ * The toggle's label: "Copy ‹First›'s routines", or "Copy your routines" for
+ * an owner still called `defaultName` (Ruling R16).
  */
 export function copyRoutinesLabel(current: { name: string; isOwner: boolean }, defaultName: string): string {
-  const who =
-    current.isOwner && current.name === defaultName ? ownerLabel(current.name, defaultName) : firstName(current.name);
-  return `Copy ${who}'s routines`;
+  if (current.isOwner && current.name === defaultName) return 'Copy your routines';
+  return `Copy ${firstName(current.name)}'s routines`;
 }
 
 /** The HEALTH & WATCH footer. `owner` comes from `ownerLabel`. */

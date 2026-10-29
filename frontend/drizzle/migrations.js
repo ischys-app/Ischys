@@ -9,6 +9,7 @@ import m0004 from './0004_add_set_effort.sql';
 import m0005 from './0005_add_workout_health_entry.sql';
 import m0006 from './0006_add_pr_backfill_version.sql';
 import m0007 from './0007_add_settings_appearance.sql';
+import m0008 from './0008_add_profiles.sql';
 
   export default {
     journal,
@@ -20,7 +21,8 @@ m0003,
 m0004,
 m0005,
 m0006,
-m0007
+m0007,
+m0008
     }
   }
   

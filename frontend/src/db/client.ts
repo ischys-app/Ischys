@@ -1,6 +1,6 @@
 /**
- * The on-device database. Opens the SQLite file, exposes a typed Drizzle handle,
- * and runs pending migrations at startup. FK enforcement is on. This module
+ * The on-device database. Opens the SQLite files and exposes typed Drizzle
+ * handles, with FK enforcement on. db/bootstrap.ts runs the migrations. This module
  * touches native modules, so it is NEVER imported by node-tested code.
  *
  * Each profile has its own SQLite file (`ischys.db` is the owner's). `db` is a
@@ -9,10 +9,8 @@
  * import them need not know. Nothing switches until profiles do.
  */
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
-import migrations from '../../drizzle/migrations';
 import { OWNER_ID } from '../domain/profiles';
 import { createAtomic } from './atomic';
 import * as schema from './schema';
@@ -139,9 +137,3 @@ export function atomically<T>(body: (tx: Executor) => Promise<T>): Promise<T> {
 
 /** Whether an `atomically` transaction is open on the current connection right now. */
 export const transactionOpen = (): boolean => current.atomic.isOpen();
-
-/** Runs pending migrations on the owner's file; the app renders a splash until
- * success is true. */
-export function useDbReady() {
-  return useMigrations(connection, migrations);
-}

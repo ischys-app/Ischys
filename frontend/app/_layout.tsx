@@ -284,8 +284,8 @@ export default function RootLayout() {
   useLiveActivityActions();
   useWatchStart();
   useWatchFinish();
-  // Phase 0: build + seed the on-device DB at startup. Nothing reads from it
-  // yet (the app is still server-backed); this only guarantees it exists.
+  // Migrate and seed the on-device DB, register the owner profile, and open
+  // the profile to launch into (#117). The splash stays until it is ready.
   const dbBootstrap = useLocalDbBootstrap();
   usePrFlagBackfill(dbBootstrap.ready);
 

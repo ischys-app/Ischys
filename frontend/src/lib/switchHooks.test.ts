@@ -5,7 +5,7 @@
  * Switching points `db` at another profile's file, but a module that cached
  * something from the old one (the unit, a summary, a picked exercise) would go
  * on serving it, or writing with it, to the new profile. Every module in
- * src/lib and src/data that keeps state at the top level either registers an
+ * src/lib, src/data and src/components that keeps state at the top level either registers an
  * `onProfileSwitch` hook to drop or reload it, or is listed below with the
  * reason it holds nothing that belongs to a profile. A new cache fails here
  * until someone decides which. This reads the source.
@@ -18,13 +18,14 @@ import { test } from 'node:test';
 import { withoutComments } from '../db/sourceScan.ts';
 
 const SRC = join(import.meta.dirname, '..');
-const ROOTS = ['lib', 'data'];
+const ROOTS = ['lib', 'data', 'components'];
 
 /** Files whose top-level state is not a profile's, and why. Path from src/. */
 const ALLOWED: Record<string, string> = {
   'lib/activeProfile.ts': 'the active-profile store and the switch-hook registry themselves',
   'lib/haptics.ts': 'device setting: the haptic preference is device-wide',
   'data/ids.ts': 'process-wide monotonic clock; holds no profile data',
+  'components/workout/types.ts': '`_seq` counter for temporary React keys; holds no data',
 };
 
 /** Top-level `let`/`var`, and top-level `const` Maps and Sets. */
@@ -78,6 +79,7 @@ test('the scan sees the modules the spec names', () => {
     'lib/liveActivityBridge.ts',
     'lib/watchFinish.ts',
     'data/ids.ts',
+    'components/MusclePickerSheet.tsx',
   ]) {
     assert.ok(hits.includes(file), `${relative(SRC, join(SRC, file))} not seen by the scan`);
   }

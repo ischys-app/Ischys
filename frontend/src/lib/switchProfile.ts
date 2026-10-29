@@ -18,7 +18,7 @@ import {
   transactionOpen,
   useConnection,
 } from '../db/client';
-import { prepareConnection, primeSettings } from '../db/bootstrap';
+import { applySettings, prepareConnection, readSettings, tidyCurrentConnection } from '../db/bootstrap';
 import { listProfiles, writeProfileStats } from '../data/profilesRepo';
 import { completedWorkoutStats, countWorkouts } from '../data/workoutsRepo';
 import {
@@ -41,14 +41,14 @@ export async function refreshCurrentProfileStats(): Promise<void> {
 }
 
 /**
- * The profile whose workout is running, or null. The reopen pointer names it,
- * but it is cleared when a workout is minimised (it only decides where a
- * relaunch opens), so the current file is asked as well.
+ * The profile whose workout is running, or null. The current file first: the
+ * reopen pointer is cleared when a workout is minimised (it only decides where
+ * a relaunch opens), and a stale pointer naming another profile must not hide
+ * a workout running here. Then the pointer, for a workout in another file.
  */
 async function runningWorkoutProfileId(): Promise<string | null> {
-  const entry = recallActiveWorkoutEntry();
-  if (entry) return entry.profileId;
-  return (await countWorkouts('active')) > 0 ? activeProfile().id : null;
+  if ((await countWorkouts('active')) > 0) return activeProfile().id;
+  return recallActiveWorkoutEntry()?.profileId ?? null;
 }
 
 const switcher = createSwitcher({
@@ -64,7 +64,9 @@ const switcher = createSwitcher({
   closeConnection,
   setActiveProfile,
   runHooks: runProfileSwitchHooks,
-  primeSettings,
+  readSettings,
+  applySettings,
+  tidy: tidyCurrentConnection,
   rememberProfile: (id) => SecureStore.setItem(ACTIVE_PROFILE_KEY, id),
   bumpEpoch: bumpProfileEpoch,
   haptic: () => haptics.select(),

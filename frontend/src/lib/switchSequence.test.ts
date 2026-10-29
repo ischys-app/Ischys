@@ -11,11 +11,11 @@ const OWNER: P = { id: 'owner', name: 'Vasilis' };
 const MARIA: P = { id: 'm1', name: 'Μαρία Παπαδάκη' };
 
 /** A fake world: two profiles, the owner active, and a log of every step. */
-function world(over: Partial<SwitchDeps<Conn, P>> = {}) {
+function world(over: Partial<SwitchDeps<Conn, P, string>> = {}) {
   const log: string[] = [];
   const owner: Conn = { id: 'owner', closed: false };
   const state = { conn: owner, profile: OWNER, count: 2 };
-  const deps: SwitchDeps<Conn, P> = {
+  const deps: SwitchDeps<Conn, P, string> = {
     currentProfile: () => state.profile,
     activeWorkoutProfileId: async () => null,
     transactionOpen: () => false,
@@ -42,7 +42,12 @@ function world(over: Partial<SwitchDeps<Conn, P>> = {}) {
       state.count = n;
     },
     runHooks: () => void log.push('hooks'),
-    primeSettings: async () => void log.push(`prime:${state.conn.id}`),
+    readSettings: async (c) => {
+      log.push(`read:${c.id}`);
+      return `settings-of-${c.id}`;
+    },
+    applySettings: (s) => void log.push(`apply:${s}`),
+    tidy: async () => void log.push(`tidy:${state.conn.id}`),
     rememberProfile: (id) => void log.push(`remember:${id}`),
     bumpEpoch: () => void log.push('epoch'),
     haptic: () => void log.push('haptic'),
@@ -59,15 +64,17 @@ test('a switch runs every step, in order', async () => {
     'stats:owner',
     'open:m1',
     'prepare:m1',
+    'read:m1',
     'use:m1',
     'active:m1:2',
     'close:owner',
     'hooks',
-    'prime:m1',
+    'apply:settings-of-m1',
     'remember:m1',
     'epoch',
     'haptic',
     'announce:Switched to Μαρία Παπαδάκη',
+    'tidy:m1',
   ]);
   assert.equal(state.conn.id, 'm1');
   assert.equal(state.profile, MARIA);
@@ -94,6 +101,12 @@ test('a running workout blocks the switch', async () => {
   const { log, switchTo } = world({ activeWorkoutProfileId: async () => 'owner' });
   assert.equal(await switchTo('m1'), 'workout');
   assert.deepEqual(log, []);
+});
+
+test("switching into the running workout's profile is allowed", async () => {
+  const { state, switchTo } = world({ activeWorkoutProfileId: async () => 'm1' });
+  assert.equal(await switchTo('m1'), 'ok');
+  assert.equal(state.conn.id, 'm1');
 });
 
 test('an open transaction blocks the switch', async () => {
@@ -190,4 +203,54 @@ test('a file that fails to close does not undo a finished switch', async () => {
   assert.equal(await switchTo('m1'), 'ok');
   assert.equal(await switchTo('owner'), 'ok');
   assert.equal(state.conn.id, 'owner');
+});
+
+test('the target is prepared and its settings read before db moves', async () => {
+  // Preparing never points db at the target (Ruling R9): the previous profile
+  // stays current until the one synchronous stretch that switches everything.
+  const seen: string[] = [];
+  const { switchTo } = world({
+    prepareConnection: async () => void seen.push('prepare'),
+    readSettings: async () => {
+      seen.push('read');
+      return 's';
+    },
+    useConnection: (c) => void seen.push(`use:${c.id}`),
+  });
+  await switchTo('m1');
+  assert.deepEqual(seen, ['prepare', 'read', 'use:m1']);
+});
+
+test('from db moving to the epoch bump nothing awaits, so no old screen renders the new settings', async () => {
+  // Every step from `use` to `epoch` runs in one synchronous stretch: React
+  // renders once after it, by when the old tab screens are unmounted.
+  const stretch: string[] = [];
+  let inStretch = false;
+  const { switchTo } = world({
+    useConnection: () => {
+      inStretch = true;
+      stretch.push('use');
+    },
+    applySettings: () => void stretch.push('apply'),
+    bumpEpoch: () => {
+      stretch.push('epoch');
+      inStretch = false;
+    },
+  });
+  const run = switchTo('m1');
+  // Flush microtasks until the stretch starts; it must end before control returns.
+  for (let i = 0; i < 50 && stretch.length === 0; i++) await Promise.resolve();
+  assert.equal(inStretch, false);
+  assert.deepEqual(stretch, ['use', 'apply', 'epoch']);
+  await run;
+});
+
+test('a tidy that fails does not fail the switch', async () => {
+  const { switchTo, state } = world({
+    tidy: async () => {
+      throw new Error('dedupe');
+    },
+  });
+  assert.equal(await switchTo('m1'), 'ok');
+  assert.equal(state.conn.id, 'm1');
 });

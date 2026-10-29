@@ -90,6 +90,8 @@ test('switchBlock', () => {
   const base = { targetId: 'b', currentId: 'a', activeWorkoutProfileId: null, transactionOpen: false };
   assert.equal(switchBlock({ ...base, targetId: 'a' }), 'same');
   assert.equal(switchBlock({ ...base, activeWorkoutProfileId: 'a' }), 'workout');
+  // Into the profile whose workout is running: the way back to it, never blocked.
+  assert.equal(switchBlock({ ...base, activeWorkoutProfileId: 'b' }), null);
   assert.equal(switchBlock({ ...base, transactionOpen: true }), 'busy');
   assert.equal(switchBlock(base), null);
 });

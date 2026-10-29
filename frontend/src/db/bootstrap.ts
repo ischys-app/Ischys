@@ -15,7 +15,6 @@ import type { Catalog } from './catalog/catalogTypes';
 import { seedCatalog } from './catalog/seedCatalog';
 import {
   closeConnection,
-  currentConnection,
   openConnection,
   useConnection,
   type ProfileConnection,
@@ -28,6 +27,7 @@ import { setEffortMode } from '../lib/effortMode';
 import { setHapticsEnabled } from '../lib/haptics';
 import { setWeightUnit } from '../lib/weightUnit';
 import { getSettings } from '../data/settingsRepo';
+import type { SettingsOut } from '../api/types';
 
 /** The owner's name from before profiles existed (profileName.ts's old key). */
 const LEGACY_NAME_KEY = 'ischys.profile.name';
@@ -48,37 +48,33 @@ function runMigrations(conn: ProfileConnection): Promise<void> {
 }
 
 /**
- * Seeds the catalog and the settings row and folds name duplicates in an
- * already-migrated file. The helpers run on the `db` facade, so `db` is pointed
- * at `conn` while they run. On success `stay` leaves it there (launch, which
- * must not hand `db` back to the owner between seeding a profile and entering
- * it); otherwise, and always on failure, `db` goes back to where it was.
+ * Seeds the catalog and the settings row in an already-migrated file. Works on
+ * `conn` alone: `db` stays where it is (Ruling R9).
  */
-async function seedConnection(conn: ProfileConnection, stay: boolean): Promise<void> {
-  const previous = currentConnection();
-  useConnection(conn);
-  let seeded = false;
-  try {
-    await seedCatalog(catalog as Catalog);
-    await ensureLocalSettings(conn);
-    // Fold import-created name duplicates into their catalog original. Best
-    // effort — never let a dedup hiccup keep the app from starting.
-    await dedupeExercisesByName().catch(() => 0);
-    seeded = true;
-  } finally {
-    if (!seeded || !stay) useConnection(previous);
-  }
+async function seedConnection(conn: ProfileConnection): Promise<void> {
+  await seedCatalog(catalog as Catalog, conn);
+  await ensureLocalSettings(conn);
 }
 
 /**
  * Migrates a profile's file, then seeds it. Every profile file goes through
- * this before `db` is pointed at it. `db` is back where it was afterwards. Don't
- * call it while an `atomically` transaction is open: `db` moves to `conn` while
- * the seeding runs.
+ * this before `db` is pointed at it, and it never moves `db`: a switch runs it
+ * while the previous profile is still the current one.
  */
 export async function prepareConnection(conn: ProfileConnection): Promise<void> {
   await runMigrations(conn);
-  await seedConnection(conn, false);
+  await seedConnection(conn);
+}
+
+/**
+ * Folds import-created name duplicates into their catalog original, in the
+ * current file. Runs once the profile is active, not while preparing: a merge
+ * recomputes records with the profile's bodyweight and warm-up setting (keyed
+ * per profile) and commits on the current connection's queue. Best effort: a
+ * dedup hiccup never keeps the app from starting or a switch from finishing.
+ */
+export async function tidyCurrentConnection(): Promise<void> {
+  await dedupeExercisesByName().catch(() => 0);
 }
 
 function readSecure(key: string): string | null {
@@ -109,15 +105,14 @@ function launchProfileId(rows: readonly ProfileRow[]): string {
 }
 
 /**
- * Opens, prepares and switches to a non-owner profile. `db` moves to it when
- * its seeding starts and stays there, never back on the owner in between. On
- * failure `db` is back on the owner and the file is closed.
+ * Opens and prepares a non-owner profile's file. `db` stays on the owner until
+ * launch points it here, once. On failure the file is closed.
  */
-async function enterProfile(id: string): Promise<void> {
+async function openPrepared(id: string): Promise<ProfileConnection> {
   const conn = openConnection(id);
   try {
-    await runMigrations(conn);
-    await seedConnection(conn, true);
+    await prepareConnection(conn);
+    return conn;
   } catch (e) {
     closeConnection(conn);
     throw e;
@@ -133,15 +128,29 @@ async function enterProfile(id: string): Promise<void> {
  * can only ever add a rating to the screen, never flash one that is hidden).
  * Failing leaves today's defaults; it never blocks launch.
  */
-export async function primeSettings(): Promise<void> {
+async function primeSettings(): Promise<void> {
+  applySettings(await readSettings());
+}
+
+/**
+ * The settings a profile's file holds (its own half from `conn`, the device's
+ * from the owner's file), or null when they can't be read. Reads `conn`
+ * directly, so a switch can read the target's before `db` moves to it.
+ */
+export async function readSettings(conn?: ProfileConnection): Promise<SettingsOut | null> {
   try {
-    const s = await getSettings();
-    setHapticsEnabled(s.haptic_feedback);
-    setWeightUnit(s.unit);
-    setEffortMode(s.effort_mode);
+    return await getSettings(conn?.drizzle);
   } catch {
-    // keep the defaults
+    return null;
   }
+}
+
+/** Puts read settings into the caches, synchronously. Null keeps what they hold. */
+export function applySettings(s: SettingsOut | null): void {
+  if (!s) return;
+  setHapticsEnabled(s.haptic_feedback);
+  setWeightUnit(s.unit);
+  setEffortMode(s.effort_mode);
 }
 
 const asError = (e: unknown): Error => (e instanceof Error ? e : new Error(String(e)));
@@ -161,7 +170,8 @@ async function launch(): Promise<Outcome> {
   // From here a failure is reported but the app still starts, on the owner,
   // as a seeding failure always has.
   try {
-    await seedConnection(owner, true);
+    // `db` is the owner's already (db/client.ts).
+    await seedConnection(owner);
     // 2. Register the owner (first launch with a registry).
     await ensureOwnerProfile(await legacyOwnerName());
     // 3–4. Open the launch profile when it isn't the owner. If its file won't
@@ -174,7 +184,7 @@ async function launch(): Promise<Outcome> {
     let error: Error | null = null;
     if (id !== OWNER_ID) {
       try {
-        await enterProfile(id);
+        useConnection(await openPrepared(id));
         launchId = id;
       } catch (e) {
         error = asError(e);
@@ -183,6 +193,7 @@ async function launch(): Promise<Outcome> {
     // 5. Who is using the app, for the per-profile keys and the name.
     const launchRow = rows.find((p) => p.id === launchId);
     if (launchRow) setActiveProfile(launchRow, rows.length);
+    await tidyCurrentConnection();
     await primeSettings();
     return { ready: true, error };
   } catch (e) {

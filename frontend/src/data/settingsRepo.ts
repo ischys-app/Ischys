@@ -52,10 +52,13 @@ const settingsRow = (conn: typeof db) =>
  * Device-wide fields (appearance, haptics, rest-timer alerts) come from the
  * owner's row, the rest from the current profile's. With the owner active both
  * are the same file. A missing row falls back to the defaults.
+ *
+ * `from` reads the profile half from another profile's file (a switch reads
+ * the target's before `db` moves to it); by default, the current profile's.
  */
-export async function getSettings(): Promise<SettingsOut> {
+export async function getSettings(from: typeof db = db): Promise<SettingsOut> {
   const deviceRow = (await settingsRow(deviceDb))[0];
-  const profileRow = (await settingsRow(db))[0];
+  const profileRow = (await settingsRow(from))[0];
   const device = deviceRow ? rowToOut(deviceRow) : DEFAULTS;
   const profile = profileRow ? rowToOut(profileRow) : DEFAULTS;
   return {

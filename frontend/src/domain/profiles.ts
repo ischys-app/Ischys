@@ -115,6 +115,11 @@ export function scopedKey(profileId: string, key: string): string {
   return `ischys.p.${profileId}.${key.replace(/^ischys\./, '')}`;
 }
 
+/**
+ * Why a switch to `targetId` can't happen now, or null when it can. A running
+ * workout blocks every switch except the one into its own profile: that is the
+ * way back to it (Ruling R8).
+ */
 export function switchBlock(a: {
   targetId: string;
   currentId: string;
@@ -122,7 +127,7 @@ export function switchBlock(a: {
   transactionOpen: boolean;
 }): 'same' | 'workout' | 'busy' | null {
   if (a.targetId === a.currentId) return 'same';
-  if (a.activeWorkoutProfileId !== null) return 'workout';
+  if (a.activeWorkoutProfileId !== null && a.activeWorkoutProfileId !== a.targetId) return 'workout';
   if (a.transactionOpen) return 'busy';
   return null;
 }

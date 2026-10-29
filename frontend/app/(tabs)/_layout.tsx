@@ -36,7 +36,11 @@ function useSwitchFade(epoch: number): Animated.Value {
   useLayoutEffect(() => {
     if (shown.current === epoch) return;
     shown.current = epoch;
-    if (reduceMotion.current) return;
+    if (reduceMotion.current) {
+      // Full opacity, even if a fade from the switch before was cut short.
+      opacity.setValue(1);
+      return;
+    }
     opacity.setValue(0);
     const fade = Animated.timing(opacity, {
       toValue: 1,

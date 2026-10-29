@@ -18,5 +18,11 @@ struct OffView: View {
     }
     .padding(.horizontal, 12)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .onAppear {
+      // The way back to Start is the phone saying the owner is back. Ask, as
+      // StartView does, rather than wait for a push that may never come: a
+      // relaunch onto this screen, say, with the phone app since reopened.
+      PhoneLink.shared.requestState()
+    }
   }
 }

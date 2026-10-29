@@ -17,7 +17,7 @@ import {
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Alert, AppState, Platform, View } from 'react-native';
+import { AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
 import { FinishWorkoutFirstSheet } from '../src/components/FinishWorkoutFirstSheet';
@@ -45,6 +45,7 @@ import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../src/lib/ac
 import { takeRouteAfterSwitch } from '../src/lib/finishWorkoutFirst';
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
+import { alertWhenActive } from '../src/lib/whenActive';
 import { saveSummary } from '../src/lib/summaryCache';
 import {
   completesWorkout,
@@ -228,7 +229,9 @@ function useWatchFinish(dbReady: boolean) {
           // has the state to send it back (it does so, and restarts the
           // session, when the workout is opened).
           tellWatch('failed');
-          Alert.alert(
+          // Usually in the background, woken by the Watch, maybe locked: the
+          // alert waits until the user opens the app.
+          alertWhenActive(
             'Couldn’t finish workout',
             'Nothing was changed. Open the workout and try again.',
           );

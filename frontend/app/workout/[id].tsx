@@ -7,7 +7,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   Keyboard,
   KeyboardAvoidingView,
@@ -68,6 +67,7 @@ import {
   rememberActiveWorkout,
 } from '../../src/lib/activeWorkout';
 import { saveRest, loadRest, clearRest } from '../../src/lib/restSession';
+import { alertWhenActive } from '../../src/lib/whenActive';
 import {
   liveActivityProfile,
   onRestAction,
@@ -699,7 +699,8 @@ export default function ActiveWorkout() {
     }
     if (liveActivityHintShown()) return;
     rememberLiveActivityHint();
-    Alert.alert(
+    // This screen can open in the background (a Watch start): wait for the user.
+    alertWhenActive(
       'Live Activities are off',
       'Turn on Live Activities for Ischys in Settings to see your rest timer on the Lock Screen.',
       [
@@ -1310,7 +1311,9 @@ export default function ActiveWorkout() {
           const push = withFinishVerdict(watchStateRef.current, 'failed', watch.finishId);
           if (push) pushWatchState(push);
         }
-        Alert.alert('Couldn’t finish workout', 'Nothing was changed. Try again.');
+        // A finish from the Watch runs with the phone in the background, often
+        // locked: the alert waits until the user opens the app.
+        alertWhenActive('Couldn’t finish workout', 'Nothing was changed. Try again.');
         return;
       }
     }

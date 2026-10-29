@@ -86,7 +86,17 @@ data class UiState(
  *
  * Not thread-safe: every call is made on the main thread. `now` is epoch ms.
  */
-class WorkoutCore(private val host: Host, themeId: String? = null) {
+class WorkoutCore(
+  private val host: Host,
+  themeId: String? = null,
+  /**
+   * The profile the phone last said the Watch is off for, as `persistOff`
+   * saved it; null when it last said on (or never said). A relaunch with the
+   * phone out of reach must not open on a Start screen another profile's
+   * workout could be recorded from.
+   */
+  offFor: String? = null,
+) {
   /** What the state machine needs done for it. */
   interface Host {
     /** A session of this Watch's own is recording. */
@@ -106,9 +116,15 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     fun queueEnd()
     fun requestState()
     fun persistTheme(id: String)
+    /** Remember whom the Watch is off for across launches; null when it is on. */
+    fun persistOff(profileName: String?)
   }
 
-  var ui = UiState(themeId = themeId)
+  var ui = UiState(
+    themeId = themeId,
+    screen = if (offFor != null) WatchScreen.OFF else WatchScreen.START,
+    profileName = offFor ?: "",
+  )
     private set(value) {
       if (field == value) return
       field = value
@@ -476,6 +492,12 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
         // Anything pushed means the phone app is running.
         phoneAppClosed = false,
       )
+    }
+
+    val wasOff = before.screen == WatchScreen.OFF
+    val isOff = s.screen == WatchScreen.OFF
+    if (wasOff != isOff || isOff && before.profileName != s.profileName) {
+      host.persistOff(if (isOff) s.profileName else null)
     }
 
     // Every push goes through the alarm, which is what makes a repeated push

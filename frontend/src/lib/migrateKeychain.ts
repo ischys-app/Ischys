@@ -15,8 +15,16 @@ import { AppState, Platform } from 'react-native';
 
 import { listProfiles } from '../data/profilesRepo';
 import { OWNER_ID } from '../domain/profiles';
-import { createMigrationScheduler, keychainKeysToMigrate, type KeychainMigration } from './keychainMigration';
+import {
+  createMigrationScheduler,
+  keychainKeysToMigrate,
+  withTimeout,
+  type KeychainMigration,
+} from './keychainMigration';
 import { migrateKeychainItems } from './secureStore';
+
+/** The longest a foreground launch waits for the migration. */
+const LAUNCH_WAIT_MS = 2000;
 
 async function runOnce(): Promise<KeychainMigration> {
   // Every profile's keys. The registry is read now, so a profile added while
@@ -40,10 +48,13 @@ const scheduler = createMigrationScheduler(
 );
 
 /**
- * Starts the migration. Resolves when it has run, if the app is in the
- * foreground now; at once otherwise. Never rejects.
+ * Starts the migration. Resolves when it has run, or after LAUNCH_WAIT_MS, if
+ * the app is in the foreground now; at once otherwise. Never rejects.
  */
 export async function migrateKeychain(): Promise<void> {
   if (Platform.OS !== 'ios') return;
-  await scheduler.start()?.catch(() => {});
+  const run = scheduler.start();
+  if (!run) return;
+  // Never longer than this: past it, launch goes on and the run finishes behind it.
+  await withTimeout(run, LAUNCH_WAIT_MS).catch(() => {});
 }

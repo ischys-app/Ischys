@@ -17,6 +17,7 @@ import {
   keychainKeysToMigrate,
   type KeychainMigration,
   type NativeStore,
+  withTimeout,
 } from './keychainMigration.ts';
 
 const FRONTEND = join(import.meta.dirname, '..', '..');
@@ -349,4 +350,88 @@ test('scheduler: a locked or failed run tries again on the next return to active
   await tick();
   assert.equal(runs, 3, 'done: no more');
   assert.equal(app.listenerCount(), 0);
+});
+
+test('scheduler: a run that left something undone tries again on the next return to active', async () => {
+  const app = fakeApp('active');
+  const results: KeychainMigration[] = [
+    { outcome: 'done', moved: 1, lost: ['ischys.bodyweightKg'], marked: false },
+    { outcome: 'done', moved: 1, lost: [], marked: true },
+  ];
+  let runs = 0;
+  const scheduler = createMigrationScheduler(app.source, async () => results[runs++]);
+  await scheduler.start();
+  await tick();
+  assert.equal(runs, 1, 'not again while still active');
+  app.go('background');
+  app.go('active');
+  await tick();
+  assert.equal(runs, 2);
+  app.go('background');
+  app.go('active');
+  await tick();
+  assert.equal(runs, 2, 'marked: no more');
+  assert.equal(app.listenerCount(), 0);
+});
+
+/** A timer that fires only when told to. */
+function manualTimer() {
+  const pending: { fn: () => void; ms: number }[] = [];
+  return {
+    timer: (fn: () => void, ms: number) => pending.push({ fn, ms }),
+    fire() {
+      for (const t of pending.splice(0)) t.fn();
+    },
+    pending,
+  };
+}
+
+test('withTimeout: the run, when it settles first', async () => {
+  const t = manualTimer();
+  const done: KeychainMigration = { outcome: 'already' };
+  const result = withTimeout(Promise.resolve(done), 2000, t.timer);
+  assert.equal(t.pending[0].ms, 2000);
+  assert.deepEqual(await result, done);
+  t.fire(); // too late to matter
+});
+
+test('withTimeout: gives up waiting on a run that never settles, which carries on', async () => {
+  const t = manualTimer();
+  let finish!: (r: KeychainMigration) => void;
+  const run = new Promise<KeychainMigration>((resolve) => (finish = resolve));
+  const result = withTimeout(run, 2000, t.timer);
+  t.fire();
+  assert.equal(await result, 'timeout');
+  finish({ outcome: 'already' });
+  assert.deepEqual(await run, { outcome: 'already' }, 'the run itself is not stopped');
+});
+
+test('withTimeout: a run still under way keeps the app out of its way after the timeout', async () => {
+  // A Keychain whose delete never answers until let go.
+  let release!: () => void;
+  const stuck = new Promise<void>((resolve) => (release = resolve));
+  const items = new Map<string, string>([['ischys.bodyweightKg', '80']]);
+  const native: NativeStore = {
+    getItem: (key) => items.get(key) ?? null,
+    getItemAsync: async (key) => items.get(key) ?? null,
+    setItem: (key, value) => void items.set(key, value),
+    setItemAsync: async (key, value) => void items.set(key, value),
+    async deleteItemAsync(key) {
+      await stuck;
+      items.delete(key);
+    },
+  };
+  const store = createMigratingStore(native);
+  const t = manualTimer();
+  const run = store.migrate(['ischys.bodyweightKg']);
+  const waited = withTimeout(run, 2000, t.timer);
+  await tick();
+  t.fire();
+  assert.equal(await waited, 'timeout');
+  // Launch went on; the app's reads still see the value, and its async calls wait.
+  assert.equal(store.getItem('ischys.bodyweightKg'), '80');
+  const read = store.getItemAsync('ischys.bodyweightKg');
+  release();
+  assert.deepEqual(await run, { outcome: 'done', moved: 1, lost: [], marked: true });
+  assert.equal(await read, '80');
 });

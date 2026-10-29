@@ -200,7 +200,8 @@ async function launch(): Promise<Outcome> {
   }
   // 6. Settings stored before they were readable locked are stored again,
   // once. Whatever the steps above reached: it needs only the registry. Waited
-  // for in the foreground (a few Keychain calls), deferred in the background.
+  // for in the foreground (a few Keychain calls, at most 2 s), deferred in the
+  // background.
   await migrateKeychain();
   return outcome;
 }

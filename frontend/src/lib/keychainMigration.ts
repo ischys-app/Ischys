@@ -215,8 +215,9 @@ function storeTwice(native: NativeStore, key: string, value: string): boolean {
 /**
  * When to run the migration: at once if the app is active, else on its next
  * change to active (a launch in the background, woken by the Watch, may be
- * with the phone locked). A run that finds the Keychain locked, or that fails,
- * tries again on the next change to active, never while still active.
+ * with the phone locked). A run that finds the Keychain locked, that fails, or
+ * that leaves something undone tries again on the next change to active, never
+ * while still active.
  *
  * `start()` returns the run when it starts one now, so a foreground launch
  * can wait for it; null when it waits, or has already started.
@@ -234,7 +235,8 @@ export function createMigrationScheduler(
     } catch {
       result = { outcome: 'locked' };
     }
-    if (result.outcome === 'locked') onNextActive();
+    // Locked, or ran with something left undone: again on the next open.
+    if (result.outcome === 'locked' || (result.outcome === 'done' && !result.marked)) onNextActive();
     return result;
   };
 
@@ -255,4 +257,37 @@ export function createMigrationScheduler(
       return null;
     },
   };
+}
+
+/**
+ * `run`, or 'timeout' once `ms` have passed without it settling. The run is
+ * not stopped: it carries on, and keeps the app's calls out of its way, as
+ * before. Launch waits on this so a Keychain call that never answers cannot
+ * hold the splash screen.
+ */
+export function withTimeout<T>(
+  run: Promise<T>,
+  ms: number,
+  timer: (fn: () => void, ms: number) => unknown = setTimeout,
+): Promise<T | 'timeout'> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    timer(() => {
+      if (settled) return;
+      settled = true;
+      resolve('timeout');
+    }, ms);
+    run.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      },
+    );
+  });
 }

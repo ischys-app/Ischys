@@ -48,6 +48,13 @@ export type LiveActivityState = {
   setsTotal?: number;
 };
 
+/**
+ * Whose workout the iOS card names, e.g. `{ name: 'Maria', initials: 'MP' }`.
+ * Pass it only when the phone has two or more profiles; absent, the card is
+ * unchanged. Fixed for the Activity's life, like the start time.
+ */
+export type LiveActivityProfile = { name: string; initials: string };
+
 /** A button tapped on the card. Queued natively, applied by JS exactly once. */
 export type LiveActivityAction =
   | { action: 'skipRest'; at: number }
@@ -60,7 +67,12 @@ type LiveActivityNativeModule = {
   isAvailable(): boolean;
   isActive(): boolean;
   // iOS takes the state as an object; Android as JSON (see `wire`).
-  start(workoutStartedAt: number, state: LiveActivityState | string): string | null;
+  start(
+    workoutStartedAt: number,
+    state: LiveActivityState | string,
+    profileName?: string | null,
+    profileInitials?: string | null,
+  ): string | null;
   update(state: LiveActivityState | string): Promise<void>;
   end(): Promise<void>;
   consumeActions(): LiveActivityAction[];
@@ -108,8 +120,21 @@ export const isActive = (): boolean => (native ? native.isActive() : false);
  * `workoutStartedAt` is epoch milliseconds. The widget renders the header's
  * elapsed time from it, so it keeps counting while the app is suspended.
  */
-export const start = (workoutStartedAt: number, state: LiveActivityState): string | null =>
-  native ? native.start(workoutStartedAt, wire(state)) : null;
+export const start = (
+  workoutStartedAt: number,
+  state: LiveActivityState,
+  profile?: LiveActivityProfile,
+): string | null => {
+  if (!native) return null;
+  // Android's start takes two arguments and the card has no profile there.
+  if (Platform.OS !== 'ios') return native.start(workoutStartedAt, wire(state));
+  return native.start(
+    workoutStartedAt,
+    wire(state),
+    profile?.name ?? null,
+    profile?.initials ?? null,
+  );
+};
 
 export const update = async (state: LiveActivityState): Promise<void> => {
   await native?.update(wire(state));

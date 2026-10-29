@@ -68,7 +68,12 @@ import {
   rememberActiveWorkout,
 } from '../../src/lib/activeWorkout';
 import { saveRest, loadRest, clearRest } from '../../src/lib/restSession';
-import { onRestAction, onWorkoutChanged, type RestAction } from '../../src/lib/liveActivityBridge';
+import {
+  liveActivityProfile,
+  onRestAction,
+  onWorkoutChanged,
+  type RestAction,
+} from '../../src/lib/liveActivityBridge';
 import type { ExerciseOut } from '../../src/api/types';
 import { saveSummary } from '../../src/lib/summaryCache';
 import {
@@ -663,7 +668,7 @@ export default function ActiveWorkout() {
     // Attributes are fixed for the Activity's life, so the origin is pinned once
     // here — from the stored started_at, the same source the elapsed clock uses.
     if (startedAtRef.current == null) return;
-    activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+    activityRunning.current = LiveActivity.start(startedAtRef.current, state, liveActivityProfile()) != null;
     // `startedAt` arrives with the loaded workout, after the first run — without
     // it in the deps the card would never start.
   }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt, startedAt]);
@@ -723,7 +728,7 @@ export default function ActiveWorkout() {
         restStartedAt: restStartedAt ?? undefined,
         restEndsAt: restEndsAt ?? undefined,
       };
-      activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+      activityRunning.current = LiveActivity.start(startedAtRef.current, state, liveActivityProfile()) != null;
     });
     return () => sub.remove();
   }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt]);

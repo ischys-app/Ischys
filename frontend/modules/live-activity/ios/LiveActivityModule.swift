@@ -61,7 +61,7 @@ public class LiveActivityModule: Module {
       return !Activity<WorkoutAttributes>.activities.isEmpty
     }
 
-    Function("start") { (workoutStartedAt: Double, state: [String: Any]) -> String? in
+    Function("start") { (workoutStartedAt: Double, state: [String: Any], profileName: String?, profileInitials: String?) -> String? in
       guard #available(iOS 16.1, *) else { return nil }
       guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }
 
@@ -73,7 +73,9 @@ public class LiveActivityModule: Module {
       do {
         let activity = try Activity.request(
           attributes: WorkoutAttributes(
-            workoutStartedAt: Date(timeIntervalSince1970: workoutStartedAt / 1000)
+            workoutStartedAt: Date(timeIntervalSince1970: workoutStartedAt / 1000),
+            profileName: profileName,
+            profileInitials: profileInitials
           ),
           content: .init(state: Self.decode(state), staleDate: nil)
         )

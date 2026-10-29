@@ -5,8 +5,8 @@
  * while PROFILES_ENABLED is off.
  * Source of truth: design-handoff/design_handoff_profiles/Profiles.dc.html, P8.
  */
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -72,34 +72,50 @@ export default function ProfileDetailScreen() {
     load().catch(() => {});
   }, [load]);
 
+  // The latest values, readable from a navigation listener or a stale closure:
+  // Back (or a swipe back) can arrive before the field has blurred.
+  const profileRef = useRef<ProfileRow | null>(null);
+  const nameRef = useRef('');
+  const initialsRef = useRef('');
+  profileRef.current = profile;
+  nameRef.current = name;
+  initialsRef.current = initials;
+
   const save = async (patch: { name?: string; initials?: string }) => {
-    if (!profile) return;
-    const next = { ...profile, ...patch };
-    setProfile(next);
+    const prev = profileRef.current;
+    if (!prev) return;
+    // Synchronously, so a second commit compares against what was just saved.
+    profileRef.current = { ...prev, ...patch };
+    setProfile(profileRef.current);
     try {
-      await updateProfileIdentity(profile.id, patch);
+      await updateProfileIdentity(prev.id, patch);
     } catch (e) {
       if (__DEV__) console.warn('[profiles] rename failed', e);
-      setProfile(profile);
-      setName(profile.name);
-      setInitials(profile.initials);
+      profileRef.current = prev;
+      setProfile(prev);
+      setName(prev.name);
+      setInitials(prev.initials);
     }
   };
 
   const commitName = () => {
     setFocused(null);
-    if (!profile) return;
-    const v = name.trim();
+    const current = profileRef.current;
+    if (!current) return;
+    const v = nameRef.current.trim();
     if (!v) {
-      setName(profile.name);
+      setName(current.name);
+      nameRef.current = current.name;
       return;
     }
-    if (v === profile.name) return;
+    if (v === current.name) return;
     setName(v);
+    nameRef.current = v;
     // Initials that followed the old name follow the new one.
-    if (profile.initials === normalizeInitials(deriveInitials(profile.name))) {
+    if (current.initials === normalizeInitials(deriveInitials(current.name))) {
       const derived = normalizeInitials(deriveInitials(v));
       setInitials(derived);
+      initialsRef.current = derived;
       void save({ name: v, initials: derived });
     } else {
       void save({ name: v });
@@ -108,11 +124,25 @@ export default function ProfileDetailScreen() {
 
   const commitInitials = () => {
     setFocused(null);
-    if (!profile) return;
-    const v = normalizeInitials(initials) || normalizeInitials(deriveInitials(profile.name));
+    const current = profileRef.current;
+    if (!current) return;
+    const v = normalizeInitials(initialsRef.current) || normalizeInitials(deriveInitials(current.name));
     setInitials(v);
-    if (v && v !== profile.initials) void save({ initials: v });
+    initialsRef.current = v;
+    if (v && v !== current.initials) void save({ initials: v });
   };
+
+  // Anything still being edited is kept; a blur that already saved it makes
+  // both of these no-ops.
+  const commitPending = () => {
+    commitName();
+    commitInitials();
+  };
+  const commitPendingRef = useRef(commitPending);
+  commitPendingRef.current = commitPending;
+
+  const navigation = useNavigation();
+  useEffect(() => navigation.addListener('beforeRemove', () => commitPendingRef.current()), [navigation]);
 
   const onExport = () => {
     if (!profile) return;
@@ -237,7 +267,10 @@ export default function ProfileDetailScreen() {
 
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            commitPending();
+            router.back();
+          }}
           style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
           hitSlop={8}
           accessibilityLabel="Back"

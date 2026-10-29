@@ -481,6 +481,14 @@ function AppStack() {
         }}
       />
       <Stack.Screen
+        name="profiles/new"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
         name="merge-duplicates"
         options={{
           headerShown: false,

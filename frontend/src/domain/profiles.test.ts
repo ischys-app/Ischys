@@ -19,6 +19,12 @@ import {
   referencedCustomExerciseIds,
   resolveLaunchProfile,
   scopedKey,
+  normalizeInitials,
+  duplicateProfileName,
+  copyRoutinesSub,
+  copyRoutinesLabel,
+  newProfileHealthFooter,
+  exercisesToCopy,
   switchBlock,
   switcherSubline,
   type ProfileRow,
@@ -171,4 +177,52 @@ test('switcherListScrolls: a few profiles fit, ten on a 390pt phone scroll', () 
   assert.equal(switcherListScrolls(8, 844), false);
   assert.equal(switcherListScrolls(10, 844), true);
   assert.equal(SWITCHER_SEARCH_FROM, 9);
+});
+
+test('normalizeInitials: no spaces, uppercased, at most two graphemes', () => {
+  assert.equal(normalizeInitials('mp'), 'MP');
+  assert.equal(normalizeInitials(' m p k'), 'MP');
+  assert.equal(normalizeInitials('μπ'), 'ΜΠ');
+  assert.equal(normalizeInitials('🏋️n'), '🏋️N');
+  assert.equal(normalizeInitials(''), '');
+});
+
+test('duplicateProfileName ignores case and outer spaces', () => {
+  const rows = [{ name: 'Vasilis' }, { name: 'Maria Papadaki' }];
+  assert.equal(duplicateProfileName('  maria papadaki ', rows), 'Maria Papadaki');
+  assert.equal(duplicateProfileName('Maria', rows), null);
+  assert.equal(duplicateProfileName('   ', rows), null);
+  assert.equal(duplicateProfileName('ΜΑΡΊΑ', [{ name: 'Μαρία' }]), 'Μαρία');
+});
+
+test('copy routines row: sub line and label (no pronouns, default owner)', () => {
+  assert.equal(copyRoutinesSub(6), '6 ROUTINES · COPIES, NOT LINKED');
+  assert.equal(copyRoutinesSub(1), '1 ROUTINE · COPIES, NOT LINKED');
+  assert.equal(copyRoutinesLabel({ name: 'Kostas Ioannou', isOwner: true }, 'Athlete'), "Copy Kostas's routines");
+  assert.equal(copyRoutinesLabel({ name: 'Athlete', isOwner: true }, 'Athlete'), "Copy the phone's owner's routines");
+  assert.equal(copyRoutinesLabel({ name: 'Maria Papadaki', isOwner: false }, 'Athlete'), "Copy Maria's routines");
+});
+
+test('newProfileHealthFooter', () => {
+  assert.equal(
+    newProfileHealthFooter('Eleni Georgiou', 'Kostas', 'Apple Health'),
+    "Eleni's workouts stay in Ischys. Apple Health and the Watch belong to Kostas.",
+  );
+  assert.equal(
+    newProfileHealthFooter('  ', "the phone's owner", 'Apple Health'),
+    "This profile's workouts stay in Ischys. Apple Health and the Watch belong to the phone's owner.",
+  );
+});
+
+test('exercisesToCopy: custom rows and rows the new file lacks, once each', () => {
+  const source = [
+    { id: 'cat1', userId: null, isCustom: 0 },
+    { id: 'cat-old', userId: null, isCustom: 0 },
+    { id: 'cus1', userId: 'local', isCustom: 1 },
+    { id: 'imp1', userId: null, isCustom: 1 },
+  ];
+  assert.deepEqual(
+    exercisesToCopy(['cat1', 'cus1', 'cus1', 'cat-old', 'imp1'], source, new Set(['cat1'])),
+    ['cus1', 'cat-old', 'imp1'],
+  );
 });

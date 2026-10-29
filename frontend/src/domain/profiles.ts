@@ -236,3 +236,58 @@ export function switcherListScrolls(rows: number, windowHeight: number): boolean
   const chrome = SWITCHER_CHROME + (rows >= SWITCHER_SEARCH_FROM ? SWITCHER_SEARCH : 0);
   return chrome + rows * SWITCHER_ROW > windowHeight * SWITCHER_MAX_FRACTION;
 }
+
+// --- Add profile (P4) ---
+
+/** What the INITIALS field keeps: no spaces, uppercased, at most 2 characters (graphemes). */
+export function normalizeInitials(raw: string): string {
+  return graphemes(raw.replace(/\s+/g, ''))
+    .slice(0, 2)
+    .join('')
+    .toLocaleUpperCase();
+}
+
+/** The existing profile with this name (ignoring case and outer spaces), or null. */
+export function duplicateProfileName(name: string, rows: readonly { name: string }[]): string | null {
+  const key = name.trim().toLocaleLowerCase();
+  if (!key) return null;
+  return rows.find((r) => r.name.trim().toLocaleLowerCase() === key)?.name ?? null;
+}
+
+/** The START WITH row's sub line. */
+export function copyRoutinesSub(count: number): string {
+  return `${count} ${count === 1 ? 'ROUTINE' : 'ROUTINES'} · COPIES, NOT LINKED`;
+}
+
+/**
+ * Whose routines the toggle copies: the current profile's first name, or, for
+ * an owner still called `defaultName`, "the phone's owner" (no pronouns).
+ */
+export function copyRoutinesLabel(current: { name: string; isOwner: boolean }, defaultName: string): string {
+  const who =
+    current.isOwner && current.name === defaultName ? ownerLabel(current.name, defaultName) : firstName(current.name);
+  return `Copy ${who}'s routines`;
+}
+
+/** The HEALTH & WATCH footer. `owner` comes from `ownerLabel`. */
+export function newProfileHealthFooter(name: string, owner: string, healthName: string): string {
+  const first = firstName(name);
+  const whose = first ? `${first}'s workouts` : "This profile's workouts";
+  return `${whose} stay in Ischys. ${healthName} and the Watch belong to ${owner}.`;
+}
+
+/**
+ * The exercise rows a routine copy must bring along: every one the routines
+ * use that is custom (not a catalog row) or that the new file doesn't have,
+ * each once.
+ */
+export function exercisesToCopy(
+  routineExerciseIds: readonly string[],
+  source: readonly { id: string; userId: string | null; isCustom: number }[],
+  presentInTarget: ReadonlySet<string>,
+): string[] {
+  const need = new Set(
+    source.filter((e) => e.userId !== null || e.isCustom !== 0 || !presentInTarget.has(e.id)).map((e) => e.id),
+  );
+  return referencedCustomExerciseIds(routineExerciseIds, need);
+}

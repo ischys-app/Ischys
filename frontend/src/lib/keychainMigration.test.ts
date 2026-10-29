@@ -102,7 +102,7 @@ function fakeKeychain(initial: Record<string, string>) {
 test('re-creates every stored item with the new accessibility, then sets the marker', async () => {
   const kc = fakeKeychain({ 'ischys.bodyweightKg': '80', 'ischys.restSession': '{"x":1}' });
   const result = await migrateKeychain(kc.store, ['ischys.bodyweightKg', 'ischys.restSession', 'ischys.themeId']);
-  assert.deepEqual(result, { outcome: 'done', moved: 2, lost: [] });
+  assert.deepEqual(result, { outcome: 'done', moved: 2, lost: [], marked: true });
   assert.deepEqual(kc.items.get('ischys.bodyweightKg'), { value: '80', afterFirstUnlock: true });
   assert.deepEqual(kc.items.get('ischys.restSession'), { value: '{"x":1}', afterFirstUnlock: true });
   assert.equal(kc.items.has('ischys.themeId'), false, 'nothing is created for an unset key');
@@ -132,7 +132,7 @@ test('locked: stops before touching anything and leaves the marker unset', async
 
   // Next launch, unlocked, it runs.
   const again = await migrateKeychain(kc.store, ['ischys.bodyweightKg', 'ischys.themeId']);
-  assert.deepEqual(again, { outcome: 'done', moved: 2, lost: [] });
+  assert.deepEqual(again, { outcome: 'done', moved: 2, lost: [], marked: true });
 });
 
 test('a value written between the delete and the store is kept', async () => {
@@ -142,7 +142,7 @@ test('a value written between the delete and the store is kept', async () => {
     kc.store.setItem(key, 'new'); // a rest started meanwhile
   };
   const result = await migrateKeychain(kc.store, ['ischys.restSession']);
-  assert.deepEqual(result, { outcome: 'done', moved: 0, lost: [] });
+  assert.deepEqual(result, { outcome: 'done', moved: 0, lost: [], marked: true });
   assert.deepEqual(kc.items.get('ischys.restSession'), { value: 'new', afterFirstUnlock: true });
 });
 
@@ -150,7 +150,7 @@ test('a store that fails is tried again', async () => {
   const kc = fakeKeychain({ 'ischys.bodyweightKg': '80' });
   kc.state.failSets = 1;
   const result = await migrateKeychain(kc.store, ['ischys.bodyweightKg']);
-  assert.deepEqual(result, { outcome: 'done', moved: 1, lost: [] });
+  assert.deepEqual(result, { outcome: 'done', moved: 1, lost: [], marked: true });
   assert.equal(kc.items.get('ischys.bodyweightKg')?.value, '80');
 });
 
@@ -159,8 +159,24 @@ test('a store that fails twice is reported', async () => {
   kc.state.failSets = 2;
   const warnings: string[] = [];
   const result = await migrateKeychain(kc.store, ['ischys.bodyweightKg', 'ischys.themeId'], (m) => warnings.push(m));
-  assert.deepEqual(result, { outcome: 'done', moved: 1, lost: ['ischys.bodyweightKg'] });
+  assert.deepEqual(result, { outcome: 'done', moved: 1, lost: ['ischys.bodyweightKg'], marked: false });
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /ischys\.bodyweightKg/);
   assert.equal(kc.items.get('ischys.themeId')?.afterFirstUnlock, true, 'the rest carry on');
+  assert.equal(kc.items.has(KEYCHAIN_MIGRATION_MARKER), false, 'tried again next time');
+});
+
+test('an item that could not be deleted is left as it was, and the marker is not set', async () => {
+  const kc = fakeKeychain({ 'ischys.bodyweightKg': '80', 'ischys.themeId': 'ember' });
+  const store: KeychainStore = {
+    ...kc.store,
+    deleteItemAsync: async (key) => {
+      if (key === 'ischys.bodyweightKg') throw new Error('delete failed');
+      return kc.store.deleteItemAsync(key);
+    },
+  };
+  const result = await migrateKeychain(store, ['ischys.bodyweightKg', 'ischys.themeId']);
+  assert.deepEqual(result, { outcome: 'done', moved: 1, lost: [], marked: false });
+  assert.deepEqual(kc.items.get('ischys.bodyweightKg'), { value: '80', afterFirstUnlock: false });
+  assert.equal(kc.items.has(KEYCHAIN_MIGRATION_MARKER), false);
 });

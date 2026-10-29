@@ -69,8 +69,12 @@ export type KeychainMigration =
   | { outcome: 'already' }
   /** A read was refused (the phone is locked): stopped, to try next time. */
   | { outcome: 'locked' }
-  /** Ran: how many items were re-created, and any whose value could not be stored again. */
-  | { outcome: 'done'; moved: number; lost: string[] };
+  /**
+   * Ran: how many items were re-created, and any whose value could not be
+   * stored again. `marked` is false when something was left undone, so that it
+   * runs again next time.
+   */
+  | { outcome: 'done'; moved: number; lost: string[]; marked: boolean };
 
 /**
  * Re-creates every stored item in `keys`, then sets the marker.
@@ -95,6 +99,7 @@ export async function migrateKeychain(
   }
 
   let moved = 0;
+  let complete = true;
   const lost: string[] = [];
   for (const key of keys) {
     let value: string | null;
@@ -108,6 +113,7 @@ export async function migrateKeychain(
     try {
       await store.deleteItemAsync(key);
     } catch {
+      complete = false;
       continue; // Still there as it was: readable unlocked, as before.
     }
 
@@ -123,16 +129,22 @@ export async function migrateKeychain(
       moved += 1;
     } else {
       lost.push(key);
+      complete = false;
       warn(`[keychain] could not store ${key} again after re-creating it; its value is lost`);
     }
   }
 
-  try {
-    store.setItem(KEYCHAIN_MIGRATION_MARKER, '1');
-  } catch {
-    // Runs again next launch, harmlessly.
+  // Only when every item made it, so anything skipped is tried again.
+  let marked = false;
+  if (complete) {
+    try {
+      store.setItem(KEYCHAIN_MIGRATION_MARKER, '1');
+      marked = true;
+    } catch {
+      // Runs again next launch, harmlessly.
+    }
   }
-  return { outcome: 'done', moved, lost };
+  return { outcome: 'done', moved, lost, marked };
 }
 
 function storeTwice(store: KeychainStore, key: string, value: string): boolean {

@@ -24,6 +24,10 @@ import { dedupeExercisesByName } from '../data/exercisesRepo';
 import { ensureOwnerProfile, listProfiles } from '../data/profilesRepo';
 import { OWNER_ID, parseActiveWorkout, resolveLaunchProfile, type ProfileRow } from '../domain/profiles';
 import { DEFAULT_NAME, setActiveProfile } from '../lib/activeProfile';
+import { setEffortMode } from '../lib/effortMode';
+import { setHapticsEnabled } from '../lib/haptics';
+import { setWeightUnit } from '../lib/weightUnit';
+import { getSettings } from '../data/settingsRepo';
 
 /** The owner's name from before profiles existed (profileName.ts's old key). */
 const LEGACY_NAME_KEY = 'ischys.profile.name';
@@ -120,6 +124,26 @@ async function enterProfile(id: string): Promise<void> {
   }
 }
 
+/**
+ * Primes the caches that screens read before any settings screen mounts, so the
+ * first paint already has them: the haptic preference (screens fire haptics
+ * before the workout or settings screen would sync it), the weight unit (the
+ * first screen to show a weight should know it, rather than paint kilograms and
+ * correct itself) and whether sets are rated (off by default, so priming it late
+ * can only ever add a rating to the screen, never flash one that is hidden).
+ * Failing leaves today's defaults; it never blocks launch.
+ */
+async function primeSettings(): Promise<void> {
+  try {
+    const s = await getSettings();
+    setHapticsEnabled(s.haptic_feedback);
+    setWeightUnit(s.unit);
+    setEffortMode(s.effort_mode);
+  } catch {
+    // keep the defaults
+  }
+}
+
 const asError = (e: unknown): Error => (e instanceof Error ? e : new Error(String(e)));
 
 /** What launch reached: `ready` false only when the owner's file can't be migrated. */
@@ -159,6 +183,7 @@ async function launch(): Promise<Outcome> {
     // 5. Who is using the app, for the per-profile keys and the name.
     const launchRow = rows.find((p) => p.id === launchId);
     if (launchRow) setActiveProfile(launchRow, rows.length);
+    await primeSettings();
     return { ready: true, error };
   } catch (e) {
     return { ready: true, error: asError(e) };

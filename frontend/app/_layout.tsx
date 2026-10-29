@@ -28,14 +28,10 @@ import {
   discardWorkout,
   finishWorkout,
   getDashboard,
-  getSettings,
   listWorkouts,
 } from '../src/api/workouts';
 import { beginWorkout } from '../src/lib/startWorkoutFlow';
-import { setHapticsEnabled } from '../src/lib/haptics';
 import { getThemeId } from '../src/lib/themePref';
-import { setEffortMode } from '../src/lib/effortMode';
-import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { usePrFlagBackfill } from '../src/data/prBackfill';
 import { applyPendingCardActions, reconcileCardOnLaunch } from '../src/lib/liveActivityBridge';
@@ -303,28 +299,13 @@ export default function RootLayout() {
   useWatchFinish(dbBootstrap.ready);
   usePrFlagBackfill(dbBootstrap.ready);
 
-  // Cache the haptic preference at startup; screens fire haptics before the
-  // workout or settings screen would sync it.
   // Mirror the accent onto Watch pushes for the rest of the session.
   useEffect(() => {
     void getThemeId().then(setWatchThemeId);
   }, []);
 
-  // The settings row is the launch profile's: wait for it.
-  useEffect(() => {
-    if (!dbBootstrap.ready) return;
-    getSettings()
-      .then((s) => {
-        setHapticsEnabled(s.haptic_feedback);
-        // Same reason: the first screen to show a weight should already know
-        // the unit, rather than paint kilograms and correct itself.
-        setWeightUnit(s.unit);
-        // And whether sets are rated: off by default, so priming it late can
-        // only ever add a rating to the screen, never flash one that is hidden.
-        setEffortMode(s.effort_mode);
-      })
-      .catch(() => {});
-  }, [dbBootstrap.ready]);
+  // The haptic preference, weight unit and effort mode are primed at launch
+  // (db/bootstrap.ts), before the UI is ready.
 
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_400Regular,

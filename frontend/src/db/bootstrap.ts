@@ -21,6 +21,7 @@ import { dedupeExercisesByName } from '../data/exercisesRepo';
 import { ensureOwnerProfile, listProfiles } from '../data/profilesRepo';
 import { OWNER_ID, parseActiveWorkout, resolveLaunchProfile, type ProfileRow } from '../domain/profiles';
 import { DEFAULT_NAME, setActiveProfile } from '../lib/activeProfile';
+import { migrateKeychainWhenActive } from '../lib/migrateKeychain';
 import { setEffortMode } from '../lib/effortMode';
 import { setHapticsEnabled } from '../lib/haptics';
 import { setWeightUnit } from '../lib/weightUnit';
@@ -192,6 +193,9 @@ async function launch(): Promise<Outcome> {
     if (launchRow) setActiveProfile(launchRow, rows.length);
     await tidyCurrentConnection();
     await primeSettings();
+    // 6. Settings stored before they were readable locked are stored again,
+    // once, the first time the app is in the foreground. Not awaited.
+    migrateKeychainWhenActive(rows.map((p) => p.id));
     return { ready: true, error };
   } catch (e) {
     return { ready: true, error: asError(e) };

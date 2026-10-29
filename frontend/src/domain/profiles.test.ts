@@ -6,6 +6,7 @@ import {
   PROFILE_SCOPED_KEYS,
   deleteBlock,
   deriveInitials,
+  graphemesWith,
   exportFileStem,
   firstName,
   manageSubline,
@@ -36,7 +37,14 @@ const row: ProfileRow = {
 test('constants', () => {
   assert.equal(OWNER_ID, 'owner');
   assert.equal(MAX_NAME, 40);
-  assert.equal(PROFILE_SCOPED_KEYS.length, 6);
+  assert.deepEqual(PROFILE_SCOPED_KEYS, [
+    'ischys.weeklyWorkoutTarget',
+    'ischys.bodyweightKg',
+    'ischys.countWarmupsInVolume',
+    'ischys.deloadState',
+    'ischys.plateSetup',
+    'ischys.plateSetup.lb',
+  ]);
 });
 
 test('deriveInitials', () => {
@@ -127,9 +135,19 @@ test('parseActiveWorkout', () => {
   assert.deepEqual(parseActiveWorkout('{"profileId":"b","workoutId":"w2"}'), { profileId: 'b', workoutId: 'w2' });
   assert.equal(parseActiveWorkout(null), null);
   assert.equal(parseActiveWorkout(''), null);
+  assert.equal(parseActiveWorkout('   '), null);
   assert.equal(parseActiveWorkout('{"profileId":1}'), null);
 });
 
 test('referencedCustomExerciseIds', () => {
   assert.deepEqual(referencedCustomExerciseIds(['cat1', 'cus1', 'cus1'], new Set(['cus1', 'cus2'])), ['cus1']);
+});
+
+test('graphemes fallback matches Intl.Segmenter', () => {
+  const seg = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  for (const name of ['Μαρία Παπαδάκη', '🏋️ Nik', '👨‍👩‍👧 Family', 'é Ze\u0301', '👍🏽 Tone']) {
+    assert.deepEqual(graphemesWith(name, null), graphemesWith(name, seg), name);
+  }
+  assert.equal(graphemesWith('🏋️ Nik', null)[0], '🏋️');
+  assert.equal(graphemesWith('👨‍👩‍👧 F', null)[0], '👨‍👩‍👧');
 });

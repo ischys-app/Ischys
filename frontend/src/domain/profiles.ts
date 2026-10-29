@@ -27,9 +27,43 @@ export const PROFILE_SCOPED_KEYS: readonly string[] = [
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
+type SegmenterLike = { segment(s: string): Iterable<{ segment: string }> };
+
+let cachedSegmenter: SegmenterLike | null | undefined;
+
+// Hermes may not implement Intl.Segmenter; detect once and fall back.
+function defaultSegmenter(): SegmenterLike | null {
+  if (cachedSegmenter === undefined) {
+    const I = typeof Intl !== 'undefined' ? (Intl as unknown as { Segmenter?: new (l?: string, o?: object) => SegmenterLike }) : undefined;
+    cachedSegmenter = I && typeof I.Segmenter === 'function' ? new I.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+  }
+  return cachedSegmenter;
+}
+
+const EXTEND = /^(?:\p{M}|[\uFE00-\uFE0F]|[\u{1F3FB}-\u{1F3FF}])$/u;
+
+function fallbackGraphemes(s: string): string[] {
+  const out: string[] = [];
+  let joinNext = false;
+  for (const ch of Array.from(s)) {
+    if (out.length > 0 && (joinNext || ch === '\u200D' || EXTEND.test(ch))) {
+      out[out.length - 1] += ch;
+    } else {
+      out.push(ch);
+    }
+    joinNext = ch === '\u200D';
+  }
+  return out;
+}
+
+/** Exported for tests: pass null to force the code-point fallback. */
+export function graphemesWith(s: string, segmenter: SegmenterLike | null): string[] {
+  if (!segmenter) return fallbackGraphemes(s);
+  return Array.from(segmenter.segment(s), (x) => x.segment);
+}
+
 function graphemes(s: string): string[] {
-  const seg = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-  return Array.from(seg.segment(s), (x) => x.segment);
+  return graphemesWith(s, defaultSegmenter());
 }
 
 function words(name: string): string[] {
@@ -149,10 +183,11 @@ export function ownerLabel(ownerName: string, defaultName: string): string {
 }
 
 export function parseActiveWorkout(raw: string | null): { profileId: string; workoutId: string } | null {
-  if (!raw) return null;
-  if (raw.trimStart().startsWith('{')) {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('{')) {
     try {
-      const v = JSON.parse(raw) as { profileId?: unknown; workoutId?: unknown };
+      const v = JSON.parse(trimmed) as { profileId?: unknown; workoutId?: unknown };
       if (typeof v.profileId === 'string' && typeof v.workoutId === 'string' && v.profileId && v.workoutId) {
         return { profileId: v.profileId, workoutId: v.workoutId };
       }
@@ -161,7 +196,7 @@ export function parseActiveWorkout(raw: string | null): { profileId: string; wor
     }
     return null;
   }
-  return { profileId: OWNER_ID, workoutId: raw };
+  return { profileId: OWNER_ID, workoutId: trimmed };
 }
 
 export function referencedCustomExerciseIds(

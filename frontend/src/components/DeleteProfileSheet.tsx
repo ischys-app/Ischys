@@ -7,7 +7,7 @@
  * Source of truth: design-handoff/design_handoff_profiles/Profiles.dc.html, P8b.
  */
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { exportProfile, SharingUnavailable } from '../data/exportRepo';
 import { profileCounts } from '../data/profilesRepo';
@@ -36,12 +36,22 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
   const [busy, setBusy] = useState<'export' | 'delete' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const busyRef = useRef(false);
+  // Deleting the active profile switches to the owner first, which dismisses
+  // this sheet's screen before the later steps run.
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!visible) return;
     let live = true;
     setMessage(null);
     profileCounts(profile.id)
+      // Null (no file) falls back to the generic body.
       .then((c) => live && setCounts(c))
       .catch(() => live && setCounts(null));
     return () => {
@@ -80,7 +90,16 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
         await deleteProfile(profile.id);
       } catch (e) {
         if (__DEV__) console.warn('[profiles] delete failed', e);
-        setMessage(`Couldn't delete ${first}. Try again.`);
+        if (mounted.current) {
+          setMessage(`Couldn't delete ${first}. Try again.`);
+        } else {
+          // The sheet is gone (the switch to the owner dismissed it), so say
+          // it from a system alert, which needs no mounted screen.
+          Alert.alert(
+            `Couldn't delete ${first}`,
+            `Some of ${possessive(profile.name)} data may still be on this phone. Open Manage profiles and delete again.`,
+          );
+        }
         return;
       }
       onDeleted();

@@ -8,7 +8,8 @@
  */
 import { asc, count, eq, sql } from 'drizzle-orm';
 
-import { closeConnection, db, deviceDb, openConnection, type Executor } from '../db/client';
+import { db, deviceDb, openConnection, type Executor } from '../db/client';
+import { readSideConnection } from '../db/sideConnection';
 import * as schema from '../db/schema';
 import { deriveInitials, OWNER_ID, type ProfileCounts, type ProfileRow } from '../domain/profiles';
 import { activeProfile } from '../lib/activeProfile';
@@ -129,15 +130,11 @@ async function countsOn(exec: Executor): Promise<ProfileCounts> {
 /**
  * What deleting a profile erases (P8b): its completed workouts, routines and
  * personal records. The active profile is counted on the current connection;
- * any other has its file opened for the count and closed again. Profile files
- * are migrated when created, so nothing needs preparing, and `db` never moves.
+ * any other is read from its own file, migrated first and closed after
+ * (db/sideConnection.ts), without moving `db`. Null when that file is missing:
+ * it is never created just to be counted.
  */
-export async function profileCounts(id: string): Promise<ProfileCounts> {
+export async function profileCounts(id: string): Promise<ProfileCounts | null> {
   if (id === activeProfile().id) return countsOn(db);
-  const conn = openConnection(id);
-  try {
-    return await countsOn(conn.drizzle);
-  } finally {
-    closeConnection(conn);
-  }
+  return readSideConnection(id, (conn) => countsOn(conn.drizzle));
 }

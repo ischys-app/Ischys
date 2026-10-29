@@ -11,8 +11,10 @@
  *   2. If the profile is active, switch to the owner, and close its
  *      connection if the switch left it open. A refused or failed switch stops
  *      here, with nothing deleted.
- *   3. Delete its SQLite file. A failure stops here too: the profile is still
- *      listed, with its data, and can be deleted again.
+ *   3. Delete its SQLite file. A file that is already gone counts as deleted,
+ *      so a retry after a partial delete finishes the job. A failure stops
+ *      here: the profile is still listed, with its data, and can be deleted
+ *      again.
  *   4. Delete each of its per-profile SecureStore keys.
  *   5. Delete its registry row, last: an interrupted delete leaves a row whose
  *      file is recreated empty on the next switch, which is harmless (Review
@@ -43,6 +45,8 @@ export type DeleteProfileDeps<C> = {
   switchToOwner(): Promise<'ok' | 'same' | 'workout' | 'busy'>;
   /** Closes `conn` if it is still open. Never throws. */
   release(conn: C): void;
+  /** Whether the profile's SQLite file is on disk. */
+  fileExists(id: string): Promise<boolean>;
   deleteFile(id: string): Promise<void>;
   deleteKey(key: string): Promise<void>;
   deleteProfileRow(id: string): Promise<void>;
@@ -70,8 +74,8 @@ export function deleteProfileWith<C>(d: DeleteProfileDeps<C>) {
       d.release(conn);
     }
 
-    // 3.
-    await d.deleteFile(id);
+    // 3. Already gone (a retry after a partial delete) counts as deleted.
+    if (await d.fileExists(id)) await d.deleteFile(id);
 
     // 4–5. Each step on its own; keep the first error.
     let first: unknown = null;

@@ -6,7 +6,8 @@ import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { cacheDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
-import { atomically, closeConnection, db, openConnection, type Executor } from '../db/client';
+import { atomically, db, type Executor } from '../db/client';
+import { readSideConnection } from '../db/sideConnection';
 import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -209,8 +210,8 @@ export class SharingUnavailable extends Error {
  * `ischys-<slug>-YYYY-MM-DD.<fmt>` with more (P11).
  *
  * `profileId` defaults to the active profile. Another profile (the delete
- * sheet's "Export first") is read from its own file, opened for the export and
- * closed again, without switching to it: a switch would remount the app and
+ * sheet's "Export first") is read from its own file, migrated, then closed
+ * again (db/sideConnection.ts), without switching to it: a switch would remount the app and
  * close the sheet, and is refused while a workout runs.
  */
 export async function exportProfile(fmt: 'csv' | 'json', profileId?: string): Promise<void> {
@@ -224,12 +225,9 @@ export async function exportProfile(fmt: 'csv' | 'json', profileId?: string): Pr
   } else {
     const row = await getProfile(id);
     if (!row) throw new Error(`No profile ${id}`);
-    const conn = openConnection(id);
-    try {
-      content = await exportData(fmt, conn.drizzle, row);
-    } finally {
-      closeConnection(conn);
-    }
+    const read = await readSideConnection(id, (conn) => exportData(fmt, conn.drizzle, row));
+    if (read === null) throw new Error(`No data file for profile ${id}`);
+    content = read;
     name = row.name;
   }
   const uri = `${cacheDirectory ?? ''}${exportFileStem(profileCount(), name, new Date())}.${fmt}`;

@@ -57,7 +57,12 @@ export default function ProfileDetailScreen() {
   const load = useCallback(async () => {
     const [row, runningId] = await Promise.all([getProfile(id), runningWorkoutProfileId().catch(() => null)]);
     setRunning(runningId);
-    if (!row) return;
+    if (!row) {
+      // Deleted meanwhile, or a stale link: nothing to show here.
+      if (router.canGoBack()) router.back();
+      else router.replace('/profiles');
+      return;
+    }
     setProfile(row);
     setName(row.name);
     setInitials(row.initials);

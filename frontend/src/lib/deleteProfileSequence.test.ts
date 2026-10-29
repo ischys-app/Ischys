@@ -41,6 +41,7 @@ function world(
     release: (c) => {
       log.push(`release ${c.id}`);
     },
+    fileExists: async () => true,
     deleteFile: async (id) => {
       log.push(`delete file ${id}`);
     },
@@ -164,4 +165,10 @@ test('after the file is gone, a failing step does not skip the rest; the first e
   assert.equal(w.log.filter((l) => l.startsWith('delete key')).length, PROFILE_SCOPED_KEYS.length - 1);
   assert.equal(w.log.at(-1), 'refresh count');
   assert.equal(w.warned.length, 2);
+});
+
+test('a file that is already gone counts as deleted: keys and row still go (a retry finishes)', async () => {
+  const w = world({ over: { fileExists: async () => false } });
+  await w.del('p1');
+  assert.deepEqual(w.log, [...keys('p1'), 'delete row p1', 'refresh count']);
 });

@@ -11,6 +11,7 @@ import * as SecureStore from 'expo-secure-store';
 import { deleteDatabaseAsync } from 'expo-sqlite';
 
 import { closeConnection, currentConnection, fileNameFor } from '../db/client';
+import { profileFileExists } from '../db/sideConnection';
 import { deleteProfileRow, getProfile, listProfiles } from '../data/profilesRepo';
 import { OWNER_ID } from '../domain/profiles';
 import { activeProfile, setActiveProfile } from './activeProfile';
@@ -38,6 +39,7 @@ export const deleteProfile = deleteProfileWith({
       // Already closed.
     }
   },
+  fileExists: profileFileExists,
   deleteFile: (id) => deleteDatabaseAsync(fileNameFor(id)),
   deleteKey: (key) => SecureStore.deleteItemAsync(key),
   deleteProfileRow,

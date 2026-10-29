@@ -4,15 +4,13 @@
  * (#117). `ready` gates the UI until this completes.
  */
 import * as SecureStore from 'expo-secure-store';
-import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
-import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
 import { useEffect, useState } from 'react';
 
 import catalog from '../../assets/catalog/catalog.json';
-import migrations from '../../drizzle/migrations';
 import * as schema from './schema';
 import type { Catalog } from './catalog/catalogTypes';
 import { seedCatalog } from './catalog/seedCatalog';
+import { migrateConnection } from './migrateConnection';
 import {
   closeConnection,
   openConnection,
@@ -41,10 +39,9 @@ async function ensureLocalSettings(conn: ProfileConnection): Promise<void> {
   await conn.drizzle.insert(schema.settings).values({ id: 'local', updatedAt: Date.now() });
 }
 
-/** Runs the file's pending migrations. `conn.drizzle` is the full Drizzle
- * handle, typed with `transaction` narrowed (client.ts), hence the cast. */
+/** Runs the file's pending migrations (db/migrateConnection.ts). */
 function runMigrations(conn: ProfileConnection): Promise<void> {
-  return migrate(conn.drizzle as unknown as ExpoSQLiteDatabase<typeof schema>, migrations);
+  return migrateConnection(conn);
 }
 
 /**

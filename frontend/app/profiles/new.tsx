@@ -37,7 +37,7 @@ import {
   ownerLabel,
   type ProfileRow,
 } from '../../src/domain/profiles';
-import { DEFAULT_NAME, useActiveProfile } from '../../src/lib/activeProfile';
+import { activeProfile, DEFAULT_NAME, setActiveProfile, useActiveProfile } from '../../src/lib/activeProfile';
 import { createProfile } from '../../src/lib/createProfile';
 import { afterCreate, type AddOutcome } from '../../src/lib/createProfileSequence';
 import { presentFinishWorkoutFirst } from '../../src/lib/finishWorkoutFirst';
@@ -118,6 +118,12 @@ export default function NewProfileScreen() {
       if (createdId.current === null) {
         const p = await createProfile({ name: trimmed, initials, copyRoutines: copy && routineCount > 0 });
         createdId.current = p.id;
+        // Whatever the switch does next, two profiles now exist.
+        try {
+          setActiveProfile(activeProfile(), (await listProfiles()).length);
+        } catch (e) {
+          if (__DEV__) console.warn('[profiles] count refresh failed', e);
+        }
       }
     } catch (e) {
       if (__DEV__) console.warn('[profiles] add failed', e);

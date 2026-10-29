@@ -47,7 +47,9 @@ final class WorkoutManager: NSObject, ObservableObject {
 
   /// Whether the screen showing allows a session (not while another profile is
   /// active on the phone). Written by `WorkoutModel.screen`, read from `start`.
-  nonisolated(unsafe) static var sessionMayStart = true
+  /// Seeded from the same memory the screen opens on, since `didSet` does not
+  /// run for the initial value.
+  nonisolated(unsafe) static var sessionMayStart = OffMemory.standard.launchScreen.allowsSession
 
   func start() {
     let config = HKWorkoutConfiguration()

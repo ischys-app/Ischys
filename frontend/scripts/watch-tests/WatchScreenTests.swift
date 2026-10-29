@@ -37,6 +37,43 @@ check("a long name is kept whole") {
   WatchScreen.offTitle(profileName: "Konstantinopoulos").hasSuffix("Konstantinopoulos")
 }
 
+// Off state across launches (OffMemory)
+
+func freshMemory() -> OffMemory {
+  let suite = "ischys.tests.\(UUID().uuidString)"
+  return OffMemory(defaults: UserDefaults(suiteName: suite)!)
+}
+
+check("with nothing remembered the Watch opens on start, sessions allowed") {
+  let m = freshMemory()
+  return m.offFor == nil && m.launchScreen == .start && m.launchScreen.allowsSession
+}
+check("an off push is remembered, so a relaunch opens off with no session") {
+  let m = freshMemory()
+  m.remember(screen: .off, profileName: "Maria")
+  return m.offFor == "Maria" && m.launchScreen == .off && !m.launchScreen.allowsSession
+}
+check("off for a blank name still opens off") {
+  let m = freshMemory()
+  m.remember(screen: .off, profileName: "")
+  return m.offFor == "" && m.launchScreen == .off
+}
+check("an on push forgets the off state") {
+  let m = freshMemory()
+  m.remember(screen: .off, profileName: "Maria")
+  m.remember(screen: .start, profileName: "")
+  return m.offFor == nil && m.launchScreen == .start
+}
+check("a session or summary push also counts as on") {
+  let m = freshMemory()
+  m.remember(screen: .off, profileName: "Maria")
+  m.remember(screen: .session, profileName: "")
+  let afterSession = m.offFor == nil
+  m.remember(screen: .off, profileName: "Maria")
+  m.remember(screen: .summary, profileName: "")
+  return afterSession && m.offFor == nil
+}
+
 if failures > 0 {
   print("\(failures) failed")
   exit(1)

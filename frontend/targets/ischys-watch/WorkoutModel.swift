@@ -44,12 +44,13 @@ struct SessionSummary: Equatable {
 final class WorkoutModel: ObservableObject {
   static let shared = WorkoutModel()
 
-  @Published var screen: WatchScreen = .start {
+  /// Opens off when the phone last said off (`OffMemory`), Start otherwise.
+  @Published var screen: WatchScreen = OffMemory.standard.launchScreen {
     // Mirrored for WorkoutManager.start(with:), which is not main-isolated.
     didSet { WorkoutManager.sessionMayStart = screen.allowsSession }
   }
   /// The profile active on the phone, for the off screen. May be blank.
-  @Published var profileName = ""
+  @Published var profileName = OffMemory.standard.offFor ?? ""
 
   // S1 — Start
   @Published var routines: [RoutineItem] = []
@@ -389,6 +390,7 @@ final class WorkoutModel: ObservableObject {
 
     screen = s.screen
     profileName = s.screen == .off ? s.profileName : ""
+    OffMemory.standard.remember(screen: s.screen, profileName: s.profileName)
     // Once the phone has moved us off Start, any pending hand-off is resolved.
     if s.screen != .start { pendingRoutineId = nil }
     // A "couldn't finish" belongs to the workout it was about. Once the phone

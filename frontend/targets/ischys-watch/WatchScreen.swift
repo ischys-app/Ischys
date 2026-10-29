@@ -23,11 +23,37 @@ enum WatchScreen {
   /// Whether an `HKWorkoutSession` may start while this screen is showing.
   var allowsSession: Bool { self != .off }
 
+
   /// The off screen's message. A long name is left whole for the view to wrap;
   /// a blank one (the phone sends the first name, which can be empty) reads as
   /// "this profile".
   static func offTitle(profileName: String) -> String {
     let name = profileName.trimmingCharacters(in: .whitespacesAndNewlines)
     return name.isEmpty ? "Watch is off for this profile" : "Watch is off for \(name)"
+  }
+}
+
+/// Whom the Watch was last told it is off for, kept across launches. A Watch
+/// relaunched with the phone out of reach hears nothing until it is back, and
+/// must not open on a Start screen another profile's workout could be
+/// recorded from. Nothing remembered (the phone last said on, or never said)
+/// opens on Start as before, so the owner can still start a workout offline.
+struct OffMemory {
+  static let key = "ischys.offFor"
+  static var standard: OffMemory { OffMemory(defaults: .standard) }
+
+  let defaults: UserDefaults
+
+  /// The profile's name while off (possibly blank); nil while on.
+  var offFor: String? { defaults.string(forKey: Self.key) }
+
+  /// The screen to open on before the phone has pushed anything.
+  var launchScreen: WatchScreen { offFor == nil ? .start : .off }
+
+  /// Records what a pushed state says. Writes only on a change.
+  func remember(screen: WatchScreen, profileName: String) {
+    let next: String? = screen == .off ? profileName : nil
+    guard next != offFor else { return }
+    if let next { defaults.set(next, forKey: Self.key) } else { defaults.removeObject(forKey: Self.key) }
   }
 }

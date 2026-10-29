@@ -23,6 +23,10 @@ enum WatchScreen {
   /// Whether an `HKWorkoutSession` may start while this screen is showing.
   var allowsSession: Bool { self != .off }
 
+  /// Whether a session already recording must end when the phone pushes this
+  /// screen: one started before the Watch knew another profile was active is
+  /// not the owner's workout. It is discarded, so nothing reaches Health.
+  var endsRunningSession: Bool { self == .off }
 
   /// The off screen's message. A long name is left whole for the view to wrap;
   /// a blank one (the phone sends the first name, which can be empty) reads as

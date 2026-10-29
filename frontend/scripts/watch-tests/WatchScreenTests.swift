@@ -73,6 +73,10 @@ check("a session or summary push also counts as on") {
   m.remember(screen: .summary, profileName: "")
   return afterSession && m.offFor == nil
 }
+check("only an off push ends a running session") {
+  WatchScreen.off.endsRunningSession && !WatchScreen.start.endsRunningSession
+    && !WatchScreen.session.endsRunningSession && !WatchScreen.summary.endsRunningSession
+}
 
 if failures > 0 {
   print("\(failures) failed")

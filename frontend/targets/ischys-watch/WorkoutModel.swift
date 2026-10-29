@@ -391,6 +391,12 @@ final class WorkoutModel: ObservableObject {
     screen = s.screen
     profileName = s.screen == .off ? s.profileName : ""
     OffMemory.standard.remember(screen: s.screen, profileName: s.profileName)
+    // The off screen has no controls, so a session still recording there could
+    // not be stopped. Its end keeps the Watch on the off screen
+    // (WorkoutManager.close).
+    if s.screen.endsRunningSession && WorkoutManager.shared.isRunning {
+      WorkoutManager.shared.discard()
+    }
     // Once the phone has moved us off Start, any pending hand-off is resolved.
     if s.screen != .start { pendingRoutineId = nil }
     // A "couldn't finish" belongs to the workout it was about. Once the phone

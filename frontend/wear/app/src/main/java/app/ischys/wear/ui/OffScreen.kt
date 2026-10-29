@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.wear.compose.material3.Text
+import app.ischys.wear.WorkoutModel
 import app.ischys.wear.logic.UiState
 
 /**
@@ -20,6 +22,8 @@ import app.ischys.wear.logic.UiState
 @Composable
 fun OffScreen(ui: UiState) {
   val name = ui.profileName.trim()
+  // Asks the phone, as Start does: the way back to Start is the phone saying so.
+  LaunchedEffect(Unit) { WorkoutModel.offAppeared() }
   Column(
     Modifier.fillMaxSize().padding(horizontal = 24.s()),
     verticalArrangement = Arrangement.spacedBy(8.s(), Alignment.CenterVertically),

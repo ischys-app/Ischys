@@ -301,6 +301,13 @@ class WorkoutCore(
     host.requestState()
   }
 
+  /**
+   * The off screen came up. It waits on the phone to say the owner is back,
+   * so it asks rather than waiting for a push that may never come: after a
+   * relaunch onto it, say, with the phone app since closed and reopened.
+   */
+  fun offAppeared() = host.requestState()
+
   fun routineTapped(id: String) = update { it.copy(pendingRoutineId = id) }
 
   /** Done on the summary. */

@@ -143,6 +143,16 @@ class WorkoutCoreTest {
     assertFalse(core.needsTicking)
   }
 
+  @Test fun theOffScreenAppearingAsksThePhoneForState() {
+    val h = FakeHost()
+    val relaunched = WorkoutCore(h, offFor = "Maria").also { h.core = it }
+    relaunched.offAppeared()
+    assertEquals(listOf("requestState"), h.calls)
+    // And the answer, the owner back, lands on Start.
+    relaunched.apply(PhoneState(screen = WatchScreen.START), t0)
+    assertEquals(WatchScreen.START, relaunched.ui.screen)
+  }
+
   @Test fun anOffPushWithNoSessionEndsNothing() {
     core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
     assertFalse("discardSession" in host.calls)

@@ -207,6 +207,7 @@ object WorkoutModel : WorkoutCore.Host {
   // From the screens
 
   fun startAppeared() = act { startAppeared() }
+  fun offAppeared() = act { offAppeared() }
 
   fun startEmpty() {
     ExerciseService.start(app)

@@ -167,6 +167,8 @@ async function launch(): Promise<Outcome> {
   }
   // From here a failure is reported but the app still starts, on the owner,
   // as a seeding failure always has.
+  let outcome: Outcome;
+  let profileIds: string[] = [OWNER_ID];
   try {
     // `db` is the owner's already (db/client.ts).
     await seedConnection(owner);
@@ -177,6 +179,7 @@ async function launch(): Promise<Outcome> {
     // pointer is left alone: it still names that profile's workout, and the
     // owner doesn't try to open it (activeWorkout.ts).
     const rows = await listProfiles();
+    profileIds = rows.map((p) => p.id);
     const id = launchProfileId(rows);
     let launchId = OWNER_ID;
     let error: Error | null = null;
@@ -193,13 +196,16 @@ async function launch(): Promise<Outcome> {
     if (launchRow) setActiveProfile(launchRow, rows.length);
     await tidyCurrentConnection();
     await primeSettings();
-    // 6. Settings stored before they were readable locked are stored again,
-    // once, the first time the app is in the foreground. Not awaited.
-    migrateKeychainWhenActive(rows.map((p) => p.id));
-    return { ready: true, error };
+    outcome = { ready: true, error };
   } catch (e) {
-    return { ready: true, error: asError(e) };
+    outcome = { ready: true, error: asError(e) };
   }
+  // 6. Settings stored before they were readable locked are stored again,
+  // once, the first time the app is in the foreground. Not awaited. Whatever
+  // the steps above reached: with the registry unread, the owner's keys and
+  // the phone's still move.
+  migrateKeychainWhenActive(profileIds);
+  return outcome;
 }
 
 // Once per app run, however often the hook mounts (StrictMode runs effects twice).

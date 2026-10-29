@@ -93,6 +93,13 @@ final class WorkoutManager: NSObject, ObservableObject {
       builder.beginCollection(withStart: start) { _, _ in }
       DispatchQueue.main.async {
         self.isRunning = true
+        // The phone may have said off between the gate above and this hop, and
+        // that push found no running session to end. Throw this one away
+        // rather than entering it: it is not the owner's workout.
+        guard Self.sessionMayStart else {
+          self.discard()
+          return
+        }
         // Enter the workout UI the moment our own session starts, rather than
         // waiting for the phone to push screen:"session" — that push is racy at
         // launch and used to strand the Watch on Start while HR already streamed.

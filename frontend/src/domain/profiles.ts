@@ -290,3 +290,47 @@ export function exercisesToCopy(
   );
   return referencedCustomExerciseIds(routineExerciseIds, need);
 }
+
+// --- Manage and delete (P8, P8b) ---
+
+/** "‹First›'s", or "this profile's" when the name has no words. */
+export function possessive(name: string): string {
+  const first = firstName(name);
+  return first ? `${first}'s` : "this profile's";
+}
+
+export type ProfileCounts = { workouts: number; routines: number; records: number };
+
+/** A run of the delete sheet's body; `count` runs are drawn in mono `text1`. */
+export type BodyPart = { text: string; count?: boolean };
+
+const plural = (n: number, one: string) => `${one}${n === 1 ? '' : 's'}`;
+
+/** The P8b body, split so the counts can be styled. */
+export function deleteSheetBody(name: string, c: ProfileCounts): BodyPart[] {
+  return [
+    { text: `This erases ${possessive(name)} ` },
+    { text: String(c.workouts), count: true },
+    { text: ` ${plural(c.workouts, 'workout')}, ` },
+    { text: String(c.routines), count: true },
+    { text: ` ${plural(c.routines, 'routine')}, ` },
+    { text: String(c.records), count: true },
+    {
+      text: ` ${plural(c.records, 'record')} and every measurement from this phone. Other profiles aren't affected. This can't be undone.`,
+    },
+  ];
+}
+
+/** Where a row dragged `dy` points from `from` lands, in a list of `n` rows `slot` points apart. */
+export function dropIndex(from: number, dy: number, slot: number, n: number): number {
+  return Math.max(0, Math.min(n - 1, from + Math.round(dy / slot)));
+}
+
+/** A copy of `items` with the item at `from` moved to `to`. */
+export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
+  const next = [...items];
+  if (from === to) return next;
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}

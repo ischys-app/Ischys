@@ -6,8 +6,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { cacheDirectory, writeAsStringAsync } from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,11 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Appearance, EffortMode, SettingsOut, SettingsUpdate, Unit } from '../src/api/types';
 import {
   countDuplicateGroups,
-  exportData,
   getSettings,
   updateSettings,
 } from '../src/api/workouts';
 import { DraggableSheet } from '../src/components/DraggableSheet';
+import { exportProfile, SharingUnavailable } from '../src/data/exportRepo';
 import { Segment, type SegmentOption } from '../src/components/ui';
 import { toDisplay, toKg } from '../src/domain/units';
 import { getBodyweightKg, setBodyweightKg } from '../src/lib/bodyweight';
@@ -250,19 +248,9 @@ export default function Settings() {
 
   const doExport = async (fmt: 'json' | 'csv') => {
     try {
-      const content = await exportData(fmt);
-      const uri = `${cacheDirectory ?? ''}ischys-export.${fmt}`;
-      await writeAsStringAsync(uri, content);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: fmt === 'csv' ? 'text/csv' : 'application/json',
-          UTI: fmt === 'csv' ? 'public.comma-separated-values-text' : 'public.json',
-        });
-      } else {
-        showToast('Sharing unavailable');
-      }
-    } catch {
-      showToast('Export failed');
+      await exportProfile(fmt);
+    } catch (e) {
+      showToast(e instanceof SharingUnavailable ? 'Sharing unavailable' : 'Export failed');
     }
   };
 

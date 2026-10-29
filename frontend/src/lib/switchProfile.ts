@@ -46,7 +46,7 @@ export async function refreshCurrentProfileStats(): Promise<void> {
  * a relaunch opens), and a stale pointer naming another profile must not hide
  * a workout running here. Then the pointer, for a workout in another file.
  */
-async function runningWorkoutProfileId(): Promise<string | null> {
+export async function runningWorkoutProfileId(): Promise<string | null> {
   if ((await countWorkouts('active')) > 0) return activeProfile().id;
   return recallActiveWorkoutEntry()?.profileId ?? null;
 }

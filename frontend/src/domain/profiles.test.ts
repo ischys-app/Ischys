@@ -5,6 +5,10 @@ import {
   MAX_NAME,
   PROFILE_SCOPED_KEYS,
   deleteBlock,
+  deleteSheetBody,
+  dropIndex,
+  moveItem,
+  possessive,
   deriveInitials,
   filterProfiles,
   SWITCHER_SEARCH_FROM,
@@ -225,4 +229,48 @@ test('exercisesToCopy: custom rows and rows the new file lacks, once each', () =
     exercisesToCopy(['cat1', 'cus1', 'cus1', 'cat-old', 'imp1'], source, new Set(['cat1'])),
     ['cus1', 'cat-old', 'imp1'],
   );
+});
+
+// --- Manage and delete (P8, P8b) ---
+
+test('possessive: first name plus \'s, or "this profile\'s" for a blank name', () => {
+  assert.equal(possessive('Nikos Andreou'), "Nikos's");
+  assert.equal(possessive('Ζωή'), "Ζωή's");
+  assert.equal(possessive('   '), "this profile's");
+});
+
+test('deleteSheetBody: the P8b sentence, counts as their own segments', () => {
+  const parts = deleteSheetBody('Nikos Andreou', { workouts: 86, routines: 4, records: 23 });
+  assert.equal(
+    parts.map((p) => p.text).join(''),
+    "This erases Nikos's 86 workouts, 4 routines, 23 records and every measurement from this phone. Other profiles aren't affected. This can't be undone.",
+  );
+  assert.deepEqual(
+    parts.filter((p) => p.count).map((p) => p.text),
+    ['86', '4', '23'],
+  );
+});
+
+test('deleteSheetBody: one of a kind is singular, none is plural', () => {
+  const text = deleteSheetBody('Maria', { workouts: 1, routines: 0, records: 1 })
+    .map((p) => p.text)
+    .join('');
+  assert.ok(text.startsWith("This erases Maria's 1 workout, 0 routines, 1 record and every"));
+});
+
+test('dropIndex: rounds the drag to the nearest slot, clamped to the list', () => {
+  assert.equal(dropIndex(1, 0, 64, 4), 1);
+  assert.equal(dropIndex(1, 31, 64, 4), 1);
+  assert.equal(dropIndex(1, 33, 64, 4), 2);
+  assert.equal(dropIndex(1, -70, 64, 4), 0);
+  assert.equal(dropIndex(1, 1000, 64, 4), 3);
+  assert.equal(dropIndex(2, -1000, 64, 4), 0);
+});
+
+test('moveItem: moves one item, leaves the input alone', () => {
+  const a = ['owner', 'm', 'n', 'e'];
+  assert.deepEqual(moveItem(a, 3, 1), ['owner', 'e', 'm', 'n']);
+  assert.deepEqual(moveItem(a, 0, 2), ['m', 'n', 'owner', 'e']);
+  assert.deepEqual(moveItem(a, 2, 2), a);
+  assert.deepEqual(a, ['owner', 'm', 'n', 'e']);
 });

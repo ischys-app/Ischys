@@ -481,6 +481,22 @@ function AppStack() {
         }}
       />
       <Stack.Screen
+        name="profiles/index"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="profiles/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
         name="profiles/new"
         options={{
           headerShown: false,

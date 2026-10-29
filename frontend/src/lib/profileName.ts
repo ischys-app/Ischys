@@ -28,3 +28,14 @@ export async function setProfileName(name: string): Promise<void> {
   const current = activeProfile();
   if (current.id === id) setActiveProfile({ ...current, name: v, initials }, profileCount());
 }
+
+/**
+ * Renames any profile, or changes its initials (Manage, P8). When it is the
+ * active profile the in-memory row follows, so the tab label and avatar
+ * update at once.
+ */
+export async function updateProfileIdentity(id: string, patch: { name?: string; initials?: string }): Promise<void> {
+  await updateProfile(id, patch);
+  const current = activeProfile();
+  if (current.id === id) setActiveProfile({ ...current, ...patch }, profileCount());
+}

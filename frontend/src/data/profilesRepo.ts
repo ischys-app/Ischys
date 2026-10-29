@@ -6,11 +6,12 @@
  *
  * Not to be confused with `profileRepo.ts`, the Profile screen's stats.
  */
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, count, eq, sql } from 'drizzle-orm';
 
-import { deviceDb, openConnection } from '../db/client';
+import { closeConnection, db, deviceDb, openConnection, type Executor } from '../db/client';
 import * as schema from '../db/schema';
-import { deriveInitials, OWNER_ID, type ProfileRow } from '../domain/profiles';
+import { deriveInitials, OWNER_ID, type ProfileCounts, type ProfileRow } from '../domain/profiles';
+import { activeProfile } from '../lib/activeProfile';
 import { newId, nowMs } from './ids';
 
 type Row = typeof schema.profiles.$inferSelect;
@@ -113,4 +114,30 @@ export async function writeProfileStats(
     .update(schema.profiles)
     .set({ workoutCount: s.workoutCount, firstWorkoutAt: s.firstWorkoutAt, lastWorkoutAt: s.lastWorkoutAt })
     .where(eq(schema.profiles.id, id));
+}
+
+async function countsOn(exec: Executor): Promise<ProfileCounts> {
+  const [w] = await exec
+    .select({ n: count() })
+    .from(schema.workouts)
+    .where(eq(schema.workouts.status, 'completed'));
+  const [r] = await exec.select({ n: count() }).from(schema.routines);
+  const [p] = await exec.select({ n: count() }).from(schema.personalRecords);
+  return { workouts: w?.n ?? 0, routines: r?.n ?? 0, records: p?.n ?? 0 };
+}
+
+/**
+ * What deleting a profile erases (P8b): its completed workouts, routines and
+ * personal records. The active profile is counted on the current connection;
+ * any other has its file opened for the count and closed again. Profile files
+ * are migrated when created, so nothing needs preparing, and `db` never moves.
+ */
+export async function profileCounts(id: string): Promise<ProfileCounts> {
+  if (id === activeProfile().id) return countsOn(db);
+  const conn = openConnection(id);
+  try {
+    return await countsOn(conn.drizzle);
+  } finally {
+    closeConnection(conn);
+  }
 }

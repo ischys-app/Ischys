@@ -431,8 +431,10 @@ class WorkoutCore(
     // ends the session too, so this is not that: it is the routine list
     // answering a request made before the phone began the workout we asked
     // for, or a phone that never heard of it. Leaving for Start would hide a
-    // session that is still running, with no control left to end it.
-    if (s.screen == WatchScreen.START && host.sessionRunning) {
+    // session that is still running, with no control left to end it. Only the
+    // session screen is held: anywhere else (the off screen above all) there
+    // are no session controls to keep, and the phone's Start must land.
+    if (s.screen == WatchScreen.START && host.sessionRunning && ui.screen == WatchScreen.SESSION) {
       update {
         it.copy(
           routines = s.routines ?: it.routines,

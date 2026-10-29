@@ -142,6 +142,26 @@ class WorkoutCoreTest {
     assertEquals(WatchScreen.OFF, core.ui.screen)
   }
 
+  @Test fun anOnPushAfterOffReturnsToStartEvenWithASessionRunning() {
+    // A session the off push could not end (one still starting, say).
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    host.sessionRunning = true
+    val routines = listOf(RoutineItem("r1", "Push Day", "PD", 5))
+    core.apply(PhoneState(screen = WatchScreen.START, routines = routines), t0 + 1_000)
+    assertEquals(WatchScreen.START, core.ui.screen)
+    assertEquals("", core.ui.profileName)
+    assertEquals(routines, core.ui.routines)
+    assertTrue(core.sessionStartAllowed)
+  }
+
+  @Test fun aStartPushStillHoldsTheSessionScreenWhileRecording() {
+    startSession(t0)
+    val routines = listOf(RoutineItem("r1", "Push Day", "PD", 5))
+    core.apply(PhoneState(screen = WatchScreen.START, routines = routines), t0 + 1_000)
+    assertEquals(WatchScreen.SESSION, core.ui.screen)
+    assertEquals(routines, core.ui.routines)
+  }
+
   @Test fun theOwnerComingBackAfterARelaunchWhileOffReturnsToStart() {
     val h = FakeHost()
     val relaunched = WorkoutCore(h, offFor = "Maria").also { h.core = it }

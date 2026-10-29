@@ -77,6 +77,27 @@ test('a source that reports active while subscribing runs once and unsubscribes'
   assert.equal(listeners.size, 0);
 });
 
+test('cancelled before the app is active, it never runs and stops listening', () => {
+  const app = fakeAppState('background');
+  const whenActive = createWhenActive(app.source);
+  let ran = 0;
+  const cancel = whenActive(() => ran++);
+  assert.equal(app.listenerCount(), 1);
+  cancel();
+  assert.equal(app.listenerCount(), 0);
+  app.go('active');
+  assert.equal(ran, 0);
+  cancel(); // twice is harmless
+});
+
+test('cancelling after it ran changes nothing', () => {
+  const app = fakeAppState('active');
+  let ran = 0;
+  const cancel = createWhenActive(app.source)(() => ran++);
+  cancel();
+  assert.equal(ran, 1);
+});
+
 test('alerts asked for in the background show when the app is active', () => {
   const app = fakeAppState('background');
   const shown: string[] = [];

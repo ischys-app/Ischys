@@ -18,13 +18,14 @@ export type AppStateSource = {
 
 /**
  * `whenActive(fn)` runs `fn` now if the app is active, else once, on the next
- * change to active, and then stops listening.
+ * change to active, and then stops listening. It returns a cancel: called
+ * before then, `fn` never runs and the listener goes.
  */
-export function createWhenActive(app: AppStateSource): (fn: () => void) => void {
+export function createWhenActive(app: AppStateSource): (fn: () => void) => () => void {
   return (fn) => {
     if (app.current() === 'active') {
       fn();
-      return;
+      return () => {};
     }
     let done = false;
     let off: (() => void) | null = null;
@@ -36,6 +37,11 @@ export function createWhenActive(app: AppStateSource): (fn: () => void) => void 
     });
     // A source that reported 'active' while subscribing has run `fn` already.
     if (done) off();
+    return () => {
+      if (done) return;
+      done = true;
+      off?.();
+    };
   };
 }
 
@@ -45,7 +51,7 @@ export function createWhenActive(app: AppStateSource): (fn: () => void) => void 
  * shows once: a failure retried in the background is one thing to tell.
  */
 export function createAlertWhenActive<Rest extends unknown[]>(
-  whenActive: (fn: () => void) => void,
+  whenActive: (fn: () => void) => unknown,
   show: (title: string, message: string | undefined, ...rest: Rest) => void,
 ): (title: string, message?: string, ...rest: Rest) => void {
   const waiting = new Set<string>();

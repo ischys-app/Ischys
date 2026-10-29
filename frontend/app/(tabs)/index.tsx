@@ -83,7 +83,9 @@ export default function Home() {
 
   // Push routines to the Watch's Start screen, and start a workout when the user
   // picks one on the wrist. Only while no workout is active — during a workout
-  // the workout screen owns the Watch state, so we must not fight it.
+  // the workout screen owns the Watch state, so we must not fight it. While
+  // someone else's profile is active, `pushWatchState` sends the Watch its
+  // off state instead and these routines never leave the phone (#117).
   useEffect(() => {
     if (!data || active) return;
     pushWatchState({

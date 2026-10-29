@@ -2,7 +2,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildFinishedWatchState, buildWatchState, watchRestEndsAt } from './watchState.ts';
+import {
+  buildFinishedWatchState,
+  buildOffWatchState,
+  buildWatchState,
+  watchRestEndsAt,
+} from './watchState.ts';
 
 const set = (id: string, weight: string, reps: string, done = false, type = 'normal') => ({
   id,
@@ -284,4 +289,8 @@ test('the next exercise becomes current once one is fully done', () => {
 test('null once every set is done', () => {
   const s = buildWatchState(legPress(set('a', '1', '1', true)), 'R', rest, resolve);
   assert.equal(s, null);
+});
+
+test('the off state carries the first name only', () => {
+  assert.deepEqual(buildOffWatchState('Maria Papadaki'), { screen: 'off', profileName: 'Maria' });
 });

@@ -82,6 +82,7 @@ import {
   syncBodyweightFromHealth,
   syncFinishedWorkout,
 } from '../../src/lib/healthSync';
+import { isOwnerActive } from '../../src/lib/activeProfile';
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
 import {
   claimWatchFinish,
@@ -1867,8 +1868,11 @@ export default function ActiveWorkout() {
         }}
         onFinish={onFinish}
         onDiscard={onDiscard}
-        heartRate={heartRate}
-        activeCal={activeCal}
+        // Health and the Watch are the phone owner's only (#117): no HR/CAL
+        // strip for anyone else. A switch is refused while a workout runs,
+        // so this can't change under the screen.
+        heartRate={isOwnerActive() ? heartRate : null}
+        activeCal={isOwnerActive() ? activeCal : null}
       />
 
       <KeyboardAvoidingView

@@ -24,12 +24,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { WatchAction } from '../modules/health';
 import * as LiveActivity from '../modules/live-activity';
-import {
-  discardWorkout,
-  finishWorkout,
-  getDashboard,
-  listWorkouts,
-} from '../src/api/workouts';
+import { discardWorkout, finishWorkout, listWorkouts } from '../src/api/workouts';
 import { beginWorkout } from '../src/lib/startWorkoutFlow';
 import { getThemeId } from '../src/lib/themePref';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
@@ -39,11 +34,12 @@ import {
   consumeWatchActions,
   ensureWatchSaveListener,
   onWatchAction,
+  pushStartWatchState,
   pushWatchState,
   setWatchThemeId,
   syncFinishedWorkout,
 } from '../src/lib/healthSync';
-import { useActiveProfile } from '../src/lib/activeProfile';
+import { isOwnerActive, useActiveProfile } from '../src/lib/activeProfile';
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
@@ -98,37 +94,28 @@ function useLiveActivityActions(dbReady: boolean) {
 function useWatchStart(dbReady: boolean) {
   useEffect(() => {
     if (!dbReady) return;
+    // Launched into someone else's profile: the Watch may still show the
+    // owner's routines from last time, and Home may never mount to say
+    // otherwise. With the owner active nothing changes (#117).
+    if (!isOwnerActive()) void pushStartWatchState();
     return onWatchAction((a) => {
       // The Watch's Start screen asking for the routine list. Answered here
       // and not on Home, because the Watch app can be opened with the phone
       // app closed: iOS relaunches it at the root route, where Home never
       // mounts and so never pushes. That is why opening the Watch app on its
       // own showed "No routines yet" until a workout had been run.
+      //
+      // A mounted workout screen owns the Watch state and answers this
+      // itself; `pushStartWatchState` stands down while a workout runs. For
+      // anyone but the phone's owner the answer is the off state (#117).
       if (a.action === 'requestState') {
-        void (async () => {
-          try {
-            // A mounted workout screen owns the Watch state and answers this
-            // itself. Pushing a Start screen over a running session would
-            // throw the wrist back to the routine list mid-workout.
-            const [active] = await listWorkouts({ status: 'active', limit: 1 });
-            if (active) return;
-            const dash = await getDashboard();
-            pushWatchState({
-              screen: 'start',
-              routines: dash.routines.map((r) => ({
-                id: r.id,
-                name: r.name,
-                initials: r.initials,
-                exerciseCount: r.exercise_count,
-              })),
-            });
-          } catch {
-            // No data to answer with; the Watch keeps what it had.
-          }
-        })();
+        void pushStartWatchState();
         return;
       }
       if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
+      // A stale Start screen tapped while someone else's profile is active:
+      // the Watch starts the owner's workouts only (#117).
+      if (!isOwnerActive()) return;
       void (async () => {
         try {
           // One workout at a time (startGuard.ts). A start can arrive with
@@ -187,6 +174,10 @@ function useWatchFinish(dbReady: boolean) {
     const apply = async (a: WatchAction, heardAt?: number) => {
       const action = a.action;
       if (!completesWorkout(action)) return;
+      // The Watch finishes the owner's workouts only (#117). A stale Finish
+      // must not end a client's; and the switch is refused while a workout
+      // runs, so with someone else active the owner has none to finish.
+      if (!isOwnerActive()) return;
       if (applying) return;
       applying = true;
       const finishId = finishRequestId(a);

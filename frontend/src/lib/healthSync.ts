@@ -10,7 +10,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 import * as Health from '../../modules/health';
-import { listWorkouts, uploadHeartRate } from '../api/workouts';
+import { getDashboard, listWorkouts, uploadHeartRate } from '../api/workouts';
 import {
   getWorkoutHealthEntry,
   healthEntryHeldByAnother,
@@ -27,12 +27,13 @@ import {
   type HealthEditState,
   type PlannedWhen,
 } from '../domain/healthEntry';
-import { onProfileSwitch } from './activeProfile';
+import { activeProfile, isOwnerActive, onProfileSwitch } from './activeProfile';
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
 import { watchSaveWaitMs } from './watchFinish';
 import { parseServerDate } from './serverTime';
 import { createWatchSaveLog } from './watchSave';
+import { buildOffWatchState } from './watchState';
 import {
   createWearSessionLog,
   parseWearSession,
@@ -72,6 +73,8 @@ export function isHealthAvailable(): boolean {
  * every grant, and allowing nothing leaves nothing to be connected to.
  */
 export async function connectHealth(): Promise<boolean> {
+  // Health is the phone owner's only (#117).
+  if (!isOwnerActive()) return false;
   if (!Health.isAvailable()) return false;
   const answered = await Health.requestAuthorization();
   if (!answered) return false;
@@ -105,6 +108,10 @@ export function ensureWatchSaveListener(): void {
   if (watchSaveListening) return;
   watchSaveListening = true;
   Health.addWatchActionListener((a) => {
+    // The Watch records the owner's workouts only (#117). Anything it says
+    // while someone else's profile is active is stale, and must not reach a
+    // finish of theirs.
+    if (!isOwnerActive()) return;
     watchSaves.note(a);
     noteWearSession(a);
   });
@@ -132,6 +139,8 @@ onProfileSwitch(() => {
  * happened yet, or at a launch with the workout long over.
  */
 function noteWearSession(a: Health.WatchAction): void {
+  // Its heart rate would be stored on a workout of whoever is active (#117).
+  if (!isOwnerActive()) return;
   const session = parseWearSession(a);
   if (!session) return;
   wearSessions.note(session);
@@ -200,6 +209,9 @@ export async function syncFinishedWorkout(
    *  heart rate by then, connected to Health or not). */
   wearWasActive = false,
 ): Promise<void> {
+  // Health is the phone owner's only (#117): a client's workout must never
+  // land in the owner's Health data or rings.
+  if (!isOwnerActive()) return;
   try {
     // Before anything else, and whether or not Health is connected: the
     // numbers arrive about now and must not be missed.
@@ -346,6 +358,8 @@ export function loadHealthEditState(
   workoutId: string,
   stored: StoredWhen,
 ): Promise<HealthEditState> {
+  // A lookup would store an owner's Health entry on a client's workout (#117).
+  if (!isOwnerActive()) return Promise.resolve(NO_HEALTH);
   return inTurn(() => readHealthEditState(workoutId, stored));
 }
 
@@ -408,6 +422,8 @@ export function syncEditedWorkout(
   stored: StoredWhen,
   plan: PlannedWhen,
 ): Promise<void> {
+  // Only the owner's workouts are in Health (#117).
+  if (!isOwnerActive()) return Promise.resolve();
   // Set edits never touch Health, and never ask it anything either.
   if (plan.endedAt == null) return Promise.resolve();
   return inTurn(async () => {
@@ -439,6 +455,8 @@ export function syncEditedWorkout(
  * awaits SecureStore/HealthKit, which hangs expo-sqlite.
  */
 export async function syncBodyweightFromHealth(): Promise<number | null> {
+  // The owner's weight is not anyone else's (#117).
+  if (!isOwnerActive()) return null;
   try {
     if (!Health.isAvailable()) return null;
     const connected = await SecureStore.getItemAsync(HEALTH_KEYS.connected);
@@ -458,6 +476,8 @@ export async function syncBodyweightFromHealth(): Promise<number | null> {
  * Health and left HR reading on. Best-effort and silent with no Watch.
  */
 export async function startWatchSession(): Promise<void> {
+  // The Watch records the owner's workouts only (#117).
+  if (!isOwnerActive()) return;
   if (!Health.isWatchAvailable()) return;
   // A Wear OS watch streams over its own link, so it does not wait on a
   // Health Connect connection the way the Apple Watch waits on HealthKit.
@@ -489,8 +509,49 @@ export function stopWatchSession(opts?: { discard?: boolean }): void {
  */
 export function pushWatchState(state: Record<string, unknown>): void {
   if (!Health.isWatchAvailable()) return;
-  Health.updateWatchState({ themeId: currentThemeId, ...state });
+  // While someone else's profile is active the Watch shows only "off for
+  // ‹First›" (#117), whatever the caller meant to send.
+  const sent = isOwnerActive() ? state : buildOffWatchState(activeProfile().name);
+  Health.updateWatchState({ themeId: currentThemeId, ...sent });
 }
+
+/**
+ * Sends the Watch its Start screen: the routine list to start from. Unless a
+ * workout is running, whose screen owns the Watch state; pushing a Start
+ * screen over a running session would throw the wrist back to the routine
+ * list mid-workout. While someone else's profile is active it sends the off
+ * state instead (`pushWatchState`). Never throws; with no data to answer
+ * with, the Watch keeps what it had.
+ */
+export async function pushStartWatchState(): Promise<void> {
+  if (!isOwnerActive()) {
+    pushWatchState(buildOffWatchState(activeProfile().name));
+    return;
+  }
+  try {
+    const [active] = await listWorkouts({ status: 'active', limit: 1 });
+    if (active) return;
+    const dash = await getDashboard();
+    pushWatchState({
+      screen: 'start',
+      routines: dash.routines.map((r) => ({
+        id: r.id,
+        name: r.name,
+        initials: r.initials,
+        exerciseCount: r.exercise_count,
+      })),
+    });
+  } catch {
+    // No data to answer with; the Watch keeps what it had.
+  }
+}
+
+// A switch to someone else's profile turns the Watch off; one back to the
+// owner gives it today's Start screen again, routines and all (#117). The
+// switch is refused while a workout runs, so there is no session to override.
+onProfileSwitch(() => {
+  void pushStartWatchState();
+});
 
 /** Mirrors the phone's accent onto pushes; set once at startup. */
 let currentThemeId = 'ember';
@@ -519,7 +580,12 @@ export async function consumeWatchActions(): Promise<{
   // Listening first, for the same reason: a confirmation sent live the moment
   // the drain returns must find a listener.
   ensureWatchSaveListener();
-  const actions = await Health.consumeWatchActions();
+  const drained = await Health.consumeWatchActions();
+  // Drained either way: draining is what turns live delivery on, and the
+  // owner may be switched back to. But what was queued is the owner's
+  // Watch's, and is dropped while someone else's profile is active (#117).
+  // The switch refuses while a workout runs, so no owner finish is lost.
+  const actions = isOwnerActive() ? drained : [];
   watchSaves.noteDrained(actions, heardAt);
   // A Wear OS watch's numbers for a session that ended with the app closed.
   for (const a of actions) noteWearSession(a);
@@ -534,6 +600,8 @@ export async function consumeWatchActions(): Promise<{
  * uuid, so running it repeatedly converges rather than accumulating.
  */
 export async function syncBodyMeasurementsFromHealth(): Promise<number> {
+  // The owner's measurements are not anyone else's (#117).
+  if (!isOwnerActive()) return 0;
   try {
     if (!Health.isAvailable()) return 0;
     const connected = await SecureStore.getItemAsync(HEALTH_KEYS.connected);
@@ -557,15 +625,27 @@ export async function syncBodyMeasurementsFromHealth(): Promise<number> {
   }
 }
 
-/** Subscribe to control taps from the Watch. */
+/**
+ * Subscribe to control taps from the Watch.
+ *
+ * While someone else's profile is active only `requestState` comes through,
+ * to be answered with the off state (#117): a stale tap must not log a set
+ * in, or finish, a client's workout.
+ */
 export function onWatchAction(fn: (a: Health.WatchAction) => void): () => void {
-  const sub = Health.addWatchActionListener(fn);
+  const sub = Health.addWatchActionListener((a) => {
+    if (!isOwnerActive() && a.action !== 'requestState') return;
+    fn(a);
+  });
   return () => sub.remove();
 }
 
 /** Subscribe to live HR/energy streamed from the Watch. */
 export function onWatchMetrics(fn: (m: { bpm: number; cal: number }) => void): () => void {
-  const sub = Health.addWatchMetricsListener(fn);
+  // The owner's heart rate, not anyone else's (#117).
+  const sub = Health.addWatchMetricsListener((m) => {
+    if (isOwnerActive()) fn(m);
+  });
   return () => sub.remove();
 }
 
@@ -575,6 +655,8 @@ export function onWatchMetrics(fn: (m: { bpm: number; cal: number }) => void): (
  * Watch is feeding HealthKit. Returns an unsubscribe; a no-op when not eligible.
  */
 export function subscribeLiveHeartRate(onBpm: (bpm: number) => void): () => void {
+  // The owner's heart rate, not anyone else's (#117).
+  if (!isOwnerActive()) return () => {};
   if (!Health.isAvailable()) return () => {};
   let stop: (() => void) | null = null;
   let cancelled = false;

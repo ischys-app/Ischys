@@ -23,7 +23,8 @@ import { DraggableSheet } from '../src/components/DraggableSheet';
 import { Segment, type SegmentOption } from '../src/components/ui';
 import { toDisplay, toKg } from '../src/domain/units';
 import { getBodyweightKg, setBodyweightKg } from '../src/lib/bodyweight';
-import { syncBodyweightFromHealth } from '../src/lib/healthSync';
+import { readBodyweightFromHealth, syncBodyweightFromHealth } from '../src/lib/healthSync';
+import { isOwnerActive } from '../src/lib/activeProfile';
 import {
   getWeeklyTarget,
   setWeeklyTarget,
@@ -35,10 +36,7 @@ import { setHapticsEnabled } from '../src/lib/haptics';
 import { maybeAskForExactAlarms } from '../src/lib/restAlert';
 import {
   availability as healthAvailability,
-  getPermissions as getHealthPermissions,
   isAvailable as isHealthAvailable,
-  readBodyMass,
-  requestAuthorization as requestHealthAuth,
 } from '../modules/health';
 import { healthCopy } from '../src/lib/healthSyncPlatform';
 import {
@@ -306,14 +304,8 @@ export default function Settings() {
     setBwOpen(false);
   };
   const pullBwFromHealth = async () => {
-    // Ensure the bodyweight read is offered — a user who connected Health before
-    // this existed won't have granted it, and iOS only prompts for undecided types.
-    // Android says what is granted, and its screen lists everything still
-    // refused, so it is only shown when weight is what is missing.
-    if (Platform.OS !== 'android' || !(await getHealthPermissions())?.readWeight) {
-      await requestHealthAuth();
-    }
-    const kg = await readBodyMass();
+    // Asks for the weight read first when it may be missing (healthSync).
+    const kg = await readBodyweightFromHealth();
     if (kg == null) {
       showToast(healthCopy(Platform.OS).noBodyweight);
       return;
@@ -606,7 +598,8 @@ export default function Settings() {
             />
             <Text style={styles.bwUnit}>{bwUnitLabel}</Text>
           </View>
-          {isHealthAvailable() && (
+          {/* Health is the phone owner's only (#117). */}
+          {isHealthAvailable() && isOwnerActive() && (
             <Pressable
               onPress={pullBwFromHealth}
               style={({ pressed }) => [styles.bwHealth, pressed && styles.bwHealthPressed]}

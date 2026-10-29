@@ -68,6 +68,8 @@ const GATED_FIRST = [
   // a client's workout, and connecting is the owner's to do.
   'loadHealthEditState',
   'connectHealth',
+  // Settings' "use Health's weight" button (Ruling R12).
+  'readBodyweightFromHealth',
 ];
 
 test('every Health and Watch entry point asks isOwnerActive() first', () => {
@@ -96,4 +98,74 @@ test('the root layout ignores Watch starts and finishes for a non-owner', () => 
   const layout = withoutComments(readFileSync(join(APP, '_layout.tsx'), 'utf8'));
   assert.match(body(layout, 'useWatchStart'), /isOwnerActive\(\)/);
   assert.match(body(layout, 'useWatchFinish'), /isOwnerActive\(\)/);
+});
+
+/** The argument lists of every call to `name` in `source`. */
+function callArgs(source: string, name: string): string[] {
+  const out: string[] = [];
+  const re = new RegExp(`\\b${name}\\(`, 'g');
+  for (let m = re.exec(source); m; m = re.exec(source)) {
+    const from = m.index + m[0].length;
+    let depth = 1;
+    let i = from;
+    for (; i < source.length && depth > 0; i++) {
+      if (source[i] === '(') depth++;
+      else if (source[i] === ')') depth--;
+    }
+    out.push(source.slice(from, i - 1));
+  }
+  return out;
+}
+
+test('what the Health paths store goes to the owner file, even after a switch', () => {
+  // A finish sync can outlive a switch to someone else's profile (Ruling R11),
+  // when `db` is their file. `uploadHeartRate` reads back through `db`.
+  assert.doesNotMatch(src, /\buploadHeartRate\(/);
+  for (const name of [
+    'setWorkoutHealthEntry',
+    'getWorkoutHealthEntry',
+    'healthEntryHeldByAnother',
+    'writeHeartRate',
+    'recentWorkoutSpans',
+    'upsertHealthMeasurement',
+  ]) {
+    const calls = callArgs(src, name);
+    assert.ok(calls.length > 0, `${name} is never called`);
+    for (const args of calls) {
+      assert.match(args, /\bdeviceDb,?\s*$/, `${name}(${args}) does not pass deviceDb`);
+    }
+  }
+});
+
+test('an owner finish still running hears the Watch after a switch', () => {
+  assert.match(body(src, 'syncFinishedWorkout'), /ownerFinishes\.run\(/);
+  for (const name of ['ensureWatchSaveListener', 'noteWearSession']) {
+    assert.match(
+      body(src, name),
+      /acceptsWatchMessage\(isOwnerActive\(\), ownerFinishes\.pending\(\)\)/,
+      `${name} drops what an owner finish waits on`,
+    );
+  }
+});
+
+test('screens reach Health data and prompts only through healthSync', () => {
+  // Status checks and links to the system's settings carry no data.
+  const ALLOWED = new Set([
+    'availability',
+    'getPermissions',
+    'isAvailable',
+    'openProviderListing',
+    'openSettings',
+  ]);
+  for (const file of ['settings.tsx', 'health.tsx', '_layout.tsx', 'measurements.tsx', join('workout', '[id].tsx')]) {
+    const code = withoutComments(readFileSync(join(APP, file), 'utf8'));
+    for (const m of code.matchAll(/import\s+(type\s+)?\{([^}]*)\}\s+from\s+'[./]*modules\/health'/g)) {
+      if (m[1]) continue;
+      for (const spec of m[2].split(',')) {
+        const imported = spec.trim().split(/\s+as\s+/)[0];
+        if (!imported || imported.startsWith('type ')) continue;
+        assert.ok(ALLOWED.has(imported), `${file} imports ${imported} from modules/health`);
+      }
+    }
+  }
 });

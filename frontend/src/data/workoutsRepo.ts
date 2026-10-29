@@ -596,11 +596,24 @@ export async function uploadHeartRate(
   workoutId: string,
   body: { avg_hr: number; max_hr: number },
 ): Promise<WorkoutOut> {
-  await db
+  await writeHeartRate(workoutId, body);
+  return getWorkout(workoutId);
+}
+
+/**
+ * Stores a workout's heart rate through `ex`, and reads nothing back.
+ * healthSync stores the owner's through `deviceDb` (#117): a finish sync can
+ * outlive a switch, after which `db`, and `getWorkout`, are someone else's.
+ */
+export async function writeHeartRate(
+  workoutId: string,
+  body: { avg_hr: number; max_hr: number },
+  ex: Executor = db,
+): Promise<void> {
+  await ex
     .update(schema.workouts)
     .set({ avgHr: body.avg_hr, maxHr: body.max_hr, updatedAt: nowMs() })
     .where(eq(schema.workouts.id, workoutId));
-  return getWorkout(workoutId);
 }
 
 // --- Finish (aggregates + PR detection + summary) ---

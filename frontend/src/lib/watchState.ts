@@ -313,6 +313,8 @@ export function buildWatchState(
  * What the Watch shows while a profile other than the phone owner's is active
  * (#117): Health and the Watch are the owner's only, so the wrist offers no
  * routines and can't start a workout, and says whose profile has the phone.
+ *
+ * A blank name yields `profileName: ''`; Task 8's native screen needs a fallback.
  */
 export function buildOffWatchState(name: string): { screen: 'off'; profileName: string } {
   return { screen: 'off', profileName: firstName(name) };

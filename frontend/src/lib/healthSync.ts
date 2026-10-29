@@ -8,14 +8,18 @@
  * so they live here once rather than in two places that can drift.
  */
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 import * as Health from '../../modules/health';
-import { getDashboard, listWorkouts, uploadHeartRate } from '../api/workouts';
+import { getDashboard, listWorkouts } from '../api/workouts';
 import {
   getWorkoutHealthEntry,
   healthEntryHeldByAnother,
+  recentWorkoutSpans,
   setWorkoutHealthEntry,
 } from '../data/healthEntryRepo';
+import { writeHeartRate } from '../data/workoutsRepo';
+import { deviceDb } from '../db/client';
 import {
   entryAfterLookup,
   entryAfterReplace,
@@ -28,10 +32,10 @@ import {
   type PlannedWhen,
 } from '../domain/healthEntry';
 import { activeProfile, isOwnerActive, onProfileSwitch } from './activeProfile';
+import { acceptsWatchMessage, createInFlight } from './ownerHealthGate';
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
 import { watchSaveWaitMs } from './watchFinish';
-import { parseServerDate } from './serverTime';
 import { createWatchSaveLog } from './watchSave';
 import { buildOffWatchState } from './watchState';
 import {
@@ -91,6 +95,13 @@ const prefOn = (v: string | null): boolean => v !== '0';
 // depends on whether the Watch has saved already or is waiting to be told the
 // finish worked.
 
+// Health is the phone owner's only (#117), so everything below that stores or
+// reads a workout goes through `deviceDb`, the owner's file, never `db`: a
+// finish sync can outlive a switch to someone else's profile (Ruling R11).
+// Switching is not held up for it. While one runs, the Watch's messages it
+// waits on are still taken in (ownerHealthGate.ts).
+const ownerFinishes = createInFlight();
+
 // The Watch's "saved its HKWorkout" confirmations, and the wait on them.
 const watchSaves = createWatchSaveLog();
 let watchSaveListening = false;
@@ -109,9 +120,9 @@ export function ensureWatchSaveListener(): void {
   watchSaveListening = true;
   Health.addWatchActionListener((a) => {
     // The Watch records the owner's workouts only (#117). Anything it says
-    // while someone else's profile is active is stale, and must not reach a
-    // finish of theirs.
-    if (!isOwnerActive()) return;
+    // while someone else's profile is active is stale, unless an owner's
+    // finish begun before the switch is still waiting on it.
+    if (!acceptsWatchMessage(isOwnerActive(), ownerFinishes.pending())) return;
     watchSaves.note(a);
     noteWearSession(a);
   });
@@ -124,7 +135,10 @@ const wearSessions = createWearSessionLog();
 // What the Watch reported belongs to the previous profile's workouts (#117).
 // A finish still waiting on it keeps waiting; see `forget`. `healthEdits` is
 // an ordering queue, not data, and the theme and listener flag are the device's.
+// Kept while an owner's finish runs: it may be what that finish is waiting
+// for, and only an owner's finish ever reads it.
 onProfileSwitch(() => {
+  if (ownerFinishes.pending()) return;
   watchSaves.forget();
   wearSessions.forget();
 });
@@ -139,8 +153,9 @@ onProfileSwitch(() => {
  * happened yet, or at a launch with the workout long over.
  */
 function noteWearSession(a: Health.WatchAction): void {
-  // Its heart rate would be stored on a workout of whoever is active (#117).
-  if (!isOwnerActive()) return;
+  // The owner's only (#117), but heard by an owner's finish still running
+  // after a switch; its heart rate goes to the owner's file either way.
+  if (!acceptsWatchMessage(isOwnerActive(), ownerFinishes.pending())) return;
   const session = parseWearSession(a);
   if (!session) return;
   wearSessions.note(session);
@@ -150,23 +165,20 @@ function noteWearSession(a: Health.WatchAction): void {
     try {
       if (!prefOn(await SecureStore.getItemAsync(HEALTH_KEYS.readHR))) return;
       // Whatever its status: the Watch can end before the phone has finished.
-      const recent = await listWorkouts({ limit: 20 });
+      const recent = await recentWorkoutSpans(20, deviceDb);
       const id = workoutForSession(
         session,
         recent
           .filter((w) => w.status !== 'discarded')
           .map((w) => ({
             id: w.id,
-            startedAt: parseServerDate(w.started_at),
+            startedAt: w.startedAt,
             // A finished workout ended its length after it began.
-            endedAt:
-              w.status === 'active'
-                ? null
-                : parseServerDate(w.started_at) + w.duration_seconds * 1000,
+            endedAt: w.status === 'active' ? null : w.startedAt + w.durationSeconds * 1000,
           })),
         Date.now(),
       );
-      if (id) await uploadHeartRate(id, hr);
+      if (id) await writeHeartRate(id, hr, deviceDb);
     } catch {
       // The workout is stored either way; it just carries no heart rate.
     }
@@ -212,6 +224,31 @@ export async function syncFinishedWorkout(
   // Health is the phone owner's only (#117): a client's workout must never
   // land in the owner's Health data or rings.
   if (!isOwnerActive()) return;
+  // Counted as running until it ends, so a switch to someone else's profile
+  // meanwhile still lets the Watch's answers through to it.
+  return ownerFinishes.run(() =>
+    finishSync(
+      workoutId,
+      startedAtMs,
+      endedAtMs,
+      watchWasActive,
+      finishBeganAtMs,
+      watchAwaitsOutcome,
+      wearWasActive,
+    ),
+  );
+}
+
+/** `syncFinishedWorkout` itself, for the owner. */
+async function finishSync(
+  workoutId: string | null,
+  startedAtMs: number,
+  endedAtMs: number,
+  watchWasActive: boolean,
+  finishBeganAtMs: number,
+  watchAwaitsOutcome: boolean,
+  wearWasActive: boolean,
+): Promise<void> {
   try {
     // Before anything else, and whether or not Health is connected: the
     // numbers arrive about now and must not be missed.
@@ -286,7 +323,7 @@ export async function syncFinishedWorkout(
         // Kept with the workout, so an edit to its time knows whether there is
         // an entry to move and whether it is Ischys's to move. Failing to
         // record it only means it is looked up later instead.
-        if (workoutId) await setWorkoutHealthEntry(workoutId, entry).catch(() => {});
+        if (workoutId) await setWorkoutHealthEntry(workoutId, entry, deviceDb).catch(() => {});
         await SecureStore.setItemAsync(HEALTH_KEYS.lastSync, new Date().toISOString());
         const prev = Number(await SecureStore.getItemAsync(HEALTH_KEYS.written)) || 0;
         await SecureStore.setItemAsync(HEALTH_KEYS.written, String(prev + 1));
@@ -307,9 +344,11 @@ export async function syncFinishedWorkout(
       metrics.maxHr <= HR_MAX &&
       metrics.avgHr <= metrics.maxHr
     ) {
-      await uploadHeartRate(workoutId, { avg_hr: metrics.avgHr, max_hr: metrics.maxHr }).catch(
-        () => {},
-      );
+      await writeHeartRate(
+        workoutId,
+        { avg_hr: metrics.avgHr, max_hr: metrics.maxHr },
+        deviceDb,
+      ).catch(() => {});
     }
   } catch {
     // A Health failure must not break finishing a workout.
@@ -376,7 +415,7 @@ async function readHealthEditState(
     ]);
     if (connected !== '1') return NO_HEALTH;
 
-    let entry = await getWorkoutHealthEntry(workoutId);
+    let entry = await getWorkoutHealthEntry(workoutId, deviceDb);
     if (needsLookup(entry)) {
       const window = healthWindow(stored);
       const found = window ? await Health.findWorkout(window.startedAt, window.endedAt) : null;
@@ -387,11 +426,11 @@ async function readHealthEditState(
         lookupAccepted({
           workoutStartedAt: stored.startedAt,
           found,
-          heldByAnother: await healthEntryHeldByAnother(found.uuid, workoutId),
+          heldByAnother: await healthEntryHeldByAnother(found.uuid, workoutId, deviceDb),
         })
       ) {
         entry = entryAfterLookup(entry, found);
-        await setWorkoutHealthEntry(workoutId, entry).catch(() => {});
+        await setWorkoutHealthEntry(workoutId, entry, deviceDb).catch(() => {});
       }
     }
     // Both switches: Ischys's own "write workouts" setting, and iOS's grant.
@@ -432,7 +471,7 @@ export function syncEditedWorkout(
       const target = healthReplacement(state, plan, stored);
       if (!target || !state.entry) return;
       const outcome = await Health.replaceWorkout(target.uuid, target.startedAt, target.endedAt);
-      await setWorkoutHealthEntry(workoutId, entryAfterReplace(state.entry, outcome));
+      await setWorkoutHealthEntry(workoutId, entryAfterReplace(state.entry, outcome), deviceDb);
       if (outcome.status === 'replaced') {
         await SecureStore.setItemAsync(HEALTH_KEYS.lastSync, new Date().toISOString());
       }
@@ -463,11 +502,30 @@ export async function syncBodyweightFromHealth(): Promise<number | null> {
     if (connected !== '1') return null;
     const kg = await Health.readBodyMass();
     if (kg == null) return null;
+    // A switch while Health answered: the setting is now someone else's.
+    if (!isOwnerActive()) return null;
     await setBodyweightKg(kg);
     return kg;
   } catch {
     return null;
   }
+}
+
+/**
+ * Health's latest weight, in kg, for Settings to offer as the bodyweight; null
+ * when there is none. Asks for the weight read first when it may not have been
+ * granted: a user who connected Health before this existed won't have, and
+ * iOS only prompts for undecided types. Android says what is granted, and its
+ * screen lists everything still refused, so it is only shown when weight is
+ * what is missing. The owner's weight only (#117): null for anyone else, with
+ * no prompt.
+ */
+export async function readBodyweightFromHealth(): Promise<number | null> {
+  if (!isOwnerActive()) return null;
+  if (Platform.OS !== 'android' || !(await Health.getPermissions())?.readWeight) {
+    await Health.requestAuthorization();
+  }
+  return Health.readBodyMass();
 }
 
 /**
@@ -614,7 +672,7 @@ export async function syncBodyMeasurementsFromHealth(): Promise<number> {
     const { upsertHealthMeasurement } = await import('../data/measurementsRepo');
     for (const [metric, r] of entries) {
       if (metric !== 'waist' && metric !== 'bodyFat') continue;
-      await upsertHealthMeasurement(metric, r.value, Math.round(r.measuredAt), r.uuid);
+      await upsertHealthMeasurement(metric, r.value, Math.round(r.measuredAt), r.uuid, deviceDb);
     }
     // A value arriving IS the receipt — the Health screen shows when data last
     // actually came back rather than a permission the system will not disclose.

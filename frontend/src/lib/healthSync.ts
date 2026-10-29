@@ -540,10 +540,18 @@ export async function startWatchSession(): Promise<void> {
   // A Wear OS watch streams over its own link, so it does not wait on a
   // Health Connect connection the way the Apple Watch waits on HealthKit.
   if (Health.watchNeedsHealth()) {
-    const [connected, hrPref] = await Promise.all([
-      SecureStore.getItemAsync(HEALTH_KEYS.connected),
-      SecureStore.getItemAsync(HEALTH_KEYS.readHR),
-    ]);
+    let connected: string | null;
+    let hrPref: string | null;
+    try {
+      [connected, hrPref] = await Promise.all([
+        SecureStore.getItemAsync(HEALTH_KEYS.connected),
+        SecureStore.getItemAsync(HEALTH_KEYS.readHR),
+      ]);
+    } catch {
+      // Unreadable (a phone locked since it started): no session rather than
+      // a rejection nobody awaits. The Watch can still start one itself.
+      return;
+    }
     if (connected !== '1' || !prefOn(hrPref)) return;
   }
   Health.startWatchWorkout();

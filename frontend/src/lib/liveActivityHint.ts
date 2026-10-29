@@ -8,7 +8,7 @@
  * The flag is cleared whenever a card does start, so if the switch is ever
  * turned off again the next workout gets one fresh reminder.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 const KEY = 'ischys.liveActivityDisabledHintShown';
 

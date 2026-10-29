@@ -18,7 +18,7 @@
  * the workout is finished / discarded (see clearRest) — so restoring on remount
  * cannot race a clear.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { onProfileSwitch } from './activeProfile';
 

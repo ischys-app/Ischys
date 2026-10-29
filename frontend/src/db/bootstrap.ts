@@ -3,7 +3,7 @@
  * the profiles registry, then opens the profile the app should launch into
  * (#117). `ready` gates the UI until this completes.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../lib/secureStore';
 import { useEffect, useState } from 'react';
 
 import catalog from '../../assets/catalog/catalog.json';

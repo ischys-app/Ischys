@@ -4,7 +4,7 @@
  * It was hard-coded to 4, which is a guess about someone else's training week.
  * Stored in SecureStore beside the other small on-device preferences.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { profileKey } from './activeProfile';
 

@@ -8,7 +8,7 @@
  * remounts on the epoch bump (app/(tabs)/_layout.tsx), and the root stack
  * dismisses whatever was open above the tabs (app/_layout.tsx).
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 import { AccessibilityInfo } from 'react-native';
 
 import {

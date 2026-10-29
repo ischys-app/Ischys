@@ -12,7 +12,7 @@
  * See restAlert.test.ts.
  */
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 import { Alert, Platform } from 'react-native';
 
 import { canScheduleExactAlarms, openExactAlarmSettings } from '../../modules/exact-alarm';

@@ -7,7 +7,7 @@
  * The Health settings screen and the workout-finish flow both touch these keys,
  * so they live here once rather than in two places that can drift.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 import { Platform } from 'react-native';
 
 import * as Health from '../../modules/health';

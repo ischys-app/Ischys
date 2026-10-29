@@ -4,7 +4,7 @@
  * ischys-design-handoff skill for the source-of-truth mapping.
  */
 import type { TextStyle } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../lib/secureStore';
 
 import { accentAlpha, paletteById } from './palettes';
 import { activePalette, activeScheme, applyTheme, color } from './live';

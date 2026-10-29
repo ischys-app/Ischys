@@ -36,7 +36,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../src/lib/secureStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackChevronIcon, HeartFilledIcon, ShieldIcon } from '../src/components/icons';

@@ -20,6 +20,7 @@ import { useEffect, useRef } from 'react';
 import { Alert, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
+import { ProfileSwitcher } from '../src/components/ProfileSwitcher';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { WatchAction } from '../modules/health';
@@ -39,7 +40,7 @@ import {
   setWatchThemeId,
   syncFinishedWorkout,
 } from '../src/lib/healthSync';
-import { isOwnerActive, useActiveProfile } from '../src/lib/activeProfile';
+import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
@@ -320,6 +321,8 @@ export default function RootLayout() {
       <ThemeProvider>
         <AboveNavigationBar>
           <AppStack />
+          {/* One switcher sheet for every way in (#117, P2). */}
+          {PROFILES_ENABLED && <ProfileSwitcher />}
         </AboveNavigationBar>
       </ThemeProvider>
     </SafeAreaProvider>

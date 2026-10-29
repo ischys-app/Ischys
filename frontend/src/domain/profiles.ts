@@ -210,3 +210,29 @@ export function referencedCustomExerciseIds(
 ): string[] {
   return Array.from(new Set(routineExerciseIds.filter((id) => customIds.has(id))));
 }
+
+/** The switcher (P2) shows a search field from this many profiles. */
+export const SWITCHER_SEARCH_FROM = 9;
+
+/** Profiles whose name contains `query`, ignoring case and accents; all of them for a blank query. */
+export function filterProfiles<T extends { name: string }>(rows: readonly T[], query: string): T[] {
+  const fold = (s: string) => s.toLocaleLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const q = fold(query.trim());
+  if (!q) return [...rows];
+  return rows.filter((r) => fold(r.name).includes(q));
+}
+
+/**
+ * The switcher's fixed parts, in points (P2): padding 10 + 34, grabber 5 + 12,
+ * header 34 + 10, the Add row 60. The search field adds 46.
+ */
+const SWITCHER_CHROME = 10 + 5 + 12 + 34 + 10 + 60 + 34;
+const SWITCHER_SEARCH = 46;
+export const SWITCHER_ROW = 60;
+export const SWITCHER_MAX_FRACTION = 0.78;
+
+/** Whether `rows` 60pt rows overflow a sheet capped at 78% of `windowHeight`, so the list scrolls. */
+export function switcherListScrolls(rows: number, windowHeight: number): boolean {
+  const chrome = SWITCHER_CHROME + (rows >= SWITCHER_SEARCH_FROM ? SWITCHER_SEARCH : 0);
+  return chrome + rows * SWITCHER_ROW > windowHeight * SWITCHER_MAX_FRACTION;
+}

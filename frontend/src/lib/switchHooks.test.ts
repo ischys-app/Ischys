@@ -24,6 +24,7 @@ const ROOTS = ['lib', 'data', 'components'];
 const ALLOWED: Record<string, string> = {
   'lib/activeProfile.ts': 'the active-profile store and the switch-hook registry themselves',
   'lib/haptics.ts': 'device setting: the haptic preference is device-wide',
+  'lib/profileSwitcherStore.ts': 'whether the switcher sheet is open; UI state, not a profile\'s data',
   'data/ids.ts': 'process-wide monotonic clock; holds no profile data',
   'components/workout/types.ts': '`_seq` counter for temporary React keys; holds no data',
 };

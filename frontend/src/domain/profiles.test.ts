@@ -6,6 +6,9 @@ import {
   PROFILE_SCOPED_KEYS,
   deleteBlock,
   deriveInitials,
+  filterProfiles,
+  SWITCHER_SEARCH_FROM,
+  switcherListScrolls,
   graphemesWith,
   exportFileStem,
   firstName,
@@ -152,4 +155,20 @@ test('graphemes fallback matches Intl.Segmenter', () => {
   }
   assert.equal(graphemesWith('🏋️ Nik', null)[0], '🏋️');
   assert.equal(graphemesWith('👨‍👩‍👧 F', null)[0], '👨‍👩‍👧');
+});
+
+test('filterProfiles matches a name fragment, ignoring case and accents', () => {
+  const rows = [{ name: 'Μαρία Παπαδάκη' }, { name: 'Nikos Andreou' }, { name: 'José' }];
+  assert.deepEqual(filterProfiles(rows, '  '), rows);
+  assert.deepEqual(filterProfiles(rows, 'andr'), [rows[1]]);
+  assert.deepEqual(filterProfiles(rows, 'μαρια'), [rows[0]]);
+  assert.deepEqual(filterProfiles(rows, 'JOSE'), [rows[2]]);
+  assert.deepEqual(filterProfiles(rows, 'zz'), []);
+});
+
+test('switcherListScrolls: a few profiles fit, ten on a 390pt phone scroll', () => {
+  assert.equal(switcherListScrolls(2, 844), false);
+  assert.equal(switcherListScrolls(8, 844), false);
+  assert.equal(switcherListScrolls(10, 844), true);
+  assert.equal(SWITCHER_SEARCH_FROM, 9);
 });

@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../../src/lib/secureStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ProfileOut, RecordOut, WorkoutListItem } from '../../src/api/types';

@@ -9,7 +9,7 @@
  * sessions keep the mass they were actually performed at; live and recomputed
  * views fall back to this current value when a workout has no snapshot.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { profileKey } from './activeProfile';
 import { bodyweightInRange, bodyweightToStore } from './bodyweightValue';

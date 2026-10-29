@@ -7,7 +7,7 @@
  * It lives here rather than in data/profilesRepo.ts for the same reason as
  * createProfile.ts: it needs switchProfile, which imports profilesRepo.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 import { deleteDatabaseAsync } from 'expo-sqlite';
 
 import { closeConnection, currentConnection, fileNameFor } from '../db/client';

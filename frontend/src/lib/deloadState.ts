@@ -11,7 +11,7 @@
  * set: `domain/progression` reads the window and suggests lighter numbers while
  * it is open, and the user remains free to ignore every one of them.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { profileKey } from './activeProfile';
 

@@ -3,7 +3,7 @@
  * the profiles registry, then opens the profile the app should launch into
  * (#117). `ready` gates the UI until this completes.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../lib/secureStore';
 import { useEffect, useState } from 'react';
 
 import catalog from '../../assets/catalog/catalog.json';
@@ -21,6 +21,7 @@ import { dedupeExercisesByName } from '../data/exercisesRepo';
 import { ensureOwnerProfile, listProfiles } from '../data/profilesRepo';
 import { OWNER_ID, parseActiveWorkout, resolveLaunchProfile, type ProfileRow } from '../domain/profiles';
 import { DEFAULT_NAME, setActiveProfile } from '../lib/activeProfile';
+import { migrateKeychain } from '../lib/migrateKeychain';
 import { setEffortMode } from '../lib/effortMode';
 import { setHapticsEnabled } from '../lib/haptics';
 import { setWeightUnit } from '../lib/weightUnit';
@@ -166,6 +167,7 @@ async function launch(): Promise<Outcome> {
   }
   // From here a failure is reported but the app still starts, on the owner,
   // as a seeding failure always has.
+  let outcome: Outcome;
   try {
     // `db` is the owner's already (db/client.ts).
     await seedConnection(owner);
@@ -192,10 +194,16 @@ async function launch(): Promise<Outcome> {
     if (launchRow) setActiveProfile(launchRow, rows.length);
     await tidyCurrentConnection();
     await primeSettings();
-    return { ready: true, error };
+    outcome = { ready: true, error };
   } catch (e) {
-    return { ready: true, error: asError(e) };
+    outcome = { ready: true, error: asError(e) };
   }
+  // 6. Settings stored before they were readable locked are stored again,
+  // once. Whatever the steps above reached: it needs only the registry. Waited
+  // for in the foreground (a few Keychain calls, at most 2 s), deferred in the
+  // background.
+  await migrateKeychain();
+  return outcome;
 }
 
 // Once per app run, however often the hook mounts (StrictMode runs effects twice).

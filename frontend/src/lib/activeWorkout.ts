@@ -13,7 +13,7 @@
  * belongs to as well, so launch can open that profile (#117). An entry from
  * before profiles is a bare id, and is the owner's.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { parseActiveWorkout } from '../domain/profiles';
 import { activeProfile } from './activeProfile';

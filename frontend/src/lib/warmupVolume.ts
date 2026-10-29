@@ -10,7 +10,7 @@
  * it (see recordStore.ts). Never call `getCountWarmups()` from inside a
  * `db.transaction` or from `recomputeForExercise`.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { profileKey } from './activeProfile';
 

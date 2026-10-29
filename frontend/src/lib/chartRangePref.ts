@@ -5,7 +5,7 @@
  * a chart, not a fact about any one lift, and re-picking "1Y" on every exercise
  * would be the sort of small tax that makes a feature go unused.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import { CHART_RANGES, type ChartRangeId } from '../domain/chartRange';
 

@@ -14,7 +14,7 @@
  * handed to it maps each key through `profileKey`, so each profile has its own
  * bar and plates and the owner keeps the keys from before profiles (#117).
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import type { BarSetup } from '../domain/plateMath';
 import type { Unit } from '../domain/units';

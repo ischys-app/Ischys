@@ -7,7 +7,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   Keyboard,
   KeyboardAvoidingView,
@@ -68,6 +67,7 @@ import {
   rememberActiveWorkout,
 } from '../../src/lib/activeWorkout';
 import { saveRest, loadRest, clearRest } from '../../src/lib/restSession';
+import { alertWhenActive, whenActive } from '../../src/lib/whenActive';
 import {
   liveActivityProfile,
   onRestAction,
@@ -699,7 +699,8 @@ export default function ActiveWorkout() {
     }
     if (liveActivityHintShown()) return;
     rememberLiveActivityHint();
-    Alert.alert(
+    // This screen can open in the background (a Watch start): wait for the user.
+    alertWhenActive(
       'Live Activities are off',
       'Turn on Live Activities for Ischys in Settings to see your rest timer on the Lock Screen.',
       [
@@ -826,15 +827,21 @@ export default function ActiveWorkout() {
   // passes unnoticed. Dismissible — adding another exercise is still valid — and
   // it re-arms only after there is something left to log again, so dismissing it
   // doesn't make it reappear on every re-render.
+  //
+  // Not while the app is in the background. The last set is often logged from
+  // the Watch with the phone locked, and this sheet is a native modal: presented
+  // then, it went up behind the lock screen with nobody to see it, and a failed
+  // finish's alert stacked on top. It waits for the user to open the app, and
+  // still opens then only if every set is still done.
   const [donePromptOpen, setDonePromptOpen] = useState(false);
   const donePromptArmed = useRef(true);
   useEffect(() => {
     if (allSetsDone && donePromptArmed.current) {
       donePromptArmed.current = false;
-      setDonePromptOpen(true);
-    } else if (!allSetsDone) {
-      donePromptArmed.current = true;
+      // Dropped if a set is undone, or the screen goes, before then.
+      return whenActive(() => setDonePromptOpen(true));
     }
+    if (!allSetsDone) donePromptArmed.current = true;
   }, [allSetsDone]);
 
   // --- set mutations ---
@@ -1310,7 +1317,9 @@ export default function ActiveWorkout() {
           const push = withFinishVerdict(watchStateRef.current, 'failed', watch.finishId);
           if (push) pushWatchState(push);
         }
-        Alert.alert('Couldn’t finish workout', 'Nothing was changed. Try again.');
+        // A finish from the Watch runs with the phone in the background, often
+        // locked: the alert waits until the user opens the app.
+        alertWhenActive('Couldn’t finish workout', 'Nothing was changed. Try again.');
         return;
       }
     }

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { readJsonSet, toJsonSet } from './backupJson.ts';
+import { backupWorkouts, readJsonSet, toJsonSet } from './backupJson.ts';
 
 test('a rated set round-trips through the JSON backup', () => {
   const set = { type: 'normal', weight: 60, reps: 8, done: true, isPr: true, rpe: 8.5 };
@@ -37,4 +37,19 @@ test('a rating that is not one is dropped, not stored', () => {
   assert.equal(readJsonSet({ rpe: 'hard' as unknown as number }).rpe, null);
   assert.equal(readJsonSet({ rpe: 14 }).rpe, null);
   assert.equal(readJsonSet({ rpe: 7.4 }).rpe, 7.5);
+});
+
+test("a backup's `profile` key is read past: the import plan is the same without it", () => {
+  const workouts = [
+    { name: 'Push', started_at: '2026-10-20T08:00:00Z', exercises: [{ name: 'Bench Press', sets: [{ weight_kg: 60, reps: 8 }] }] },
+  ];
+  const plain = JSON.stringify({ exported_at: '2026-10-29T10:00:00Z', workouts });
+  const named = JSON.stringify({ exported_at: '2026-10-29T10:00:00Z', profile: { name: 'Maria', initials: 'MP' }, workouts });
+  assert.deepEqual(backupWorkouts(named), backupWorkouts(plain));
+  assert.deepEqual(backupWorkouts(named), workouts);
+});
+
+test('a file with no workouts list is not a backup, and text that is not JSON throws', () => {
+  assert.equal(backupWorkouts(JSON.stringify({ profile: { name: 'Maria', initials: 'MP' } })), null);
+  assert.throws(() => backupWorkouts('not json'));
 });

@@ -45,6 +45,7 @@ import {
   type PrBackfillPlan,
   type PrSetRow,
 } from '../domain/prBackfill';
+import { onProfileSwitch, useActiveProfile } from '../lib/activeProfile';
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
 import { nowMs } from './ids';
@@ -87,6 +88,13 @@ const SLICE_MS = 8;
 const START_DELAY_MS = 2000;
 /** Fresh reads to try before leaving it to the next launch. */
 const ATTEMPTS = 3;
+
+/**
+ * Profile switches so far. A pass reads a page at a time, and `db` follows the
+ * active profile: one that spanned a switch would mix two files' rows and mark
+ * the new file done. So it notes this when it starts and stops if it moves.
+ */
+let switches = 0;
 
 /** Hands the JS thread back: a timer, so pending touches, frames and writes run first. */
 const breathe = (ms = 0) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -182,7 +190,9 @@ export type PrBackfillOutcome =
   /** Walked, written and recorded. */
   | 'done'
   /** Other writes kept landing mid-read; left for the next launch. */
-  | 'deferred';
+  | 'deferred'
+  /** The profile was switched mid-pass; it runs again for the new one. */
+  | 'switched';
 
 /**
  * Runs the pass if this device still owes it. Throws on failure, with nothing
@@ -190,6 +200,7 @@ export type PrBackfillOutcome =
  * swallows that.
  */
 export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
+  const startedAt = switches;
   const decision = decidePrBackfill(storedVersion(), hasCompletedWorkout() ? 1 : 0);
   if (decision === 'skip') return 'skipped';
   if (decision === 'mark') {
@@ -200,6 +211,7 @@ export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
   // The settings the records are computed under, as finish and edit read them.
   const currentBw = await getBodyweightKg();
   const countWarmups = await getCountWarmups();
+  if (switches !== startedAt) return 'switched';
 
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     // Rows of an open transaction are not history yet.
@@ -244,6 +256,7 @@ export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
 
     // From here to the commit is one synchronous stretch. If nothing has been
     // written since `before`, the plan was made from the database as it is now.
+    if (switches !== startedAt) return 'switched';
     if (transactionOpen() || writesSoFar() !== before) {
       await breathe(1000);
       continue;
@@ -254,8 +267,15 @@ export async function runPrBackfillIfOwed(): Promise<PrBackfillOutcome> {
   return 'deferred';
 }
 
-/** One run per launch, however often the root layout mounts. */
+/** One run per launch and profile, however often the root layout mounts. */
 let started = false;
+
+// Each profile's file keeps its own marker (#117): a switch stops a pass in
+// flight and lets the next profile have its own.
+onProfileSwitch(() => {
+  switches += 1;
+  started = false;
+});
 
 /**
  * Starts the pass once the local database is ready and the first screen has
@@ -267,6 +287,7 @@ let started = false;
  * and the exercise pages show the result as soon as they are next opened.
  */
 export function usePrFlagBackfill(ready: boolean): void {
+  const { epoch } = useActiveProfile();
   useEffect(() => {
     if (!ready || started) return;
     const timer = setTimeout(() => {
@@ -285,5 +306,5 @@ export function usePrFlagBackfill(ready: boolean): void {
       );
     }, START_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [ready]);
+  }, [ready, epoch]);
 }

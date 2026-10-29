@@ -28,6 +28,8 @@ object WorkoutModel : WorkoutCore.Host {
   private const val TAG = "IschysWear"
   private const val PREFS = "ischys"
   private const val KEY_THEME = "themeId"
+  /** Present while the phone last said the Watch is off; the profile's name. */
+  private const val KEY_OFF_FOR = "offFor"
 
   private lateinit var app: Context
   private lateinit var core: WorkoutCore
@@ -49,9 +51,10 @@ object WorkoutModel : WorkoutCore.Host {
     if (::core.isInitialized) return
     app = context.applicationContext
     val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    // Cached so the Watch opens in the right accent before the phone has
-    // pushed anything this launch.
-    core = WorkoutCore(this, prefs.getString(KEY_THEME, null))
+    // Cached so the Watch opens in the right accent, and off when another
+    // profile was last active, before the phone has pushed anything this
+    // launch — which, with the phone out of reach, may be never.
+    core = WorkoutCore(this, prefs.getString(KEY_THEME, null), prefs.getString(KEY_OFF_FOR, null))
     state.value = core.ui
   }
 
@@ -109,6 +112,9 @@ object WorkoutModel : WorkoutCore.Host {
 
   // WorkoutCore.Host
 
+  /** False while another profile is active on the phone: no session may start. */
+  val canStartSession: Boolean get() = !::core.isInitialized || core.sessionStartAllowed
+
   override val sessionRunning: Boolean get() = ExerciseService.running
   override val phoneReachable: Boolean get() = PhoneLink.canAskNow
 
@@ -126,6 +132,13 @@ object WorkoutModel : WorkoutCore.Host {
 
   override fun persistTheme(id: String) {
     app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_THEME, id).apply()
+  }
+
+  override fun persistOff(profileName: String?) {
+    val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+    if (profileName == null) prefs.remove(KEY_OFF_FOR) else prefs.putString(KEY_OFF_FOR, profileName)
+    // Committed now: the process can be killed straight after the push.
+    prefs.commit()
   }
 
   // From the phone (WearLinkService)
@@ -162,6 +175,12 @@ object WorkoutModel : WorkoutCore.Host {
 
   private fun onCommand(command: Wire.Inbound.Command) {
     if (command.cmd == "start") {
+      // Another profile is active: nothing to record, and nothing to start
+      // later when the app next comes up.
+      if (!canStartSession) {
+        pendingPhoneStart = false
+        return
+      }
       // The phone began a workout: record it without the user opening anything.
       if (!ExerciseService.start(app, fromPhone = true)) pendingPhoneStart = true
       return
@@ -188,6 +207,7 @@ object WorkoutModel : WorkoutCore.Host {
   // From the screens
 
   fun startAppeared() = act { startAppeared() }
+  fun offAppeared() = act { offAppeared() }
 
   fun startEmpty() {
     ExerciseService.start(app)

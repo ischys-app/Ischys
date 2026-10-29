@@ -57,6 +57,8 @@ struct RootView: View {
         SessionView()
       case .summary:
         SummaryView()
+      case .off:
+        OffView()
       }
     }
     .tint(Ischys.accent)

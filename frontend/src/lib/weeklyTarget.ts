@@ -6,6 +6,8 @@
  */
 import * as SecureStore from 'expo-secure-store';
 
+import { profileKey } from './activeProfile';
+
 const KEY = 'ischys.weeklyWorkoutTarget';
 
 export const DEFAULT_WEEKLY_TARGET = 4;
@@ -15,7 +17,7 @@ export const MAX_WEEKLY_TARGET = 14;
 /** The user's weekly goal, or the default when unset/invalid. */
 export async function getWeeklyTarget(): Promise<number> {
   try {
-    const raw = await SecureStore.getItemAsync(KEY);
+    const raw = await SecureStore.getItemAsync(profileKey(KEY));
     const n = Number(raw);
     if (!Number.isInteger(n) || n < MIN_WEEKLY_TARGET || n > MAX_WEEKLY_TARGET) {
       return DEFAULT_WEEKLY_TARGET;
@@ -29,5 +31,5 @@ export async function getWeeklyTarget(): Promise<number> {
 /** Persist the weekly goal, clamped to a sane range. */
 export async function setWeeklyTarget(n: number): Promise<void> {
   const clamped = Math.min(MAX_WEEKLY_TARGET, Math.max(MIN_WEEKLY_TARGET, Math.round(n)));
-  await SecureStore.setItemAsync(KEY, String(clamped));
+  await SecureStore.setItemAsync(profileKey(KEY), String(clamped));
 }

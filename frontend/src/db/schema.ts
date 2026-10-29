@@ -204,3 +204,20 @@ export const settings = sqliteTable('settings', {
   lastSyncedAt: integer('last_synced_at'),
   ...sync,
 });
+
+// --- Profiles registry (#117) ---
+// Every profile file has this table (one schema, one migration set), but only
+// the owner's `ischys.db` uses it: it lists the profiles on the device. The
+// stats columns are a cache, written when a profile's workouts change, so the
+// list can render without opening every profile's file.
+export const profiles = sqliteTable('profiles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  initials: text('initials').notNull(),
+  sort: integer('sort').notNull(),
+  isOwner: integer('is_owner').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  workoutCount: integer('workout_count').notNull().default(0),
+  firstWorkoutAt: integer('first_workout_at'),
+  lastWorkoutAt: integer('last_workout_at'),
+});

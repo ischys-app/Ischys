@@ -113,12 +113,22 @@ class ExerciseService : Service() {
       stopSelf()
       return
     }
+    // The phone may have said off between `start` and now: no session for
+    // another profile. Out of the foreground again before anything recorded.
+    if (!WorkoutModel.canStartSession) {
+      ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+      stopSelf()
+      return
+    }
     instance = this
     val start = System.currentTimeMillis()
     sessionStart = start
     setBridging(false)
-    WorkoutModel.sessionStarted(start)
+    // Launched before the model hears of it: if the model ends the session
+    // at once, the end must find this job to wait for, or the exercise would
+    // begin after its session was torn down.
     startJob = scope.launch { startExercise() }
+    WorkoutModel.sessionStarted(start)
   }
 
   private suspend fun startExercise() {
@@ -332,6 +342,9 @@ class ExerciseService : Service() {
      */
     fun start(context: Context, fromPhone: Boolean = false): Boolean {
       if (running) return true
+      // Health and the Watch are the owner's alone: no session while another
+      // profile is active on the phone, whoever asks.
+      if (!WorkoutModel.canStartSession) return false
       val started = maySense(context) && try {
         ContextCompat.startForegroundService(context, Intent(context, ExerciseService::class.java))
         true

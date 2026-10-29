@@ -6,7 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ProfileOut, RecordOut, WorkoutListItem } from '../../src/api/types';
 import { getProfile, listRecentRecords, listWorkouts } from '../../src/api/workouts';
-import { ChevronRightIcon, DeviceIcon, HeartFilledIcon, SettingsIcon, StarIcon } from '../../src/components/icons';
+import { ChevronDownIcon, ChevronRightIcon, DeviceIcon, HeartFilledIcon, SettingsIcon, StarIcon } from '../../src/components/icons';
+import { ProfileAvatar } from '../../src/components/ProfileAvatar';
+import { firstName } from '../../src/domain/profiles';
+import { PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { openProfileSwitcher } from '../../src/lib/profileSwitcherStore';
 import { fmtMonthYear, fmtVolumeLarge, metricLabel } from '../../src/lib/format';
 import { buildWeeklyBars, WEEK_BARS, type WeeklyBars } from '../../src/lib/weeklyBars';
 import { DEFAULT_NAME, setProfileName } from '../../src/lib/profileName';
@@ -34,6 +38,10 @@ export default function Profile() {
   // trusting a hardcoded padding that only happened to fit one inset.
   const [headerH, setHeaderH] = useState(0);
   const unit = useWeightUnit();
+  // With 2+ profiles the header names whose profile this is and opens the
+  // switcher (P3). With one, everything here is as it was.
+  const { profile: active, count } = useActiveProfile();
+  const multi = PROFILES_ENABLED && count > 1;
 
   const [profile, setProfile] = useState<ProfileOut | null>(null);
   const [records, setRecords] = useState<RecordOut[] | null>(null);
@@ -151,9 +159,15 @@ export default function Profile() {
           <View>
             {/* Identity row */}
             <View style={styles.identity}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initial}</Text>
-              </View>
+              {multi ? (
+                <ProfileAvatar profile={active} size={62} tint={color.accent} />
+              ) : (
+                // One profile: today's avatar, exactly (Dynamic Type and
+                // VoiceOver included). The one-profile screen doesn't change.
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </View>
+              )}
               <View style={styles.identityText}>
                 {draft !== null ? (
                   <TextInput
@@ -356,9 +370,39 @@ export default function Profile() {
         style={[styles.header, { paddingTop: insets.top + 12 }]}
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
-        <Text style={styles.title}>Profile</Text>
+        {multi ? (
+          <Pressable
+            onPress={openProfileSwitcher}
+            style={({ pressed }) => [styles.whoButton, pressed && styles.whoButtonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Switch profile, current ${active.name}`}
+          >
+            <Text style={[styles.title, styles.whoName]} numberOfLines={1}>
+              {firstName(active.name) || active.name}
+            </Text>
+            <View style={styles.whoChevron}>
+              <ChevronDownIcon size={16} color={color.text2} strokeWidth={2.6} />
+            </View>
+          </Pressable>
+        ) : (
+          <Text style={styles.title}>Profile</Text>
+        )}
         <View style={styles.headerRight}>
-          {healthConnected && (
+          {multi && !active.isOwner && (
+            // Health and the Watch are the owner's (#117): a neutral pill for
+            // everyone else, to the screen that says so.
+            <Pressable
+              onPress={() => router.push('/health')}
+              hitSlop={6}
+              style={({ pressed }) => [styles.healthChip, styles.healthChipOff, pressed && styles.healthChipPressed]}
+              accessibilityLabel={`${healthCopy(Platform.OS).name} off`}
+              accessibilityRole="button"
+            >
+              <HeartFilledIcon size={12} color={color.text3} />
+              <Text style={[styles.healthChipText, styles.healthChipTextOff]}>Health · off</Text>
+            </Pressable>
+          )}
+          {healthConnected && !(multi && !active.isOwner) && (
             <Pressable
               onPress={() => router.push('/health')}
               hitSlop={6}
@@ -423,6 +467,7 @@ const styles = themed(() =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: 10,
       paddingHorizontal: 20,
       paddingBottom: 12,
       backgroundColor: color.bg,
@@ -436,6 +481,7 @@ const styles = themed(() =>
     headerRight: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexShrink: 0,
       gap: 10,
     },
     healthChip: {
@@ -450,6 +496,21 @@ const styles = themed(() =>
       borderColor: withAlpha(color.success, 0.24),
     },
     healthChipPressed: { opacity: 0.75 },
+    healthChipOff: { backgroundColor: color.surface2, borderColor: color.border },
+    healthChipTextOff: { color: color.text2 },
+    whoButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 44,
+      minWidth: 0,
+      flexShrink: 1,
+      paddingRight: 6,
+      borderRadius: 10,
+    },
+    whoButtonPressed: { opacity: 0.6 },
+    whoName: { flexShrink: 1 },
+    whoChevron: { flexShrink: 0, marginTop: 3 },
     healthChipText: {
       fontFamily: font.monoSemi,
       fontSize: 11,

@@ -117,6 +117,11 @@ export function createWearSessionLog() {
       wake?.();
     },
 
+    /** Drops the session heard, on a profile switch. A waiting finish keeps waiting. */
+    forget(): void {
+      latest = null;
+    },
+
     /**
      * The session recorded over [startedAt, endedAt]: at once if it has
      * already arrived, otherwise when it does, or null after `waitMs`.

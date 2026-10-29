@@ -4,16 +4,23 @@
  *
  * What to record is decided in domain/healthEntry.ts, and lib/healthSync.ts is
  * the only caller. Touches the DB (drizzle/expo), so it is never node-tested.
+ *
+ * Each takes the connection to use. Health is the phone owner's only (#117),
+ * and a finish sync can outlive a switch to someone else's profile, so
+ * healthSync passes `deviceDb` (always the owner's file) rather than `db`.
  */
-import { and, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 
-import { db } from '../db/client';
+import { db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
 import { healthEntryFromRow, type HealthEntry } from '../domain/healthEntry';
 
-export async function getWorkoutHealthEntry(workoutId: string): Promise<HealthEntry | null> {
+export async function getWorkoutHealthEntry(
+  workoutId: string,
+  ex: Executor = db,
+): Promise<HealthEntry | null> {
   const row = (
-    await db
+    await ex
       .select({
         uuid: schema.workouts.healthWorkoutUuid,
         writer: schema.workouts.healthWorkoutWriter,
@@ -33,8 +40,9 @@ export async function getWorkoutHealthEntry(workoutId: string): Promise<HealthEn
 export async function setWorkoutHealthEntry(
   workoutId: string,
   entry: HealthEntry | null,
+  ex: Executor = db,
 ): Promise<void> {
-  await db
+  await ex
     .update(schema.workouts)
     .set({
       healthWorkoutUuid: entry?.uuid ?? null,
@@ -48,11 +56,37 @@ export async function setWorkoutHealthEntry(
  * entry. An entry is one workout's, so a lookup by time must not hand a
  * neighbour's to a second one.
  */
-export async function healthEntryHeldByAnother(uuid: string, workoutId: string): Promise<boolean> {
-  const rows = await db
+export async function healthEntryHeldByAnother(
+  uuid: string,
+  workoutId: string,
+  ex: Executor = db,
+): Promise<boolean> {
+  const rows = await ex
     .select({ id: schema.workouts.id })
     .from(schema.workouts)
     .where(and(eq(schema.workouts.healthWorkoutUuid, uuid), ne(schema.workouts.id, workoutId)))
     .limit(1);
   return rows.length > 0;
+}
+
+/** A workout's span, for matching a watch session to it (lib/wearSession.ts). */
+export type WorkoutSpan = {
+  id: string;
+  status: string;
+  startedAt: number;
+  durationSeconds: number;
+};
+
+/** The latest `limit` workouts' spans, newest first. */
+export async function recentWorkoutSpans(limit: number, ex: Executor = db): Promise<WorkoutSpan[]> {
+  return ex
+    .select({
+      id: schema.workouts.id,
+      status: schema.workouts.status,
+      startedAt: schema.workouts.startedAt,
+      durationSeconds: schema.workouts.durationSeconds,
+    })
+    .from(schema.workouts)
+    .orderBy(desc(schema.workouts.startedAt), desc(schema.workouts.id))
+    .limit(limit);
 }

@@ -5,10 +5,11 @@
  */
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
-import { atomically, db } from '../db/client';
+import { atomically, db, type ProfileConnection } from '../db/client';
 import * as schema from '../db/schema';
 import type { RoutineExerciseIn, RoutineOut } from '../api/types';
 import type { LoggedExercise } from '../domain/routineView';
+import { exercisesToCopy } from '../domain/profiles';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
 import { toRoutineExerciseOut, toRoutineOut, type ExerciseRow } from './map';
 import { hydrateExercises } from './queries';
@@ -207,5 +208,80 @@ export async function deleteRoutine(id: string): Promise<void> {
   await atomically(async (tx) => {
     await clearExercises(tx, id);
     await tx.delete(schema.routines).where(eq(schema.routines.id, id));
+  });
+}
+
+/** How many routines the current profile has (P4's START WITH row). */
+export async function countRoutines(): Promise<number> {
+  return (await db.select({ id: schema.routines.id }).from(schema.routines)).length;
+}
+
+/**
+ * Every routine in the current profile, as stored rows, with what a copy into
+ * another profile's file needs (#117, P4): their exercises and target sets,
+ * and every exercise row they reference, with its secondary-muscle links.
+ * Which of those exercises the new file lacks is decided by the writer.
+ */
+export type RoutineCopy = {
+  routines: (typeof schema.routines.$inferSelect)[];
+  routineExercises: (typeof schema.routineExercises.$inferSelect)[];
+  routineSets: (typeof schema.routineSets.$inferSelect)[];
+  exercises: (typeof schema.exercises.$inferSelect)[];
+  secondaryMuscles: (typeof schema.exerciseSecondaryMuscles.$inferSelect)[];
+};
+
+export async function readRoutineCopy(): Promise<RoutineCopy> {
+  const routines = await db.select().from(schema.routines);
+  const routineExercises = await db.select().from(schema.routineExercises);
+  const routineSets = await db.select().from(schema.routineSets);
+  const exIds = Array.from(new Set(routineExercises.map((re) => re.exerciseId)));
+  const exercises = exIds.length
+    ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, exIds))
+    : [];
+  const secondaryMuscles = exIds.length
+    ? await db
+        .select()
+        .from(schema.exerciseSecondaryMuscles)
+        .where(inArray(schema.exerciseSecondaryMuscles.exerciseId, exIds))
+    : [];
+  return { routines, routineExercises, routineSets, exercises, secondaryMuscles };
+}
+
+const chunked = <T>(xs: readonly T[], n: number): T[][] =>
+  Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
+
+/**
+ * Writes `copy` into another profile's file, unchanged, ids included, in one
+ * synchronous transaction: all of it or none. The catalog is already there
+ * (prepareConnection seeds it with the same ids), so only the exercises that
+ * are custom, or that this file lacks, are added, with their muscle links.
+ * The copies are independent of the originals from here on.
+ */
+export async function writeRoutineCopy(conn: ProfileConnection, copy: RoutineCopy): Promise<void> {
+  const exIds = copy.exercises.map((e) => e.id);
+  const present = exIds.length
+    ? await conn.drizzle
+        .select({ id: schema.exercises.id })
+        .from(schema.exercises)
+        .where(inArray(schema.exercises.id, exIds))
+    : [];
+  const wanted = new Set(
+    exercisesToCopy(
+      copy.routineExercises.map((re) => re.exerciseId),
+      copy.exercises,
+      new Set(present.map((r) => r.id)),
+    ),
+  );
+  const exercises = copy.exercises.filter((e) => wanted.has(e.id));
+  const links = copy.secondaryMuscles.filter((l) => wanted.has(l.exerciseId));
+
+  conn.drizzle.transaction((tx) => {
+    for (const part of chunked(exercises, 50)) tx.insert(schema.exercises).values(part).run();
+    for (const part of chunked(links, 200)) {
+      tx.insert(schema.exerciseSecondaryMuscles).values(part).onConflictDoNothing().run();
+    }
+    for (const part of chunked(copy.routines, 100)) tx.insert(schema.routines).values(part).run();
+    for (const part of chunked(copy.routineExercises, 100)) tx.insert(schema.routineExercises).values(part).run();
+    for (const part of chunked(copy.routineSets, 100)) tx.insert(schema.routineSets).values(part).run();
   });
 }

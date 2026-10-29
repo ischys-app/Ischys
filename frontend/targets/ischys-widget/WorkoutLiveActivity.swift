@@ -241,6 +241,22 @@ private struct LockScreenCard: View {
   // Header row: `padding: 15px 17px 0` · `gap: 8px` · `align-items: center`.
   private var header: some View {
     HStack(alignment: .center, spacing: 8) {
+      // Two or more profiles: an 18pt initials chip leads the row, the same
+      // size as the chip in the app's workout header. It fits inside the
+      // 19pt line, so the card keeps the one-profile height: a taller
+      // square overran the ~160pt cap and iOS clipped the card top and
+      // bottom. The colours are fixed because the widget cannot read the
+      // app's tokens.
+      if let initials = context.attributes.profileInitials, !initials.isEmpty {
+        Text(initials)
+          .font(.custom("JetBrainsMono-SemiBold", size: 9.5))
+          .foregroundStyle(Color(hex: 0xF4F4F5))
+          .lineLimit(1)
+          .padding(.horizontal, 4)
+          .frame(minWidth: 18, minHeight: 18, maxHeight: 18)
+          .background(RoundedRectangle(cornerRadius: 5).fill(Color(hex: 0x212127)))
+      }
+
       // "Ischys" + 4×4 accent dot · `gap: 2px` · `align-items: baseline`.
       HStack(alignment: .firstTextBaseline, spacing: 2) {
         Text("Ischys")
@@ -252,8 +268,9 @@ private struct LockScreenCard: View {
           .frame(width: 4, height: 4)
       }
 
-      Text("Workout")
+      Text(Self.title(profileName: context.attributes.profileName))
         .font(.custom("SpaceGrotesk-Medium", size: 15))
+        .lineLimit(1)
         .foregroundStyle(.white.opacity(0.5))
 
       Spacer(minLength: 0)
@@ -312,6 +329,12 @@ private struct LockScreenCard: View {
     .padding(.top, 7)
     .padding(.horizontal, 17)
     .padding(.bottom, 9)
+  }
+
+  /// "Workout", or "Maria · Workout" when the card names a profile.
+  static func title(profileName: String?) -> String {
+    guard let name = profileName, !name.isEmpty else { return "Workout" }
+    return "\(name) · Workout"
   }
 
   /// The bundled line art for a slug, or nil.

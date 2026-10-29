@@ -8,6 +8,7 @@ import { textScale } from '../../theme/textScale';
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { BackChevronIcon, HeartFilledIcon, TrashIcon } from '../icons';
+import { ProfileAvatar } from '../ProfileAvatar';
 import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
@@ -26,6 +27,12 @@ type Props = {
   heartRate?: number | null;
   /** Live active energy (kcal) a Watch is burning; shown beside HR. */
   activeCal?: number | null;
+  /**
+   * With 2+ profiles, whose workout this is (#117, P5): the status line
+   * becomes chip + first name + `· STARTED 18:02`, not pressable. Omitted
+   * with one profile, and the line is as it was.
+   */
+  who?: { initials: string; firstName: string; started: string } | null;
 };
 
 /** Pulsing heart glyph. Scale 1 → 1.28 → 1 over a 1s loop. */
@@ -124,6 +131,7 @@ export function WorkoutHeader({
   onDiscard,
   heartRate,
   activeCal,
+  who,
 }: Props) {
   useThemed();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -161,7 +169,19 @@ export function WorkoutHeader({
           <Text maxFontSizeMultiplier={textScale.display} style={styles.name} numberOfLines={1}>
             {name}
           </Text>
-          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.status}>{status}</Text>
+          {who ? (
+            <View style={styles.whoRow}>
+              <ProfileAvatar profile={who} size={18} />
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.whoName} numberOfLines={1}>
+                {who.firstName}
+              </Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.whoStarted} numberOfLines={1}>
+                {`· STARTED ${who.started}`}
+              </Text>
+            </View>
+          ) : (
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.status}>{status}</Text>
+          )}
         </View>
         <PressableScale onPress={onFinish} style={styles.finish}>
           <Text maxFontSizeMultiplier={textScale.fixed} style={styles.finishText}>Finish</Text>
@@ -249,6 +269,15 @@ const styles = themed(() =>
     titleWrap: { flex: 1, minWidth: 0 },
     name: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
     status: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
+    whoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+    whoName: { flexShrink: 1, fontFamily: font.titleSemi, fontSize: 12.5, color: color.text2 },
+    whoStarted: {
+      flexShrink: 0,
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
     finish: {
       height: 34,
       paddingHorizontal: 18,

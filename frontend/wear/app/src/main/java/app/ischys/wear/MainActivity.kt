@@ -46,7 +46,9 @@ class MainActivity : ComponentActivity() {
 
   /** Opened from the "workout started on phone" notification. */
   private fun notePhoneStart(intent: Intent?) {
-    if (intent?.getBooleanExtra(ExerciseService.EXTRA_START_SESSION, false) == true) {
+    if (intent?.getBooleanExtra(ExerciseService.EXTRA_START_SESSION, false) == true &&
+      WorkoutModel.canStartSession
+    ) {
       WorkoutModel.pendingPhoneStart = true
     }
   }
@@ -54,6 +56,10 @@ class MainActivity : ComponentActivity() {
   /** The session the phone asked for and the background could not start. */
   private fun startPendingSession() {
     if (!WorkoutModel.pendingPhoneStart) return
+    if (!WorkoutModel.canStartSession) {
+      WorkoutModel.pendingPhoneStart = false
+      return
+    }
     if (ExerciseService.start(this)) WorkoutModel.pendingPhoneStart = false
   }
 }

@@ -16,26 +16,19 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Alert, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
+import { FinishWorkoutFirstSheet } from '../src/components/FinishWorkoutFirstSheet';
+import { ProfileSwitcher } from '../src/components/ProfileSwitcher';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { WatchAction } from '../modules/health';
 import * as LiveActivity from '../modules/live-activity';
-import {
-  discardWorkout,
-  finishWorkout,
-  getDashboard,
-  getSettings,
-  listWorkouts,
-} from '../src/api/workouts';
+import { discardWorkout, finishWorkout, listWorkouts } from '../src/api/workouts';
 import { beginWorkout } from '../src/lib/startWorkoutFlow';
-import { setHapticsEnabled } from '../src/lib/haptics';
 import { getThemeId } from '../src/lib/themePref';
-import { setEffortMode } from '../src/lib/effortMode';
-import { setWeightUnit } from '../src/lib/weightUnit';
 import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { usePrFlagBackfill } from '../src/data/prBackfill';
 import { applyPendingCardActions, reconcileCardOnLaunch } from '../src/lib/liveActivityBridge';
@@ -43,10 +36,13 @@ import {
   consumeWatchActions,
   ensureWatchSaveListener,
   onWatchAction,
+  pushStartWatchState,
   pushWatchState,
   setWatchThemeId,
   syncFinishedWorkout,
 } from '../src/lib/healthSync';
+import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
+import { takeRouteAfterSwitch } from '../src/lib/finishWorkoutFirst';
 import { forgetActiveWorkout } from '../src/lib/activeWorkout';
 import { clearRest } from '../src/lib/restSession';
 import { saveSummary } from '../src/lib/summaryCache';
@@ -66,9 +62,14 @@ import { ThemeProvider, useThemed } from '../src/theme/ThemeProvider';
  * Live Activity taps are drained here, not in the workout screen: an intent can
  * cold-launch the app in the background, and that launch starts at the root
  * route with no workout screen mounted to receive them.
+ *
+ * Not before `dbReady`: both read the database, which is the owner's until
+ * launch has opened the profile the app starts in (#117). Taps wait in the
+ * native queue meanwhile.
  */
-function useLiveActivityActions() {
+function useLiveActivityActions(dbReady: boolean) {
   useEffect(() => {
+    if (!dbReady) return;
     void reconcileCardOnLaunch();
     void applyPendingCardActions(); // taps that launched us, or landed while away
 
@@ -80,7 +81,7 @@ function useLiveActivityActions() {
       tapped.remove();
       resumed.remove();
     };
-  }, []);
+  }, [dbReady]);
 }
 
 /**
@@ -88,61 +89,55 @@ function useLiveActivityActions() {
  * works from any tab — not just Home. Starts by routine id directly (no lookup
  * that could miss) and navigates into the workout, which then mirrors to the
  * Watch. Other Watch actions (log set, rest…) are handled by the workout screen.
+ *
+ * Not before `dbReady`, for the same reason as the Live Activity: it answers
+ * from the database. Live delivery only starts at the drain in `useWatchFinish`,
+ * which waits too, so nothing arrives unheard.
  */
-function useWatchStart() {
-  useEffect(
-    () =>
-      onWatchAction((a) => {
-        // The Watch's Start screen asking for the routine list. Answered here
-        // and not on Home, because the Watch app can be opened with the phone
-        // app closed: iOS relaunches it at the root route, where Home never
-        // mounts and so never pushes. That is why opening the Watch app on its
-        // own showed "No routines yet" until a workout had been run.
-        if (a.action === 'requestState') {
-          void (async () => {
-            try {
-              // A mounted workout screen owns the Watch state and answers this
-              // itself. Pushing a Start screen over a running session would
-              // throw the wrist back to the routine list mid-workout.
-              const [active] = await listWorkouts({ status: 'active', limit: 1 });
-              if (active) return;
-              const dash = await getDashboard();
-              pushWatchState({
-                screen: 'start',
-                routines: dash.routines.map((r) => ({
-                  id: r.id,
-                  name: r.name,
-                  initials: r.initials,
-                  exerciseCount: r.exercise_count,
-                })),
-              });
-            } catch {
-              // No data to answer with; the Watch keeps what it had.
-            }
-          })();
-          return;
+function useWatchStart(dbReady: boolean) {
+  useEffect(() => {
+    if (!dbReady) return;
+    // Launched into someone else's profile: the Watch may still show the
+    // owner's routines from last time, and Home may never mount to say
+    // otherwise. With the owner active nothing changes (#117).
+    if (!isOwnerActive()) void pushStartWatchState();
+    return onWatchAction((a) => {
+      // The Watch's Start screen asking for the routine list. Answered here
+      // and not on Home, because the Watch app can be opened with the phone
+      // app closed: iOS relaunches it at the root route, where Home never
+      // mounts and so never pushes. That is why opening the Watch app on its
+      // own showed "No routines yet" until a workout had been run.
+      //
+      // A mounted workout screen owns the Watch state and answers this
+      // itself; `pushStartWatchState` stands down while a workout runs. For
+      // anyone but the phone's owner the answer is the off state (#117).
+      if (a.action === 'requestState') {
+        void pushStartWatchState();
+        return;
+      }
+      if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
+      // A stale Start screen tapped while someone else's profile is active:
+      // the Watch starts the owner's workouts only (#117).
+      if (!isOwnerActive()) return;
+      void (async () => {
+        try {
+          // One workout at a time (startGuard.ts). A start can arrive with
+          // one already running — tapped twice, or a Watch that never heard
+          // the first had begun. The one there is is opened instead; its
+          // screen puts the wrist back in it.
+          const begun = await beginWorkout(
+            a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
+            { from: 'watch' },
+          );
+          if (!begun) return;
+          if (begun.resumed && screenHoldsWatchFinish()) return; // already on screen
+          router.push(`/workout/${begun.workoutId}`);
+        } catch {
+          // Nothing could be started; the Watch stays on its Start screen.
         }
-        if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
-        void (async () => {
-          try {
-            // One workout at a time (startGuard.ts). A start can arrive with
-            // one already running — tapped twice, or a Watch that never heard
-            // the first had begun. The one there is is opened instead; its
-            // screen puts the wrist back in it.
-            const begun = await beginWorkout(
-              a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
-              { from: 'watch' },
-            );
-            if (!begun) return;
-            if (begun.resumed && screenHoldsWatchFinish()) return; // already on screen
-            router.push(`/workout/${begun.workoutId}`);
-          } catch {
-            // Nothing could be started; the Watch stays on its Start screen.
-          }
-        })();
-      }),
-    [],
-  );
+      })();
+    });
+  }, [dbReady]);
 }
 
 /**
@@ -164,9 +159,14 @@ function useWatchStart() {
  * A Watch that is waiting to hear how the finish went (its request carries a
  * `finishId`, #95) is told either way, and keeps recording until it is. One
  * that is not waiting has already ended its session and is told nothing.
+ *
+ * Not before `dbReady`: finishing writes to the database, which must be the
+ * launch profile's. The Watch's messages wait in the native queue until the
+ * drain below.
  */
-function useWatchFinish() {
+function useWatchFinish(dbReady: boolean) {
   useEffect(() => {
+    if (!dbReady) return;
     // One finish at a time: the queue drained at launch and a live message can
     // both carry the same one. Only finishes take the turn, so the Watch's
     // other messages, which all arrive here too, cannot make one be dropped.
@@ -177,6 +177,10 @@ function useWatchFinish() {
     const apply = async (a: WatchAction, heardAt?: number) => {
       const action = a.action;
       if (!completesWorkout(action)) return;
+      // The Watch finishes the owner's workouts only (#117). A stale Finish
+      // must not end a client's; and the switch is refused while a workout
+      // runs, so with someone else active the owner has none to finish.
+      if (!isOwnerActive()) return;
       if (applying) return;
       applying = true;
       const finishId = finishRequestId(a);
@@ -277,38 +281,26 @@ function useWatchFinish() {
     })();
 
     return onWatchAction((a) => void apply(a));
-  }, []);
+  }, [dbReady]);
 }
 
 export default function RootLayout() {
-  useLiveActivityActions();
-  useWatchStart();
-  useWatchFinish();
-  // Phase 0: build + seed the on-device DB at startup. Nothing reads from it
-  // yet (the app is still server-backed); this only guarantees it exists.
+  // Migrate and seed the on-device DB, register the owner profile, and open
+  // the profile to launch into (#117). The splash stays until it is ready, and
+  // so does everything below that reads the database or a per-profile key.
   const dbBootstrap = useLocalDbBootstrap();
+  useLiveActivityActions(dbBootstrap.ready);
+  useWatchStart(dbBootstrap.ready);
+  useWatchFinish(dbBootstrap.ready);
   usePrFlagBackfill(dbBootstrap.ready);
 
-  // Cache the haptic preference at startup; screens fire haptics before the
-  // workout or settings screen would sync it.
   // Mirror the accent onto Watch pushes for the rest of the session.
   useEffect(() => {
     void getThemeId().then(setWatchThemeId);
   }, []);
 
-  useEffect(() => {
-    getSettings()
-      .then((s) => {
-        setHapticsEnabled(s.haptic_feedback);
-        // Same reason: the first screen to show a weight should already know
-        // the unit, rather than paint kilograms and correct itself.
-        setWeightUnit(s.unit);
-        // And whether sets are rated: off by default, so priming it late can
-        // only ever add a rating to the screen, never flash one that is hidden.
-        setEffortMode(s.effort_mode);
-      })
-      .catch(() => {});
-  }, []);
+  // The haptic preference, weight unit and effort mode are primed at launch
+  // (db/bootstrap.ts), before the UI is ready.
 
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_400Regular,
@@ -331,6 +323,10 @@ export default function RootLayout() {
       <ThemeProvider>
         <AboveNavigationBar>
           <AppStack />
+          {/* One switcher sheet for every way in (#117, P2). */}
+          {PROFILES_ENABLED && <ProfileSwitcher />}
+          {/* "Finish ‹First›'s workout first" (P6), for a switch refused mid-workout. */}
+          {PROFILES_ENABLED && <FinishWorkoutFirstSheet />}
         </AboveNavigationBar>
       </ThemeProvider>
     </SafeAreaProvider>
@@ -339,11 +335,30 @@ export default function RootLayout() {
 }
 
 /**
+ * After a profile switch, closes every screen open above the tabs: they hold
+ * the previous profile's data (#117). The tabs remount on the same epoch
+ * (app/(tabs)/_layout.tsx) and keep the selected tab.
+ */
+function useDismissOnProfileSwitch() {
+  const { epoch } = useActiveProfile();
+  const seen = useRef(epoch);
+  useEffect(() => {
+    if (seen.current === epoch) return;
+    seen.current = epoch;
+    if (router.canDismiss()) router.dismissAll();
+    // "Go to workout" (P6) switched into the workout's profile to reach it.
+    const next = takeRouteAfterSwitch();
+    if (next) router.push(next);
+  }, [epoch]);
+}
+
+/**
  * The navigator, inside ThemeProvider so the screen background follows the
  * appearance: `contentStyle` is read again on every theme change.
  */
 function AppStack() {
   useThemed();
+  useDismissOnProfileSwitch();
   return (
     <Stack
       screenOptions={{
@@ -469,6 +484,30 @@ function AppStack() {
         options={{
           headerShown: false,
           animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="profiles/index"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="profiles/[id]"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
+        name="profiles/new"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
           contentStyle: { backgroundColor: color.bg },
         }}
       />

@@ -68,7 +68,12 @@ import {
   rememberActiveWorkout,
 } from '../../src/lib/activeWorkout';
 import { saveRest, loadRest, clearRest } from '../../src/lib/restSession';
-import { onRestAction, onWorkoutChanged, type RestAction } from '../../src/lib/liveActivityBridge';
+import {
+  liveActivityProfile,
+  onRestAction,
+  onWorkoutChanged,
+  type RestAction,
+} from '../../src/lib/liveActivityBridge';
 import type { ExerciseOut } from '../../src/api/types';
 import { saveSummary } from '../../src/lib/summaryCache';
 import {
@@ -82,6 +87,9 @@ import {
   syncBodyweightFromHealth,
   syncFinishedWorkout,
 } from '../../src/lib/healthSync';
+import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { firstName } from '../../src/domain/profiles';
+import { fmtTimeOfDay } from '../../src/lib/format';
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
 import {
   claimWatchFinish,
@@ -200,6 +208,7 @@ function mapExercise(
 
 export default function ActiveWorkout() {
   useThemed();
+  const { profile: activeProfileRow, count: profileCount } = useActiveProfile();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -662,7 +671,7 @@ export default function ActiveWorkout() {
     // Attributes are fixed for the Activity's life, so the origin is pinned once
     // here — from the stored started_at, the same source the elapsed clock uses.
     if (startedAtRef.current == null) return;
-    activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+    activityRunning.current = LiveActivity.start(startedAtRef.current, state, liveActivityProfile()) != null;
     // `startedAt` arrives with the loaded workout, after the first run — without
     // it in the deps the card would never start.
   }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt, startedAt]);
@@ -722,7 +731,7 @@ export default function ActiveWorkout() {
         restStartedAt: restStartedAt ?? undefined,
         restEndsAt: restEndsAt ?? undefined,
       };
-      activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+      activityRunning.current = LiveActivity.start(startedAtRef.current, state, liveActivityProfile()) != null;
     });
     return () => sub.remove();
   }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt]);
@@ -1867,8 +1876,22 @@ export default function ActiveWorkout() {
         }}
         onFinish={onFinish}
         onDiscard={onDiscard}
-        heartRate={heartRate}
-        activeCal={activeCal}
+        // Health and the Watch are the phone owner's only (#117): no HR/CAL
+        // strip for anyone else. A switch is refused while a workout runs,
+        // so this can't change under the screen.
+        heartRate={isOwnerActive() ? heartRate : null}
+        activeCal={isOwnerActive() ? activeCal : null}
+        // With 2+ profiles, whose workout this is (P5). The tab bar that
+        // names them elsewhere is hidden here.
+        who={
+          PROFILES_ENABLED && profileCount > 1 && startedAt != null
+            ? {
+                initials: activeProfileRow.initials,
+                firstName: firstName(activeProfileRow.name) || activeProfileRow.name,
+                started: fmtTimeOfDay(startedAt),
+              }
+            : null
+        }
       />
 
       <KeyboardAvoidingView

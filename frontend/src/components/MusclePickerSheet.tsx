@@ -22,6 +22,7 @@ import {
 
 import type { MuscleOut } from '../api/types';
 import { listMuscles } from '../api/workouts';
+import { onProfileSwitch } from '../lib/activeProfile';
 import { accentA, color, font, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, SearchIcon } from './icons';
@@ -31,18 +32,30 @@ import { useThemed } from '../theme/ThemeProvider';
 let cachedMuscles: MuscleOut[] | null = null;
 let inflight: Promise<MuscleOut[]> | null = null;
 
+// Read from the profile's file (#117). The seeded muscles are the same in
+// every file today; dropping the copy keeps it that way if that ever changes.
+// A read in flight is the previous file's, so it is not kept either.
+let generation = 0;
+onProfileSwitch(() => {
+  generation += 1;
+  cachedMuscles = null;
+  inflight = null;
+});
+
 /** Load muscles once; subsequent callers get the cached list. */
 async function fetchMuscles(): Promise<MuscleOut[]> {
   if (cachedMuscles) return cachedMuscles;
   if (!inflight) {
-    inflight = listMuscles()
+    const asked = generation;
+    const read = listMuscles()
       .then((m) => {
-        cachedMuscles = m;
+        if (asked === generation) cachedMuscles = m;
         return m;
       })
       .finally(() => {
-        inflight = null;
+        if (inflight === read) inflight = null;
       });
+    inflight = read;
   }
   return inflight;
 }

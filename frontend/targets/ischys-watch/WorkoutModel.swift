@@ -14,12 +14,6 @@ import WatchKit
 /// Actions the user takes (log a set, adjust rest, end) are sent back to the
 /// phone through `PhoneLink`, which the phone applies through the same JS path as
 /// the Live Activity buttons. The Watch never writes to the API.
-enum WatchScreen {
-  case start    // S1 — pick a routine / empty
-  case session  // S2/S3/S4/S5 — the paged workout
-  case summary  // S6
-}
-
 enum SetDot: Hashable {
   case done
   case active
@@ -50,7 +44,13 @@ struct SessionSummary: Equatable {
 final class WorkoutModel: ObservableObject {
   static let shared = WorkoutModel()
 
-  @Published var screen: WatchScreen = .start
+  /// Opens off when the phone last said off (`OffMemory`), Start otherwise.
+  @Published var screen: WatchScreen = OffMemory.standard.launchScreen {
+    // Mirrored for WorkoutManager.start(with:), which is not main-isolated.
+    didSet { WorkoutManager.sessionMayStart = screen.allowsSession }
+  }
+  /// The profile active on the phone, for the off screen. May be blank.
+  @Published var profileName = OffMemory.standard.offFor ?? ""
 
   // S1 — Start
   @Published var routines: [RoutineItem] = []
@@ -389,6 +389,15 @@ final class WorkoutModel: ObservableObject {
     }
 
     screen = s.screen
+    profileName = s.screen == .off ? s.profileName : ""
+    OffMemory.standard.remember(screen: s.screen, profileName: s.profileName)
+    // The off screen has no controls, so a session still recording there could
+    // not be stopped. Its end keeps the Watch on the off screen
+    // (WorkoutManager.close).
+    let manager = WorkoutManager.shared
+    if s.screen.discardsSession(isRunning: manager.isRunning, isEnding: manager.isEnding) {
+      WorkoutManager.shared.discard()
+    }
     // Once the phone has moved us off Start, any pending hand-off is resolved.
     if s.screen != .start { pendingRoutineId = nil }
     // A "couldn't finish" belongs to the workout it was about. Once the phone

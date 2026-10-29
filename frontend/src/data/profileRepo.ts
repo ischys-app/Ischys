@@ -1,7 +1,8 @@
 /**
  * Profile, Home dashboard, and recent-records — local equivalents of /profile,
- * /dashboard, /records/recent. Single on-device user; name defaults to "Athlete"
- * and "training since" is derived from the first workout (no account exists).
+ * /dashboard, /records/recent, for the active profile. The name is the active
+ * profile's (registry, #117; "Athlete" until set) and "training since" is
+ * derived from the first workout (no account exists).
  */
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 
@@ -44,7 +45,7 @@ export async function getProfile(): Promise<ProfileOut> {
   const first = completed.reduce<number | null>((min, w) => (min === null || w.startedAt < min ? w.startedAt : min), null);
   return {
     id: LOCAL_USER_ID,
-    name: await getProfileName(),
+    name: getProfileName(),
     email: null,
     location: null,
     training_since: first === null ? null : ymd(new Date(first)),

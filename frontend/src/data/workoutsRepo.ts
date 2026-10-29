@@ -5,7 +5,7 @@
  * DB (drizzle/expo) — never node-tested. No FK cascades in the schema, so child
  * rows are deleted explicitly.
  */
-import { and, asc, count, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt, max, min } from 'drizzle-orm';
 
 import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
@@ -71,6 +71,26 @@ export async function listWorkouts(
     .offset(params.offset ?? 0);
   const tags = await muscleTagsByWorkout(rows.map((w) => w.id));
   return rows.map((w) => toWorkoutListItem(w as WorkoutRow, tags.get(w.id) ?? []));
+}
+
+/**
+ * The current file's completed workouts: how many, and when the first and the
+ * latest began. Cached in the profiles registry for the switcher (#117).
+ */
+export async function completedWorkoutStats(): Promise<{
+  workoutCount: number;
+  firstWorkoutAt: number | null;
+  lastWorkoutAt: number | null;
+}> {
+  const [row] = await db
+    .select({
+      n: count(),
+      first: min(schema.workouts.startedAt),
+      last: max(schema.workouts.startedAt),
+    })
+    .from(schema.workouts)
+    .where(eq(schema.workouts.status, 'completed'));
+  return { workoutCount: row?.n ?? 0, firstWorkoutAt: row?.first ?? null, lastWorkoutAt: row?.last ?? null };
 }
 
 /** How many workouts there are, of one status or of any. */
@@ -576,11 +596,24 @@ export async function uploadHeartRate(
   workoutId: string,
   body: { avg_hr: number; max_hr: number },
 ): Promise<WorkoutOut> {
-  await db
+  await writeHeartRate(workoutId, body);
+  return getWorkout(workoutId);
+}
+
+/**
+ * Stores a workout's heart rate through `ex`, and reads nothing back.
+ * healthSync stores the owner's through `deviceDb` (#117): a finish sync can
+ * outlive a switch, after which `db`, and `getWorkout`, are someone else's.
+ */
+export async function writeHeartRate(
+  workoutId: string,
+  body: { avg_hr: number; max_hr: number },
+  ex: Executor = db,
+): Promise<void> {
+  await ex
     .update(schema.workouts)
     .set({ avgHr: body.avg_hr, maxHr: body.max_hr, updatedAt: nowMs() })
     .where(eq(schema.workouts.id, workoutId));
-  return getWorkout(workoutId);
 }
 
 // --- Finish (aggregates + PR detection + summary) ---

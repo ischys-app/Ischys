@@ -3,14 +3,16 @@
  * CSV file and creates completed workouts locally.
  */
 import { asc, eq, inArray, sql } from 'drizzle-orm';
-import { readAsStringAsync } from 'expo-file-system/legacy';
+import { cacheDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 import { atomically, db, type Executor } from '../db/client';
+import { readSideConnection } from '../db/sideConnection';
 import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
-import { readJsonSet, toJsonSet, type JsonSet } from './backupJson';
+import { backupWorkouts, readJsonSet, toJsonSet, type JsonSet } from './backupJson';
 import { toWorkoutCsv, parseWorkoutCsv, type ExportWorkout } from './workoutCsv';
 import type { Unit } from '../domain/units';
 import { equipmentFromNameSuffix } from '../domain/exerciseNaming';
@@ -20,6 +22,9 @@ import { exerciseKey, planImport, workoutKey } from './importPlan';
 import { prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
+import { activeProfile, profileCount } from '../lib/activeProfile';
+import { exportFileStem } from '../domain/profiles';
+import { getProfile } from './profilesRepo';
 
 type FullSet = { position: number; type: string; weight: number | null; reps: number | null; done: boolean; isPr: boolean; rpe: number | null };
 type FullExercise = { name: string; note: string | null; supersetGroup: number | null; sets: FullSet[] };
@@ -36,16 +41,16 @@ type FullWorkout = {
   exercises: FullExercise[];
 };
 
-async function gatherCompleted(): Promise<FullWorkout[]> {
-  const workouts = await db.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed')).orderBy(asc(schema.workouts.startedAt));
+async function gatherCompleted(exec: Executor): Promise<FullWorkout[]> {
+  const workouts = await exec.select().from(schema.workouts).where(eq(schema.workouts.status, 'completed')).orderBy(asc(schema.workouts.startedAt));
   const out: FullWorkout[] = [];
   for (const w of workouts) {
-    const wes = await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, w.id)).orderBy(asc(schema.workoutExercises.position));
-    const exRows = wes.length ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, wes.map((we) => we.exerciseId))) : [];
+    const wes = await exec.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.workoutId, w.id)).orderBy(asc(schema.workoutExercises.position));
+    const exRows = wes.length ? await exec.select().from(schema.exercises).where(inArray(schema.exercises.id, wes.map((we) => we.exerciseId))) : [];
     const nameById = new Map(exRows.map((e) => [e.id, e.name]));
     const exercises = [];
     for (const we of wes) {
-      const sets = await db.select().from(schema.workoutSets).where(eq(schema.workoutSets.workoutExerciseId, we.id)).orderBy(asc(schema.workoutSets.position));
+      const sets = await exec.select().from(schema.workoutSets).where(eq(schema.workoutSets.workoutExerciseId, we.id)).orderBy(asc(schema.workoutSets.position));
       exercises.push({
         name: nameById.get(we.exerciseId) ?? '',
         note: we.note,
@@ -62,10 +67,20 @@ async function gatherCompleted(): Promise<FullWorkout[]> {
   return out;
 }
 
-export async function exportData(format: 'json' | 'csv'): Promise<string> {
-  const workouts = await gatherCompleted();
+/**
+ * The profile's completed workouts as a CSV or JSON file's text. `exec` is the
+ * profile's connection (the current one by default); the JSON names the
+ * profile (P11), which import ignores.
+ */
+export async function exportData(
+  format: 'json' | 'csv',
+  exec: Executor = db,
+  profile: { name: string; initials: string } = activeProfile(),
+): Promise<string> {
+  const workouts = await gatherCompleted(exec);
   if (format === 'csv') return toWorkoutCsv(workouts);
   return JSON.stringify({
+    profile: { name: profile.name, initials: profile.initials },
     workouts: workouts.map((w) => ({
       id: w.id, name: w.name,
       started_at: new Date(w.startedAt).toISOString(),
@@ -179,6 +194,49 @@ async function rederiveRecords(standing: RecordStanding, tx: Executor): Promise<
     await reflagExercisePrs(exId, tx, currentBw, countWarmups, heldBefore);
     await recomputeForExercise(exId, tx, currentBw, countWarmups);
   }
+}
+
+/** Thrown by `exportProfile` when the share sheet can't be shown. */
+export class SharingUnavailable extends Error {
+  constructor() {
+    super('Sharing unavailable');
+    this.name = 'SharingUnavailable';
+  }
+}
+
+/**
+ * Exports a profile's workouts to a file in the cache directory and opens the
+ * share sheet. The file is `ischys-export.<fmt>` with one profile, and
+ * `ischys-<slug>-YYYY-MM-DD.<fmt>` with more (P11).
+ *
+ * `profileId` defaults to the active profile. Another profile (the delete
+ * sheet's "Export first") is read from its own file, migrated, then closed
+ * again (db/sideConnection.ts), without switching to it: a switch would remount the app and
+ * close the sheet, and is refused while a workout runs.
+ */
+export async function exportProfile(fmt: 'csv' | 'json', profileId?: string): Promise<void> {
+  const active = activeProfile();
+  const id = profileId ?? active.id;
+  let content: string;
+  let name: string;
+  if (id === active.id) {
+    content = await exportData(fmt, db, active);
+    name = active.name;
+  } else {
+    const row = await getProfile(id);
+    if (!row) throw new Error(`No profile ${id}`);
+    const read = await readSideConnection(id, (conn) => exportData(fmt, conn.drizzle, row));
+    if (read === null) throw new Error(`No data file for profile ${id}`);
+    content = read;
+    name = row.name;
+  }
+  const uri = `${cacheDirectory ?? ''}${exportFileStem(profileCount(), name, new Date())}.${fmt}`;
+  await writeAsStringAsync(uri, content);
+  if (!(await Sharing.isAvailableAsync())) throw new SharingUnavailable();
+  await Sharing.shareAsync(uri, {
+    mimeType: fmt === 'csv' ? 'text/csv' : 'application/json',
+    UTI: fmt === 'csv' ? 'public.comma-separated-values-text' : 'public.json',
+  });
 }
 
 /**
@@ -338,13 +396,12 @@ type JsonWorkout = {
  * either, so a trusted flag had no count beside it.
  */
 async function importJsonBackup(text: string): Promise<ImportResult> {
-  let data: { workouts?: JsonWorkout[] };
+  let workoutsIn: JsonWorkout[];
   try {
-    data = JSON.parse(text);
+    workoutsIn = (backupWorkouts(text) ?? []) as JsonWorkout[];
   } catch {
     throw new Error('Not a valid Ischys JSON export');
   }
-  const workoutsIn = Array.isArray(data?.workouts) ? data.workouts : [];
 
   const cache = new Map<string, string>();
   let workoutsCreated = 0;

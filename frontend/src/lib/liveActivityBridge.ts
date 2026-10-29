@@ -25,10 +25,23 @@ import type { WorkoutOut } from '../api/types';
 import { getWorkout, listWorkouts, patchSet } from '../api/workouts';
 import { carryFor, completionPatch, resolveSet } from '../components/workout/setCarry';
 import { type Unit, weightText } from '../domain/units';
+import { firstName } from '../domain/profiles';
+import { activeProfile, onProfileSwitch, profileCount } from './activeProfile';
 import { setProgress } from './liveActivityProgress';
 import { buildLiveActivityState } from './liveActivityState';
 import { getThemeId } from './themePref';
 import { loadWeightUnit } from './weightUnit';
+
+/**
+ * Who the card names: the active profile's first name and initials, but only
+ * when the phone has two or more profiles. With one, undefined, and the card is
+ * exactly what it always was.
+ */
+export function liveActivityProfile(): LiveActivity.LiveActivityProfile | undefined {
+  if (profileCount() <= 1) return undefined;
+  const p = activeProfile();
+  return { name: firstName(p.name), initials: p.initials };
+}
 
 /** Rest lives only in the workout screen's state, so it is relayed, not applied. */
 export type RestAction = { type: 'skip' } | { type: 'adjust'; seconds: number };
@@ -149,6 +162,14 @@ try {
 } catch {
   // No native module (web, tests): there is no card.
 }
+
+// The launch reconcile asks the launch profile's file whether its workout is
+// still running. After a switch that file is not `db` any more, so a card left
+// from the last run is not this profile's to end (#117). `running` stays: it
+// guards an in-flight drain, and no workout is running across a switch.
+onProfileSwitch(() => {
+  cardFromLastRun = false;
+});
 
 /**
  * Squares the card with reality once, at launch.

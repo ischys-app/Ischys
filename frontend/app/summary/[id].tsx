@@ -44,6 +44,8 @@ import {
 import { deloadHistoryFor } from '../../src/data/deloadRepo';
 import { getDeloadState, setDeloadState } from '../../src/lib/deloadState';
 import { fmtDateOnly, fmtDuration } from '../../src/lib/format';
+import { PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { ProfileAvatar } from '../../src/components/ProfileAvatar';
 import { maybeRequestReviewAfterFinish } from '../../src/lib/reviewPrompt';
 import { getSummary } from '../../src/lib/summaryCache';
 import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
@@ -174,6 +176,8 @@ function ShareIcon({ size = 14, tint }: { size?: number; tint: string }) {
 
 export default function WorkoutSummary() {
   useThemed();
+  const { profile: activeProfileRow, count: profileCount } = useActiveProfile();
+  const multi = PROFILES_ENABLED && profileCount > 1;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; justFinished?: string }>();
@@ -769,9 +773,19 @@ export default function WorkoutSummary() {
         >
           <CloseIcon tint={color.text2} />
         </Pressable>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
-          WORKOUT
-        </Text>
+        {multi ? (
+          // With 2+ profiles, whose workout this is (P5): the chip, not pressable.
+          <View style={styles.headerWho}>
+            <ProfileAvatar profile={activeProfileRow} size={18} />
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerWhoTitle} numberOfLines={1}>
+              WORKOUT
+            </Text>
+          </View>
+        ) : (
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
+            WORKOUT
+          </Text>
+        )}
         {/* Edit sits before Share and is surface2 like it, so Done stays the
             screen's only accent. Only a finished workout is history to edit. */}
         {workout.status === 'completed' ? (
@@ -854,6 +868,21 @@ const styles = themed(() =>
       flex: 1,
       minWidth: 0,
       textAlign: 'center',
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    headerWho: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    headerWhoTitle: {
+      flexShrink: 1,
       fontFamily: font.monoRegular,
       fontSize: 11,
       letterSpacing: 1.54,

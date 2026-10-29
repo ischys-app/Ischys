@@ -6,9 +6,14 @@ import { BlurView } from 'expo-blur';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { firstName } from '../domain/profiles';
+import { PROFILES_ENABLED, useActiveProfile } from '../lib/activeProfile';
+import { haptics } from '../lib/haptics';
+import { openProfileSwitcher } from '../lib/profileSwitcherStore';
 import { accentA, color, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
 import { HistoryIcon, HomeIcon, ProfileIcon } from './icons';
+import { ProfileAvatar } from './ProfileAvatar';
 import { useThemed } from '../theme/ThemeProvider';
 
 /** Minimal shape of the navigation tabBar props we consume. */
@@ -29,6 +34,11 @@ const TABS: Record<string, { label: string; Icon: typeof HomeIcon }> = {
 export function TabBar({ state, navigation }: TabBarProps) {
   const scheme = useThemed();
   const insets = useSafeAreaInsets();
+  const { profile, count } = useActiveProfile();
+  // With 2+ profiles the Profile item shows whose data this is (P5). With one
+  // it is exactly as before; only the long-press is there, unadvertised.
+  const showWho = PROFILES_ENABLED && count > 1;
+  const first = firstName(profile.name) || profile.name;
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 10 }]} pointerEvents="box-none">
@@ -45,14 +55,44 @@ export function TabBar({ state, navigation }: TabBarProps) {
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };
 
+          const isProfile = route.name === 'profile';
+          const switcher = PROFILES_ENABLED && isProfile;
+          const who = showWho && isProfile;
+
+          const openSwitcher = () => {
+            haptics.light();
+            openProfileSwitcher();
+          };
+
           return (
             <Pressable
               key={route.key}
               onPress={onPress}
-              style={[styles.tab, focused && styles.tabActive]}
+              onLongPress={switcher ? openSwitcher : undefined}
+              delayLongPress={switcher ? 500 : undefined}
+              accessibilityLabel={who ? `Profile, ${first}` : undefined}
+              accessibilityActions={switcher ? [{ name: 'switch', label: 'Switch profile' }] : undefined}
+              onAccessibilityAction={
+                switcher
+                  ? (e) => {
+                      if (e.nativeEvent.actionName === 'switch') openProfileSwitcher();
+                    }
+                  : undefined
+              }
+              style={[styles.tab, focused && styles.tabActive, who && styles.tabWho]}
             >
-              <meta.Icon size={24} color={tint} strokeWidth={2} />
-              <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.label, { color: tint }]}>{meta.label}</Text>
+              {who ? (
+                <ProfileAvatar profile={profile} size={24} variant="outline" tint={tint} />
+              ) : (
+                <meta.Icon size={24} color={tint} strokeWidth={2} />
+              )}
+              <Text
+                maxFontSizeMultiplier={textScale.fixed}
+                numberOfLines={who ? 1 : undefined}
+                style={[styles.label, { color: tint }, who && styles.labelWho]}
+              >
+                {who ? first : meta.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -93,6 +133,11 @@ const styles = themed(() =>
       paddingVertical: 10,
     },
     tabActive: { backgroundColor: accentA(0.12) },
+    // The avatar item (P5): a long first name ellipsises inside the tab. The
+    // handoff's 6pt side inset sits on the label, not the tab: padding on a
+    // `flex: 1` item widens its basis and the three tabs would differ.
+    tabWho: { minWidth: 0 },
     label: { fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 10, letterSpacing: 0.1, lineHeight: 10 },
+    labelWho: { maxWidth: '100%', paddingHorizontal: 6 },
   }),
 );

@@ -12,6 +12,7 @@
  * `pendingSelection.ts` already exists to avoid.
  */
 import type { ExerciseOut } from '../api/types';
+import { onProfileSwitch } from './activeProfile.ts';
 
 export type PickerBridge = {
   isSelected: (id: string) => boolean;
@@ -53,3 +54,7 @@ export function pickerToggle(exercise: ExerciseOut): boolean {
 export function resetPicker(): void {
   current = null;
 }
+
+// A picker holds the previous profile's selection; its screen is dismissed
+// with the switch, and nothing may toggle into it meanwhile (#117).
+onProfileSwitch(resetPicker);

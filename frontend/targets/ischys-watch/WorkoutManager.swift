@@ -18,6 +18,8 @@ final class WorkoutManager: NSObject, ObservableObject {
   /// The current session's ending: asked for once, discarded or saved, and
   /// cleaned up here if HealthKit never confirms it (see `SessionEnd`).
   private var ending = SessionEnd()
+  /// The session has been asked to end and HealthKit has not confirmed it yet.
+  var isEnding: Bool { ending.isEnding }
   /// A workout the phone launched us into while the previous session was still
   /// ending. Started as soon as that one is closed.
   private var startWhenClosed: HKWorkoutConfiguration?
@@ -45,6 +47,12 @@ final class WorkoutManager: NSObject, ObservableObject {
     store.requestAuthorization(toShare: share, read: read) { _, _ in }
   }
 
+  /// Whether the screen showing allows a session (not while another profile is
+  /// active on the phone). Written by `WorkoutModel.screen`, read from `start`.
+  /// Seeded from the same memory the screen opens on, since `didSet` does not
+  /// run for the initial value.
+  nonisolated(unsafe) static var sessionMayStart = OffMemory.standard.launchScreen.allowsSession
+
   func start() {
     let config = HKWorkoutConfiguration()
     config.activityType = .traditionalStrengthTraining
@@ -54,6 +62,14 @@ final class WorkoutManager: NSObject, ObservableObject {
 
   func start(with config: HKWorkoutConfiguration) {
     guard HKHealthStore.isHealthDataAvailable() else { return }
+    // Health and the Watch are the owner's alone. Every start goes through here
+    // (the phone's launch, Start's Empty Workout and routine rows, and a start
+    // that waited for the last session to close), so this one check holds for
+    // all of them.
+    guard Self.sessionMayStart else {
+      startWhenClosed = nil
+      return
+    }
     if isRunning {
       // The last session is on its way out and this is the next workout: it
       // gets a session of its own the moment that one is closed. A session
@@ -79,6 +95,13 @@ final class WorkoutManager: NSObject, ObservableObject {
       builder.beginCollection(withStart: start) { _, _ in }
       DispatchQueue.main.async {
         self.isRunning = true
+        // The phone may have said off between the gate above and this hop, and
+        // that push found no running session to end. Throw this one away
+        // rather than entering it: it is not the owner's workout.
+        guard Self.sessionMayStart else {
+          self.discard()
+          return
+        }
         // Enter the workout UI the moment our own session starts, rather than
         // waiting for the phone to push screen:"session" — that push is racy at
         // launch and used to strand the Watch on Start while HR already streamed.
@@ -232,7 +255,7 @@ final class WorkoutManager: NSObject, ObservableObject {
     // Leave the workout UI when our session ends — whether ended here, from the
     // phone, or discarded as an orphan — so the Watch can't stay stuck on the
     // session screen if the phone never pushes the next state.
-    WorkoutModel.shared.screen = .start
+    if WorkoutModel.shared.screen != .off { WorkoutModel.shared.screen = .start }
 
     // The next workout was asked for while this one was still ending.
     if let next = startWhenClosed {

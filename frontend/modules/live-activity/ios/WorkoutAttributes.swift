@@ -65,4 +65,16 @@ struct WorkoutAttributes: ActivityAttributes {
   /// `Text(_:style:.relative)`, so it keeps counting while the app is suspended.
   /// A plain String would freeze at whatever the last update wrote.
   var workoutStartedAt: Date
+
+  /// Whose workout this is, as the first name ("Maria"). Set only when the
+  /// phone has two or more profiles; nil leaves the card exactly as it was.
+  ///
+  /// Optional with a default, and static: a card started by an older build has
+  /// no such key and must still decode, and the profile cannot change under a
+  /// running workout.
+  var profileName: String? = nil
+
+  /// The profile's initials ("MP"), drawn in the square beside the title.
+  /// Set and unset together with `profileName`.
+  var profileInitials: String? = nil
 }

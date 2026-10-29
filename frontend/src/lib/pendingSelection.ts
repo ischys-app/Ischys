@@ -5,6 +5,7 @@
  * to pipe selection data through nav params (which serialize awkwardly).
  */
 import type { ExerciseOut } from '../api/types';
+import { onProfileSwitch } from './activeProfile';
 
 let pending: ExerciseOut[] | null = null;
 
@@ -17,3 +18,8 @@ export function takePendingSelection(): ExerciseOut[] | null {
   pending = null;
   return p;
 }
+
+// Exercises picked in the previous profile's file are not for this one (#117).
+onProfileSwitch(() => {
+  pending = null;
+});

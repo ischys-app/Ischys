@@ -11,13 +11,14 @@
  */
 import * as SecureStore from 'expo-secure-store';
 
+import { profileKey } from './activeProfile';
 import { bodyweightInRange, bodyweightToStore } from './bodyweightValue';
 
 const KEY = 'ischys.bodyweightKg';
 
 /** The stored bodyweight in kg, or null when unset (or stored out of range). */
 export async function getBodyweightKg(): Promise<number | null> {
-  const raw = await SecureStore.getItemAsync(KEY);
+  const raw = await SecureStore.getItemAsync(profileKey(KEY));
   if (raw == null) return null;
   const n = Number(raw);
   return bodyweightInRange(n) ? n : null;
@@ -26,12 +27,12 @@ export async function getBodyweightKg(): Promise<number | null> {
 /** Persist a bodyweight (kg), or clear it with null. Out-of-range values are ignored. */
 export async function setBodyweightKg(kg: number | null): Promise<void> {
   if (kg == null) {
-    await SecureStore.deleteItemAsync(KEY);
+    await SecureStore.deleteItemAsync(profileKey(KEY));
     return;
   }
   const stored = bodyweightToStore(kg);
   if (stored == null) return;
-  await SecureStore.setItemAsync(KEY, String(stored));
+  await SecureStore.setItemAsync(profileKey(KEY), String(stored));
 }
 
 /**

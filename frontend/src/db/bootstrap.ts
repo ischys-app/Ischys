@@ -22,10 +22,10 @@ import {
 } from './client';
 import { dedupeExercisesByName } from '../data/exercisesRepo';
 import { ensureOwnerProfile, listProfiles } from '../data/profilesRepo';
-import { OWNER_ID, parseActiveWorkout, resolveLaunchProfile } from '../domain/profiles';
-import { DEFAULT_NAME } from '../lib/profileName';
+import { OWNER_ID, parseActiveWorkout, resolveLaunchProfile, type ProfileRow } from '../domain/profiles';
+import { DEFAULT_NAME, setActiveProfile } from '../lib/activeProfile';
 
-/** The owner's name from before profiles existed (profileName.ts's key). */
+/** The owner's name from before profiles existed (profileName.ts's old key). */
 const LEGACY_NAME_KEY = 'ischys.profile.name';
 const ACTIVE_PROFILE_KEY = 'ischys.activeProfileId';
 const ACTIVE_WORKOUT_KEY = 'ischys.activeWorkoutId';
@@ -46,30 +46,35 @@ function runMigrations(conn: ProfileConnection): Promise<void> {
 /**
  * Seeds the catalog and the settings row and folds name duplicates in an
  * already-migrated file. The helpers run on the `db` facade, so `db` is pointed
- * at `conn` while they run and handed back afterwards.
+ * at `conn` while they run. On success `stay` leaves it there (launch, which
+ * must not hand `db` back to the owner between seeding a profile and entering
+ * it); otherwise, and always on failure, `db` goes back to where it was.
  */
-async function seedConnection(conn: ProfileConnection): Promise<void> {
+async function seedConnection(conn: ProfileConnection, stay: boolean): Promise<void> {
   const previous = currentConnection();
   useConnection(conn);
+  let seeded = false;
   try {
     await seedCatalog(catalog as Catalog);
     await ensureLocalSettings(conn);
     // Fold import-created name duplicates into their catalog original. Best
     // effort — never let a dedup hiccup keep the app from starting.
     await dedupeExercisesByName().catch(() => 0);
+    seeded = true;
   } finally {
-    useConnection(previous);
+    if (!seeded || !stay) useConnection(previous);
   }
 }
 
 /**
  * Migrates a profile's file, then seeds it. Every profile file goes through
- * this before `db` is pointed at it. Don't call it while an `atomically`
- * transaction is open: `db` moves to `conn` while the seeding runs.
+ * this before `db` is pointed at it. `db` is back where it was afterwards. Don't
+ * call it while an `atomically` transaction is open: `db` moves to `conn` while
+ * the seeding runs.
  */
 export async function prepareConnection(conn: ProfileConnection): Promise<void> {
   await runMigrations(conn);
-  await seedConnection(conn);
+  await seedConnection(conn, false);
 }
 
 function readSecure(key: string): string | null {
@@ -90,8 +95,8 @@ async function legacyOwnerName(): Promise<string> {
 }
 
 /** The profile to launch into: a running workout's, else the last used, else the owner. */
-async function launchProfileId(): Promise<string> {
-  const registryIds = (await listProfiles()).map((p) => p.id);
+function launchProfileId(rows: readonly ProfileRow[]): string {
+  const registryIds = rows.map((p) => p.id);
   return resolveLaunchProfile({
     registryIds,
     lastUsedId: readSecure(ACTIVE_PROFILE_KEY),
@@ -99,16 +104,20 @@ async function launchProfileId(): Promise<string> {
   });
 }
 
-/** Opens, prepares and switches to a non-owner profile. On failure `db` stays on the owner. */
+/**
+ * Opens, prepares and switches to a non-owner profile. `db` moves to it when
+ * its seeding starts and stays there, never back on the owner in between. On
+ * failure `db` is back on the owner and the file is closed.
+ */
 async function enterProfile(id: string): Promise<void> {
   const conn = openConnection(id);
   try {
-    await prepareConnection(conn);
+    await runMigrations(conn);
+    await seedConnection(conn, true);
   } catch (e) {
     closeConnection(conn);
     throw e;
   }
-  useConnection(conn);
 }
 
 const asError = (e: unknown): Error => (e instanceof Error ? e : new Error(String(e)));
@@ -128,13 +137,29 @@ async function launch(): Promise<Outcome> {
   // From here a failure is reported but the app still starts, on the owner,
   // as a seeding failure always has.
   try {
-    await seedConnection(owner);
+    await seedConnection(owner, true);
     // 2. Register the owner (first launch with a registry).
     await ensureOwnerProfile(await legacyOwnerName());
-    // 3–4. Open the launch profile when it isn't the owner.
-    const id = await launchProfileId();
-    if (id !== OWNER_ID) await enterProfile(id);
-    return { ready: true, error: null };
+    // 3–4. Open the launch profile when it isn't the owner. If its file won't
+    // open, launch on the owner instead, and report it. The running-workout
+    // pointer is left alone: it still names that profile's workout, and the
+    // owner doesn't try to open it (activeWorkout.ts).
+    const rows = await listProfiles();
+    const id = launchProfileId(rows);
+    let launchId = OWNER_ID;
+    let error: Error | null = null;
+    if (id !== OWNER_ID) {
+      try {
+        await enterProfile(id);
+        launchId = id;
+      } catch (e) {
+        error = asError(e);
+      }
+    }
+    // 5. Who is using the app, for the per-profile keys and the name.
+    const launchRow = rows.find((p) => p.id === launchId);
+    if (launchRow) setActiveProfile(launchRow, rows.length);
+    return { ready: true, error };
   } catch (e) {
     return { ready: true, error: asError(e) };
   }

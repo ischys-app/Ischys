@@ -13,6 +13,8 @@
  */
 import * as SecureStore from 'expo-secure-store';
 
+import { profileKey } from './activeProfile';
+
 const KEY = 'ischys.deloadState';
 
 export type DeloadState = {
@@ -31,7 +33,7 @@ const EMPTY: DeloadState = { lastShownAt: null, dismissed: {}, activeUntil: {}, 
 /** Never throws: a lost preference costs restraint, not the workout. */
 export async function getDeloadState(): Promise<DeloadState> {
   try {
-    const raw = await SecureStore.getItemAsync(KEY);
+    const raw = await SecureStore.getItemAsync(profileKey(KEY));
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<DeloadState>;
     return {
@@ -47,7 +49,7 @@ export async function getDeloadState(): Promise<DeloadState> {
 
 export async function setDeloadState(next: DeloadState): Promise<void> {
   try {
-    await SecureStore.setItemAsync(KEY, JSON.stringify(next));
+    await SecureStore.setItemAsync(profileKey(KEY), JSON.stringify(next));
   } catch {
     // as above
   }

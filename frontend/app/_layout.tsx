@@ -66,9 +66,14 @@ import { ThemeProvider, useThemed } from '../src/theme/ThemeProvider';
  * Live Activity taps are drained here, not in the workout screen: an intent can
  * cold-launch the app in the background, and that launch starts at the root
  * route with no workout screen mounted to receive them.
+ *
+ * Not before `dbReady`: both read the database, which is the owner's until
+ * launch has opened the profile the app starts in (#117). Taps wait in the
+ * native queue meanwhile.
  */
-function useLiveActivityActions() {
+function useLiveActivityActions(dbReady: boolean) {
   useEffect(() => {
+    if (!dbReady) return;
     void reconcileCardOnLaunch();
     void applyPendingCardActions(); // taps that launched us, or landed while away
 
@@ -80,7 +85,7 @@ function useLiveActivityActions() {
       tapped.remove();
       resumed.remove();
     };
-  }, []);
+  }, [dbReady]);
 }
 
 /**
@@ -88,61 +93,64 @@ function useLiveActivityActions() {
  * works from any tab — not just Home. Starts by routine id directly (no lookup
  * that could miss) and navigates into the workout, which then mirrors to the
  * Watch. Other Watch actions (log set, rest…) are handled by the workout screen.
+ *
+ * Not before `dbReady`, for the same reason as the Live Activity: it answers
+ * from the database. Live delivery only starts at the drain in `useWatchFinish`,
+ * which waits too, so nothing arrives unheard.
  */
-function useWatchStart() {
-  useEffect(
-    () =>
-      onWatchAction((a) => {
-        // The Watch's Start screen asking for the routine list. Answered here
-        // and not on Home, because the Watch app can be opened with the phone
-        // app closed: iOS relaunches it at the root route, where Home never
-        // mounts and so never pushes. That is why opening the Watch app on its
-        // own showed "No routines yet" until a workout had been run.
-        if (a.action === 'requestState') {
-          void (async () => {
-            try {
-              // A mounted workout screen owns the Watch state and answers this
-              // itself. Pushing a Start screen over a running session would
-              // throw the wrist back to the routine list mid-workout.
-              const [active] = await listWorkouts({ status: 'active', limit: 1 });
-              if (active) return;
-              const dash = await getDashboard();
-              pushWatchState({
-                screen: 'start',
-                routines: dash.routines.map((r) => ({
-                  id: r.id,
-                  name: r.name,
-                  initials: r.initials,
-                  exerciseCount: r.exercise_count,
-                })),
-              });
-            } catch {
-              // No data to answer with; the Watch keeps what it had.
-            }
-          })();
-          return;
-        }
-        if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
+function useWatchStart(dbReady: boolean) {
+  useEffect(() => {
+    if (!dbReady) return;
+    return onWatchAction((a) => {
+      // The Watch's Start screen asking for the routine list. Answered here
+      // and not on Home, because the Watch app can be opened with the phone
+      // app closed: iOS relaunches it at the root route, where Home never
+      // mounts and so never pushes. That is why opening the Watch app on its
+      // own showed "No routines yet" until a workout had been run.
+      if (a.action === 'requestState') {
         void (async () => {
           try {
-            // One workout at a time (startGuard.ts). A start can arrive with
-            // one already running — tapped twice, or a Watch that never heard
-            // the first had begun. The one there is is opened instead; its
-            // screen puts the wrist back in it.
-            const begun = await beginWorkout(
-              a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
-              { from: 'watch' },
-            );
-            if (!begun) return;
-            if (begun.resumed && screenHoldsWatchFinish()) return; // already on screen
-            router.push(`/workout/${begun.workoutId}`);
+            // A mounted workout screen owns the Watch state and answers this
+            // itself. Pushing a Start screen over a running session would
+            // throw the wrist back to the routine list mid-workout.
+            const [active] = await listWorkouts({ status: 'active', limit: 1 });
+            if (active) return;
+            const dash = await getDashboard();
+            pushWatchState({
+              screen: 'start',
+              routines: dash.routines.map((r) => ({
+                id: r.id,
+                name: r.name,
+                initials: r.initials,
+                exerciseCount: r.exercise_count,
+              })),
+            });
           } catch {
-            // Nothing could be started; the Watch stays on its Start screen.
+            // No data to answer with; the Watch keeps what it had.
           }
         })();
-      }),
-    [],
-  );
+        return;
+      }
+      if (a.action !== 'startEmpty' && a.action !== 'startRoutine') return;
+      void (async () => {
+        try {
+          // One workout at a time (startGuard.ts). A start can arrive with
+          // one already running — tapped twice, or a Watch that never heard
+          // the first had begun. The one there is is opened instead; its
+          // screen puts the wrist back in it.
+          const begun = await beginWorkout(
+            a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
+            { from: 'watch' },
+          );
+          if (!begun) return;
+          if (begun.resumed && screenHoldsWatchFinish()) return; // already on screen
+          router.push(`/workout/${begun.workoutId}`);
+        } catch {
+          // Nothing could be started; the Watch stays on its Start screen.
+        }
+      })();
+    });
+  }, [dbReady]);
 }
 
 /**
@@ -164,9 +172,14 @@ function useWatchStart() {
  * A Watch that is waiting to hear how the finish went (its request carries a
  * `finishId`, #95) is told either way, and keeps recording until it is. One
  * that is not waiting has already ended its session and is told nothing.
+ *
+ * Not before `dbReady`: finishing writes to the database, which must be the
+ * launch profile's. The Watch's messages wait in the native queue until the
+ * drain below.
  */
-function useWatchFinish() {
+function useWatchFinish(dbReady: boolean) {
   useEffect(() => {
+    if (!dbReady) return;
     // One finish at a time: the queue drained at launch and a live message can
     // both carry the same one. Only finishes take the turn, so the Watch's
     // other messages, which all arrive here too, cannot make one be dropped.
@@ -277,16 +290,17 @@ function useWatchFinish() {
     })();
 
     return onWatchAction((a) => void apply(a));
-  }, []);
+  }, [dbReady]);
 }
 
 export default function RootLayout() {
-  useLiveActivityActions();
-  useWatchStart();
-  useWatchFinish();
   // Migrate and seed the on-device DB, register the owner profile, and open
-  // the profile to launch into (#117). The splash stays until it is ready.
+  // the profile to launch into (#117). The splash stays until it is ready, and
+  // so does everything below that reads the database or a per-profile key.
   const dbBootstrap = useLocalDbBootstrap();
+  useLiveActivityActions(dbBootstrap.ready);
+  useWatchStart(dbBootstrap.ready);
+  useWatchFinish(dbBootstrap.ready);
   usePrFlagBackfill(dbBootstrap.ready);
 
   // Cache the haptic preference at startup; screens fire haptics before the
@@ -296,7 +310,9 @@ export default function RootLayout() {
     void getThemeId().then(setWatchThemeId);
   }, []);
 
+  // The settings row is the launch profile's: wait for it.
   useEffect(() => {
+    if (!dbBootstrap.ready) return;
     getSettings()
       .then((s) => {
         setHapticsEnabled(s.haptic_feedback);
@@ -308,7 +324,7 @@ export default function RootLayout() {
         setEffortMode(s.effort_mode);
       })
       .catch(() => {});
-  }, []);
+  }, [dbBootstrap.ready]);
 
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_400Regular,

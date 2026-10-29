@@ -109,6 +109,9 @@ object WorkoutModel : WorkoutCore.Host {
 
   // WorkoutCore.Host
 
+  /** False while another profile is active on the phone: no session may start. */
+  val canStartSession: Boolean get() = !::core.isInitialized || core.sessionStartAllowed
+
   override val sessionRunning: Boolean get() = ExerciseService.running
   override val phoneReachable: Boolean get() = PhoneLink.canAskNow
 
@@ -162,6 +165,12 @@ object WorkoutModel : WorkoutCore.Host {
 
   private fun onCommand(command: Wire.Inbound.Command) {
     if (command.cmd == "start") {
+      // Another profile is active: nothing to record, and nothing to start
+      // later when the app next comes up.
+      if (!canStartSession) {
+        pendingPhoneStart = false
+        return
+      }
       // The phone began a workout: record it without the user opening anything.
       if (!ExerciseService.start(app, fromPhone = true)) pendingPhoneStart = true
       return

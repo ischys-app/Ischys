@@ -46,13 +46,12 @@ struct PhoneState {
   var setsDone = 0
   var setsTotal = 0
   var summary: SessionSummary?
+  /// First name of the profile active on the phone, on the off screen. May be blank.
+  var profileName = ""
 
   init(from d: [String: Any]) {
-    switch d["screen"] as? String {
-    case "session": screen = .session
-    case "summary": screen = .summary
-    default: screen = .start
-    }
+    screen = WatchScreen(wire: d["screen"] as? String)
+    profileName = d["profileName"] as? String ?? ""
     supersetLabel = d["supersetLabel"] as? String ?? ""
     // Cached in Theme so the Watch opens in the right accent even before the
     // phone has pushed anything this launch.

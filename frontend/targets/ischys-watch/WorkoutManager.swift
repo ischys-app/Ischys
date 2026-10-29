@@ -45,6 +45,10 @@ final class WorkoutManager: NSObject, ObservableObject {
     store.requestAuthorization(toShare: share, read: read) { _, _ in }
   }
 
+  /// Whether the screen showing allows a session (not while another profile is
+  /// active on the phone). Written by `WorkoutModel.screen`, read from `start`.
+  nonisolated(unsafe) static var sessionMayStart = true
+
   func start() {
     let config = HKWorkoutConfiguration()
     config.activityType = .traditionalStrengthTraining
@@ -54,6 +58,14 @@ final class WorkoutManager: NSObject, ObservableObject {
 
   func start(with config: HKWorkoutConfiguration) {
     guard HKHealthStore.isHealthDataAvailable() else { return }
+    // Health and the Watch are the owner's alone. Every start goes through here
+    // (the phone's launch, Start's Empty Workout and routine rows, and a start
+    // that waited for the last session to close), so this one check holds for
+    // all of them.
+    guard Self.sessionMayStart else {
+      startWhenClosed = nil
+      return
+    }
     if isRunning {
       // The last session is on its way out and this is the next workout: it
       // gets a session of its own the moment that one is closed. A session
@@ -232,7 +244,7 @@ final class WorkoutManager: NSObject, ObservableObject {
     // Leave the workout UI when our session ends — whether ended here, from the
     // phone, or discarded as an orphan — so the Watch can't stay stuck on the
     // session screen if the phone never pushes the next state.
-    WorkoutModel.shared.screen = .start
+    if WorkoutModel.shared.screen != .off { WorkoutModel.shared.screen = .start }
 
     // The next workout was asked for while this one was still ending.
     if let next = startWhenClosed {

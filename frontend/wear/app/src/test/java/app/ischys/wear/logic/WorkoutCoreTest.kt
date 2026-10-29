@@ -69,6 +69,22 @@ class WorkoutCoreTest {
     core.sessionStarted(now, now)
   }
 
+  // Another profile active on the phone
+
+  @Test fun anOffPushShowsTheOffScreenWithTheProfileName() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+    assertEquals("Maria", core.ui.profileName)
+  }
+
+  @Test fun noSessionMayStartWhileOff() {
+    assertTrue(core.sessionStartAllowed)
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    assertFalse(core.sessionStartAllowed)
+    core.apply(PhoneState(screen = WatchScreen.START), t0 + 1_000)
+    assertTrue(core.sessionStartAllowed)
+  }
+
   // Mirroring
 
   @Test fun aSessionPushMovesToTheSessionAndSeedsTheSet() {

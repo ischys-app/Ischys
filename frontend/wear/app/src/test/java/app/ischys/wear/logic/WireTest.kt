@@ -47,6 +47,18 @@ class WireTest {
     assertNull(s.routines)
   }
 
+  @Test fun decodesTheOffScreen() {
+    val s = PhoneState.from(JSONObject("""{"screen":"off","profileName":"Maria"}"""))
+    assertEquals(WatchScreen.OFF, s.screen)
+    assertEquals("Maria", s.profileName)
+  }
+
+  @Test fun anOffPushWithoutANameHasABlankOne() {
+    val s = PhoneState.from(JSONObject("""{"screen":"off"}"""))
+    assertEquals(WatchScreen.OFF, s.screen)
+    assertEquals("", s.profileName)
+  }
+
   @Test fun decodesARestingState() {
     val s = state("state-resting.json")
     assertEquals(true, s.resting)

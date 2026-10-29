@@ -332,6 +332,9 @@ class ExerciseService : Service() {
      */
     fun start(context: Context, fromPhone: Boolean = false): Boolean {
       if (running) return true
+      // Health and the Watch are the owner's alone: no session while another
+      // profile is active on the phone, whoever asks.
+      if (!WorkoutModel.canStartSession) return false
       val started = maySense(context) && try {
         ContextCompat.startForegroundService(context, Intent(context, ExerciseService::class.java))
         true

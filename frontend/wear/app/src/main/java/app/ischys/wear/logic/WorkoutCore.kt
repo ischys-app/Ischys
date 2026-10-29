@@ -6,6 +6,8 @@ import kotlin.math.max
 /** Everything the screens render. Replaced whole on every change. */
 data class UiState(
   val screen: WatchScreen = WatchScreen.START,
+  /** The profile active on the phone, shown on the off screen. */
+  val profileName: String = "",
 
   // Start
   val routines: List<RoutineItem> = emptyList(),
@@ -156,6 +158,12 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
 
   /** Whether an alert from the phone arriving now would repeat our own buzz. */
   fun ownsRestBuzz(now: Long): Boolean = restAlarm.owns(now)
+
+  /**
+   * Whether a recording session may start now. Not while another profile is
+   * active on the phone: Health and the Watch are the owner's alone.
+   */
+  val sessionStartAllowed: Boolean get() = ui.screen != WatchScreen.OFF
 
   // Session lifecycle
 
@@ -437,6 +445,7 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     update {
       it.copy(
         screen = s.screen,
+        profileName = if (s.screen == WatchScreen.OFF) s.profileName else "",
         // Once the phone has moved us off Start, any pending hand-off is resolved.
         pendingRoutineId = if (s.screen != WatchScreen.START) null else it.pendingRoutineId,
         // A "couldn't finish" belongs to the workout it was about.

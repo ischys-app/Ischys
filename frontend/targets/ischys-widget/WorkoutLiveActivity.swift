@@ -241,17 +241,20 @@ private struct LockScreenCard: View {
   // Header row: `padding: 15px 17px 0` · `gap: 8px` · `align-items: center`.
   private var header: some View {
     HStack(alignment: .center, spacing: 8) {
-      // Two or more profiles: a 40pt initials square leads the row. The
-      // colours are fixed because the widget cannot read the app's tokens.
+      // Two or more profiles: an 18pt initials chip leads the row, the same
+      // size as the chip in the app's workout header. It fits inside the
+      // 19pt line, so the card keeps the one-profile height: a taller
+      // square overran the ~160pt cap and iOS clipped the card top and
+      // bottom. The colours are fixed because the widget cannot read the
+      // app's tokens.
       if let initials = context.attributes.profileInitials, !initials.isEmpty {
-        RoundedRectangle(cornerRadius: 10)
-          .fill(Color(hex: 0x212127))
-          .frame(width: 40, height: 40)
-          .overlay {
-            Text(initials)
-              .font(.custom("JetBrainsMono-SemiBold", size: 13))
-              .foregroundStyle(Color(hex: 0xF4F4F5))
-          }
+        Text(initials)
+          .font(.custom("JetBrainsMono-SemiBold", size: 9.5))
+          .foregroundStyle(Color(hex: 0xF4F4F5))
+          .lineLimit(1)
+          .padding(.horizontal, 4)
+          .frame(minWidth: 18, minHeight: 18, maxHeight: 18)
+          .background(RoundedRectangle(cornerRadius: 5).fill(Color(hex: 0x212127)))
       }
 
       // "Ischys" + 4×4 accent dot · `gap: 2px` · `align-items: baseline`.

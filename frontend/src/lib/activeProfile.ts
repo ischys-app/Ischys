@@ -12,7 +12,7 @@ import { useSyncExternalStore } from 'react';
 
 import { OWNER_ID, scopedKey, type ProfileRow } from '../domain/profiles.ts';
 
-/** Off until the profiles UI ships (Task 15). */
+/** Gates the profiles UI (#117); on since Task 15. */
 export const PROFILES_ENABLED = true;
 
 /** The name shown until the person sets one. */

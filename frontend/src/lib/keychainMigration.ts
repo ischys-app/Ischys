@@ -6,10 +6,19 @@
  * updates it in place), so each one is deleted and stored again. Once per
  * install: a marker records it. iOS only; Android has no such setting.
  *
- * Pure (the store is handed in), so it is node-tested; lib/migrateKeychain.ts
- * runs it.
+ * The delete opens a gap in which the item is not there, and the app may be
+ * reading and writing the same keys at the time (the rest timer, the running
+ * workout). So the app's SecureStore goes through `createMigratingStore`,
+ * which keeps the app out of that gap:
+ *  - its async calls wait until the migration is over, and the migration
+ *    waits for the async calls already under way before it starts;
+ *  - its sync reads of a key being re-created get the value being re-created;
+ *  - its sync writes during the migration are what is stored in the end.
+ *
+ * Pure (the native store is handed in), so it is node-tested.
  */
 import { PROFILE_SCOPED_KEYS, scopedKey } from '../domain/profiles.ts';
+import type { AppStateSource } from './activeGate.ts';
 
 /** Set once every item has been re-created. */
 export const KEYCHAIN_MIGRATION_MARKER = 'ischys.keychainAfterFirstUnlock';
@@ -56,18 +65,19 @@ export function keychainKeysToMigrate(profileIds: readonly string[]): string[] {
   return [...keys];
 }
 
-/** What the migration needs of SecureStore. `setItem` writes AFTER_FIRST_UNLOCK. */
-export type KeychainStore = {
-  getItemAsync(key: string): Promise<string | null>;
+/** SecureStore itself. Its writes create items AFTER_FIRST_UNLOCK. */
+export type NativeStore = {
   getItem(key: string): string | null;
+  getItemAsync(key: string): Promise<string | null>;
   setItem(key: string, value: string): void;
+  setItemAsync(key: string, value: string): Promise<void>;
   deleteItemAsync(key: string): Promise<void>;
 };
 
 export type KeychainMigration =
   /** Done on an earlier launch. */
   | { outcome: 'already' }
-  /** A read was refused (the phone is locked): stopped, to try next time. */
+  /** A read was refused (the phone is locked): stopped, to try again. */
   | { outcome: 'locked' }
   /**
    * Ran: how many items were re-created, and any whose value could not be
@@ -76,85 +86,173 @@ export type KeychainMigration =
    */
   | { outcome: 'done'; moved: number; lost: string[]; marked: boolean };
 
-/**
- * Re-creates every stored item in `keys`, then sets the marker.
- *
- * A refused read stops it before anything else is touched, without the marker,
- * so it runs again next launch: re-creating an item twice changes nothing.
- * After the delete, the store again is synchronous, so nothing can land
- * between checking the key is still empty and storing the value. A value
- * written since the read was stored fresh, with the new accessibility, and is
- * kept. A store that fails is tried once more; one that fails again is
- * reported through `warn` and in `lost`.
- */
-export async function migrateKeychain(
-  store: KeychainStore,
-  keys: readonly string[],
-  warn: (message: string) => void = () => {},
-): Promise<KeychainMigration> {
-  try {
-    if ((await store.getItemAsync(KEYCHAIN_MIGRATION_MARKER)) === '1') return { outcome: 'already' };
-  } catch {
-    return { outcome: 'locked' };
+export type MigratingStore = NativeStore & {
+  /** Re-creates every stored item in `keys`. One at a time; a second call while one runs gets the same run. */
+  migrate(keys: readonly string[], warn?: (message: string) => void): Promise<KeychainMigration>;
+};
+
+export function createMigratingStore(native: NativeStore): MigratingStore {
+  /** Settles when the migration under way is over. */
+  let running: Promise<KeychainMigration> | null = null;
+  /** App async calls under way, which the migration lets finish first. */
+  const underWay = new Set<Promise<unknown>>();
+  /** Keys between their delete and their store, with the value they will get. */
+  const inGap = new Map<string, string>();
+  /** The app's sync writes since the migration started, latest per key. */
+  const appWrites = new Map<string, string>();
+
+  /** Runs an app async call once no migration is running, and keeps track of it. */
+  function appCall<T>(call: () => Promise<T>): Promise<T> {
+    const go = async (): Promise<T> => {
+      while (running) await running.catch(() => {});
+      return call();
+    };
+    const p = go();
+    underWay.add(p);
+    const forget = () => underWay.delete(p);
+    p.then(forget, forget);
+    return p;
   }
 
-  let moved = 0;
-  let complete = true;
-  const lost: string[] = [];
-  for (const key of keys) {
-    let value: string | null;
+  async function run(keys: readonly string[], warn: (message: string) => void): Promise<KeychainMigration> {
+    // Calls the app started before this did may still be landing.
+    await Promise.allSettled([...underWay]);
+
     try {
-      value = await store.getItemAsync(key);
+      if ((await native.getItemAsync(KEYCHAIN_MIGRATION_MARKER)) === '1') return { outcome: 'already' };
     } catch {
       return { outcome: 'locked' };
     }
-    if (value == null) continue;
 
-    try {
-      await store.deleteItemAsync(key);
-    } catch {
-      complete = false;
-      continue; // Still there as it was: readable unlocked, as before.
+    let moved = 0;
+    let complete = true;
+    const lost: string[] = [];
+    for (const key of keys) {
+      appWrites.delete(key);
+      let value: string | null;
+      try {
+        value = await native.getItemAsync(key);
+      } catch {
+        return { outcome: 'locked' };
+      }
+      // A sync write that landed while the read was out wins.
+      value = appWrites.get(key) ?? value;
+      if (value == null) continue;
+
+      inGap.set(key, value);
+      try {
+        await native.deleteItemAsync(key);
+      } catch {
+        // Still there, unchanged unless the app wrote it, which keeps it current.
+        inGap.delete(key);
+        complete = false;
+        continue;
+      }
+      // The value now: the one read, or the app's latest write since.
+      const next = inGap.get(key) ?? value;
+      inGap.delete(key);
+      if (storeTwice(native, key, next)) {
+        moved += 1;
+      } else {
+        lost.push(key);
+        complete = false;
+        warn(`[keychain] could not store ${key} again after re-creating it; its value is lost`);
+      }
     }
 
-    // From here to the store, nothing awaits.
-    let since: string | null = null;
-    try {
-      since = store.getItem(key);
-    } catch {
-      // Unreadable now means nothing was written since; store it back.
+    let marked = false;
+    if (complete) {
+      try {
+        native.setItem(KEYCHAIN_MIGRATION_MARKER, '1');
+        marked = true;
+      } catch {
+        // Runs again next time, harmlessly.
+      }
     }
-    if (since != null) continue;
-    if (storeTwice(store, key, value)) {
-      moved += 1;
-    } else {
-      lost.push(key);
-      complete = false;
-      warn(`[keychain] could not store ${key} again after re-creating it; its value is lost`);
-    }
+    return { outcome: 'done', moved, lost, marked };
   }
 
-  // Only when every item made it, so anything skipped is tried again.
-  let marked = false;
-  if (complete) {
-    try {
-      store.setItem(KEYCHAIN_MIGRATION_MARKER, '1');
-      marked = true;
-    } catch {
-      // Runs again next launch, harmlessly.
-    }
-  }
-  return { outcome: 'done', moved, lost, marked };
+  return {
+    getItem(key) {
+      const gap = inGap.get(key);
+      return gap !== undefined ? gap : native.getItem(key);
+    },
+    setItem(key, value) {
+      native.setItem(key, value);
+      if (running) {
+        appWrites.set(key, value);
+        if (inGap.has(key)) inGap.set(key, value);
+      }
+    },
+    getItemAsync: (key) => appCall(() => native.getItemAsync(key)),
+    setItemAsync: (key, value) => appCall(() => native.setItemAsync(key, value)),
+    deleteItemAsync: (key) => appCall(() => native.deleteItemAsync(key)),
+    migrate(keys, warn = () => {}) {
+      if (running) return running;
+      const p = run(keys, warn).finally(() => {
+        running = null;
+        appWrites.clear();
+        inGap.clear();
+      });
+      running = p;
+      return p;
+    },
+  };
 }
 
-function storeTwice(store: KeychainStore, key: string, value: string): boolean {
+function storeTwice(native: NativeStore, key: string, value: string): boolean {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      store.setItem(key, value);
+      native.setItem(key, value);
       return true;
     } catch {
       // Once more.
     }
   }
   return false;
+}
+
+/**
+ * When to run the migration: at once if the app is active, else on its next
+ * change to active (a launch in the background, woken by the Watch, may be
+ * with the phone locked). A run that finds the Keychain locked, or that fails,
+ * tries again on the next change to active, never while still active.
+ *
+ * `start()` returns the run when it starts one now, so a foreground launch
+ * can wait for it; null when it waits, or has already started.
+ */
+export function createMigrationScheduler(
+  app: AppStateSource,
+  run: () => Promise<KeychainMigration>,
+): { start(): Promise<KeychainMigration> | null } {
+  let started = false;
+
+  const attempt = async (): Promise<KeychainMigration> => {
+    let result: KeychainMigration;
+    try {
+      result = await run();
+    } catch {
+      result = { outcome: 'locked' };
+    }
+    if (result.outcome === 'locked') onNextActive();
+    return result;
+  };
+
+  const onNextActive = () => {
+    const off = app.subscribe((state) => {
+      if (state !== 'active') return;
+      off();
+      void attempt();
+    });
+  };
+
+  return {
+    start() {
+      if (started) return null;
+      started = true;
+      if (app.current() === 'active') return attempt();
+      onNextActive();
+      return null;
+    },
+  };
 }

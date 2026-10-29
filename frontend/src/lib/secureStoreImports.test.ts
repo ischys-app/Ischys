@@ -41,6 +41,8 @@ test('the wrapper writes AFTER_FIRST_UNLOCK', () => {
   const src = withoutComments(readFileSync(join(FRONTEND, WRAPPER), 'utf8'));
   assert.match(src, /keychainAccessible:\s*Native\.AFTER_FIRST_UNLOCK/);
   for (const write of ['setItem', 'setItemAsync']) {
-    assert.match(src, new RegExp(`Native\\.${write}\\(key, value, WRITE\\)`), `${write} drops the accessibility`);
+    assert.match(src, new RegExp(`${write}: \\(key, value\\) => Native\\.${write}\\(key, value, WRITE\\)`), `${write} drops the accessibility`);
   }
+  // And nothing reaches the package around the migrating store.
+  assert.equal(src.match(/Native\.(?:get|set|delete)Item/g)?.length, 5);
 });

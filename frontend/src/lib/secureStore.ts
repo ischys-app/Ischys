@@ -14,31 +14,31 @@
  *
  * Writing over an existing item keeps the accessibility it was created with
  * (expo updates it in place), so items stored before this module existed are
- * re-created once by keychainMigration.ts.
+ * re-created once by keychainMigration.ts. Every call goes through it, so the
+ * app never sees an item in the moment between its delete and its store.
  *
  * Reads and deletes take no accessibility: the Keychain finds an item whatever
  * its class.
  */
 import * as Native from 'expo-secure-store';
 
+import { createMigratingStore } from './keychainMigration';
+
 const WRITE: Native.SecureStoreOptions = { keychainAccessible: Native.AFTER_FIRST_UNLOCK };
 
-export function getItem(key: string): string | null {
-  return Native.getItem(key);
-}
+const store = createMigratingStore({
+  getItem: (key) => Native.getItem(key),
+  getItemAsync: (key) => Native.getItemAsync(key),
+  setItem: (key, value) => Native.setItem(key, value, WRITE),
+  setItemAsync: (key, value) => Native.setItemAsync(key, value, WRITE),
+  deleteItemAsync: (key) => Native.deleteItemAsync(key),
+});
 
-export function getItemAsync(key: string): Promise<string | null> {
-  return Native.getItemAsync(key);
-}
+export const getItem = store.getItem;
+export const getItemAsync = store.getItemAsync;
+export const setItem = store.setItem;
+export const setItemAsync = store.setItemAsync;
+export const deleteItemAsync = store.deleteItemAsync;
 
-export function setItem(key: string, value: string): void {
-  Native.setItem(key, value, WRITE);
-}
-
-export function setItemAsync(key: string, value: string): Promise<void> {
-  return Native.setItemAsync(key, value, WRITE);
-}
-
-export function deleteItemAsync(key: string): Promise<void> {
-  return Native.deleteItemAsync(key);
-}
+/** Re-creates the stored items in `keys` (lib/migrateKeychain.ts runs it). */
+export const migrateKeychainItems = store.migrate;

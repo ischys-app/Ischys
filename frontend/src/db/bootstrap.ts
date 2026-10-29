@@ -21,7 +21,7 @@ import { dedupeExercisesByName } from '../data/exercisesRepo';
 import { ensureOwnerProfile, listProfiles } from '../data/profilesRepo';
 import { OWNER_ID, parseActiveWorkout, resolveLaunchProfile, type ProfileRow } from '../domain/profiles';
 import { DEFAULT_NAME, setActiveProfile } from '../lib/activeProfile';
-import { migrateKeychainWhenActive } from '../lib/migrateKeychain';
+import { migrateKeychain } from '../lib/migrateKeychain';
 import { setEffortMode } from '../lib/effortMode';
 import { setHapticsEnabled } from '../lib/haptics';
 import { setWeightUnit } from '../lib/weightUnit';
@@ -168,7 +168,6 @@ async function launch(): Promise<Outcome> {
   // From here a failure is reported but the app still starts, on the owner,
   // as a seeding failure always has.
   let outcome: Outcome;
-  let profileIds: string[] = [OWNER_ID];
   try {
     // `db` is the owner's already (db/client.ts).
     await seedConnection(owner);
@@ -179,7 +178,6 @@ async function launch(): Promise<Outcome> {
     // pointer is left alone: it still names that profile's workout, and the
     // owner doesn't try to open it (activeWorkout.ts).
     const rows = await listProfiles();
-    profileIds = rows.map((p) => p.id);
     const id = launchProfileId(rows);
     let launchId = OWNER_ID;
     let error: Error | null = null;
@@ -201,10 +199,9 @@ async function launch(): Promise<Outcome> {
     outcome = { ready: true, error: asError(e) };
   }
   // 6. Settings stored before they were readable locked are stored again,
-  // once, the first time the app is in the foreground. Not awaited. Whatever
-  // the steps above reached: with the registry unread, the owner's keys and
-  // the phone's still move.
-  migrateKeychainWhenActive(profileIds);
+  // once. Whatever the steps above reached: it needs only the registry. Waited
+  // for in the foreground (a few Keychain calls), deferred in the background.
+  await migrateKeychain();
   return outcome;
 }
 

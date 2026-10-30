@@ -203,10 +203,19 @@ internal object WorkoutNotification {
       if (text(state, "setId") != setId) return@mutate
       applied = true
 
-      val now = System.currentTimeMillis()
-      state.put("mode", "rest")
-      state.put("restStartedAt", now)
-      state.put("restEndsAt", now + state.optDouble("restSeconds", 0.0).toLong() * 1000L)
+      // No rest seconds: a superset partner's set (or the timer is off), which
+      // goes straight on to the next set, as the in-app ✓ does.
+      val restSeconds = state.optDouble("restSeconds", 0.0).toLong()
+      if (restSeconds > 0) {
+        val now = System.currentTimeMillis()
+        state.put("mode", "rest")
+        state.put("restStartedAt", now)
+        state.put("restEndsAt", now + restSeconds * 1000L)
+      } else {
+        state.put("mode", "logging")
+        state.remove("restStartedAt")
+        state.remove("restEndsAt")
+      }
       if (state.has("setsDone")) state.put("setsDone", state.optInt("setsDone") + 1)
 
       // No `next`: either the workout's last set, or JS has not pushed since the

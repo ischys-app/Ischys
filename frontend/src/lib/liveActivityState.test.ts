@@ -164,3 +164,27 @@ test('a bodyweight set stays a dash in lb too', () => {
   const s = build([{ name: 'Pull Up', rest: 90, sets: [set('a', '', '8')] }], false, resolve, 'lb');
   assert.equal(s?.weightLabel, '—');
 });
+
+// --- supersets: no rest between partners, and the card alternates them ---
+
+const paired = () => [
+  { name: 'Curl', rest: 90, supersetGroup: 1, sets: [set('a1', '10', '12'), set('a2', '10', '12')] },
+  { name: 'Press', rest: 60, supersetGroup: 1, sets: [set('b1', '20', '8'), set('b2', '20', '8')] },
+];
+
+test('the first partner’s set starts no rest, and ✓ goes on to the second partner', () => {
+  const s = buildLiveActivityState(paired(), false, resolve);
+  assert.equal(s?.exerciseName, 'Curl');
+  assert.equal(s?.restSeconds, 0);
+  assert.equal(s?.next?.exerciseName, 'Press');
+  assert.equal(s?.next?.setId, 'b1');
+});
+
+test('the partner that closes the round rests for its own rest, then back to the first', () => {
+  const list = paired();
+  list[0].sets[0].done = true;
+  const s = buildLiveActivityState(list, false, resolve);
+  assert.equal(s?.exerciseName, 'Press');
+  assert.equal(s?.restSeconds, 60);
+  assert.equal(s?.next?.setId, 'a2');
+});

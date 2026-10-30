@@ -14,12 +14,15 @@ import { color, font, themed } from '../../theme/tokens';
 import { exerciseMeta, type Exercise } from './types';
 import { useThemed } from '../../theme/ThemeProvider';
 
+/** What the sheet shows of an exercise: a workout's, or a routine's. */
+export type SupersetCandidate = Pick<Exercise, 'id' | 'name' | 'equipment' | 'rest' | 'supersetGroup'>;
+
 type Props = {
   visible: boolean;
   /** The exercise the menu was opened on. Always part of the group. */
-  anchorExercise: Exercise | null;
-  /** Everything else in the workout, in screen order. */
-  candidates: Exercise[];
+  anchorExercise: SupersetCandidate | null;
+  /** Everything else in the workout or routine, in screen order. */
+  candidates: SupersetCandidate[];
   onConfirm: (partnerIds: string[]) => void;
   onClose: () => void;
 };

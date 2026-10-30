@@ -30,7 +30,9 @@ export type SupersetExercise = {
  * The stored id is an opaque number; the screen says "SUPERSET A". Lettering by
  * appearance keeps the labels stable as you scroll and matches reading order.
  */
-export function groupLabels(exercises: readonly SupersetExercise[]): Map<number, string> {
+export function groupLabels(
+  exercises: readonly Pick<SupersetExercise, 'supersetGroup'>[],
+): Map<number, string> {
   const out = new Map<number, string>();
   let next = 0;
   for (const ex of exercises) {
@@ -144,4 +146,29 @@ export function withoutLoneGroups<T extends { supersetGroup: number | null }>(ex
   return exercises.map((e) =>
     e.supersetGroup != null && (size.get(e.supersetGroup) ?? 0) < 2 ? { ...e, supersetGroup: null } : e,
   );
+}
+
+type Groupable = { id: string; supersetGroup: number | null };
+
+/**
+ * Pairs `ids` into a new superset. Any of them already in one leaves it, and a
+ * superset that leaves behind just one exercise ends.
+ */
+export function pairInSuperset<T extends Groupable>(exercises: readonly T[], ids: readonly string[]): T[] {
+  const group = Math.max(0, ...exercises.map((e) => e.supersetGroup ?? 0)) + 1;
+  return withoutLoneGroups(exercises.map((e) => (ids.includes(e.id) ? { ...e, supersetGroup: group } : e)));
+}
+
+/** Takes `id` out of its superset; a partner left alone goes back to an ordinary exercise. */
+export function leaveSupersetGroup<T extends Groupable>(exercises: readonly T[], id: string): T[] {
+  return withoutLoneGroups(exercises.map((e) => (e.id === id ? { ...e, supersetGroup: null } : e)));
+}
+
+/** "A1", "A2": the group's letter and the place in it, in list order. Null when solo. */
+export function supersetTag(exercises: readonly Groupable[], id: string): string | null {
+  const me = exercises.find((e) => e.id === id);
+  if (!me || me.supersetGroup == null) return null;
+  const letter = groupLabels(exercises).get(me.supersetGroup);
+  const partners = exercises.filter((e) => e.supersetGroup === me.supersetGroup);
+  return letter ? `${letter}${partners.findIndex((e) => e.id === id) + 1}` : null;
 }

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { groupLabels, restAfterSet, roundOfSet, supersetPartners, withoutLoneGroups } from './supersets.ts';
+import { groupLabels, restAfterSet, roundOfSet, supersetPartners, withoutLoneGroups, pairInSuperset, leaveSupersetGroup, supersetTag } from './supersets.ts';
 
 type S = { id: string; type: string; done: boolean };
 const set = (id: string, type = 'normal', done = false): S => ({ id, type, done });
@@ -130,4 +130,35 @@ test('intact supersets keep their groups and the rest of each exercise', () => {
     { id: 'b', supersetGroup: 3, rest: 60 },
   ];
   assert.deepEqual(withoutLoneGroups(input), input);
+});
+
+const g = (id: string, supersetGroup: number | null) => ({ id, supersetGroup });
+
+test('pairing makes a new group, apart from existing ones', () => {
+  const out = pairInSuperset([g('a', 1), g('b', 1), g('c', null), g('d', null)], ['c', 'd']);
+  assert.deepEqual(out.map((e) => e.supersetGroup), [1, 1, 2, 2]);
+});
+
+test('pulling one partner out of a pair ends the old pair', () => {
+  const out = pairInSuperset([g('a', 1), g('b', 1), g('c', null)], ['b', 'c']);
+  assert.deepEqual(out.map((e) => e.supersetGroup), [null, 2, 2]);
+});
+
+test('leaving a pair leaves both ordinary', () => {
+  assert.deepEqual(
+    leaveSupersetGroup([g('a', 1), g('b', 1)], 'a').map((e) => e.supersetGroup),
+    [null, null],
+  );
+});
+
+test('leaving a trio keeps the other two paired', () => {
+  assert.deepEqual(
+    leaveSupersetGroup([g('a', 1), g('b', 1), g('c', 1)], 'b').map((e) => e.supersetGroup),
+    [1, null, 1],
+  );
+});
+
+test('tags letter groups by first appearance and number partners in order', () => {
+  const list = [g('a', 7), g('b', null), g('c', 3), g('d', 7), g('e', 3)];
+  assert.deepEqual(list.map((e) => supersetTag(list, e.id)), ['A1', null, 'B1', 'A2', 'B2']);
 });

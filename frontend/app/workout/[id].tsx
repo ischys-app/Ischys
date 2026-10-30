@@ -52,7 +52,7 @@ import {
 } from '../../src/api/workouts';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { replaceOrder, swapExercise } from '../../src/lib/replaceExercise';
-import { elapsedSeconds, restRemainingSeconds } from '../../src/lib/clocks';
+import { elapsedSeconds, restRanOut, restRemainingSeconds } from '../../src/lib/clocks';
 import { locateNextSet } from '../../src/lib/nextSet';
 import {
   forgetLiveActivityHint,
@@ -601,9 +601,11 @@ export default function ActiveWorkout() {
   }, []);
 
   // Rest that runs out on its own leaves the bounds behind; drop them so the
-  // card falls back to logging rather than showing an expired countdown.
+  // card falls back to logging rather than showing an expired countdown. Only
+  // if it is still the rest under way: one started or moved since this render
+  // has already set `restEndsRef` (see restRanOut).
   useEffect(() => {
-    if (restRemaining === 0 && restEndsAt != null) {
+    if (restRanOut(restRemaining, restEndsAt, restEndsRef.current)) {
       setRestStartedAt(null);
       setRestEndsAt(null);
       setRestExId(null);

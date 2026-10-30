@@ -131,3 +131,17 @@ export function restAfterSet(
   const nextRoundLead = partners.find((p) => hasRound(p, round + 1)) ?? null;
   return { startRest: true, seconds: closer.rest, nextExerciseId: nextRoundLead?.id ?? null };
 }
+
+/**
+ * The exercises with any group that holds only one of them cleared: a superset
+ * of one is not a superset. What is left after a partner is removed.
+ */
+export function withoutLoneGroups<T extends { supersetGroup: number | null }>(exercises: readonly T[]): T[] {
+  const size = new Map<number, number>();
+  for (const e of exercises) {
+    if (e.supersetGroup != null) size.set(e.supersetGroup, (size.get(e.supersetGroup) ?? 0) + 1);
+  }
+  return exercises.map((e) =>
+    e.supersetGroup != null && (size.get(e.supersetGroup) ?? 0) < 2 ? { ...e, supersetGroup: null } : e,
+  );
+}

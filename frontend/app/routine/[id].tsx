@@ -46,6 +46,7 @@ import {
   typeMeta,
 } from '../../src/components/workout/types';
 import { type Unit, inputToKg, unitLabel, weightText } from '../../src/domain/units';
+import { withoutLoneGroups } from '../../src/domain/supersets';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
@@ -71,6 +72,11 @@ type REx = {
   id: string;
   exercise: ExerciseOut;
   restSeconds: number;
+  /**
+   * The superset it is in, as loaded. This screen can't pair exercises, but
+   * saving must not undo pairs made elsewhere.
+   */
+  supersetGroup: number | null;
   note: string;
   sets: RSet[];
 };
@@ -133,6 +139,7 @@ export default function RoutineBuilder() {
             id: uid('rex'),
             exercise: rex.exercise,
             restSeconds: rex.rest_seconds,
+            supersetGroup: rex.superset_group ?? null,
             note: rex.note ?? '',
             sets: rex.sets.map((s) => ({
               id: uid('rset'),
@@ -201,6 +208,7 @@ export default function RoutineBuilder() {
           id: uid('rex'),
           exercise: ex,
           restSeconds: DEFAULT_REST_SECONDS,
+          supersetGroup: null,
           note: '',
           sets: [{ id: uid('rset'), type: 'normal', targetWeight: '', targetReps: '' }],
         })),
@@ -278,10 +286,12 @@ export default function RoutineBuilder() {
   };
 
   // Map local state → RoutineExerciseIn[] for save.
+  // A removed exercise can leave its partner in a superset of one.
   const buildPayload = (): RoutineExerciseIn[] =>
-    exercises.map((rex) => ({
+    withoutLoneGroups(exercises).map((rex) => ({
       exercise_id: rex.exercise.id,
       rest_seconds: rex.restSeconds,
+      superset_group: rex.supersetGroup,
       note: rex.note || undefined,
       sets: rex.sets.map((s) => ({
         type: s.type,

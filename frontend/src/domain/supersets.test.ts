@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { groupLabels, restAfterSet, roundOfSet, supersetPartners } from './supersets.ts';
+import { groupLabels, restAfterSet, roundOfSet, supersetPartners, withoutLoneGroups } from './supersets.ts';
 
 type S = { id: string; type: string; done: boolean };
 const set = (id: string, type = 'normal', done = false): S => ({ id, type, done });
@@ -109,4 +109,25 @@ test('a warm-up inside a superset rests normally and hands off to nobody', () =>
   const r = restAfterSet(withWarmup, 'a', 'w');
   assert.equal(r.startRest, true, 'warm-ups are not part of a round');
   assert.equal(r.seconds, 60);
+});
+
+test('a superset left with one exercise is no longer one', () => {
+  const out = withoutLoneGroups([
+    { id: 'a', supersetGroup: 1 },
+    { id: 'b', supersetGroup: 2 },
+    { id: 'c', supersetGroup: 2 },
+    { id: 'd', supersetGroup: null },
+  ]);
+  assert.deepEqual(
+    out.map((e) => e.supersetGroup),
+    [null, 2, 2, null],
+  );
+});
+
+test('intact supersets keep their groups and the rest of each exercise', () => {
+  const input = [
+    { id: 'a', supersetGroup: 3, rest: 90 },
+    { id: 'b', supersetGroup: 3, rest: 60 },
+  ];
+  assert.deepEqual(withoutLoneGroups(input), input);
 });

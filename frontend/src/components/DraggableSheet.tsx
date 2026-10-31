@@ -14,6 +14,7 @@ import { Children, useEffect, useState } from 'react';
 import {
   Dimensions,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -31,6 +32,7 @@ import Animated, {
 
 import { haptics } from '../lib/haptics';
 import { useNavigationBarInset } from './AboveNavigationBar';
+import { useHostedSheet } from './SheetHost';
 import { useThemed } from '../theme/ThemeProvider';
 
 const SCREEN_H = Dimensions.get('window').height;
@@ -108,8 +110,6 @@ export function DraggableSheet({ visible, onClose, children, sheetStyle, handleO
     return { opacity: 1 - Math.min(1, Math.max(0, ty.value / h)) };
   });
 
-  if (!rendered) return null;
-
   const onSheetLayout = (ev: { nativeEvent: { layout: { height: number } } }) => {
     const h = ev.nativeEvent.layout.height;
     sheetH.value = h;
@@ -124,35 +124,60 @@ export function DraggableSheet({ visible, onClose, children, sheetStyle, handleO
   // ScrollView in the remaining children keeps scrolling normally.
   const kids = Children.toArray(children);
 
+  const sheet = (
+    <View
+      // On iOS the sheet is drawn by SheetHost, over the app; on Android the
+      // Modal is its own edge-to-edge window, so the sheet is lifted clear of
+      // the navigation bar here. Either way it is clipped as it leaves.
+      style={
+        Platform.OS === 'ios'
+          ? styles.hosted
+          : [styles.root, { marginBottom: navigationBar, overflow: 'hidden' }]
+      }
+      accessibilityViewIsModal
+    >
+      <Animated.View style={[styles.backdrop, backdropAnim]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      {handleOnly ? (
+        <Animated.View style={[sheetStyle, sheetAnim]} onLayout={onSheetLayout}>
+          <GestureDetector gesture={pan}>
+            <View>{kids[0]}</View>
+          </GestureDetector>
+          {kids.slice(1)}
+        </Animated.View>
+      ) : (
+        <GestureDetector gesture={pan}>
+          <Animated.View style={[sheetStyle, sheetAnim]} onLayout={onSheetLayout}>
+            {children}
+          </Animated.View>
+        </GestureDetector>
+      )}
+    </View>
+  );
+
+  useHostedSheet(Platform.OS === 'ios' && rendered ? sheet : null);
+
+  if (!rendered || Platform.OS === 'ios') return null;
+
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      {/* The Modal is its own edge-to-edge window on Android, so the sheet is
-          lifted clear of the navigation bar here and clipped as it leaves. */}
-      <View style={[styles.root, { marginBottom: navigationBar, overflow: 'hidden' }]}>
-        <Animated.View style={[styles.backdrop, backdropAnim]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-        {handleOnly ? (
-          <Animated.View style={[sheetStyle, sheetAnim]} onLayout={onSheetLayout}>
-            <GestureDetector gesture={pan}>
-              <View>{kids[0]}</View>
-            </GestureDetector>
-            {kids.slice(1)}
-          </Animated.View>
-        ) : (
-          <GestureDetector gesture={pan}>
-            <Animated.View style={[sheetStyle, sheetAnim]} onLayout={onSheetLayout}>
-              {children}
-            </Animated.View>
-          </GestureDetector>
-        )}
-      </View>
+      {sheet}
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
+  hosted: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
   backdrop: {
     position: 'absolute',
     top: 0,

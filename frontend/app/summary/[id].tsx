@@ -126,6 +126,7 @@ function routineToInput(routine: RoutineOut): RoutineExerciseIn[] {
   return routine.exercises.map((re) => ({
     exercise_id: re.exercise.id,
     rest_seconds: re.rest_seconds,
+    superset_group: re.superset_group ?? null,
     note: re.note ?? null,
     sets: re.sets.map((s) => ({ type: s.type, target_weight: s.target_weight, target_reps: s.target_reps })),
   }));
@@ -137,6 +138,7 @@ function workoutToInput(workout: WorkoutOut): RoutineExerciseIn[] {
   return workout.exercises.map((we) => ({
     exercise_id: we.exercise.id,
     rest_seconds: we.rest_seconds,
+    superset_group: we.superset_group ?? null,
     note: we.note ?? null,
     sets: we.sets.map((s) => ({ type: s.type, target_weight: s.weight, target_reps: s.reps })),
   }));

@@ -52,7 +52,7 @@ import {
 } from '../../src/api/workouts';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { replaceOrder, swapExercise } from '../../src/lib/replaceExercise';
-import { elapsedSeconds, restRemainingSeconds } from '../../src/lib/clocks';
+import { elapsedSeconds, restRanOut, restRemainingSeconds } from '../../src/lib/clocks';
 import { locateNextSet } from '../../src/lib/nextSet';
 import {
   forgetLiveActivityHint,
@@ -601,9 +601,11 @@ export default function ActiveWorkout() {
   }, []);
 
   // Rest that runs out on its own leaves the bounds behind; drop them so the
-  // card falls back to logging rather than showing an expired countdown.
+  // card falls back to logging rather than showing an expired countdown. Only
+  // if it is still the rest under way: one started or moved since this render
+  // has already set `restEndsRef` (see restRanOut).
   useEffect(() => {
-    if (restRemaining === 0 && restEndsAt != null) {
+    if (restRanOut(restRemaining, restEndsAt, restEndsRef.current)) {
       setRestStartedAt(null);
       setRestEndsAt(null);
       setRestExId(null);
@@ -765,8 +767,10 @@ export default function ActiveWorkout() {
     const offChange = onWorkoutChanged(async (rest) => {
       await refreshRef.current();
       // The refetch has landed, so the completed set is already `done` — the
-      // plain look-ahead is enough here.
-      startRest(rest.seconds, upcomingExerciseName(), rest.exerciseId);
+      // plain look-ahead is enough here. No seconds: a superset partner's set,
+      // which hands over to the next partner rather than resting.
+      if (rest.seconds > 0) startRest(rest.seconds, upcomingExerciseName(), rest.exerciseId);
+      else applyRestAction.current({ type: 'skip' }); // this render's endRest, not the mount's
     });
 
     // The event can land while this screen is unmounted (a background launch),
@@ -895,6 +899,14 @@ export default function ActiveWorkout() {
   const upcomingExerciseName = (justCompleted?: string): string | null =>
     locateNextSet(exercisesRef.current, justCompleted)?.exercise.name ?? null;
 
+  const supersetView = (list: Exercise[]) =>
+    list.map((e) => ({
+      id: e.id,
+      supersetGroup: e.supersetGroup ?? null,
+      rest: e.rest,
+      sets: e.sets.map((x) => ({ id: x.id, type: x.type, done: x.done })),
+    }));
+
   const startRest = (
     seconds: number,
     exerciseName: string | null = null,
@@ -989,16 +1001,7 @@ export default function ActiveWorkout() {
       // Inside a superset the rest waits for the round to finish: completing the
       // first partner sends you to the second rather than starting a timer,
       // which is the entire point of pairing them. A solo exercise is unchanged.
-      const decision = restAfterSet(
-        exercises.map((e) => ({
-          id: e.id,
-          supersetGroup: e.supersetGroup ?? null,
-          rest: e.rest,
-          sets: e.sets.map((x) => ({ id: x.id, type: x.type, done: x.done })),
-        })),
-        exId,
-        setId,
-      );
+      const decision = restAfterSet(supersetView(exercises), exId, setId);
       if (decision.startRest) {
         startRest(decision.seconds, upcomingExerciseName(setId), ex.id);
         // Ask about this set in the rest that just started. Not when no rest
@@ -1452,7 +1455,13 @@ export default function ActiveWorkout() {
             }),
           );
         }
-        if (ex) startRest(ex.rest, upcomingExerciseName(st.currentSetId), ex.id);
+        // The same rest the in-app ✓ starts: none between superset partners,
+        // which moves the Watch on to the partner instead.
+        if (ex) {
+          const decision = restAfterSet(supersetView(exercisesRef.current), ex.id, st.currentSetId);
+          if (decision.startRest) startRest(decision.seconds, upcomingExerciseName(st.currentSetId), ex.id);
+          else endRest();
+        }
         break;
       }
       case 'adjustRest':

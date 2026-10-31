@@ -83,3 +83,63 @@ test('an unknown treatAsDone id changes nothing', () => {
   const at = locateNextSet([ex('Squat', set('a'), set('b'))], 'nope');
   assert.equal(at?.setIndex, 0);
 });
+
+// --- supersets: the partners alternate, round by round ---
+
+const s = (id: string, done = false, type = 'normal') => ({ id, done, type });
+const grouped = (name: string, group: number | null, ...sets: { id: string; done: boolean; type: string }[]) => ({
+  name,
+  supersetGroup: group,
+  sets,
+});
+
+const where = (at: ReturnType<typeof locateNextSet<ReturnType<typeof grouped>>>) =>
+  at ? `${at.exercise.name}#${at.setIndex}` : null;
+
+test('after the first partner’s set, the next is the second partner’s, not its own next set', () => {
+  const list = [grouped('Curl', 1, s('a1', true), s('a2')), grouped('Press', 1, s('b1'), s('b2'))];
+  assert.equal(where(locateNextSet(list)), 'Press#0');
+});
+
+test('a closed round goes back to the first partner', () => {
+  const list = [grouped('Curl', 1, s('a1', true), s('a2')), grouped('Press', 1, s('b1', true), s('b2'))];
+  assert.equal(where(locateNextSet(list)), 'Curl#1');
+});
+
+test('treatAsDone moves to the partner at the instant a set is logged', () => {
+  const list = [grouped('Curl', 1, s('a1'), s('a2')), grouped('Press', 1, s('b1'), s('b2'))];
+  assert.equal(where(locateNextSet(list, 'a1')), 'Press#0');
+});
+
+test('warm-ups of the whole superset come before its first round', () => {
+  const list = [
+    grouped('Curl', 1, s('aw', false, 'warmup'), s('a1')),
+    grouped('Press', 1, s('bw', false, 'warmup'), s('b1')),
+  ];
+  assert.equal(where(locateNextSet(list, 'aw')), 'Press#0');
+});
+
+test('a partner with fewer sets drops out of the later rounds', () => {
+  const list = [grouped('Curl', 1, s('a1', true), s('a2', true)), grouped('Press', 1, s('b1', true))];
+  assert.equal(where(locateNextSet(list)), null);
+  const more = [grouped('Curl', 1, s('a1', true), s('a2')), grouped('Press', 1, s('b1', true))];
+  assert.equal(where(locateNextSet(more)), 'Curl#1');
+});
+
+test('a finished superset hands over to the exercise after it', () => {
+  const list = [
+    grouped('Curl', 1, s('a1', true)),
+    grouped('Press', 1, s('b1', true)),
+    grouped('Row', null, s('c1')),
+  ];
+  assert.equal(where(locateNextSet(list)), 'Row#0');
+});
+
+test('partners apart in the list still alternate', () => {
+  const list = [
+    grouped('Curl', 1, s('a1', true), s('a2')),
+    grouped('Row', null, s('c1')),
+    grouped('Press', 1, s('b1'), s('b2')),
+  ];
+  assert.equal(where(locateNextSet(list)), 'Press#0');
+});

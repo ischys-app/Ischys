@@ -34,11 +34,13 @@ import {
   ChevronRightIcon,
   ClockRowIcon,
   DumbbellIcon,
+  ReorderIcon,
   SyncIcon,
   TrashIcon,
 } from '../../src/components/icons';
 import { PressableScale } from '../../src/components/PressableScale';
 import { RestPickerSheet } from '../../src/components/workout/RestPickerSheet';
+import { SupersetSheet, type SupersetCandidate } from '../../src/components/workout/SupersetSheet';
 import { SwipeToDelete } from '../../src/components/workout/SwipeToDelete';
 import {
   restLabel,
@@ -46,6 +48,13 @@ import {
   typeMeta,
 } from '../../src/components/workout/types';
 import { type Unit, inputToKg, unitLabel, weightText } from '../../src/domain/units';
+import {
+  groupLabels,
+  leaveSupersetGroup,
+  pairInSuperset,
+  supersetTag,
+  withoutLoneGroups,
+} from '../../src/domain/supersets';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
@@ -71,6 +80,8 @@ type REx = {
   id: string;
   exercise: ExerciseOut;
   restSeconds: number;
+  /** Shared by exercises paired as a superset. Null for an ordinary one. */
+  supersetGroup: number | null;
   note: string;
   sets: RSet[];
 };
@@ -112,6 +123,7 @@ export default function RoutineBuilder() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [restSheetExId, setRestSheetExId] = useState<string | null>(null);
+  const [supersetExId, setSupersetExId] = useState<string | null>(null);
   /** Set row whose swipe-to-delete panel is revealed — at most one at a time. */
   const [openSetId, setOpenSetId] = useState<string | null>(null);
   /** Set once Save was tapped with a blank name, so the requirement is explained. */
@@ -133,6 +145,7 @@ export default function RoutineBuilder() {
             id: uid('rex'),
             exercise: rex.exercise,
             restSeconds: rex.rest_seconds,
+            supersetGroup: rex.superset_group ?? null,
             note: rex.note ?? '',
             sets: rex.sets.map((s) => ({
               id: uid('rset'),
@@ -201,6 +214,7 @@ export default function RoutineBuilder() {
           id: uid('rex'),
           exercise: ex,
           restSeconds: DEFAULT_REST_SECONDS,
+          supersetGroup: null,
           note: '',
           sets: [{ id: uid('rset'), type: 'normal', targetWeight: '', targetReps: '' }],
         })),
@@ -214,8 +228,9 @@ export default function RoutineBuilder() {
   );
 
   // --- exercise mutations ---
+  // A removed partner can leave the other in a superset of one.
   const removeExercise = (rexId: string) =>
-    setExercises((prev) => prev.filter((e) => e.id !== rexId));
+    setExercises((prev) => withoutLoneGroups(prev.filter((e) => e.id !== rexId)));
 
   const setNote = (rexId: string, note: string) =>
     setExercises((prev) =>
@@ -282,6 +297,7 @@ export default function RoutineBuilder() {
     exercises.map((rex) => ({
       exercise_id: rex.exercise.id,
       rest_seconds: rex.restSeconds,
+      superset_group: rex.supersetGroup,
       note: rex.note || undefined,
       sets: rex.sets.map((s) => ({
         type: s.type,
@@ -329,6 +345,31 @@ export default function RoutineBuilder() {
   };
 
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
+
+  // --- supersets (#53): the same rounds as a workout's, planned ahead ---
+  const ssLabels = useMemo(() => groupLabels(exercises), [exercises]);
+  const asCandidate = (rex: REx): SupersetCandidate => ({
+    id: rex.id,
+    name: rex.exercise.name,
+    equipment: rex.exercise.equipment,
+    rest: rex.restSeconds,
+    supersetGroup: rex.supersetGroup,
+  });
+  /** Partners in list order, or null for an ordinary exercise. */
+  const partnersOf = (rex: REx): REx[] | null =>
+    rex.supersetGroup == null ? null : exercises.filter((e) => e.supersetGroup === rex.supersetGroup);
+  /**
+   * Only the round's last partner rests (restAfterSet), so the earlier ones say
+   * where the rest is rather than a duration that will never run. Their own
+   * value is kept, for when the pair is broken up.
+   */
+  const restOverrideFor = (rex: REx): string | null => {
+    const partners = partnersOf(rex);
+    if (!partners) return null;
+    const i = partners.findIndex((e) => e.id === rex.id);
+    if (i === partners.length - 1) return null;
+    return `None · then ${ssLabels.get(rex.supersetGroup!)}${i + 2}`;
+  };
   const titleText = isNew ? 'New Routine' : name || 'Edit Routine';
 
   return (
@@ -377,28 +418,51 @@ export default function RoutineBuilder() {
 
           {exercises.length > 0 && (
             <View style={styles.exList}>
-              {exercises.map((rex) => (
-                <ExerciseCardBuilder
-                  onReplace={() => openReplace(rex.id)}
-                  key={rex.id}
-                  rex={rex}
-                  unit={unit}
-                  onRemove={() => removeExercise(rex.id)}
-                  onNoteChange={(t) => setNote(rex.id, t)}
-                  onOpenRest={() => setRestSheetExId(rex.id)}
-                  onAddSet={() => addSet(rex.id)}
-                  onRemoveSet={(setId) => removeSet(rex.id, setId)}
-                  openSetId={openSetId}
-                  onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
-                  onCycleType={(setId) => cycleType(rex.id, setId)}
-                  onWeightChange={(setId, t) =>
-                    patchSet(rex.id, setId, { targetWeight: t })
-                  }
-                  onRepsChange={(setId, t) =>
-                    patchSet(rex.id, setId, { targetReps: t })
-                  }
-                />
-              ))}
+              {exercises.map((rex) => {
+                const partners = partnersOf(rex);
+                const header =
+                  partners && partners[0].id === rex.id
+                    ? `SUPERSET ${ssLabels.get(rex.supersetGroup!)}`
+                    : null;
+                return (
+                  <View key={rex.id}>
+                    {header ? <Text style={styles.ssHeader}>{header}</Text> : null}
+                    <ExerciseCardBuilder
+                      onReplace={() => openReplace(rex.id)}
+                      rex={rex}
+                      supersetTag={supersetTag(exercises, rex.id)}
+                      supersetWith={partners?.filter((e) => e.id !== rex.id).map((e) => e.exercise.name) ?? []}
+                      restOverride={restOverrideFor(rex)}
+                      onSuperset={
+                        exercises.length < 2
+                          ? undefined
+                          : () => {
+                              if (rex.supersetGroup != null) {
+                                setExercises((prev) => leaveSupersetGroup(prev, rex.id));
+                              } else {
+                                setSupersetExId(rex.id);
+                              }
+                            }
+                      }
+                      unit={unit}
+                      onRemove={() => removeExercise(rex.id)}
+                      onNoteChange={(t) => setNote(rex.id, t)}
+                      onOpenRest={() => setRestSheetExId(rex.id)}
+                      onAddSet={() => addSet(rex.id)}
+                      onRemoveSet={(setId) => removeSet(rex.id, setId)}
+                      openSetId={openSetId}
+                      onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
+                      onCycleType={(setId) => cycleType(rex.id, setId)}
+                      onWeightChange={(setId, t) =>
+                        patchSet(rex.id, setId, { targetWeight: t })
+                      }
+                      onRepsChange={(setId, t) =>
+                        patchSet(rex.id, setId, { targetReps: t })
+                      }
+                    />
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -436,6 +500,21 @@ export default function RoutineBuilder() {
         }}
         onClose={() => setRestSheetExId(null)}
       />
+
+      <SupersetSheet
+        visible={supersetExId != null}
+        anchorExercise={(() => {
+          const rex = exercises.find((e) => e.id === supersetExId);
+          return rex ? asCandidate(rex) : null;
+        })()}
+        candidates={exercises.filter((e) => e.id !== supersetExId).map(asCandidate)}
+        onConfirm={(ids) => {
+          const anchor = supersetExId;
+          if (anchor) setExercises((prev) => pairInSuperset(prev, [anchor, ...ids]));
+          setSupersetExId(null);
+        }}
+        onClose={() => setSupersetExId(null)}
+      />
     </View>
   );
 }
@@ -459,6 +538,10 @@ function ExerciseCardBuilder({
   unit,
   rex,
   onReplace,
+  supersetTag: tag,
+  supersetWith,
+  restOverride,
+  onSuperset,
   onRemove,
   onNoteChange,
   onOpenRest,
@@ -474,6 +557,14 @@ function ExerciseCardBuilder({
   /** The unit the target weights are typed in. */
   unit: Unit;
   onReplace: () => void;
+  /** "A1" when in a superset. */
+  supersetTag: string | null;
+  /** The partners' names, empty when solo. */
+  supersetWith: string[];
+  /** Shown in place of the rest when another partner owns the round's rest. */
+  restOverride: string | null;
+  /** Absent when there is nothing to pair with. */
+  onSuperset?: () => void;
   onRemove: () => void;
   onNoteChange: (t: string) => void;
   onOpenRest: () => void;
@@ -543,10 +634,38 @@ function ExerciseCardBuilder({
         <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
         <Text style={styles.restLabel}>Rest Timer</Text>
         <View style={styles.restValueWrap}>
-          <Text style={styles.restValue}>{restLabel(rex.restSeconds)}</Text>
+          <Text style={styles.restValue}>{restOverride ?? restLabel(rex.restSeconds)}</Text>
           <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
         </View>
       </Pressable>
+
+      {/* Superset row: pair with another exercise, or leave the pair */}
+      {onSuperset ? (
+        <Pressable
+          onPress={onSuperset}
+          style={[styles.restRow, styles.ssRow]}
+          accessibilityRole="button"
+          accessibilityLabel={tag ? `Leave superset ${tag}` : 'Superset with another exercise'}
+        >
+          <ReorderIcon size={15} color={color.accent} strokeWidth={2.2} />
+          <Text style={styles.restLabel}>Superset</Text>
+          <View style={styles.restValueWrap}>
+            {tag ? (
+              <>
+                <Text style={styles.ssWith} numberOfLines={1}>
+                  {tag} · with {supersetWith.join(', ')}
+                </Text>
+                <Text style={styles.ssLeave}>Leave</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.restValue}>None</Text>
+                <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
+              </>
+            )}
+          </View>
+        </Pressable>
+      ) : null}
 
       {/* Column labels */}
       <View style={styles.colLabels}>
@@ -844,12 +963,37 @@ const styles = themed(() =>
       alignItems: 'center',
       gap: 4,
       marginLeft: 'auto',
+      flexShrink: 1,
+      minWidth: 0,
     },
     restValue: {
       fontFamily: font.monoRegular,
       fontSize: 13,
       color: color.text1,
       fontVariant: ['tabular-nums'],
+    },
+
+    // Superset row, tucked under the rest row
+    ssRow: { marginTop: -10 },
+    ssWith: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text1,
+    },
+    ssLeave: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.accent,
+      marginLeft: 4,
+    },
+    ssHeader: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text2,
+      paddingHorizontal: 2,
+      marginBottom: 6,
     },
 
     // Column labels

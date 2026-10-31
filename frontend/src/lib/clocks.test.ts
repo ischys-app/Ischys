@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { elapsedSeconds, restRemainingSeconds } from './clocks.ts';
+import { elapsedSeconds, restRanOut, restRemainingSeconds } from './clocks.ts';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -58,4 +58,32 @@ test('a rest survives the app being suspended past its end', () => {
   // Away for five minutes: the rest is over, not "60 seconds left" as a paused
   // counter would have claimed on resume.
   assert.equal(restRemainingSeconds(endsAt, now + 5 * MINUTE), 0);
+});
+
+test('a rest that reached zero has run out', () => {
+  const endsAt = 1_000_000;
+  assert.equal(restRanOut(0, endsAt, endsAt), true);
+});
+
+test('a rest still counting has not run out', () => {
+  const endsAt = 1_000_000;
+  assert.equal(restRanOut(5, endsAt, endsAt), false);
+});
+
+test('no rest, nothing to run out', () => {
+  assert.equal(restRanOut(0, null, null), false);
+});
+
+test('a new rest started as the old one hit zero has NOT run out', () => {
+  // The old rest's zero was rendered, but before the clean-up ran a set was
+  // ticked and a new rest began. The clean-up still sees the old end; the
+  // live end is the new one. Clearing then froze the new rest at 2:00.
+  const oldEnd = 1_000_000;
+  const newEnd = oldEnd + 2 * MINUTE;
+  assert.equal(restRanOut(0, oldEnd, newEnd), false);
+});
+
+test('a rest moved by ±15 as it hit zero has NOT run out', () => {
+  const oldEnd = 1_000_000;
+  assert.equal(restRanOut(0, oldEnd, oldEnd + 15 * SECOND), false);
 });

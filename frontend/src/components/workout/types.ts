@@ -103,7 +103,7 @@ export function restLabel(seconds: number): string {
 }
 
 /** "Dumbbell · 150s rest". */
-export function exerciseMeta(ex: Exercise): string {
+export function exerciseMeta(ex: Pick<Exercise, 'equipment' | 'rest'>): string {
   return `${ex.equipment} · ${ex.rest}s rest`;
 }
 

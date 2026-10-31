@@ -13,7 +13,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.ischys.mobile",
       "appleTeamId": "L3T79ZQ685",
-      "buildNumber": "20",
+      "buildNumber": "21",
       "infoPlist": {
         "NSSupportsLiveActivities": true,
         "ITSAppUsesNonExemptEncryption": false,

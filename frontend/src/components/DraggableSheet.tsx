@@ -10,7 +10,7 @@
  * (rubber-band), §12 (dim to focus).
  */
 import type { ReactNode } from 'react';
-import { Children, useEffect, useState } from 'react';
+import { Children, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Modal,
@@ -60,14 +60,19 @@ export function DraggableSheet({ visible, onClose, children, sheetStyle, handleO
   const ty = useSharedValue(SCREEN_H); // sheet offset; SCREEN_H = fully hidden below
   const sheetH = useSharedValue(SCREEN_H); // measured height (for the fade + threshold)
   const startY = useSharedValue(0);
-  const needsEntrance = useSharedValue(false);
+  // JS-side copies, so JS never reads a shared value: on a real iPhone that
+  // read waits on the UI thread, and now and then never came back — the sheet
+  // never slid in and the app stopped responding (#131). Shared values are
+  // only written from here, which does not wait.
+  const needsEntrance = useRef(false);
+  const height = useRef(0);
 
   useEffect(() => {
     if (visible) {
       setRendered(true);
-      needsEntrance.value = true; // the entrance spring runs once we know the height (onLayout)
+      needsEntrance.current = true; // the entrance spring runs once we know the height (onLayout)
     } else if (rendered) {
-      ty.value = withTiming(sheetH.value || SCREEN_H, { duration: 220 }, (done) => {
+      ty.value = withTiming(height.current || SCREEN_H, { duration: 220 }, (done) => {
         if (done) runOnJS(setRendered)(false);
       });
     }
@@ -112,9 +117,10 @@ export function DraggableSheet({ visible, onClose, children, sheetStyle, handleO
 
   const onSheetLayout = (ev: { nativeEvent: { layout: { height: number } } }) => {
     const h = ev.nativeEvent.layout.height;
+    height.current = h;
     sheetH.value = h;
-    if (needsEntrance.value) {
-      needsEntrance.value = false;
+    if (needsEntrance.current) {
+      needsEntrance.current = false;
       ty.value = h; // start exactly one sheet-height below (off-screen)
       ty.value = withSpring(0, SPRING); // slide up
     }

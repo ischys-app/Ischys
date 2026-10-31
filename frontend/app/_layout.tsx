@@ -20,7 +20,6 @@ import { useEffect, useRef } from 'react';
 import { AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AboveNavigationBar } from '../src/components/AboveNavigationBar';
-import { SheetHost } from '../src/components/SheetHost';
 import { FinishWorkoutFirstSheet } from '../src/components/FinishWorkoutFirstSheet';
 import { ProfileSwitcher } from '../src/components/ProfileSwitcher';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -331,8 +330,6 @@ export default function RootLayout() {
           {PROFILES_ENABLED && <ProfileSwitcher />}
           {/* "Finish ‹First›'s workout first" (P6), for a switch refused mid-workout. */}
           {PROFILES_ENABLED && <FinishWorkoutFirstSheet />}
-          {/* Every bottom sheet on iOS is drawn here, over the app (#131). */}
-          <SheetHost />
         </AboveNavigationBar>
       </ThemeProvider>
     </SafeAreaProvider>

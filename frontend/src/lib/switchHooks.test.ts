@@ -27,7 +27,6 @@ const ALLOWED: Record<string, string> = {
   'lib/profileSwitcherStore.ts': 'whether the switcher sheet is open; UI state, not a profile\'s data',
   'data/ids.ts': 'process-wide monotonic clock; holds no profile data',
   'components/workout/types.ts': '`_seq` counter for temporary React keys; holds no data',
-  'components/SheetHost.tsx': 'the open sheets\' views, each removed when its sheet unmounts; holds no data',
 };
 
 /** Top-level `let`/`var`, and top-level `const` Maps and Sets. */

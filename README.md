@@ -33,6 +33,9 @@ nothing next to the well-known ones. So I built it, and open-sourced it because
 there was no reason not to. There is no premium tier: every feature is in the
 free app.
 
+If Ischys is useful to you, you can leave an optional tip on
+[Ko-fi](https://ko-fi.com/vplsdev), the only official way to support Ischys.
+
 ## What it is
 
 - **100% on-device.** Install and start tracking immediately. No sign-up, no

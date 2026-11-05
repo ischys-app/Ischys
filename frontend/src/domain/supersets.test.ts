@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { groupLabels, restAfterSet, roundCount, roundOfSet, roundsDone, supersetPartners, withoutLoneGroups, pairInSuperset, leaveSupersetGroup, supersetTag } from './supersets.ts';
+import { groupLabels, restAfterSet, roundCount, roundOfSet, supersetPartners, supersetRoundsDone, withoutLoneGroups, pairInSuperset, leaveSupersetGroup, supersetTag } from './supersets.ts';
 
 type S = { id: string; type: string; done: boolean };
 const set = (id: string, type = 'normal', done = false): S => ({ id, type, done });
@@ -43,26 +43,40 @@ test('warm-ups belong to no round', () => {
   assert.equal(roundOfSet(sets, 's1'), 1, 'the warm-up must not consume a round');
 });
 
-test('a drop or failure set rides along with the working set before it', () => {
-  const sets = [set('s1'), set('d', 'drop'), set('s2'), set('f', 'failure')];
+test('a drop set rides along with the working set before it', () => {
+  const sets = [set('s1'), set('d', 'drop'), set('s2'), set('d2', 'drop')];
   assert.equal(roundOfSet(sets, 'd'), 1);
   assert.equal(roundOfSet(sets, 's2'), 2);
-  assert.equal(roundOfSet(sets, 'f'), 2);
+  assert.equal(roundOfSet(sets, 'd2'), 2);
+});
+
+test('a failure set starts a round of its own', () => {
+  const sets = [set('s1'), set('s2'), set('f', 'failure')];
+  assert.equal(roundOfSet(sets, 'f'), 3);
+  assert.equal(roundCount(sets), 3);
 });
 
 test('a drop set with nothing before it still counts as the first round', () => {
-  assert.equal(roundOfSet([set('d', 'drop')], 'd'), 1);
+  assert.equal(roundOfSet([set('d', 'drop'), set('s1')], 'd'), 1);
+  assert.equal(roundOfSet([set('d', 'drop'), set('s1')], 's1'), 1);
 });
 
 test('an exercise logged only as failure sets counts each one as a round', () => {
-  // A workout CSV, or a habit, can mark every working set as failure. With no
-  // normal set to ride along with, each failure set is a round of its own;
-  // otherwise all of them sat in round 1 and the partner never got a turn.
+  // A workout CSV, or a habit, can mark every working set as failure. All of
+  // them used to sit in round 1, and the partner never got a turn.
   const sets = [set('w', 'warmup'), set('f1', 'failure'), set('f2', 'failure'), set('f3', 'failure')];
   assert.equal(roundOfSet(sets, 'w'), null);
   assert.equal(roundOfSet(sets, 'f1'), 1);
   assert.equal(roundOfSet(sets, 'f2'), 2);
   assert.equal(roundOfSet(sets, 'f3'), 3);
+});
+
+test('a normal set added to a failure-only exercise does not fold its rounds together', () => {
+  // Add Set (phone or Watch) always adds a normal set, and a set's type can be
+  // changed mid-workout: neither may move the earlier failure sets.
+  const sets = [set('f1', 'failure', true), set('f2', 'failure'), set('n', 'normal')];
+  assert.equal(roundOfSet(sets, 'f2'), 2);
+  assert.equal(roundOfSet(sets, 'n'), 3);
 });
 
 test('failure working sets still carry their drop sets along', () => {
@@ -78,15 +92,32 @@ test('an exercise of drop sets only counts each one as a round', () => {
 });
 
 test('roundCount counts the rounds an exercise takes part in', () => {
-  assert.equal(roundCount([set('w', 'warmup'), set('s1'), set('d', 'drop'), set('s2'), set('f', 'failure')]), 2);
+  assert.equal(roundCount([set('w', 'warmup'), set('s1'), set('d', 'drop'), set('s2'), set('f', 'failure')]), 3);
   assert.equal(roundCount([set('w', 'warmup'), set('f1', 'failure'), set('f2', 'failure')]), 2);
+  assert.equal(roundCount([set('d1', 'drop'), set('d2', 'drop')]), 2);
   assert.equal(roundCount([set('w', 'warmup')]), 0);
   assert.equal(roundCount([]), 0);
 });
 
-test('roundsDone counts logged rounds, failure working sets included', () => {
-  assert.equal(roundsDone([set('w', 'warmup', true), set('s1', 'normal', true), set('f', 'failure', true), set('s2')]), 1);
-  assert.equal(roundsDone([set('w', 'warmup', true), set('f1', 'failure', true), set('f2', 'failure')]), 1);
+test('supersetRoundsDone counts rounds every partner in them has finished', () => {
+  const a = (...done: boolean[]) => done.map((d, i) => set(`a${i}`, 'normal', d));
+  const b = (...done: boolean[]) => done.map((d, i) => set(`b${i}`, 'normal', d));
+  assert.equal(supersetRoundsDone([{ sets: a(false, false) }, { sets: b(false, false) }]), 0);
+  // The first partner's half of round 1 is not the whole round.
+  assert.equal(supersetRoundsDone([{ sets: a(true, false) }, { sets: b(false, false) }]), 0);
+  assert.equal(supersetRoundsDone([{ sets: a(true, false) }, { sets: b(true, false) }]), 1);
+  // Uneven: the first partner has 1 round, the second 3. Once the first runs
+  // out the count keeps going on the second alone.
+  assert.equal(supersetRoundsDone([{ sets: a(true) }, { sets: b(true, true, false) }]), 2);
+  assert.equal(supersetRoundsDone([{ sets: a(true) }, { sets: b(true, true, true) }]), 3);
+  // Warm-ups and a drop set riding along belong to the round they sit in.
+  assert.equal(
+    supersetRoundsDone([
+      { sets: [set('w', 'warmup', false), set('a1', 'normal', true), set('d', 'drop', false)] },
+      { sets: b(true) },
+    ]),
+    0,
+  );
 });
 
 test('a failure-only partner hands over to its partner instead of resting', () => {

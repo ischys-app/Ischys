@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { restAfterSet } from '../domain/supersets.ts';
 import { locateNextSet } from './nextSet.ts';
 
 const set = (id: string, done = false) => ({ id, done });
@@ -142,4 +143,76 @@ test('partners apart in the list still alternate', () => {
     grouped('Press', 1, s('b1'), s('b2')),
   ];
   assert.equal(where(locateNextSet(list)), 'Press#0');
+});
+
+test('partners logged as failure sets alternate too', () => {
+  // The Watch showed the first partner's next set after logging its first
+  // one: every failure set sat in round 1, so the tie kept the first partner.
+  const list = [
+    grouped('Press', 1, s('aw', true, 'warmup'), s('a1', true, 'failure'), s('a2', false, 'failure')),
+    grouped('Dips', 1, s('b1', false, 'failure'), s('b2', false, 'failure')),
+  ];
+  assert.equal(where(locateNextSet(list)), 'Dips#0');
+  assert.equal(where(locateNextSet(list, 'b1')), 'Press#2');
+});
+
+// The look-ahead (what the Watch and the card offer next) and the rest
+// hand-off (what the in-app ✓ does) must name the same partner after a set.
+const agree = (list: ReturnType<typeof grouped>[], exName: string, setId: string) => {
+  const view = list.map((e) => ({ id: e.name, supersetGroup: e.supersetGroup, rest: 60, sets: e.sets }));
+  const handOff = restAfterSet(view, exName, setId);
+  const next = locateNextSet(list, setId);
+  if (!handOff.startRest) assert.equal(next?.exercise.name, handOff.nextExerciseId, 'hand-off and look-ahead disagree');
+  return where(next);
+};
+
+test('a trailing failure set is a round of its own, so the partner still gets its turn', () => {
+  const list = [
+    grouped('Curl', 1, s('a1', true), s('a2'), s('af', false, 'failure')),
+    grouped('Press', 1, s('b1', true), s('b2'), s('b3')),
+  ];
+  assert.equal(agree(list, 'Curl', 'a2'), 'Press#1');
+  list[0].sets[1].done = true;
+  list[1].sets[1].done = true;
+  assert.equal(where(locateNextSet(list)), 'Curl#2', 'round 3 starts with the failure set');
+  assert.equal(agree(list, 'Curl', 'af'), 'Press#2');
+});
+
+test('normal sets followed by a failure set alongside a normal-only partner', () => {
+  // A = N,F and B = N,N,N: three rounds, A sits the third out.
+  const list = [
+    grouped('Curl', 1, s('a1'), s('af', false, 'failure')),
+    grouped('Press', 1, s('b1'), s('b2'), s('b3')),
+  ];
+  const order: (string | null)[] = [];
+  for (let at = locateNextSet(list); at; at = locateNextSet(list)) {
+    const id = at.exercise.sets[at.setIndex].id;
+    order.push(agree(list, at.exercise.name, id));
+    at.exercise.sets[at.setIndex].done = true;
+  }
+  assert.deepEqual(order, ['Press#0', 'Curl#1', 'Press#1', 'Press#2', null]);
+});
+
+test('a normal set added to a failure-only partner keeps the alternation', () => {
+  // Add Set always adds a normal set; it used to fold the failure sets into
+  // round 1 and offer them back to back.
+  const list = [
+    grouped('Press', 1, s('a1', true, 'failure'), s('a2', false, 'failure'), s('an')),
+    grouped('Dips', 1, s('b1', false, 'failure'), s('b2', false, 'failure'), s('b3', false, 'failure')),
+  ];
+  assert.equal(where(locateNextSet(list)), 'Dips#0');
+  assert.equal(agree(list, 'Press', 'a1'), 'Dips#0');
+  list[1].sets[0].done = true;
+  assert.equal(agree(list, 'Press', 'a2'), 'Dips#1');
+});
+
+test('a normal-only superset alternates exactly as before', () => {
+  const list = [grouped('Curl', 1, s('a1'), s('a2')), grouped('Press', 1, s('b1'), s('b2'))];
+  const order: (string | null)[] = [];
+  for (let at = locateNextSet(list); at; at = locateNextSet(list)) {
+    order.push(`${at.exercise.name}#${at.setIndex}`);
+    agree(list, at.exercise.name, at.exercise.sets[at.setIndex].id);
+    at.exercise.sets[at.setIndex].done = true;
+  }
+  assert.deepEqual(order, ['Curl#0', 'Press#0', 'Curl#1', 'Press#1']);
 });

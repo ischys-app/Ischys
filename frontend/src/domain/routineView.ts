@@ -6,7 +6,7 @@
  * most recent workout started from it into rows of plain text. Pure, so
  * `node --test` covers it; the queries live in data/routinesRepo.ts.
  */
-import { groupLabels } from './supersets.ts';
+import { groupLabels, roundCount } from './supersets.ts';
 import { type Unit, unitLabel, weightText } from './units.ts';
 
 type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -230,7 +230,7 @@ export function buildRoutineView(
     if (group != null && letter) {
       // Rounds count working sets, as they do during the workout.
       const rounds = Math.max(
-        ...partners.map((p) => p.sets.filter((s) => s.type === 'normal').length),
+        ...partners.map((p) => roundCount(p.sets)),
       );
       // Partners split apart by another exercise still share one label: it sits
       // on the first run, and the later ones keep only the rail and their tags.

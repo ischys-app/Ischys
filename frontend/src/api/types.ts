@@ -290,6 +290,8 @@ export type SettingsOut = {
   effort_mode: EffortMode;
   appearance: Appearance;
   auto_start_rest_timer: boolean;
+  /** Copy each exercise's last note into the next session as a saved value (#137). */
+  keep_exercise_notes: boolean;
   rest_timer_alerts: boolean;
   haptic_feedback: boolean;
 };

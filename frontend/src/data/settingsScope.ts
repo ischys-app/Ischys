@@ -6,7 +6,7 @@
 import type { SettingsUpdate } from '../api/types';
 
 export const DEVICE_SETTINGS = ['appearance', 'haptic_feedback', 'rest_timer_alerts'] as const;
-export const PROFILE_SETTINGS = ['unit', 'effort_mode', 'auto_start_rest_timer'] as const;
+export const PROFILE_SETTINGS = ['unit', 'effort_mode', 'auto_start_rest_timer', 'keep_exercise_notes'] as const;
 
 /** Splits an update into the part for the device row and the part for the profile row. */
 export function splitUpdate(body: SettingsUpdate): { device: SettingsUpdate; profile: SettingsUpdate } {

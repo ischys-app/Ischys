@@ -48,6 +48,7 @@ import {
   CodeIcon,
   DownloadIcon,
   DumbbellIcon,
+  EditIcon,
   HapticIcon,
   HeartFilledIcon,
   InfoIcon,
@@ -78,6 +79,7 @@ const DEFAULT_SETTINGS: SettingsOut = {
   effort_mode: 'off',
   appearance: 'system',
   auto_start_rest_timer: true,
+  keep_exercise_notes: false,
   rest_timer_alerts: true,
   haptic_feedback: true,
 };
@@ -370,6 +372,16 @@ export default function Settings() {
       isLast={last}
     />
   );
+  const keepNotesRow = (last: boolean) => (
+    <ToggleRow
+      icon={<EditIcon size={20} color={color.text2} />}
+      label="Keep exercise notes"
+      sub="Carry each exercise's note into your next workouts until you change or clear it"
+      value={settings.keep_exercise_notes}
+      onChange={(v) => patch({ keep_exercise_notes: v })}
+      isLast={last}
+    />
+  );
   const restAlertsRow = (last: boolean) => (
     <ToggleRow
       icon={<BellIcon size={20} color={color.text2} />}
@@ -553,6 +565,7 @@ export default function Settings() {
               {bodyweightRow(false)}
               {platesRow(false)}
               {autoRestRow(false)}
+              {keepNotesRow(false)}
               {warmupsRow(false)}
               {deloadRow(true)}
             </Section>
@@ -625,6 +638,7 @@ export default function Settings() {
               {unitsRow}
               {effortRow}
               {autoRestRow(false)}
+              {keepNotesRow(false)}
               {restAlertsRow(false)}
               {hapticsRow(false)}
               {warmupsRow(false)}
@@ -1028,12 +1042,14 @@ function RowShell({
 function ToggleRow({
   icon,
   label,
+  sub,
   value,
   onChange,
   isLast,
 }: {
   icon: React.ReactNode;
   label: string;
+  sub?: string;
   value: boolean;
   onChange: (next: boolean) => void;
   isLast: boolean;
@@ -1043,6 +1059,7 @@ function ToggleRow({
     <RowShell
       icon={icon}
       label={label}
+      sub={sub}
       isLast={isLast}
       onPress={() => onChange(!value)}
       right={

@@ -64,6 +64,13 @@
       "when": 1790000600000,
       "tag": "0008_add_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790000700000,
+      "tag": "0009_add_settings_keep_exercise_notes",
+      "breakpoints": true
     }
   ]
 }

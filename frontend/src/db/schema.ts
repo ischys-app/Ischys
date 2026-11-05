@@ -194,6 +194,9 @@ export const settings = sqliteTable('settings', {
   // 'dark' | 'light' | 'system' (light mode, 7b). New installs follow the
   // phone; migration 0007 pins rows that predate it to 'dark'.
   appearance: text('appearance').notNull().default('system'),
+  // Off: a note shows once more as a placeholder, never saved (#137). On: it
+  // is copied into the next session as a real value, so it carries until changed.
+  keepExerciseNotes: integer('keep_exercise_notes').notNull().default(0),
   // The version of the one-time PR flag pass (#91) that last completed on this
   // database. Kept with the data it describes, so a restored file is re-walked.
   prBackfillVersion: integer('pr_backfill_version').notNull().default(0),

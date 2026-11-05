@@ -12,6 +12,10 @@ test('splitUpdate sends each field to its own half', () => {
   );
 });
 
+test('keep_exercise_notes belongs to the profile', () => {
+  assert.deepEqual(splitUpdate({ keep_exercise_notes: true }), { device: {}, profile: { keep_exercise_notes: true } });
+});
+
 test('splitUpdate of an empty update is two empty halves', () => {
   assert.deepEqual(splitUpdate({}), { device: {}, profile: {} });
 });
@@ -22,6 +26,7 @@ test('the two lists cover every settings key exactly once', () => {
     effort_mode: 'off',
     appearance: 'system',
     auto_start_rest_timer: true,
+    keep_exercise_notes: false,
     rest_timer_alerts: true,
     haptic_feedback: true,
   };

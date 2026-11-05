@@ -21,6 +21,7 @@ const isAppearance = (v: string): v is Appearance => v === 'dark' || v === 'ligh
 function rowToOut(r: {
   unit: string;
   autoStartRestTimer: number;
+  keepExerciseNotes: number;
   restTimerAlerts: number;
   hapticFeedback: number;
   effortMode: string;
@@ -31,6 +32,7 @@ function rowToOut(r: {
     effort_mode: isEffortMode(r.effortMode) ? r.effortMode : 'off',
     appearance: isAppearance(r.appearance) ? r.appearance : 'system',
     auto_start_rest_timer: bool(r.autoStartRestTimer),
+    keep_exercise_notes: bool(r.keepExerciseNotes),
     rest_timer_alerts: bool(r.restTimerAlerts),
     haptic_feedback: bool(r.hapticFeedback),
   };
@@ -41,6 +43,7 @@ const DEFAULTS: SettingsOut = {
   effort_mode: 'off',
   appearance: 'system',
   auto_start_rest_timer: true,
+  keep_exercise_notes: false,
   rest_timer_alerts: true,
   haptic_feedback: true,
 };
@@ -65,6 +68,7 @@ export async function getSettings(from: typeof db = db): Promise<SettingsOut> {
     unit: profile.unit,
     effort_mode: profile.effort_mode,
     auto_start_rest_timer: profile.auto_start_rest_timer,
+    keep_exercise_notes: profile.keep_exercise_notes,
     appearance: device.appearance,
     rest_timer_alerts: device.rest_timer_alerts,
     haptic_feedback: device.haptic_feedback,
@@ -85,6 +89,7 @@ export async function updateSettings(body: SettingsUpdate): Promise<SettingsOut>
     if (profile.unit !== undefined) patch.unit = profile.unit;
     if (profile.effort_mode !== undefined) patch.effortMode = profile.effort_mode;
     if (profile.auto_start_rest_timer !== undefined) patch.autoStartRestTimer = profile.auto_start_rest_timer ? 1 : 0;
+    if (profile.keep_exercise_notes !== undefined) patch.keepExerciseNotes = profile.keep_exercise_notes ? 1 : 0;
     await db.update(schema.settings).set(patch).where(eq(schema.settings.id, SETTINGS_ID));
   }
   return getSettings();

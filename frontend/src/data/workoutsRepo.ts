@@ -22,6 +22,7 @@ import type {
 import { activityMap } from '../domain/activityMap';
 import { uniqueRoutineName } from '../domain/importedRoutines';
 import { normalizeRpe } from '../domain/effort';
+import { startingNote } from '../domain/keepNotes';
 import { latestBefore } from '../domain/previous';
 import { detectPrs, headlinePr } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -36,6 +37,7 @@ import {
   muscleTagsByWorkout,
 } from './queries';
 import { currentValues, prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
+import { getSettings } from './settingsRepo';
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
 
@@ -217,6 +219,7 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
     : undefined;
   if (body.routine_id && !routine) throw new Error('routine not found');
   if (routine) name = body.name || routine.name;
+  const keepNotes = routine ? (await getSettings()).keep_exercise_notes : false;
 
   // One unit: a start cut short would leave a live workout holding only some
   // of its routine, with nothing to say the rest is missing.
@@ -252,7 +255,13 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
           // placeholder — not frozen onto the session as a value. Freezing it meant a
           // routine's note (e.g. inherited from an imported sample) reappeared every
           // workout and edits never stuck, since they never wrote back to the routine.
-          note: null,
+          // With "Keep exercise notes" on, the last session's note is copied in
+          // instead, so it carries until changed or cleared (#137).
+          note: startingNote({
+            keep: keepNotes,
+            status: 'active',
+            previous: keepNotes ? await previousNote(re.exerciseId, startedAt) : null,
+          }),
           updatedAt: nowMs(),
         });
         const rsets = await db
@@ -481,6 +490,19 @@ async function setsForAddedExercise(workoutId: string, body: AddExerciseBody): P
     : [{ type: 'normal' as SetType, done: false }];
 }
 
+/**
+ * The body with the note a newly added exercise starts with: with "Keep
+ * exercise notes" on, its last session's note, as a routine start gives (#137).
+ * Reads only; called before the transaction.
+ */
+async function withStartingNote(workoutId: string, body: AddExerciseBody, keep: boolean): Promise<AddExerciseBody> {
+  if (!keep || body.note != null) return body;
+  const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, workoutId)))[0];
+  const previous = w ? await previousNote(body.exercise_id, w.startedAt) : null;
+  const note = startingNote({ keep, status: w?.status, previous });
+  return note === null ? body : { ...body, note };
+}
+
 /** Appends one exercise and its sets. Statements only: runs inside the caller's transaction. */
 async function insertWorkoutExercise(
   tx: Executor,
@@ -517,9 +539,10 @@ async function insertWorkoutExercise(
 
 export async function addWorkoutExercise(
   workoutId: string,
-  body: AddExerciseBody,
+  input: AddExerciseBody,
 ): Promise<WorkoutExerciseOut> {
   const weId = newId();
+  const body = await withStartingNote(workoutId, input, (await getSettings()).keep_exercise_notes);
   const sets = await setsForAddedExercise(workoutId, body);
   // Position read + inserts atomic: two rapid adds must not read the same
   // position and collide, and the exercise's sets must land as one unit.
@@ -543,7 +566,9 @@ export async function addWorkoutExercises(
   opts: { asSuperset?: boolean } = {},
 ): Promise<WorkoutExerciseOut[]> {
   const planned: { weId: string; body: AddExerciseBody; sets: AddExerciseSets }[] = [];
-  for (const body of bodies) {
+  const keepNotes = (await getSettings()).keep_exercise_notes;
+  for (const input of bodies) {
+    const body = await withStartingNote(workoutId, input, keepNotes);
     planned.push({ weId: newId(), body, sets: await setsForAddedExercise(workoutId, body) });
   }
   if (planned.length === 0) return [];

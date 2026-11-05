@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { startingNote } from './keepNotes.ts';
+import { previousNoteHint, startingNote } from './keepNotes.ts';
 
 test('off: a session starts with no note, as before', () => {
   assert.equal(startingNote({ keep: false, status: 'active', previous: 'Seat at 4' }), null);
@@ -26,7 +26,11 @@ test('on: only a live workout carries a note', () => {
   assert.equal(startingNote({ keep: true, status: undefined, previous: 'Seat at 4' }), null);
 });
 
-test('an explicit note always wins, on or off', () => {
-  assert.equal(startingNote({ keep: true, status: 'active', explicit: 'New', previous: 'Old' }), 'New');
-  assert.equal(startingNote({ keep: false, status: 'completed', explicit: 'New', previous: null }), 'New');
+test('off: the previous note is still the placeholder hint', () => {
+  assert.equal(previousNoteHint(false, 'Seat at 4'), 'Seat at 4');
+  assert.equal(previousNoteHint(false, null), null);
+});
+
+test('on: the previous note is not offered as a hint, so a clear stays cleared', () => {
+  assert.equal(previousNoteHint(true, 'Seat at 4'), null);
 });

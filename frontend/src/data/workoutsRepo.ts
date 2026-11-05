@@ -22,7 +22,7 @@ import type {
 import { activityMap } from '../domain/activityMap';
 import { uniqueRoutineName } from '../domain/importedRoutines';
 import { normalizeRpe } from '../domain/effort';
-import { startingNote } from '../domain/keepNotes';
+import { previousNoteHint, startingNote } from '../domain/keepNotes';
 import { latestBefore } from '../domain/previous';
 import { detectPrs, headlinePr } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -157,7 +157,8 @@ async function previousNote(exerciseId: string, beforeMs: number): Promise<strin
         lt(schema.workouts.startedAt, beforeMs),
       ),
     )
-    .orderBy(desc(schema.workouts.startedAt))
+    // The same exercise twice in that session: the first one, not an arbitrary one.
+    .orderBy(desc(schema.workouts.startedAt), asc(schema.workoutExercises.position))
     .limit(1))[0];
   const n = row?.note?.trim();
   return n && n.length > 0 ? n : null;
@@ -167,12 +168,16 @@ async function previousNote(exerciseId: string, beforeMs: number): Promise<strin
  * Placeholder note for a workout-exercise: your last session's note, else the
  * routine's own note for this exercise (a deliberately-authored template hint).
  * It is only ever a hint — never a saved value — so it can't get stuck.
+ *
+ * With "Keep exercise notes" on, the last note is already the saved value, so
+ * it is not also offered as a hint: clearing it would bring it back greyed out.
  */
 export async function getPreviousNote(weId: string): Promise<string | null> {
   const we = (await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.id, weId)))[0];
   if (!we) return null;
   const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, we.workoutId)))[0];
-  const prev = await previousNote(we.exerciseId, w ? w.startedAt : nowMs());
+  const keepNotes = (await getSettings()).keep_exercise_notes;
+  const prev = previousNoteHint(keepNotes, await previousNote(we.exerciseId, w ? w.startedAt : nowMs()));
   if (prev) return prev;
   if (w?.routineId) {
     const re = (await db

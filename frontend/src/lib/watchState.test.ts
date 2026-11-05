@@ -294,3 +294,30 @@ test('null once every set is done', () => {
 test('the off state carries the first name only', () => {
   assert.deepEqual(buildOffWatchState('Maria Papadaki'), { screen: 'off', profileName: 'Maria' });
 });
+
+test('a superset logged as failure sets sends the Watch to the partner after a set', () => {
+  // Reproduced on a paired simulator: logging the first partner's first
+  // failure set from the Watch offered that partner's next set.
+  const st = buildWatchState(
+    [
+      {
+        id: 'we-a', name: 'Incline Dumbbell Press', equipment: 'dumbbell', rest: 120, supersetGroup: 1,
+        sets: [
+          set('aw', '80', '6', true, 'warmup'),
+          set('a1', '150', '8', true, 'failure'),
+          set('a2', '150', '7', false, 'failure'),
+        ],
+      },
+      {
+        id: 'we-b', name: 'Dips', equipment: 'other', rest: 120, supersetGroup: 1,
+        sets: [set('b1', '0', '10', false, 'failure'), set('b2', '0', '10', false, 'failure')],
+      },
+    ],
+    'Push',
+    rest,
+    resolve,
+  );
+  assert.equal(st?.exerciseName, 'Dips');
+  assert.equal(st?.currentSetId, 'b1');
+  assert.equal(st?.supersetLabel, 'SUPERSET A · 2 OF 2');
+});

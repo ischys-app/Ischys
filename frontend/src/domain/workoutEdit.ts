@@ -19,7 +19,7 @@
  */
 import type { RecordMetric } from '../api/types.ts';
 import { computeRecords, recordDisplay, type PRSession, type PRSet, type RecordValue } from './records.ts';
-import { groupLabels } from './supersets.ts';
+import { groupLabels, roundCount } from './supersets.ts';
 import { parseWeight, toDisplay, toKg, weightText, type Unit } from './units.ts';
 
 export type EditSetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -546,7 +546,7 @@ export function exerciseRows(s: EditSession): ExerciseRow[] {
     const cards = group.filter((e) => !e.removed);
     if (cards.length === group.length) {
       // Rounds are a count here: every one of them is done.
-      const rounds = Math.max(...cards.map((e) => e.sets.filter((x) => x.type === 'normal').length));
+      const rounds = Math.max(...cards.map((e) => roundCount(e.sets)));
       return `· ${rounds} ${rounds === 1 ? 'ROUND' : 'ROUNDS'}`;
     }
     // As `buildPlan` decides it: an addition with nothing logged is not saved.

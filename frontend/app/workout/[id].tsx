@@ -125,7 +125,7 @@ import { shouldPromptEffort } from '../../src/domain/effort';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { EffortSheet } from '../../src/components/workout/EffortSheet';
 import { deloadActiveFor, getDeloadState, type DeloadState } from '../../src/lib/deloadState';
-import { groupLabels, restAfterSet, roundOfSet } from '../../src/domain/supersets';
+import { groupLabels, restAfterSet, roundCount, roundOfSet, roundsDone } from '../../src/domain/supersets';
 import { getBodyweightKg } from '../../src/lib/bodyweight';
 import { getCountWarmups } from '../../src/lib/warmupVolume';
 import type { WatchAction } from '../../modules/health';
@@ -1778,11 +1778,8 @@ export default function ActiveWorkout() {
     const partners = exercises.filter((e) => e.supersetGroup === me.supersetGroup);
     if (partners.length < 2 || partners[0].id !== exId) return null; // header once per group
     const letter = ssLabels.get(me.supersetGroup);
-    const rounds = Math.max(
-      ...partners.map((p) => p.sets.filter((x) => x.type === 'normal').length),
-    );
-    const lead = partners[0];
-    const doneRounds = lead.sets.filter((x) => x.type === 'normal' && x.done).length;
+    const rounds = Math.max(...partners.map((p) => roundCount(p.sets)));
+    const doneRounds = roundsDone(partners[0].sets);
     const current = Math.min(rounds, doneRounds + 1);
     return `SUPERSET ${letter} · ROUND ${current} OF ${rounds}`;
   };

@@ -188,3 +188,15 @@ test('the partner that closes the round rests for its own rest, then back to the
   assert.equal(s?.restSeconds, 60);
   assert.equal(s?.next?.setId, 'a2');
 });
+
+test('partners logged as failure sets alternate on the card too', () => {
+  const failure = (id: string, done = false) => ({ ...set(id, '10', '8', done), type: 'failure' });
+  const list = [
+    { name: 'Curl', rest: 90, supersetGroup: 1, sets: [failure('a1', true), failure('a2')] },
+    { name: 'Press', rest: 60, supersetGroup: 1, sets: [failure('b1'), failure('b2')] },
+  ];
+  const s = buildLiveActivityState(list, false, resolve, 'kg');
+  assert.equal(s?.exerciseName, 'Press');
+  assert.equal(s?.restSeconds, 60);
+  assert.equal(s?.next?.setId, 'a2');
+});

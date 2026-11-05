@@ -143,3 +143,14 @@ test('partners apart in the list still alternate', () => {
   ];
   assert.equal(where(locateNextSet(list)), 'Press#0');
 });
+
+test('partners logged as failure sets alternate too', () => {
+  // The Watch showed the first partner's next set after logging its first
+  // one: every failure set sat in round 1, so the tie kept the first partner.
+  const list = [
+    grouped('Press', 1, s('aw', true, 'warmup'), s('a1', true, 'failure'), s('a2', false, 'failure')),
+    grouped('Dips', 1, s('b1', false, 'failure'), s('b2', false, 'failure')),
+  ];
+  assert.equal(where(locateNextSet(list)), 'Dips#0');
+  assert.equal(where(locateNextSet(list, 'b1')), 'Press#2');
+});

@@ -50,19 +50,46 @@ export function groupLabels(
  * warm-up with your partner — and drop and failure sets ride along with the
  * working set they extend, because they're the same effort continued rather
  * than a new trip round the group.
+ *
+ * An exercise with no normal set at all has nothing for them to ride along
+ * with, so its failure sets are its working sets (and, with none of those
+ * either, its drop sets are). Logging every working set as failure is common —
+ * a workout CSV can bring it in that way — and counting them all as round 1
+ * kept the first partner on top of the look-ahead, so the Watch and the Lock
+ * Screen offered its next set instead of the partner's.
  */
 export function roundOfSet(sets: readonly SetLike[], setId: string): number | null {
+  const working = workingType(sets);
   let round = 0;
   for (const s of sets) {
     if (s.type === 'warmup') {
       if (s.id === setId) return null;
       continue;
     }
-    if (s.type === 'normal') round += 1;
+    if (s.type === working) round += 1;
     // A drop/failure opening the list has nothing to extend; call it round 1.
     if (s.id === setId) return Math.max(1, round);
   }
   return null;
+}
+
+/** How many rounds this exercise takes part in: what `roundOfSet` counts up to. */
+export function roundCount(sets: readonly Pick<SetLike, 'type'>[]): number {
+  const working = workingType(sets);
+  return sets.filter((s) => s.type === working).length;
+}
+
+/** How many of this exercise's rounds have their opening set logged. */
+export function roundsDone(sets: readonly Pick<SetLike, 'type' | 'done'>[]): number {
+  const working = workingType(sets);
+  return sets.filter((s) => s.type === working && s.done).length;
+}
+
+/** The set type that opens a round: normal, else failure, else drop. */
+function workingType(sets: readonly Pick<SetLike, 'type'>[]): string {
+  if (sets.some((s) => s.type === 'normal')) return 'normal';
+  if (sets.some((s) => s.type === 'failure')) return 'failure';
+  return 'drop';
 }
 
 /** The exercise and its partners in screen order; just itself when ungrouped. */

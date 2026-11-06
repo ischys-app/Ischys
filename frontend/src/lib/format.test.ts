@@ -158,3 +158,18 @@ test('edit-workout and share-card day formats, en and zh-Hans', () => {
   assert.equal(fmtMonthNames('en').length, 12);
   assert.deepEqual(fmtMonthNames('zh-Hans').slice(0, 2), ['1月', '2月']);
 });
+
+import { fmtImportDay, fmtWeekInitials } from './format.ts';
+
+test('fmtWeekInitials: always seven, Monday first', () => {
+  assert.deepEqual(fmtWeekInitials('en'), ['M', 'T', 'W', 'T', 'F', 'S', 'S']);
+  assert.equal(fmtWeekInitials('zh-Hans').length, 7);
+});
+
+test('fmtImportDay: English is DD MON with a two-digit year only when it differs', () => {
+  const newest = new Date(2026, 5, 23);
+  assert.equal(fmtImportDay(new Date(2026, 8, 28), newest, 'en'), '28 SEP');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), newest, 'en'), '03 AUG 25');
+  assert.equal(fmtImportDay(new Date(2026, 5, 23), newest, 'zh-Hans'), '6月23日');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), newest, 'zh-Hans'), '2025年8月3日');
+});

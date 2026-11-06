@@ -11,9 +11,8 @@
  * here where they can be tested.
  */
 import type { ImportedSession } from '../api/types.ts';
-import { getLang } from '../i18n/current.ts';
 import { t } from '../i18n/t.ts';
-import { fmtCardDay, fmtDayMonthOf } from '../lib/format.ts';
+import { fmtImportDay } from '../lib/format.ts';
 
 /** One title the user can turn into a routine. */
 export type RoutineCandidate = {
@@ -45,11 +44,6 @@ export const COLLAPSE_MIN_TITLES = 6;
 export const RECENT_WINDOW_DAYS = 30;
 
 const DAY_MS = 86_400_000;
-
-const MONTHS = [
-  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-  'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
-] as const;
 
 /**
  * The grouping key. "Temp lower" and "  Temp   Lower " are one routine, because a
@@ -145,14 +139,7 @@ export function routineCandidateMeta(c: RoutineCandidate): string {
  * which dates these are.
  */
 export function lastTrainedLabel(ms: number, newestAt: number): string {
-  const d = new Date(ms);
-  if (getLang() === 'zh-Hans') {
-    return d.getFullYear() === new Date(newestAt).getFullYear() ? fmtDayMonthOf(d) : fmtCardDay(d);
-  }
-  const day = `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`;
-  const year = d.getFullYear();
-  if (year === new Date(newestAt).getFullYear()) return day;
-  return `${day} ${String(year % 100).padStart(2, '0')}`;
+  return fmtImportDay(new Date(ms), new Date(newestAt));
 }
 
 /** Whether a row's date gets the brighter colour. `newestAt` is the newest import. */

@@ -504,8 +504,8 @@ export async function buildManualGroup(ids: string[]): Promise<MergeGroupView | 
     survivorId: survivor.id,
     survivorReason:
       catalog.length === 1
-        ? 'Keeps images, how-to and muscle data'
-        : 'More history — fewer records move',
+        ? t('mergeDup.reasonCatalog')
+        : t('mergeDup.reasonHistory'),
     members: sortedMembers,
   };
 }

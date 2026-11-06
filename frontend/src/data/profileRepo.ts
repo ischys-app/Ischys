@@ -23,11 +23,9 @@ import { toWorkoutListItem, type WorkoutRow } from './map';
 import { muscleTagsByWorkout } from './queries';
 import { getWeeklyTarget } from '../lib/weeklyTarget';
 import { getLang } from '../i18n/current';
-import { t } from '../i18n/t';
+import { fmtWeekInitials } from '../lib/format';
 import { exerciseLabel } from '../i18n/catalogNames';
 
-/** Monday-first day letters, translated at read time (never stored). */
-const weekLabels = () => t('profile.weekLetters').split(',');
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const isoMonday = (d: Date) => {
   const diff = (d.getDay() + 6) % 7;
@@ -81,7 +79,7 @@ export async function getDashboard(): Promise<Dashboard> {
     sets += w.totalSets;
     timeS += w.durationSeconds;
   }
-  const week: WeekBar[] = weekLabels().map((label, i) => ({
+  const week: WeekBar[] = fmtWeekInitials().map((label, i) => ({
     label,
     volume: weekVol[i],
     today: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i).getTime() === today.getTime(),

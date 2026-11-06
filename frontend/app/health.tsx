@@ -159,7 +159,7 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
   const first = firstName(profile.name) || profile.name;
   const owner = ownerLabel(ownerName, DEFAULT_NAME);
   const ownerPossessive =
-    owner === t('profiles.phoneOwner') ? t('health.ownerPossessive') : t('profiles.possessive', { name: owner });
+    ownerName === DEFAULT_NAME ? t('health.ownerPossessive') : t('profiles.possessive', { name: owner });
 
   return (
     <View style={styles.root}>

@@ -114,7 +114,9 @@ const REASON_META: Record<MergeReason, { label: string; fg: string; bg: string }
 
 function sinceLabel(ms: number | null): string {
   if (ms === null) return t('mergeDup.noHistory');
-  return t('mergeDup.since', { date: fmtMonthYear(new Date(ms).toISOString()) });
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return t('mergeDup.noHistory');
+  return t('mergeDup.since', { date: fmtMonthYear(d.toISOString()) });
 }
 
 type Step = 'loading' | 'list' | 'detail' | 'success';

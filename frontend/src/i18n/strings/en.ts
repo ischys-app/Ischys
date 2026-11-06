@@ -653,19 +653,19 @@ export const strings: Record<string, StringDef> = {
   },
   'workoutEdit.type.normal': {
     en: 'normal',
-    note: 'Set type word in the WAS cell of Edit Workout (was normal). Lower case in English. Max 9 characters; fixed-width cell.',
+    note: 'Set type word in the WAS cell of Edit Workout (was normal). Lower case in English. Max 9 characters; fixed-width cell. Glossary term: 组 (set type; fixed, do not vary).',
   },
   'workoutEdit.type.warmup': {
     en: 'warm-up',
-    note: 'Set type word in the WAS cell of Edit Workout (was warm-up). Lower case in English. Max 9 characters; fixed-width cell.',
+    note: 'Set type word in the WAS cell of Edit Workout (was warm-up). Lower case in English. Max 9 characters; fixed-width cell. Glossary term: 热身组 (set type; fixed, do not vary).',
   },
   'workoutEdit.type.drop': {
     en: 'drop',
-    note: 'Set type word in the WAS cell of Edit Workout (was drop). Lower case in English. Max 9 characters; fixed-width cell.',
+    note: 'Set type word in the WAS cell of Edit Workout (was drop). Lower case in English. Max 9 characters; fixed-width cell. Glossary term: 递减组 (set type; fixed, do not vary).',
   },
   'workoutEdit.type.failure': {
     en: 'failure',
-    note: 'Set type word in the WAS cell of Edit Workout (was failure). Lower case in English. Max 9 characters; fixed-width cell.',
+    note: 'Set type word in the WAS cell of Edit Workout (was failure). Lower case in English. Max 9 characters; fixed-width cell. Glossary term: 力竭组 (set type; fixed, do not vary).',
   },
   'workoutEdit.noSetHint': {
     en: 'Add a set, or remove this exercise.',
@@ -1157,19 +1157,19 @@ export const strings: Record<string, StringDef> = {
   },
   'setType.normal': {
     en: 'normal',
-    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible.',
+    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible. Glossary term: 组 (set type; fixed, do not vary).',
   },
   'setType.warmup': {
     en: 'warm-up',
-    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible.',
+    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible. Glossary term: 热身组 (set type; fixed, do not vary).',
   },
   'setType.drop': {
     en: 'drop',
-    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible.',
+    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible. Glossary term: 递减组 (set type; fixed, do not vary).',
   },
   'setType.failure': {
     en: 'failure',
-    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible.',
+    note: 'Set type word inside a screen-reader label. Lower case in English. Not visible. Glossary term: 力竭组 (set type; fixed, do not vary).',
   },
   'exerciseCard.about': {
     en: 'About {name}',
@@ -1481,19 +1481,19 @@ export const strings: Record<string, StringDef> = {
   },
   'routineDiff.type.normal': {
     en: 'normal',
-    note: 'Set type inside a routine-update row (set 3 normal → drop set). Lower case in English.',
+    note: 'Set type inside a routine-update row (set 3 normal → drop set). Lower case in English. Glossary term: 组 (set type; fixed, do not vary).',
   },
   'routineDiff.type.warmup': {
     en: 'warm-up',
-    note: 'Set type inside a routine-update row. Lower case in English.',
+    note: 'Set type inside a routine-update row. Lower case in English. Glossary term: 热身组 (set type; fixed, do not vary).',
   },
   'routineDiff.type.drop': {
     en: 'drop set',
-    note: 'Set type inside a routine-update row. Lower case in English.',
+    note: 'Set type inside a routine-update row. Lower case in English. Glossary term: 递减组 (set type; fixed, do not vary).',
   },
   'routineDiff.type.failure': {
     en: 'to failure',
-    note: 'Set type inside a routine-update row. Lower case in English.',
+    note: 'Set type inside a routine-update row. Lower case in English. Glossary term: 力竭组 (set type; fixed, do not vary).',
   },
   'routineDiff.typeChange': {
     en: 'set {n} {from} → {to}',
@@ -1858,10 +1858,6 @@ export const strings: Record<string, StringDef> = {
   'muscleRegion.obliques': {
     en: 'Obliques',
     note: 'Muscle-map region name: side abdominal muscles. Not a catalog muscle.',
-  },
-  'profile.weekLetters': {
-    en: 'M,T,W,T,F,S,S',
-    note: 'Seven single-letter weekday initials, Monday first, separated by commas (no spaces), under the weekly bars on the Profile tab. Exactly 7 items. Max 1 character each.',
   },
   'record.bodyweightAbbr': {
     en: 'BW',
@@ -2445,19 +2441,19 @@ export const strings: Record<string, StringDef> = {
   },
   'routineEdit.type.normal': {
     en: 'Working',
-    note: 'Set type shown in the TYPE column: a normal working set. Max 10 characters; fixed-width column.',
+    note: 'Set type shown in the TYPE column: a normal working set. Max 10 characters; fixed-width column. Glossary term: 组 (set type; fixed, do not vary).',
   },
   'routineEdit.type.warmup': {
     en: 'Warmup',
-    note: 'Set type shown in the TYPE column: a warm-up set. Max 10 characters; fixed-width column.',
+    note: 'Set type shown in the TYPE column: a warm-up set. Max 10 characters; fixed-width column. Glossary term: 热身组 (set type; fixed, do not vary).',
   },
   'routineEdit.type.drop': {
     en: 'Drop set',
-    note: 'Set type shown in the TYPE column: a drop set. Max 10 characters; fixed-width column.',
+    note: 'Set type shown in the TYPE column: a drop set. Max 10 characters; fixed-width column. Glossary term: 递减组 (set type; fixed, do not vary).',
   },
   'routineEdit.type.failure': {
     en: 'To failure',
-    note: 'Set type shown in the TYPE column: a set taken to failure. Max 10 characters; fixed-width column.',
+    note: 'Set type shown in the TYPE column: a set taken to failure. Max 10 characters; fixed-width column. Glossary term: 力竭组 (set type; fixed, do not vary).',
   },
   'routineView.exercises_one': {
     en: '{count} EXERCISE',
@@ -3698,5 +3694,33 @@ export const strings: Record<string, StringDef> = {
   'workout.finishFailedBackground': {
     en: 'Nothing was changed. Open the workout and try again.',
     note: 'Alert message shown when finishing a workout from the Watch fails in the background; follows workout.finishFailedTitle.',
+  },
+  'profile.weekLetter.0': {
+    en: 'M',
+    note: 'One-letter initial of Monday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
+  },
+  'profile.weekLetter.1': {
+    en: 'T',
+    note: 'One-letter initial of Tuesday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
+  },
+  'profile.weekLetter.2': {
+    en: 'W',
+    note: 'One-letter initial of Wednesday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
+  },
+  'profile.weekLetter.3': {
+    en: 'T',
+    note: 'One-letter initial of Thursday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
+  },
+  'profile.weekLetter.4': {
+    en: 'F',
+    note: 'One-letter initial of Friday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
+  },
+  'profile.weekLetter.5': {
+    en: 'S',
+    note: 'One-letter initial of Saturday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
+  },
+  'profile.weekLetter.6': {
+    en: 'S',
+    note: 'One-letter initial of Sunday under the weekly bars on the Profile tab (Monday-first, seven separate keys). Max 1 character.',
   },
 };

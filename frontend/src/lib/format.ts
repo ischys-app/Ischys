@@ -221,6 +221,22 @@ export function fmtCardDay(d: Date, lang: Lang = getLang()): string {
   return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** Monday-first weekday initials for the week bars: always exactly seven. */
+export function fmtWeekInitials(lang: Lang = getLang()): string[] {
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => tr(`profile.weekLetter.${i}`, lang));
+}
+
+/**
+ * "28 SEP", or "03 AUG 25" when `d` is in a different year from `newest`;
+ * "6月23日" / "2025年8月3日" in Chinese. Local time.
+ */
+export function fmtImportDay(d: Date, newest: Date, lang: Lang = getLang()): string {
+  const sameYear = d.getFullYear() === newest.getFullYear();
+  if (lang === 'zh-Hans') return zhDay(d, !sameYear);
+  const day = `${String(d.getDate()).padStart(2, '0')} ${MONTH_UPPER[d.getMonth()]}`;
+  return sameYear ? day : `${day} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
+}
+
 /** Month labels for a picker wheel: Jan..Dec, or 1月..12月. */
 export function fmtMonthNames(lang: Lang = getLang()): readonly string[] {
   return lang === 'zh-Hans' ? MONTH_TITLE.map((_, i) => `${i + 1}月`) : MONTH_TITLE;

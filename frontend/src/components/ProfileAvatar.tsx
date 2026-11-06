@@ -19,6 +19,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { textScale } from '../theme/textScale';
 import { color, font, themed } from '../theme/tokens';
 import { useThemed } from '../theme/ThemeProvider';
+import { profileInitialsLabel } from '../domain/profiles';
 import { PlusIcon } from './icons';
 
 export type ProfileAvatarSize = 18 | 24 | 40 | 62 | 84;
@@ -32,7 +33,7 @@ const SPEC: Record<ProfileAvatarSize, { radius: number; fontSize: number; letter
 };
 
 type Props = {
-  profile: { initials: string };
+  profile: { initials: string; name?: string };
   size: ProfileAvatarSize;
   variant?: 'fill' | 'outline' | 'dashed';
   tint?: string;
@@ -63,7 +64,7 @@ export function ProfileAvatar({ profile, size, variant = 'fill', tint }: Props) 
         numberOfLines={1}
         style={[styles.initials, { fontSize: spec.fontSize, letterSpacing: spec.letterSpacing, color: ink }]}
       >
-        {profile.initials}
+        {profile.name === undefined ? profile.initials : profileInitialsLabel({ name: profile.name, initials: profile.initials })}
       </Text>
     </View>
   );

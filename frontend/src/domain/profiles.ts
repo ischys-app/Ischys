@@ -2,6 +2,7 @@
 import { fold } from './fold.ts';
 import { fmtMonthYear, fmtShortDayUpper } from '../lib/format.ts';
 import { t } from '../i18n/t.ts';
+import { profileNameLabel, workoutLabel } from '../i18n/defaultLabels.ts';
 
 export type ProfileRow = {
   id: string;
@@ -81,6 +82,24 @@ export function deriveInitials(name: string): string {
 
 export function firstName(name: string): string {
   return words(name)[0] ?? '';
+}
+
+/** What the Lock Screen and Watch are sent: the displayed first name and initials. */
+export function liveActivityProfileFor(p: { name: string; initials: string }): { name: string; initials: string } {
+  const label = profileNameLabel(p.name.trim());
+  return { name: firstName(label), initials: profileInitialsLabel(p) };
+}
+
+/**
+ * The initials an avatar shows. The stored initials of the default-named
+ * profile ('A' for 'Athlete') follow the displayed label; initials the user
+ * set or edited are shown as stored.
+ */
+export function profileInitialsLabel(p: { name: string; initials: string }): string {
+  const name = p.name.trim();
+  const label = profileNameLabel(name);
+  if (label !== name && p.initials === deriveInitials(name)) return deriveInitials(label);
+  return p.initials;
 }
 
 const GREEK: Record<string, string> = {
@@ -266,7 +285,7 @@ export function copyRoutinesSub(count: number): string {
  */
 export function copyRoutinesLabel(current: { name: string; isOwner: boolean }, defaultName: string): string {
   if (current.isOwner && current.name === defaultName) return t('profiles.copyYour');
-  return t('profiles.copyTheirs', { name: firstName(current.name) });
+  return t('profiles.copyTheirs', { name: firstName(profileNameLabel(current.name.trim())) });
 }
 
 /** The HEALTH & WATCH footer. `owner` comes from `ownerLabel`. */
@@ -340,7 +359,8 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
  */
 export function profileCallName(p: { name: string; isOwner: boolean }, defaultName: string): string {
   if (p.isOwner && p.name.trim() === defaultName) return t('profiles.phoneOwner');
-  return firstName(p.name) || p.name.trim() || t('profiles.thisProfile');
+  const label = profileNameLabel(p.name.trim());
+  return firstName(label) || label || t('profiles.thisProfile');
 }
 
 /** The P6 sheet's words. `elapsed` is drawn in mono, tabular, between `lead` and `tail`. */
@@ -358,7 +378,10 @@ export function finishFirstCopy(a: {
   elapsedMs: number;
   defaultName: string;
 }): FinishFirstCopy {
-  const routine = a.workoutName?.trim() || t('profiles.yourWorkout');
+  // Blank stays "Your workout" (workoutLabel would say the default title); the stored
+  // defaults 'Workout' / 'Empty Workout' are shown translated.
+  const named = a.workoutName?.trim();
+  const routine = named ? workoutLabel(named) : t('profiles.yourWorkout');
   // The running workout's profile is the one on screen, so a default-named
   // owner is "you" here, as in copyRoutinesLabel (Ruling R16).
   const ownerRuns = a.running.isOwner && a.running.name.trim() === a.defaultName;

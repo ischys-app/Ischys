@@ -89,7 +89,7 @@ import {
   syncFinishedWorkout,
 } from '../../src/lib/healthSync';
 import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
-import { firstName } from '../../src/domain/profiles';
+import { firstName, profileInitialsLabel } from '../../src/domain/profiles';
 import { fmtTimeOfDay } from '../../src/lib/format';
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
 import {
@@ -159,7 +159,7 @@ import {
   type Exercise,
 } from '../../src/components/workout/types';
 import { useThemed } from '../../src/theme/ThemeProvider';
-import { workoutLabel } from '../../src/i18n/defaultLabels';
+import { profileNameLabel, workoutLabel } from '../../src/i18n/defaultLabels';
 
 const START_ELAPSED = 12 * 60 + 47; // seeded "12:47"
 const DEFAULT_REST = 120;
@@ -1907,8 +1907,8 @@ export default function ActiveWorkout() {
         who={
           PROFILES_ENABLED && profileCount > 1 && startedAt != null
             ? {
-                initials: activeProfileRow.initials,
-                firstName: firstName(activeProfileRow.name) || activeProfileRow.name,
+                initials: profileInitialsLabel(activeProfileRow),
+                firstName: firstName(profileNameLabel(activeProfileRow.name)) || profileNameLabel(activeProfileRow.name),
                 started: fmtTimeOfDay(startedAt),
               }
             : null

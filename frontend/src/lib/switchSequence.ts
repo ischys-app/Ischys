@@ -21,6 +21,8 @@
  * screens are gone: none of them renders with the new profile's settings.
  */
 import { switchBlock } from '../domain/profiles.ts';
+import { profileNameLabel } from '../i18n/defaultLabels.ts';
+import { t } from '../i18n/t.ts';
 
 export type SwitchResult = 'ok' | 'same' | 'workout' | 'busy';
 
@@ -132,7 +134,7 @@ export function createSwitcher<C, P extends { id: string; name: string }, S>(
     d.bumpEpoch();
     // 9–10.
     quietly('haptic', () => d.haptic());
-    quietly('announcement', () => d.announce(`Switched to ${target.name}`));
+    quietly('announcement', () => d.announce(t('switcher.announce', { name: profileNameLabel(target.name) })));
     // Upkeep that needs the profile active (bootstrap's tidyCurrentConnection).
     try {
       await d.tidy();

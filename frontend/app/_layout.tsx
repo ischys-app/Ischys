@@ -1,6 +1,8 @@
 // Polyfill crypto.getRandomValues before anything (uuid v4 in the local repo
 // needs it; React Native/Hermes doesn't provide it natively). Must be first.
 import 'react-native-get-random-values';
+// Resolve the UI language before any screen module renders text.
+import '../src/i18n';
 
 import {
   JetBrainsMono_400Regular,

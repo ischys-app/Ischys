@@ -1,0 +1,4 @@
+{
+  "NSHealthShareUsageDescription": "Ischys reads your heart rate during a workout when an Apple Watch is recording it, and your bodyweight when you choose to fill it in from Health.",
+  "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness."
+}

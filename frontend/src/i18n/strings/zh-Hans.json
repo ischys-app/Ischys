@@ -902,5 +902,6 @@
   "import.into": "到 {name}",
   "import.asUnit": "（{unit}）",
   "workout.emptyName": "空白训练",
-  "profile.defaultName": "运动员"
+  "profile.defaultName": "运动员",
+  "switcher.announce": "已切换到 {name}"
 }

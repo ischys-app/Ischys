@@ -2026,7 +2026,7 @@ export default function ActiveWorkout() {
             }}
           >
             <Text maxFontSizeMultiplier={textScale.control} style={styles.addExercisePlus}>+</Text>
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.addExerciseText}>Add Exercise</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.addExerciseText}>{t('editWorkout.addExercise')}</Text>
           </PressableScale>
 
           <View

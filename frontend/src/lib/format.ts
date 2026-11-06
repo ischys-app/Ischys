@@ -196,3 +196,32 @@ export function fmtTimeOfDay(ms: number): string {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
+
+/** "Tue 7 Jul" / "周二 7月7日" — a short day cell. Local time. */
+export function fmtShortDay(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
+  return `${WEEKDAY_TITLE[d.getDay()]} ${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
+}
+
+/** "Tue, 7 Jul 2026" / "周二 2026年7月7日". Local time. */
+export function fmtLongDay(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, true)}`;
+  return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** "23 Jun" / "6月23日". Local time. */
+export function fmtDayMonthOf(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return zhDay(d, false);
+  return `${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
+}
+
+/** "7 JUL 2026" / "2026年7月7日" — the date on the share card. Local time. */
+export function fmtCardDay(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return zhDay(d, true);
+  return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Month labels for a picker wheel: Jan..Dec, or 1月..12月. */
+export function fmtMonthNames(lang: Lang = getLang()): readonly string[] {
+  return lang === 'zh-Hans' ? MONTH_TITLE.map((_, i) => `${i + 1}月`) : MONTH_TITLE;
+}

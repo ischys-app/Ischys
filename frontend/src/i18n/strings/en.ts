@@ -29,11 +29,11 @@ export const strings: Record<string, StringDef> = {
   },
   'tabs.history': {
     en: 'History',
-    note: 'Bottom tab bar label and screen title for the workout history tab. Max 6 characters; fixed-width tab label.',
+    note: 'Bottom tab bar label and screen title for the workout history tab. Max 8 characters; fixed-width tab label.',
   },
   'tabs.profile': {
     en: 'Profile',
-    note: 'Bottom tab bar label and screen title for the profile and settings tab. Max 6 characters; fixed-width tab label.',
+    note: 'Bottom tab bar label and screen title for the profile and settings tab. Max 8 characters; fixed-width tab label.',
   },
   'tabs.profileWho': {
     en: 'Profile, {name}',
@@ -65,11 +65,11 @@ export const strings: Record<string, StringDef> = {
   },
   'streak.days': {
     en: '{days}-day streak',
-    note: 'Green pill beside the This week heading on Home; {days} is the number of consecutive days. Max 14 characters; fixed-width pill.',
+    note: 'Green pill beside the This week heading on Home; {days} is the number of consecutive days. Max 18 characters; fixed-width pill.',
   },
   'pr.pill': {
     en: '{count} PR',
-    note: 'Green pill on a workout card counting personal records; {count} is a number. Keep PR untranslated or use the short term for personal record. Max 8 characters.',
+    note: 'Green pill on a workout card counting personal records; {count} is a number. Keep PR untranslated or use the short term for personal record. Max 10 characters.',
   },
   'workoutCard.time': {
     en: 'TIME',
@@ -157,7 +157,7 @@ export const strings: Record<string, StringDef> = {
   },
   'home.explore': {
     en: 'Explore',
-    note: 'Small pill button on Home that opens the exercise library. Max 6 characters; fixed-width pill.',
+    note: 'Small pill button on Home that opens the exercise library. Max 8 characters; fixed-width pill.',
   },
   'home.recent': {
     en: 'Recent',
@@ -177,7 +177,7 @@ export const strings: Record<string, StringDef> = {
   },
   'home.createFirstRoutine': {
     en: 'Create your first routine',
-    note: 'Primary button in the first-run empty state on Home. Max 24 characters; fixed-width button.',
+    note: 'Primary button in the first-run empty state on Home. Max 26 characters; fixed-width button.',
   },
   'home.startEmptyLower': {
     en: 'Start empty workout',
@@ -237,7 +237,7 @@ export const strings: Record<string, StringDef> = {
   },
   'history.sessions': {
     en: '{count} sessions',
-    note: 'Right side of the heat map header on History; {count} is the number of workouts in the last 12 weeks. Max 14 characters.',
+    note: 'Right side of the heat map header on History; {count} is the number of workouts in the last 12 weeks. Max 16 characters.',
   },
   'history.moreActionsHint': {
     en: 'Long-press for more actions.',
@@ -253,7 +253,7 @@ export const strings: Record<string, StringDef> = {
   },
   'history.count': {
     en: '{count} workouts',
-    note: 'Right side of the History header; total number of completed workouts. Max 14 characters.',
+    note: 'Right side of the History header; total number of completed workouts. Max 16 characters.',
   },
   'history.emptyTitle': {
     en: 'No workouts yet',
@@ -309,7 +309,7 @@ export const strings: Record<string, StringDef> = {
   },
   'profile.barsAvg': {
     en: 'avg {value}',
-    note: 'Right side of the weekly bar chart header on Profile; {value} is a number with one decimal. Max 10 characters.',
+    note: 'Right side of the weekly bar chart header on Profile; {value} is a number with one decimal. Max 12 characters.',
   },
   'profile.measurements': {
     en: 'MEASUREMENTS',
@@ -425,7 +425,7 @@ export const strings: Record<string, StringDef> = {
   },
   'workout.supersetNone': {
     en: 'None · then {tag}',
-    note: 'Rest label on an earlier superset partner: rest is skipped here and happens after {tag} (like A2). Max 16 characters; sits in an exercise row.',
+    note: 'Rest label on an earlier superset partner: rest is skipped here and happens after {tag} (like A2). Max 18 characters; sits in an exercise row.',
   },
   'workout.supersetHeader': {
     en: 'SUPERSET {letter} · ROUND {current} OF {rounds}',
@@ -525,7 +525,7 @@ export const strings: Record<string, StringDef> = {
   },
   'effort.range': {
     en: '{from}–{to} REPS LEFT',
-    note: 'Effort meaning for a half step, e.g. 1–2 REPS LEFT; keep the en dash. Upper case in English. Max 16 characters.',
+    note: 'Effort meaning for a half step, e.g. 1–2 REPS LEFT; keep the en dash. Upper case in English. Max 22 characters.',
   },
   'effort.oneRep': {
     en: '1 REP LEFT',
@@ -649,7 +649,7 @@ export const strings: Record<string, StringDef> = {
   },
   'workout.exerciseMeta': {
     en: '{equipment} · {seconds}s rest',
-    note: 'Under an exercise name in the workout card and superset sheet; {equipment} is the equipment name, {seconds} the rest time in seconds. Max 28 characters.',
+    note: 'Under an exercise name in the workout card and superset sheet; {equipment} is the equipment name, {seconds} the rest time in seconds. Max 30 characters.',
   },
   'workoutEdit.type.normal': {
     en: 'normal',
@@ -697,11 +697,11 @@ export const strings: Record<string, StringDef> = {
   },
   'workoutEdit.ssHeader': {
     en: 'SUPERSET {letter}',
-    note: 'Header above a superset group in Edit Workout; {letter} is A, B... Upper case in English. Max 16 characters.',
+    note: 'Header above a superset group in Edit Workout; {letter} is A, B... Upper case in English. Max 18 characters.',
   },
   'workoutEdit.was.needsReps': {
     en: 'needs reps',
-    note: 'WAS cell text in Edit Workout for a new set without reps. Lower case in English. Max 9 characters; fixed-width cell.',
+    note: 'WAS cell text in Edit Workout for a new set without reps. Lower case in English. Max 10 characters; fixed-width cell.',
   },
   'workoutEdit.was.new': {
     en: 'new',
@@ -717,7 +717,7 @@ export const strings: Record<string, StringDef> = {
   },
   'workoutEdit.was.value': {
     en: 'was {value}',
-    note: 'WAS cell text in Edit Workout showing the saved value; {value} is like 60 × 6 or a set type word. Lower case in English. Max 9 characters beyond the word was; fixed-width cell.',
+    note: 'WAS cell text in Edit Workout showing the saved value; {value} is like 60 × 6 or a set type word. Lower case in English. Max 12 characters; fixed-width cell.',
   },
   'workoutEdit.metric.best_set': {
     en: 'HEAVIEST WEIGHT',
@@ -973,11 +973,11 @@ export const strings: Record<string, StringDef> = {
   },
   'warmup.insert_one': {
     en: 'Insert {count} warm-up set',
-    note: 'Insert button in the warm-up sheet, singular. Max 24 characters; fixed-width button.',
+    note: 'Insert button in the warm-up sheet, singular. Max 26 characters; fixed-width button.',
   },
   'warmup.insert_other': {
     en: 'Insert {count} warm-up sets',
-    note: 'Insert button in the warm-up sheet, plural. Max 24 characters; fixed-width button.',
+    note: 'Insert button in the warm-up sheet, plural. Max 28 characters; fixed-width button.',
   },
   'workoutHeader.discardTitle': {
     en: 'Discard this workout?',
@@ -1037,7 +1037,7 @@ export const strings: Record<string, StringDef> = {
   },
   'plateSheet.bar': {
     en: '{weight} {unit} bar',
-    note: 'Chip in the plate sheet header showing the configured bar weight; {weight} is a number, {unit} kg or lb. Max 14 characters; tapping opens the plate setup.',
+    note: 'Chip in the plate sheet header showing the configured bar weight; {weight} is a number, {unit} kg or lb. Max 20 characters; tapping opens the plate setup.',
   },
   'plateSheet.lighter': {
     en: 'Lighter than the bar',
@@ -1089,7 +1089,7 @@ export const strings: Record<string, StringDef> = {
   },
   'plateSheet.use': {
     en: 'Use {weight} {unit}',
-    note: 'Primary button in the plate sheet that fills the set with the loaded weight. Max 18 characters; fixed-width button.',
+    note: 'Primary button in the plate sheet that fills the set with the loaded weight. Max 20 characters; fixed-width button.',
   },
   'setRow.name': {
     en: 'set {badge}',
@@ -1305,15 +1305,15 @@ export const strings: Record<string, StringDef> = {
   },
   'share.prChip_one': {
     en: '{count} PR',
-    note: 'Chip on the share card image, singular. Max 8 characters.',
+    note: 'Chip on the share card image, singular. Max 10 characters.',
   },
   'share.prChip_other': {
     en: '{count} PRs',
-    note: 'Chip on the share card image, plural. Max 8 characters.',
+    note: 'Chip on the share card image, plural. Max 12 characters.',
   },
   'common.setsCount': {
     en: '{count} sets',
-    note: 'Number of sets: {count} is a number. Used under exercise names in the reorder overlay, in the summary exercise rows and the muscle split. Max 10 characters; fixed-width.',
+    note: 'Number of sets: {count} is a number. Used under exercise names in the reorder overlay, in the summary exercise rows and the muscle split. Max 12 characters; fixed-width.',
   },
   'common.nothingChanged': {
     en: 'Nothing was changed. Try again.',
@@ -1333,7 +1333,7 @@ export const strings: Record<string, StringDef> = {
   },
   'summary.bestSet': {
     en: 'Best set · {weight} × {reps}{rated}',
-    note: 'Subtitle of an exercise row on the workout summary; {weight} includes the unit, {reps} a number, {rated} an optional effort rating with a leading space (like @8). Max 30 characters.',
+    note: 'Subtitle of an exercise row on the workout summary; {weight} includes the unit, {reps} a number, {rated} an optional effort rating with a leading space (like @8). Max 36 characters.',
   },
   'summary.saveRoutineFailed': {
     en: 'Couldn’t save routine',
@@ -1477,7 +1477,7 @@ export const strings: Record<string, StringDef> = {
   },
   'routineDiff.setsChanged': {
     en: '{from} → {to} sets',
-    note: 'Detail on a routine-update row: the set count changed from {from} to {to}. Keep the arrow. Max 16 characters.',
+    note: 'Detail on a routine-update row: the set count changed from {from} to {to}. Keep the arrow. Max 18 characters.',
   },
   'routineDiff.type.normal': {
     en: 'normal',
@@ -1581,7 +1581,7 @@ export const strings: Record<string, StringDef> = {
   },
   'editWorkout.addExercise': {
     en: 'Add Exercise',
-    note: 'Button at the bottom of Edit Workout that opens the exercise library. Max 20 characters.',
+    note: 'Button at the bottom of Edit Workout and of the active workout list that opens the exercise library. Max 20 characters.',
   },
   'editWorkout.editing': {
     en: 'EDITING',

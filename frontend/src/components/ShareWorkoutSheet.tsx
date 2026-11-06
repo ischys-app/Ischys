@@ -28,7 +28,7 @@ import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import type { WorkoutSummaryOut } from '../api/types';
 import { type Unit, volumeText, weightText } from '../domain/units';
-import { fmtDuration } from '../lib/format';
+import { fmtCardDay, fmtDuration } from '../lib/format';
 import { parseServerDate } from '../lib/serverTime';
 import { useWeightUnit } from '../lib/weightUnit';
 import { accentA, byScheme, color, font, themed, withAlpha } from '../theme/tokens';
@@ -38,7 +38,6 @@ import { StarIcon } from './icons';
 import { Wordmark } from './Wordmark';
 import { useThemed } from '../theme/ThemeProvider';
 import { workoutLabel } from '../i18n/workoutLabel';
-import { getLang } from '../i18n/current';
 
 type Layout = 'compact' | 'standard' | 'detailed';
 
@@ -50,17 +49,11 @@ type Props = {
 
 const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
 
-const MONTH_UPPER = [
-  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-  'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
-];
-
 /** e.g. "7 JUL 2026" — the compact date used inside the preview card. */
 function fmtCardDate(iso: string): string {
   const d = new Date(parseServerDate(iso));
   if (Number.isNaN(d.getTime())) return '';
-  if (getLang() === 'zh-Hans') return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
+  return fmtCardDay(d);
 }
 
 /**

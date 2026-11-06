@@ -141,3 +141,20 @@ test('zh-Hans words come from the string table, English when untranslated', () =
   assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'en'), '1h ago');
   assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), '1h ago');
 });
+
+import { fmtCardDay, fmtDayMonthOf, fmtLongDay, fmtMonthNames, fmtShortDay } from './format.ts';
+
+test('edit-workout and share-card day formats, en and zh-Hans', () => {
+  const d = new Date(2026, 6, 7); // Tue 7 Jul 2026
+  assert.equal(fmtShortDay(d, 'en'), 'Tue 7 Jul');
+  assert.equal(fmtShortDay(d, 'zh-Hans'), '周二 7月7日');
+  assert.equal(fmtLongDay(d, 'en'), 'Tue, 7 Jul 2026');
+  assert.equal(fmtLongDay(d, 'zh-Hans'), '周二 2026年7月7日');
+  assert.equal(fmtDayMonthOf(d, 'en'), '7 Jul');
+  assert.equal(fmtDayMonthOf(d, 'zh-Hans'), '7月7日');
+  assert.equal(fmtCardDay(d, 'en'), '7 JUL 2026');
+  assert.equal(fmtCardDay(d, 'zh-Hans'), '2026年7月7日');
+  assert.equal(fmtMonthNames('en')[0], 'Jan');
+  assert.equal(fmtMonthNames('en').length, 12);
+  assert.deepEqual(fmtMonthNames('zh-Hans').slice(0, 2), ['1月', '2月']);
+});

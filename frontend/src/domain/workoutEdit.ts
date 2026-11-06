@@ -20,7 +20,7 @@
 import type { RecordMetric } from '../api/types.ts';
 import { computeRecords, recordDisplay, type PRSession, type PRSet, type RecordValue } from './records.ts';
 import { groupLabels, roundCount } from './supersets.ts';
-import { getLang } from '../i18n/current.ts';
+import { fmtDayMonthOf, fmtLongDay, fmtMonthNames, fmtShortDay } from '../lib/format.ts';
 import { t } from '../i18n/t.ts';
 import { parseWeight, toDisplay, toKg, weightText, type Unit } from './units.ts';
 
@@ -998,40 +998,26 @@ export function durationFromParts(hours: number, minutes: number, stored?: numbe
   return hours * 3600 + minutes * 60;
 }
 
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const pad2 = (n: number) => String(n).padStart(2, '0');
-
-const WEEKDAY_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-const MONTH_ZH = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-const zh = (): boolean => getLang() === 'zh-Hans';
-
-export const MONTH_NAMES: readonly string[] = MONTH;
 
 /** The month wheel's labels in the current language. */
 export function monthNames(): readonly string[] {
-  return zh() ? MONTH_ZH : MONTH;
+  return fmtMonthNames();
 }
 
 /** "Tue 7 Jul" — the DATE cell. */
 export function fmtCellDate(ms: number): string {
-  const d = new Date(ms);
-  if (zh()) return `${WEEKDAY_ZH[d.getDay()]} ${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${WEEKDAY[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()]}`;
+  return fmtShortDay(new Date(ms));
 }
 
 /** "Tue, 7 Jul 2026" — the picker's Date row. */
 export function fmtLongDate(ms: number): string {
-  const d = new Date(ms);
-  if (zh()) return `${WEEKDAY_ZH[d.getDay()]} ${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${WEEKDAY[d.getDay()]}, ${d.getDate()} ${MONTH[d.getMonth()]} ${d.getFullYear()}`;
+  return fmtLongDay(new Date(ms));
 }
 
 /** "23 Jun" — where a record falls back to. */
 export function fmtDayMonth(ms: number): string {
-  const d = new Date(ms);
-  if (zh()) return `${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${d.getDate()} ${MONTH[d.getMonth()]}`;
+  return fmtDayMonthOf(new Date(ms));
 }
 
 /** "09:06", local time. */

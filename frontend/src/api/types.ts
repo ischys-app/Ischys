@@ -55,18 +55,27 @@ export type ExerciseKind = 'weighted' | 'bodyweight';
 
 export type CategoryOut = {
   id: string;
+  /** Display label (translated catalog name). */
   name: string;
+  /** The stored (English) name. Use for anything that writes or compares. */
+  englishName: string;
 };
 
 export type MuscleOut = {
   id: string;
+  /** Display label (translated catalog name). */
   name: string;
+  /** The stored (English) name. Use for anything that writes or compares. */
+  englishName: string;
   group?: string | null;
 };
 
 export type ExerciseOut = {
   id: string;
+  /** Display label (translated catalog name). */
   name: string;
+  /** The stored (English) name. Use for anything that writes or compares. */
+  englishName: string;
   initials: string;
   kind: ExerciseKind;
   equipment: string;

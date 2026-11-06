@@ -14,6 +14,8 @@ import { carryFor } from './setCarry';
 import { SetRow } from './SetRow';
 import { exerciseMeta, restLabel, weightColumnLabel, type Exercise, type SetType } from './types';
 import { useThemed } from '../../theme/ThemeProvider';
+import { getLang } from '../../i18n/current';
+import { equipmentLabel } from '../../i18n/catalogNames';
 
 type Props = {
   exercise: Exercise;
@@ -168,7 +170,7 @@ export function ExerciseCard({
               </View>
             ) : null}
             <Text maxFontSizeMultiplier={textScale.control} style={styles.meta} numberOfLines={1}>
-              {edit ? titleCase(exercise.equipment) : exerciseMeta(exercise)}
+              {edit ? titleCase(equipmentLabel(exercise.equipment, getLang())) : exerciseMeta(exercise)}
             </Text>
           </View>
         </Pressable>

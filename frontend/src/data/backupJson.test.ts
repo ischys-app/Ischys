@@ -53,3 +53,51 @@ test('a file with no workouts list is not a backup, and text that is not JSON th
   assert.equal(backupWorkouts(JSON.stringify({ profile: { name: 'Maria', initials: 'MP' } })), null);
   assert.throws(() => backupWorkouts('not json'));
 });
+
+// --- Exports stay English whatever the display language (#136) ---------------
+import catalog from '../../assets/catalog/catalog.json' with { type: 'json' };
+import zhCatalog from '../i18n/catalog/zh-Hans.json' with { type: 'json' };
+import { getLang, setLang } from '../i18n/current.ts';
+import { exerciseLabel } from '../i18n/catalogNames.ts';
+import { toBackupJson, type BackupWorkout } from './backupJson.ts';
+import { toWorkoutCsv } from './workoutCsv.ts';
+
+test('backup JSON and CSV are byte-identical under zh-Hans and en', () => {
+  const bench = catalog.exercises.find((e) => e.name === 'Barbell Bench Press - Medium Grip')!;
+  const squat = catalog.exercises.find((e) => e.name === 'Barbell Squat')!;
+  const zhEx = (zhCatalog as unknown as { exercises: Record<string, string> }).exercises;
+  const set = { position: 0, type: 'normal', weight: 60, reps: 8, done: true, isPr: false, rpe: null };
+  // Stored names, as the exporter reads them off the exercises table: a
+  // built-in, a renamed built-in (stored name differs from the catalog) and a custom.
+  const workouts: BackupWorkout[] = [
+    {
+      id: 'w1', name: 'Workout', startedAt: Date.UTC(2026, 10, 1, 8), endedAt: Date.UTC(2026, 10, 1, 9), notes: null,
+      durationSeconds: 3600, totalVolume: 480, totalSets: 3, prCount: 0,
+      exercises: [
+        { name: bench.name, note: null, supersetGroup: null, sets: [set] },
+        { name: 'My squat', note: null, supersetGroup: null, sets: [set] },
+        { name: 'Zercher Hold', note: 'custom', supersetGroup: 1, sets: [set] },
+      ],
+    },
+  ];
+  const profile = { name: 'Me', initials: 'ME' };
+  const before = getLang();
+  zhEx[bench.id] = '卧推';
+  zhEx[squat.id] = '深蹲';
+  try {
+    setLang('en');
+    const enJson = toBackupJson(workouts, profile);
+    const enCsv = toWorkoutCsv(workouts);
+    setLang('zh-Hans');
+    // The fixture is sensitive: the same row does display translated under zh.
+    assert.equal(exerciseLabel({ id: bench.id, name: bench.name }, getLang()), '卧推');
+    assert.equal(toBackupJson(workouts, profile), enJson);
+    assert.equal(toWorkoutCsv(workouts), enCsv);
+    assert.ok(enJson.includes(bench.name) && !enJson.includes('卧推'));
+    assert.ok(enCsv.includes(bench.name) && !enCsv.includes('卧推'));
+  } finally {
+    setLang(before);
+    delete zhEx[bench.id];
+    delete zhEx[squat.id];
+  }
+});

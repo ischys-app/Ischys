@@ -8,6 +8,8 @@
  */
 import { type Unit, unitLabel } from '../../domain/units';
 import { color, themed, withAlpha } from '../../theme/tokens';
+import { getLang } from '../../i18n/current';
+import { equipmentLabel } from '../../i18n/catalogNames';
 
 export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
 
@@ -104,7 +106,7 @@ export function restLabel(seconds: number): string {
 
 /** "Dumbbell · 150s rest". */
 export function exerciseMeta(ex: Pick<Exercise, 'equipment' | 'rest'>): string {
-  return `${ex.equipment} · ${ex.rest}s rest`;
+  return `${equipmentLabel(ex.equipment, getLang())} · ${ex.rest}s rest`;
 }
 
 /** Weight-column header label, e.g. "KG" / "LB", or "+KG" / "+LB" (bodyweight). */

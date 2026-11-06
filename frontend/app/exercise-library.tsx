@@ -38,6 +38,9 @@ import { rankByUsage } from '../src/domain/exerciseRanking';
 import { registerPicker } from '../src/lib/exercisePicker';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { getLang } from '../src/i18n/current';
+import { equipmentLabel } from '../src/i18n/catalogNames';
+import { indexLetter } from '../src/data/labels';
 
 const ALL = 'All';
 const DEFAULT_REST_SECONDS = 120;
@@ -58,11 +61,12 @@ type Group = { letter: string; items: ExerciseOut[] };
 /** How many trained lifts the shortcut section shows before it stops being one. */
 const TOP_LIFTS = 12;
 
-/** Group exercises alphabetically by first-letter of `name`. */
+/** Group exercises by the index letter of `name` (pinyin initial under zh-Hans). */
 function groupByLetter(items: ExerciseOut[]): Group[] {
+  const lang = getLang();
   const byLetter = new Map<string, ExerciseOut[]>();
   for (const ex of items) {
-    const L = (ex.name[0] ?? '#').toUpperCase();
+    const L = indexLetter(ex.name, lang);
     const arr = byLetter.get(L) ?? [];
     arr.push(ex);
     byLetter.set(L, arr);
@@ -132,7 +136,7 @@ export default function ExerciseLibrary() {
     try {
       const list = await listExercises({
         search: debouncedQuery || undefined,
-        category: filter !== ALL ? filter : undefined,
+        categoryId: filter !== ALL ? filter : undefined,
       });
       if (signal.cancelled) return;
       setExercises(list);
@@ -263,8 +267,12 @@ export default function ExerciseLibrary() {
     }
   };
 
-  // Chip list: prepend "All" to the fetched categories.
-  const chipLabels = useMemo(() => [ALL, ...categories.map((c) => c.name)], [categories]);
+  // Chip list: prepend "All" to the fetched categories. The filter holds a
+  // category id (or ALL); the chip shows its label.
+  const chips = useMemo(
+    () => [{ key: ALL, label: ALL }, ...categories.map((c) => ({ key: c.id, label: c.name }))],
+    [categories],
+  );
 
   const headerBottom = 158; // px reserved for the absolute header (matches HTML).
   const ctaHeight = 52;
@@ -381,12 +389,12 @@ export default function ExerciseLibrary() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsContent}
         >
-          {chipLabels.map((label) => {
-            const active = filter === label;
+          {chips.map(({ key, label }) => {
+            const active = filter === key;
             return (
               <Pressable
-                key={label}
-                onPress={() => setFilter(label)}
+                key={key}
+                onPress={() => setFilter(key)}
                 style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
               >
                 <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
@@ -467,7 +475,8 @@ function ExerciseRow({
   useThemed();
   const router = useRouter();
   const category = exercise.category?.name;
-  const meta = category ? `${exercise.equipment} · ${category}` : exercise.equipment;
+  const equipment = equipmentLabel(exercise.equipment, getLang());
+  const meta = category ? `${equipment} · ${category}` : equipment;
 
   const openDetail = () =>
     router.push(

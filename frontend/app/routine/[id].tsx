@@ -59,6 +59,8 @@ import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { getLang } from '../../src/i18n/current';
+import { equipmentLabel } from '../../src/i18n/catalogNames';
 
 const DEFAULT_REST_SECONDS = 120;
 
@@ -578,7 +580,7 @@ function ExerciseCardBuilder({
 }) {
   useThemed();
   const ex = rex.exercise;
-  const muscleLine = ex.category?.name ?? ex.primary_muscle?.name ?? ex.equipment;
+  const muscleLine = ex.category?.name ?? ex.primary_muscle?.name ?? equipmentLabel(ex.equipment, getLang());
   const wLabel = weightColumnLabelFor(ex.kind, unit);
 
   // Working-set index counter — resets per exercise.

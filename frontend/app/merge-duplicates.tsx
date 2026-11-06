@@ -42,6 +42,8 @@ import { recordDisplay } from '../src/domain/records';
 import { useWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { getLang } from '../src/i18n/current';
+import { equipmentLabel, nameToStore } from '../src/i18n/catalogNames';
 
 // --- Local glyphs (icons.tsx is owned by another stream) ------------------
 
@@ -193,16 +195,20 @@ export default function MergeDuplicates() {
     }
   };
 
-  const rename = (id: string, currentName: string) => {
+  const rename = (id: string, current: { name: string; englishName: string }) => {
     const commit = (name?: string) => {
-      const trimmed = (name ?? '').trim();
-      if (!trimmed || trimmed === currentName) return;
+      // The field is pre-filled with the display label; leaving it as is must
+      // not write that label over the stored (English) name.
+      const trimmed = nameToStore(name ?? '', current);
+      if (!trimmed) return;
       patchExercise(id, { name: trimmed })
-        .then(() => setResult((r) => (r ? { ...r, survivorName: trimmed } : r)))
+        .then(() =>
+          setResult((r) => (r ? { ...r, survivorName: trimmed, survivorEnglishName: trimmed } : r)),
+        )
         .catch(() => Alert.alert('Rename failed', 'Could not rename the exercise.'));
     };
     if (Platform.OS === 'ios' && typeof Alert.prompt === 'function') {
-      Alert.prompt('Rename exercise', undefined, commit, 'plain-text', currentName);
+      Alert.prompt('Rename exercise', undefined, commit, 'plain-text', current.name);
     } else {
       router.push(`/exercise/${id}`);
     }
@@ -358,7 +364,9 @@ export default function MergeDuplicates() {
         ) : null}
 
         {step === 'success' && result ? (
-          <MergedReceipt result={result} onRename={() => rename(result.survivorId, result.survivorName)} />
+          <MergedReceipt result={result} onRename={() =>
+              rename(result.survivorId, { name: result.survivorName, englishName: result.survivorEnglishName })
+            } />
         ) : null}
 
         {step !== 'loading' && (step === 'list' || step === 'success') ? (
@@ -419,7 +427,7 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
-            <Text style={styles.memberMeta} numberOfLines={1}>{`${m.equipment} · ${m.setCount} sets`}</Text>
+            <Text style={styles.memberMeta} numberOfLines={1}>{`${equipmentLabel(m.equipment, getLang())} · ${m.setCount} sets`}</Text>
           </View>
         </View>
       ))}

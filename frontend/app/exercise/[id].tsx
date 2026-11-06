@@ -51,6 +51,8 @@ import { useWeightUnit } from '../../src/lib/weightUnit';
 import { PressableScale } from '../../src/components/PressableScale';
 import { pickerIsActive, pickerIsSelected, pickerToggle } from '../../src/lib/exercisePicker';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { getLang } from '../../src/i18n/current';
+import { equipmentLabel } from '../../src/i18n/catalogNames';
 
 type TabKey = 'about' | 'history' | 'charts';
 
@@ -307,7 +309,7 @@ function AboutTab({ exercise }: { exercise: ExerciseOut | null }) {
       <View style={styles.chipRow}>
         <ChipCard label="PRIMARY" value={primary} />
         <ChipCard label="SECONDARY" value={secondary} />
-        <ChipCard label="EQUIP" value={exercise.equipment} />
+        <ChipCard label="EQUIP" value={equipmentLabel(exercise.equipment, getLang())} />
       </View>
 
       <Text style={styles.sectionLabel}>HOW TO</Text>

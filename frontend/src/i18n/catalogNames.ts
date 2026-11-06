@@ -48,3 +48,21 @@ export function matchesSearch(query: string, labels: readonly string[]): boolean
   if (!q) return true;
   return labels.some((l) => fold(l).includes(q));
 }
+
+const muscleIdByEnglish = Object.fromEntries(catalog.muscles.map((m) => [m.name, m.id]));
+
+/** A muscle shown by its English name only (e.g. a muscle-map region). */
+export function muscleNameLabel(name: string, lang: Lang): string {
+  const id = muscleIdByEnglish[name];
+  return id ? muscleLabel({ id, name }, lang) : name;
+}
+
+/**
+ * What a rename should write, given the edit field (pre-filled with the display
+ * label). `null` means write nothing: the label was left as is, so the stored
+ * English name must not be overwritten with a translation.
+ */
+export function nameToStore(input: string, ex: { name: string; englishName: string }): string | null {
+  const trimmed = input.trim();
+  return trimmed === ex.name ? null : trimmed;
+}

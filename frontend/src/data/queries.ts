@@ -18,6 +18,8 @@ import {
   type WorkoutRow,
   type WorkoutSetRow,
 } from './map';
+import { muscleTag } from './labels';
+import { getLang } from '../i18n/current';
 
 /** Hydrate exercise rows into full ExerciseOut (category + primary/secondary muscles). */
 export async function hydrateExercises(rows: ExerciseRow[]): Promise<Map<string, ExerciseOut>> {
@@ -58,10 +60,9 @@ export async function loadExercise(id: string): Promise<ExerciseOut | null> {
   return (await hydrateExercises(rows as ExerciseRow[])).get(id) ?? null;
 }
 
-/** Primary-muscle label for volume/tags: group || name || "Other". */
+/** Primary-muscle label for volume/tags: group || name || "Other", as displayed. */
 export function muscleLabel(primary: MuscleRow | null | undefined): string {
-  if (!primary) return 'Other';
-  return primary.group || primary.name;
+  return muscleTag(primary, getLang());
 }
 
 /** All completed sessions of one exercise (sets grouped per workout), newest first. */

@@ -22,6 +22,8 @@ import { LOCAL_USER_ID } from './ids';
 import { toWorkoutListItem, type WorkoutRow } from './map';
 import { muscleTagsByWorkout } from './queries';
 import { getWeeklyTarget } from '../lib/weeklyTarget';
+import { getLang } from '../i18n/current';
+import { exerciseLabel } from '../i18n/catalogNames';
 
 const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -94,7 +96,7 @@ export async function getDashboard(): Promise<Dashboard> {
       const exRows = res.length
         ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, res.map((re) => re.exerciseId)))
         : [];
-      const nameById = new Map(exRows.map((e) => [e.id, e.name]));
+      const nameById = new Map(exRows.map((e) => [e.id, exerciseLabel(e, getLang())]));
       const names = res.map((re) => nameById.get(re.exerciseId) ?? '');
       const detail = names.slice(0, 6).join(', ') + (names.length > 6 ? ` +${names.length - 6}` : '');
       return {
@@ -147,7 +149,7 @@ export async function listRecentRecords(limit = 10): Promise<RecordOut[]> {
   const exRows = picked.length
     ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, picked.map((r) => r.exerciseId)))
     : [];
-  const nameById = new Map(exRows.map((e) => [e.id, e.name]));
+  const nameById = new Map(exRows.map((e) => [e.id, exerciseLabel(e, getLang())]));
   return picked.map((r) => ({
     metric: r.metric as RecordMetric,
     value: r.value,

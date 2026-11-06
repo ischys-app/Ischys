@@ -57,6 +57,8 @@ import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { getLang } from '../../src/i18n/current';
+import { groupLabel } from '../../src/i18n/catalogNames';
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -97,7 +99,8 @@ function bestSetLine(sets: WorkoutSetOut[], unit: Unit, effort: EffortScaleKind 
 function computeMuscleFromWorkout(w: WorkoutOut): { name: string; sets: number }[] {
   const tally = new Map<string, number>();
   for (const we of w.exercises) {
-    const primary = we.exercise.primary_muscle?.group ?? we.exercise.primary_muscle?.name;
+    const pm = we.exercise.primary_muscle;
+    const primary = pm?.group ? groupLabel(pm.group, getLang()) : pm?.name;
     if (!primary) continue;
     const done = we.sets.filter((s) => s.done && s.type !== 'warmup').length;
     if (done === 0) continue;

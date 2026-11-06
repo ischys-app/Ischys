@@ -398,7 +398,7 @@ async function refreshCachedSummary(
           we.exercise.primary_muscle
             ? {
                 id: we.exercise.primary_muscle.id,
-                name: we.exercise.primary_muscle.name,
+                name: we.exercise.primary_muscle.englishName,
                 group: we.exercise.primary_muscle.group ?? null,
               }
             : null,

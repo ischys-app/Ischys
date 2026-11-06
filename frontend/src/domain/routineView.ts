@@ -8,6 +8,8 @@
  */
 import { groupLabels, roundCount } from './supersets.ts';
 import { type Unit, unitLabel, weightText } from './units.ts';
+import { getLang } from '../i18n/current.ts';
+import { equipmentLabel } from '../i18n/catalogNames.ts';
 
 type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
 type ExerciseKind = 'weighted' | 'bodyweight';
@@ -203,7 +205,7 @@ export function buildRoutineView(
       exerciseId: ex.exerciseId,
       name: ex.name,
       initials: ex.initials,
-      equipment: titleCase(ex.equipment),
+      equipment: titleCase(equipmentLabel(ex.equipment, getLang())),
       rest,
       tag: letter ? `${letter}${place + 1}` : null,
       note: ex.note && ex.note.trim().length > 0 ? ex.note.trim() : null,

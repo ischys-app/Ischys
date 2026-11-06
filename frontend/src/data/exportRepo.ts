@@ -12,7 +12,7 @@ import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
-import { backupWorkouts, readJsonSet, toJsonSet, type JsonSet } from './backupJson';
+import { backupWorkouts, readJsonSet, toBackupJson, type JsonSet } from './backupJson';
 import { toWorkoutCsv, parseWorkoutCsv, type ExportWorkout } from './workoutCsv';
 import type { Unit } from '../domain/units';
 import { equipmentFromNameSuffix } from '../domain/exerciseNaming';
@@ -79,19 +79,7 @@ export async function exportData(
 ): Promise<string> {
   const workouts = await gatherCompleted(exec);
   if (format === 'csv') return toWorkoutCsv(workouts);
-  return JSON.stringify({
-    profile: { name: profile.name, initials: profile.initials },
-    workouts: workouts.map((w) => ({
-      id: w.id, name: w.name,
-      started_at: new Date(w.startedAt).toISOString(),
-      ended_at: w.endedAt === null ? null : new Date(w.endedAt).toISOString(),
-      duration_seconds: w.durationSeconds, total_volume: w.totalVolume, total_sets: w.totalSets, pr_count: w.prCount,
-      exercises: w.exercises.map((ex) => ({
-        name: ex.name, note: ex.note, superset_group: ex.supersetGroup,
-        sets: ex.sets.map(toJsonSet),
-      })),
-    })),
-  });
+  return toBackupJson(workouts, profile);
 }
 
 /** The stored exercise a file's name refers to, or null when there is none. */

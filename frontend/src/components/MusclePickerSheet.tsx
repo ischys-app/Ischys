@@ -27,6 +27,8 @@ import { accentA, color, font, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, SearchIcon } from './icons';
 import { useThemed } from '../theme/ThemeProvider';
+import { getLang } from '../i18n/current';
+import { groupLabel, matchesSearch } from '../i18n/catalogNames';
 
 /** Module-scope cache — shared across both mount lifetimes of the sheet. */
 let cachedMuscles: MuscleOut[] | null = null;
@@ -118,8 +120,8 @@ export function MusclePickerSheet({
   }, [visible]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? muscles.filter((m) => m.name.toLowerCase().includes(q)) : muscles;
+    // Matches the shown label or the stored English name.
+    return muscles.filter((m) => matchesSearch(query, [m.name, m.englishName]));
   }, [muscles, query]);
 
   const grouped = useMemo(() => {
@@ -210,7 +212,7 @@ export function MusclePickerSheet({
         ) : (
           grouped.map(({ group, items }) => (
             <View key={group} style={styles.group}>
-              <Text style={styles.groupLabel}>{group.toUpperCase()}</Text>
+              <Text style={styles.groupLabel}>{groupLabel(group, getLang()).toUpperCase()}</Text>
               {items.map((m) => {
                 const selected = isSelected(m);
                 return (

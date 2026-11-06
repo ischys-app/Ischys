@@ -25,6 +25,8 @@ import {
 import { muscleWorkEntries } from '../src/data/muscleMapRepo';
 import { color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { getLang } from '../src/i18n/current';
+import { muscleNameLabel } from '../src/i18n/catalogNames';
 
 const WINDOWS = [
   { days: 7 as const, label: '7 DAYS' },
@@ -135,7 +137,9 @@ export default function MuscleMapScreen() {
           <>
             <SectionLabel style={styles.sectionLabel}>NOT TRAINED</SectionLabel>
             <View style={styles.card}>
-              <Text style={styles.neglectedText}>{neglected.join(' · ')}</Text>
+              <Text style={styles.neglectedText}>
+                {neglected.map((r) => muscleNameLabel(r, getLang())).join(' · ')}
+              </Text>
             </View>
           </>
         )}
@@ -145,7 +149,7 @@ export default function MuscleMapScreen() {
         <View style={styles.grabberWrap}>
           <View style={styles.grabber} />
         </View>
-        <Text style={styles.sheetTitle}>{selected}</Text>
+        <Text style={styles.sheetTitle}>{selected ? muscleNameLabel(selected, getLang()) : ''}</Text>
         <Text style={styles.sheetValue}>
           {`${fmtSets(selectedSets)} ${windowDays === 28 ? 'sets / week' : 'sets'}`}
         </Text>

@@ -61,6 +61,7 @@ import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { getLang } from '../../src/i18n/current';
 import { equipmentLabel } from '../../src/i18n/catalogNames';
+import { t } from '../../src/i18n';
 
 const DEFAULT_REST_SECONDS = 120;
 
@@ -88,12 +89,7 @@ type REx = {
   sets: RSet[];
 };
 
-const TYPE_LABEL: Record<SetType, string> = {
-  normal: 'Working',
-  warmup: 'Warmup',
-  drop: 'Drop set',
-  failure: 'To failure',
-};
+const typeLabel = (type: SetType): string => t(`routineEdit.type.${type}`);
 
 /** "KG" / "LB" for weighted exercises, with a "+" for bodyweight (added weight). */
 function weightColumnLabelFor(kind: ExerciseOut['kind'], unit: Unit): string {
@@ -370,9 +366,9 @@ export default function RoutineBuilder() {
     if (!partners) return null;
     const i = partners.findIndex((e) => e.id === rex.id);
     if (i === partners.length - 1) return null;
-    return `None · then ${ssLabels.get(rex.supersetGroup!)}${i + 2}`;
+    return t('workout.supersetNone', { tag: `${ssLabels.get(rex.supersetGroup!)}${i + 2}` });
   };
-  const titleText = isNew ? 'New Routine' : name || 'Edit Routine';
+  const titleText = isNew ? t('routineEdit.new') : name || t('routineEdit.edit');
 
   return (
     <View style={styles.root}>
@@ -400,20 +396,20 @@ export default function RoutineBuilder() {
               setName(t);
               if (t.trim() !== '') setNameMissing(false);
             }}
-            placeholder="Routine name"
+            placeholder={t('routineEdit.namePlaceholder')}
             placeholderTextColor={nameMissing ? color.error : color.text3}
             style={styles.titleInput}
             multiline
           />
 
           {nameMissing ? (
-            <Text style={styles.nameError}>Give your routine a name to save it.</Text>
+            <Text style={styles.nameError}>{t('routineEdit.nameError')}</Text>
           ) : null}
 
           <View style={styles.metaRow}>
-            <Text style={styles.metaText}>{exercises.length} exercises</Text>
+            <Text style={styles.metaText}>{t('routineEdit.exercisesCount', { n: exercises.length })}</Text>
             <Text style={styles.metaText}> · </Text>
-            <Text style={styles.metaText}>{totalSets} sets</Text>
+            <Text style={styles.metaText}>{t('common.setsCount', { count: totalSets })}</Text>
           </View>
 
           {!loading && exercises.length === 0 && <EmptyBuilder />}
@@ -424,7 +420,7 @@ export default function RoutineBuilder() {
                 const partners = partnersOf(rex);
                 const header =
                   partners && partners[0].id === rex.id
-                    ? `SUPERSET ${ssLabels.get(rex.supersetGroup!)}`
+                    ? t('workoutEdit.ssHeader', { letter: String(ssLabels.get(rex.supersetGroup!)) })
                     : null;
                 return (
                   <View key={rex.id}>
@@ -470,7 +466,7 @@ export default function RoutineBuilder() {
 
           <PressableScale onPress={openLibrary} style={styles.addExercise}>
             <Text style={styles.addExercisePlus}>+</Text>
-            <Text style={styles.addExerciseText}>Add Exercise</Text>
+            <Text style={styles.addExerciseText}>{t('editWorkout.addExercise')}</Text>
           </PressableScale>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -478,7 +474,7 @@ export default function RoutineBuilder() {
       {/* Absolute header */}
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={styles.cancel}>{t('common.cancel')}</Text>
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {titleText}
@@ -489,7 +485,7 @@ export default function RoutineBuilder() {
           hitSlop={8}
           style={[styles.saveBtn, (!canSave || saving) && { opacity: 0.5 }]}
         >
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>{t('common.save')}</Text>
         </PressableScale>
       </View>
 
@@ -528,9 +524,9 @@ function EmptyBuilder() {
       <View style={styles.emptyIconWrap}>
         <DumbbellIcon size={26} color={color.accent} strokeWidth={2} />
       </View>
-      <Text style={styles.emptyTitle}>Build your routine</Text>
+      <Text style={styles.emptyTitle}>{t('routineEdit.emptyTitle')}</Text>
       <Text style={styles.emptySub}>
-        Add exercises and set target reps and weights. Pull them up instantly every session.
+        {t('routineEdit.emptySub')}
       </Text>
     </View>
   );
@@ -606,7 +602,7 @@ function ExerciseCardBuilder({
           hitSlop={8}
           style={styles.removeBtn}
           accessibilityRole="button"
-          accessibilityLabel={`Replace ${ex.name}`}
+          accessibilityLabel={t('routineEdit.replaceLabel', { name: ex.name })}
         >
           <SyncIcon size={16} color={color.text3} strokeWidth={2.2} />
         </Pressable>
@@ -615,7 +611,7 @@ function ExerciseCardBuilder({
           hitSlop={8}
           style={styles.removeBtn}
           accessibilityRole="button"
-          accessibilityLabel={`Remove ${ex.name}`}
+          accessibilityLabel={t('routineEdit.removeLabel', { name: ex.name })}
         >
           <TrashIcon size={16} color={color.text3} strokeWidth={2.2} />
         </Pressable>
@@ -625,7 +621,7 @@ function ExerciseCardBuilder({
       <TextInput
         value={rex.note}
         onChangeText={onNoteChange}
-        placeholder="Add notes here…"
+        placeholder={t('exerciseCard.notesPlaceholder')}
         placeholderTextColor={color.text3}
         multiline
         style={[styles.noteInput, rex.note.length > 0 && styles.noteInputFilled]}
@@ -634,7 +630,7 @@ function ExerciseCardBuilder({
       {/* Rest timer row */}
       <Pressable onPress={onOpenRest} style={styles.restRow}>
         <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-        <Text style={styles.restLabel}>Rest Timer</Text>
+        <Text style={styles.restLabel}>{t('routineEdit.restTimer')}</Text>
         <View style={styles.restValueWrap}>
           <Text style={styles.restValue}>{restOverride ?? restLabel(rex.restSeconds)}</Text>
           <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
@@ -647,21 +643,21 @@ function ExerciseCardBuilder({
           onPress={onSuperset}
           style={[styles.restRow, styles.ssRow]}
           accessibilityRole="button"
-          accessibilityLabel={tag ? `Leave superset ${tag}` : 'Superset with another exercise'}
+          accessibilityLabel={tag ? t('routineEdit.leaveLabel', { tag }) : t('exerciseMenu.supersetLabel')}
         >
           <ReorderIcon size={15} color={color.accent} strokeWidth={2.2} />
-          <Text style={styles.restLabel}>Superset</Text>
+          <Text style={styles.restLabel}>{t('routineEdit.superset')}</Text>
           <View style={styles.restValueWrap}>
             {tag ? (
               <>
                 <Text style={styles.ssWith} numberOfLines={1}>
-                  {tag} · with {supersetWith.join(', ')}
+                  {t('routineEdit.ssWith', { tag, names: supersetWith.join(', ') })}
                 </Text>
-                <Text style={styles.ssLeave}>Leave</Text>
+                <Text style={styles.ssLeave}>{t('routineEdit.leave')}</Text>
               </>
             ) : (
               <>
-                <Text style={styles.restValue}>None</Text>
+                <Text style={styles.restValue}>{t('routineEdit.none')}</Text>
                 <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
               </>
             )}
@@ -671,10 +667,10 @@ function ExerciseCardBuilder({
 
       {/* Column labels */}
       <View style={styles.colLabels}>
-        <Text style={[styles.colLabelText, styles.colSet]}>SET</Text>
-        <Text style={[styles.colLabelText, styles.colType]}>TYPE</Text>
+        <Text style={[styles.colLabelText, styles.colSet]}>{t('exerciseCard.colSet')}</Text>
+        <Text style={[styles.colLabelText, styles.colType]}>{t('routineEdit.colType')}</Text>
         <Text style={[styles.colLabelText, styles.colWeight]}>{wLabel}</Text>
-        <Text style={[styles.colLabelText, styles.colReps]}>REPS</Text>
+        <Text style={[styles.colLabelText, styles.colReps]}>{t('exerciseCard.colReps')}</Text>
       </View>
 
       {/* Set rows */}
@@ -695,7 +691,7 @@ function ExerciseCardBuilder({
               onDelete={() => onRemoveSet(s.id)}
               isOpen={openSetId === s.id}
               onOpenChange={(open) => onSetOpenChange(s.id, open)}
-              accessibilityLabel={`Delete set ${badge}`}
+              accessibilityLabel={t('setRow.deleteLabel', { badge })}
               radius={9}
               rowStyle={styles.setRow}
             >
@@ -712,7 +708,7 @@ function ExerciseCardBuilder({
                 </Pressable>
               </View>
               <View style={styles.colType}>
-                <Text style={styles.typeLabelText}>{TYPE_LABEL[s.type]}</Text>
+                <Text style={styles.typeLabelText}>{typeLabel(s.type)}</Text>
               </View>
               <View style={styles.colWeight}>
                 <TextInput
@@ -741,7 +737,7 @@ function ExerciseCardBuilder({
 
       {/* + Add Set */}
       <PressableScale onPress={onAddSet} style={styles.addSet}>
-        <Text style={styles.addSetText}>+ Add Set</Text>
+        <Text style={styles.addSetText}>{t('exerciseCard.addSet')}</Text>
       </PressableScale>
     </View>
   );

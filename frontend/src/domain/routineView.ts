@@ -9,6 +9,7 @@
 import { groupLabels, roundCount } from './supersets.ts';
 import { type Unit, unitLabel, weightText } from './units.ts';
 import { getLang } from '../i18n/current.ts';
+import { t } from '../i18n/t.ts';
 import { equipmentLabel } from '../i18n/catalogNames.ts';
 
 type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -81,9 +82,9 @@ const FIVE_MINUTES = 300;
 
 /** "6 EXERCISES · 18 SETS". An empty routine has no sets to count. */
 export function routineCountsLabel(exerciseCount: number, setCount: number): string {
-  const exercises = `${exerciseCount} ${exerciseCount === 1 ? 'EXERCISE' : 'EXERCISES'}`;
+  const exercises = t('routineView.exercises', { count: exerciseCount });
   if (exerciseCount === 0) return exercises;
-  return `${exercises} · ${setCount} ${setCount === 1 ? 'SET' : 'SETS'}`;
+  return `${exercises} · ${t('routineView.sets', { count: setCount })}`;
 }
 
 /**
@@ -119,7 +120,7 @@ export function setText(
   const repsText = reps == null ? DASH : String(reps);
   let load: string;
   if (kind === 'bodyweight') {
-    if (weightKg == null || weightKg === 0) load = 'BW';
+    if (weightKg == null || weightKg === 0) load = t('record.bodyweightAbbr');
     else if (weightKg > 0) load = `+${weightText(weightKg, unit)}`;
     else load = `${MINUS}${weightText(-weightKg, unit)}`;
   } else {
@@ -237,8 +238,8 @@ export function buildRoutineView(
       // Partners split apart by another exercise still share one label: it sits
       // on the first run, and the later ones keep only the rail and their tags.
       header = labelled.has(group)
-        ? { label: `SUPERSET ${letter}`, sub: '' }
-        : { label: `SUPERSET ${letter}`, sub: `· ${rounds} ${rounds === 1 ? 'ROUND' : 'ROUNDS'}` };
+        ? { label: t('workoutEdit.ssHeader', { letter }), sub: '' }
+        : { label: t('workoutEdit.ssHeader', { letter }), sub: t('workoutEdit.ssRounds', { count: rounds }) };
       labelled.add(group);
     }
     blocks.push({ key: ex.id, group: header, cards: [card] });

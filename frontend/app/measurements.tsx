@@ -39,20 +39,10 @@ import { getSettings } from '../src/api/workouts';
 import { syncBodyMeasurementsFromHealth } from '../src/lib/healthSync';
 import { color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { t } from '../src/i18n';
 
 /** Sentence-case labels; the ids are camelCase and not for reading. */
-const LABEL: Record<MetricId, string> = {
-  waist: 'Waist',
-  chest: 'Chest',
-  arms: 'Arms',
-  thighs: 'Thighs',
-  calves: 'Calves',
-  shoulders: 'Shoulders',
-  hips: 'Hips',
-  neck: 'Neck',
-  bodyweight: 'Bodyweight',
-  bodyFat: 'Body fat',
-};
+const labelOf = (metric: MetricId): string => t(`measurements.metric.${metric}`);
 
 export default function MeasurementsScreen() {
   useThemed();
@@ -106,7 +96,7 @@ export default function MeasurementsScreen() {
       } catch {
         // None of the readings were stored. The sheet stays open with what
         // was typed, so Save can be tapped again.
-        Alert.alert('Couldn’t save', 'Nothing was changed. Try again.');
+        Alert.alert(t('measurements.saveFailed'), t('common.nothingChanged'));
         return;
       }
     }
@@ -122,7 +112,7 @@ export default function MeasurementsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back} accessibilityRole="button">
           <BackChevronIcon color={color.text1} />
         </Pressable>
-        <Text style={styles.title}>Measurements</Text>
+        <Text style={styles.title}>{t('measurements.title')}</Text>
         <View style={styles.back} />
       </View>
 
@@ -138,7 +128,7 @@ export default function MeasurementsScreen() {
                 onPress={() => router.push(`/measurement/${metric}`)}
                 accessibilityRole="button"
               >
-                <Text style={styles.rowLabel}>{LABEL[metric]}</Text>
+                <Text style={styles.rowLabel}>{labelOf(metric)}</Text>
                 <View style={styles.rowRight}>
                   {row ? (
                     <>
@@ -153,7 +143,7 @@ export default function MeasurementsScreen() {
                       ) : null}
                     </>
                   ) : (
-                    <Text style={styles.rowEmpty}>Not logged</Text>
+                    <Text style={styles.rowEmpty}>{t('measurements.notLogged')}</Text>
                   )}
                   <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.2} />
                 </View>
@@ -165,7 +155,7 @@ export default function MeasurementsScreen() {
 
       <View style={[styles.ctaWrap, { bottom: 24 + insets.bottom }]}>
         <PressableScale style={styles.cta} onPress={() => setSheetOpen(true)} accessibilityRole="button">
-          <Text style={styles.ctaText}>Log</Text>
+          <Text style={styles.ctaText}>{t('measurements.log')}</Text>
         </PressableScale>
       </View>
 
@@ -174,21 +164,21 @@ export default function MeasurementsScreen() {
           <View style={styles.grabber} />
         </View>
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Log measurements</Text>
+          <Text style={styles.sheetTitle}>{t('measurements.logTitle')}</Text>
           <Pressable onPress={() => setSheetOpen(false)} hitSlop={8}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={styles.cancel}>{t('common.cancel')}</Text>
           </Pressable>
         </View>
-        <Text style={styles.sheetNote}>Fill in what you measured. Blanks are skipped.</Text>
+        <Text style={styles.sheetNote}>{t('measurements.logNote')}</Text>
 
         <ScrollView style={styles.sheetList} keyboardShouldPersistTaps="handled">
           {METRICS.map((metric) => (
             <View key={metric} style={styles.entryRow}>
-              <Text style={styles.entryLabel}>{LABEL[metric]}</Text>
+              <Text style={styles.entryLabel}>{labelOf(metric)}</Text>
               <View style={styles.entryBox}>
                 <TextInput
                   value={draft[metric] ?? ''}
-                  onChangeText={(t) => setDraft((d) => ({ ...d, [metric]: t }))}
+                  onChangeText={(text) => setDraft((d) => ({ ...d, [metric]: text }))}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
                   placeholder="—"
@@ -202,7 +192,7 @@ export default function MeasurementsScreen() {
         </ScrollView>
 
         <PressableScale style={styles.cta} onPress={() => void save()} accessibilityRole="button">
-          <Text style={styles.ctaText}>Save</Text>
+          <Text style={styles.ctaText}>{t('common.save')}</Text>
         </PressableScale>
       </DraggableSheet>
     </View>

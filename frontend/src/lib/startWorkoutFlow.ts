@@ -3,6 +3,7 @@
  * and the reasons). The one function every start path calls.
  */
 import { Alert } from 'react-native';
+import { t } from '../i18n/t';
 
 import { listWorkouts, startWorkout } from '../api/workouts';
 import { createStartGuard, type RunningChoice, type RunningWorkout, type StartOutcome } from './startGuard';
@@ -13,11 +14,11 @@ const guard = createStartGuard();
 const askOnPhone = (running: RunningWorkout): Promise<RunningChoice> =>
   new Promise((resolve) => {
     Alert.alert(
-      'Workout in progress',
-      `“${running.name}” is still running. Finish or discard it before starting another.`,
+      t('resume.title'),
+      t('startFlow.body', { name: running.name }),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
-        { text: 'Resume', isPreferred: true, onPress: () => resolve('resume') },
+        { text: t('common.cancel'), style: 'cancel', onPress: () => resolve('cancel') },
+        { text: t('resume.button'), isPreferred: true, onPress: () => resolve('resume') },
       ],
       // Android: a tap outside the alert is a cancel.
       { cancelable: true, onDismiss: () => resolve('cancel') },

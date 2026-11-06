@@ -65,19 +65,18 @@ export interface RestOption {
   seconds: number;
 }
 
-export const REST_OPTIONS: RestOption[] = [
-  { label: 'Off', seconds: 0 },
-  { label: '30s', seconds: 30 },
-  { label: '45s', seconds: 45 },
-  { label: '60s', seconds: 60 },
-  { label: '90s', seconds: 90 },
-  { label: '2:00', seconds: 120 },
-  { label: '2:30', seconds: 150 },
-  { label: '3:00', seconds: 180 },
-  { label: '3:30', seconds: 210 },
-  { label: '4:00', seconds: 240 },
-  { label: '5:00', seconds: 300 },
-];
+/** "30s" under two minutes, "2:30" from there (the same shape as `fmtRest`). */
+function restOptionLabel(seconds: number): string {
+  if (seconds === 0) return t('common.off');
+  return seconds < 120 ? t('rest.seconds', { n: seconds }) : fmtRest(seconds);
+}
+
+export const REST_OPTIONS: RestOption[] = [0, 30, 45, 60, 90, 120, 150, 180, 210, 240, 300].map((seconds) => ({
+  get label() {
+    return restOptionLabel(seconds);
+  },
+  seconds,
+}));
 
 /** mm:ss (or h:mm:ss) for elapsed time. */
 export function fmtClock(totalSeconds: number): string {

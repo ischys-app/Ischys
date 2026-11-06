@@ -38,6 +38,7 @@ import {
   recomputeForExercise,
   reflagExercisePrs,
 } from './recordStore';
+import { t } from '../i18n/t';
 
 /** 'Incline Bench Press' -> 'IB' (port of serializers.initials_of). */
 export function initialsOf(name: string): string {
@@ -302,7 +303,7 @@ export type MergeResult = {
 /** Thrown when a live workout references a candidate — the merge is blocked. */
 export class ActiveSessionError extends Error {
   constructor() {
-    super('A workout is in progress that uses one of these exercises. Finish it first.');
+    super(t('mergeDup.activeSession'));
     this.name = 'ActiveSessionError';
   }
 }

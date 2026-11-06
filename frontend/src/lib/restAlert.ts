@@ -17,6 +17,7 @@ import { Platform } from 'react-native';
 
 import { canScheduleExactAlarms, openExactAlarmSettings } from '../../modules/exact-alarm';
 import { alertWhenActive } from './whenActive';
+import { t } from '../i18n/t';
 
 import {
   REST_ALERT_CATEGORY,
@@ -92,11 +93,11 @@ export async function maybeAskForExactAlarms(
     await SecureStore.setItemAsync(KEY_EXACT_ALARM_ASKED, new Date().toISOString());
     // Asked from the workout screen, which can open in the background.
     alertWhenActive(
-      'Rest alerts on time',
-      'Android can delay the end-of-rest alert by a minute or more unless Ischys is allowed to set alarms. Turn on "Alarms & reminders" for Ischys to get it on the second.',
+      t('restAlert.exactTitle'),
+      t('restAlert.exactBody'),
       [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Open settings', onPress: () => void openExactAlarmSettings() },
+        { text: t('common.notNow'), style: 'cancel' },
+        { text: t('restAlert.openSettings'), onPress: () => void openExactAlarmSettings() },
       ],
     );
   } catch {

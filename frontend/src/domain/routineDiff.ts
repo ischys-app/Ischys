@@ -30,7 +30,7 @@ export function workingSetCount(sets: { type: string }[]): number {
 
 /** Rest duration for the diff row: "1:30", "45s". */
 export function restLabel(s: number): string {
-  return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`;
+  return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : t('rest.seconds', { n: s });
 }
 
 /** Values kept in the longest common subsequence of two id sequences — used to

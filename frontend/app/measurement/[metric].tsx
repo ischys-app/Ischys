@@ -24,6 +24,7 @@ import { getSettings } from '../../src/api/workouts';
 import { fmtDateOnly } from '../../src/lib/format';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { t } from '../../src/i18n';
 
 const W = 320;
 const H = 140;
@@ -83,7 +84,7 @@ export default function MeasurementHistoryScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back} accessibilityRole="button">
           <BackChevronIcon color={color.text1} />
         </Pressable>
-        <Text style={styles.title}>{metric === 'bodyFat' ? 'Body fat' : metric[0].toUpperCase() + metric.slice(1)}</Text>
+        <Text style={styles.title}>{t(`measurements.metric.${metric}`)}</Text>
         <View style={styles.back} />
       </View>
 
@@ -118,15 +119,15 @@ export default function MeasurementHistoryScreen() {
               ))}
             </Svg>
             <View style={styles.axis}>
-              {axisTicks(chart.times, 'ALL').map((t, i) => (
-                <Text key={i} style={[styles.axisTick, { left: `${t.pct}%` }]}>
-                  {t.label}
+              {axisTicks(chart.times, 'ALL').map((tick, i) => (
+                <Text key={i} style={[styles.axisTick, { left: `${tick.pct}%` }]}>
+                  {tick.label}
                 </Text>
               ))}
             </View>
           </View>
         ) : (
-          <Text style={styles.empty}>Log this twice to see it over time.</Text>
+          <Text style={styles.empty}>{t('measurements.empty')}</Text>
         )}
 
         <View style={styles.card}>
@@ -136,7 +137,7 @@ export default function MeasurementHistoryScreen() {
               <View style={styles.rowRight}>
                 {/* Named on every entry: a Health reading and one you took are
                     different claims. */}
-                <Text style={styles.sourceTag}>{r.source === 'health' ? 'HEALTH' : 'MANUAL'}</Text>
+                <Text style={styles.sourceTag}>{r.source === 'health' ? t('measurements.sourceHealth') : t('measurements.sourceManual')}</Text>
                 <Text style={styles.rowValue}>{formatMeasurement(r.value, metric, prefs)}</Text>
               </View>
             </View>

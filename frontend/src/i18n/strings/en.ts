@@ -1595,4 +1595,2108 @@ export const strings: Record<string, StringDef> = {
     en: 'Opens the date and time picker',
     note: 'Screen-reader hint of a date/start/duration cell in Edit Workout. Not visible.',
   },
+  'measurements.title': {
+    en: 'Measurements',
+    note: 'Title of the body measurements screen (list of waist, chest, etc.). Header title; one line.',
+  },
+  'measurements.notLogged': {
+    en: 'Not logged',
+    note: 'Row value on the measurements list when that body part has no reading yet. Max 12 characters; fixed-width row.',
+  },
+  'measurements.log': {
+    en: 'Log',
+    note: 'Primary button on the measurements screen that opens the logging sheet. Max 6 characters.',
+  },
+  'measurements.logTitle': {
+    en: 'Log measurements',
+    note: 'Title of the sheet where body measurements are entered.',
+  },
+  'measurements.logNote': {
+    en: 'Fill in what you measured. Blanks are skipped.',
+    note: 'Helper line under the sheet title. Blank fields are ignored when saving.',
+  },
+  'measurements.saveFailed': {
+    en: 'Couldn’t save',
+    note: 'Alert title when saving measurements fails; the message is common.nothingChanged.',
+  },
+  'measurements.empty': {
+    en: 'Log this twice to see it over time.',
+    note: 'Empty-state line on a single measurement chart screen when fewer than two readings exist.',
+  },
+  'measurements.sourceHealth': {
+    en: 'HEALTH',
+    note: 'Small tag on a measurement history row: the reading came from Apple Health. Upper case in English. Max 8 characters.',
+  },
+  'measurements.sourceManual': {
+    en: 'MANUAL',
+    note: 'Small tag on a measurement history row: the reading was typed in by the user. Upper case in English. Max 8 characters.',
+  },
+  'measurements.metric.waist': {
+    en: 'Waist',
+    note: 'Body measurement name: waist circumference. Row label.',
+  },
+  'measurements.metric.chest': {
+    en: 'Chest',
+    note: 'Body measurement name: chest circumference. Row label.',
+  },
+  'measurements.metric.arms': {
+    en: 'Arms',
+    note: 'Body measurement name: arm circumference. Row label.',
+  },
+  'measurements.metric.thighs': {
+    en: 'Thighs',
+    note: 'Body measurement name: thigh circumference. Row label.',
+  },
+  'measurements.metric.calves': {
+    en: 'Calves',
+    note: 'Body measurement name: calf circumference. Row label.',
+  },
+  'measurements.metric.shoulders': {
+    en: 'Shoulders',
+    note: 'Body measurement name: shoulder circumference. Row label.',
+  },
+  'measurements.metric.hips': {
+    en: 'Hips',
+    note: 'Body measurement name: hip circumference. Row label.',
+  },
+  'measurements.metric.neck': {
+    en: 'Neck',
+    note: 'Body measurement name: neck circumference. Row label.',
+  },
+  'measurements.metric.bodyweight': {
+    en: 'Bodyweight',
+    note: 'Body measurement name: body weight. Row label.',
+  },
+  'measurements.metric.bodyFat': {
+    en: 'Body fat',
+    note: 'Body measurement name: body fat percentage. Row label.',
+  },
+  'common.back': {
+    en: 'Back',
+    note: 'Screen-reader label of the back chevron button in screen headers. Not visible.',
+  },
+  'plates.title': {
+    en: 'Bar & plates',
+    note: 'Title of the bar and plates setup screen (also the Settings row label). One line.',
+  },
+  'plates.bar': {
+    en: 'BAR',
+    note: 'Section label above the barbell weight options on the bar and plates screen. Upper case in English.',
+  },
+  'plates.platesPairs': {
+    en: 'PLATES · PAIRS',
+    note: 'Section label above the list of plate sizes, each with how many pairs the gym has. Upper case in English.',
+  },
+  'plates.fewer': {
+    en: 'One fewer pair of {plate} plates',
+    note: 'Screen-reader label of the minus button for a plate size; {plate} is a weight with unit such as 20 kg. Not visible.',
+  },
+  'plates.more': {
+    en: 'One more pair of {plate} plates',
+    note: 'Screen-reader label of the plus button for a plate size; {plate} is a weight with unit such as 20 kg. Not visible.',
+  },
+  'plates.hint': {
+    en: 'Set a plate to 0 if your gym doesn\'t have it.',
+    note: 'Hint line under the plates list.',
+  },
+  'plates.reset': {
+    en: 'Reset to a standard set',
+    note: 'Text button that restores the default bar and plate set.',
+  },
+  'oneRm.title': {
+    en: '1RM calculator',
+    note: 'Title of the one-rep-max calculator screen. Keep 1RM untranslated.',
+  },
+  'oneRm.from': {
+    en: 'From {name}',
+    note: 'Line above the calculator inputs when opened from an exercise; {name} is the exercise name.',
+  },
+  'oneRm.weight': {
+    en: 'WEIGHT',
+    note: 'Input field caption for the lifted weight in the 1RM calculator. Upper case in English. Max 8 characters; two fields share a row.',
+  },
+  'oneRm.reps': {
+    en: 'REPS',
+    note: 'Input field caption for repetitions in the 1RM calculator. Upper case in English. Max 8 characters; two fields share a row.',
+  },
+  'oneRm.repsSuffix': {
+    en: 'reps',
+    note: 'Unit text inside the reps input field of the 1RM calculator. Max 4 characters.',
+  },
+  'oneRm.estimated': {
+    en: 'ESTIMATED 1RM',
+    note: 'Caption above the big estimated one-rep-max number. Upper case in English. Keep 1RM untranslated.',
+  },
+  'oneRm.close': {
+    en: 'Close',
+    note: 'Confidence tier name when the estimate comes from a low-rep set (reliable). One word, shown under the estimate.',
+  },
+  'oneRm.closeNote': {
+    en: 'Low-rep sets give the most reliable estimate.',
+    note: 'Explanation line under the Close tier.',
+  },
+  'oneRm.reasonable': {
+    en: 'Reasonable',
+    note: 'Confidence tier name for a medium-rep set. One word.',
+  },
+  'oneRm.reasonableNote': {
+    en: 'Good enough to plan from. A set under 6 reps would sharpen it.',
+    note: 'Explanation line under the Reasonable tier.',
+  },
+  'oneRm.rough': {
+    en: 'Rough',
+    note: 'Confidence tier name for a high-rep set (unreliable). One word.',
+  },
+  'oneRm.roughNote': {
+    en: 'Past 10 reps this says more about your rep tolerance than your one-rep max. Log a set of 5 or fewer for a number worth planning from.',
+    note: 'Explanation line under the Rough tier.',
+  },
+  'oneRm.enter': {
+    en: 'Enter a weight and a rep count.',
+    note: 'Prompt shown before a weight and reps have been entered.',
+  },
+  'oneRm.colLoad': {
+    en: 'LOAD',
+    note: 'Table column header: the weight to lift at each percentage. Upper case in English. Max 6 characters.',
+  },
+  'oneRm.colReps': {
+    en: '≈ REPS',
+    note: 'Table column header: approximate repetitions possible at each percentage. Upper case in English. Max 8 characters.',
+  },
+  'oneRm.footnote': {
+    en: 'An estimate, never a personal record. {rounding}',
+    note: 'Footnote under the percentage table; {rounding} is one of the two oneRm.roundPlates / oneRm.roundBar sentences.',
+  },
+  'oneRm.roundPlates': {
+    en: 'Loads round to your plates.',
+    note: 'Second sentence of the 1RM footnote when a barbell is used.',
+  },
+  'oneRm.roundBar': {
+    en: 'Loads round to {step} {unit}.',
+    note: 'Second sentence of the 1RM footnote when no barbell is used; {step} is a number, {unit} is kg or lb.',
+  },
+  'muscleMap.title': {
+    en: 'Muscle map',
+    note: 'Title of the muscle map screen (body diagram coloured by recent training).',
+  },
+  'muscleMap.days7': {
+    en: '7 DAYS',
+    note: 'Segmented control option: show the last 7 days. Upper case in English. Max 8 characters; fixed-width segment.',
+  },
+  'muscleMap.days28': {
+    en: '28 DAYS',
+    note: 'Segmented control option: show the last 28 days. Upper case in English. Max 8 characters; fixed-width segment.',
+  },
+  'muscleMap.scale28': {
+    en: 'Sets per week, averaged over 28 days',
+    note: 'Caption under the segmented control explaining the colour scale for the 28-day window.',
+  },
+  'muscleMap.scale7': {
+    en: 'Sets in the last 7 days',
+    note: 'Caption under the segmented control explaining the colour scale for the 7-day window.',
+  },
+  'muscleMap.front': {
+    en: 'FRONT',
+    note: 'Caption under the front view of the body diagram. Upper case in English.',
+  },
+  'muscleMap.back': {
+    en: 'BACK',
+    note: 'Caption under the back view of the body diagram. Upper case in English.',
+  },
+  'muscleMap.notTrained': {
+    en: 'NOT TRAINED',
+    note: 'Section label above the list of muscles with no recent work. Upper case in English.',
+  },
+  'muscleMap.setsPerWeek': {
+    en: '{n} sets / week',
+    note: 'Value in the muscle detail sheet for the 28-day window; {n} is a number.',
+  },
+  'muscleMap.sets': {
+    en: '{n} sets',
+    note: 'Value in the muscle detail sheet for the 7-day window; {n} is a number.',
+  },
+  'muscleMap.noneLogged': {
+    en: 'Nothing logged for this muscle in the window.',
+    note: 'Note in the muscle detail sheet when the muscle had no work and there is enough history.',
+  },
+  'muscleMap.notEnough': {
+    en: 'Not enough history yet to call this neglected.',
+    note: 'Note in the muscle detail sheet when the muscle had no work but history is short.',
+  },
+  'muscleMap.counts': {
+    en: 'Counts direct work in full and indirect work at half. Currently {tint}.',
+    note: 'Note in the muscle detail sheet; {tint} is one of the muscleMap.tint words.',
+  },
+  'muscleMap.tint.none': {
+    en: 'none',
+    note: 'Intensity word used in the sentence "Currently {tint}": no work.',
+  },
+  'muscleMap.tint.low': {
+    en: 'low',
+    note: 'Intensity word used in the sentence "Currently {tint}": low work.',
+  },
+  'muscleMap.tint.medium': {
+    en: 'medium',
+    note: 'Intensity word used in the sentence "Currently {tint}": medium work.',
+  },
+  'muscleMap.tint.high': {
+    en: 'high',
+    note: 'Intensity word used in the sentence "Currently {tint}": high work.',
+  },
+  'muscleRegion.frontDelts': {
+    en: 'Front Delts',
+    note: 'Muscle-map region name: front of the shoulder. Not a catalog muscle. Shown in lists and the detail sheet title.',
+  },
+  'muscleRegion.sideDelts': {
+    en: 'Side Delts',
+    note: 'Muscle-map region name: side of the shoulder. Not a catalog muscle.',
+  },
+  'muscleRegion.rearDelts': {
+    en: 'Rear Delts',
+    note: 'Muscle-map region name: back of the shoulder. Not a catalog muscle.',
+  },
+  'muscleRegion.obliques': {
+    en: 'Obliques',
+    note: 'Muscle-map region name: side abdominal muscles. Not a catalog muscle.',
+  },
+  'profile.weekLetters': {
+    en: 'M,T,W,T,F,S,S',
+    note: 'Seven single-letter weekday initials, Monday first, separated by commas (no spaces), under the weekly bars on the Profile tab. Exactly 7 items. Max 1 character each.',
+  },
+  'record.bodyweightAbbr': {
+    en: 'BW',
+    note: 'Abbreviation for bodyweight in a record value such as "BW × 11" (bodyweight times 11 reps). Max 3 characters.',
+  },
+  'record.new': {
+    en: 'NEW',
+    note: 'Badge text for a first-ever personal record. Upper case in English. Max 6 characters.',
+  },
+  'mergeDup.title': {
+    en: 'Merge duplicates',
+    note: 'Title of the merge-duplicates screen; also the Settings row label. One line.',
+  },
+  'mergeDup.sameName': {
+    en: 'SAME NAME',
+    note: 'Small tag on a duplicate group: the exercises share the same name. Upper case in English. Max 14 characters.',
+  },
+  'mergeDup.sameImport': {
+    en: 'SAME IMPORT',
+    note: 'Small tag on a duplicate group: the exercises came from the same import. Upper case in English. Max 14 characters.',
+  },
+  'mergeDup.similarName': {
+    en: 'SIMILAR NAME',
+    note: 'Small tag on a duplicate group: the exercise names are similar. Upper case in English. Max 14 characters.',
+  },
+  'mergeDup.noHistory': {
+    en: 'no history yet',
+    note: 'Lower-case fragment in an exercise meta line when the exercise has never been trained.',
+  },
+  'mergeDup.since': {
+    en: 'since {date}',
+    note: 'Lower-case fragment in an exercise meta line; {date} is a month and year such as Jul 2026.',
+  },
+  'mergeDup.keepMeta': {
+    en: '{sets} sets · {workouts} workouts · {since}',
+    note: 'Meta line under an exercise name in the Keep list; {since} is the since fragment or "no history yet".',
+  },
+  'mergeDup.memberMeta': {
+    en: '{equipment} · {sets} sets',
+    note: 'Meta line under an exercise name on a duplicate group card; {equipment} is an equipment name.',
+  },
+  'mergeDup.scanFailed': {
+    en: 'Could not scan the library',
+    note: 'Error line shown when scanning the exercise library for duplicates fails.',
+  },
+  'mergeDup.cantMerge': {
+    en: 'Can’t merge right now',
+    note: 'Alert title when a merge is blocked by a workout in progress; message is the active-session text.',
+  },
+  'mergeDup.mergeFailed': {
+    en: 'Merge failed',
+    note: 'Alert title when merging exercises fails.',
+  },
+  'mergeDup.somethingWrong': {
+    en: 'Something went wrong.',
+    note: 'Alert message fallback when merging fails with no detail.',
+  },
+  'mergeDup.renameFailed': {
+    en: 'Rename failed',
+    note: 'Alert title when renaming an exercise fails.',
+  },
+  'mergeDup.renameFailedBody': {
+    en: 'Could not rename the exercise.',
+    note: 'Alert message when renaming an exercise fails.',
+  },
+  'mergeDup.keep': {
+    en: 'KEEP',
+    note: 'Section label above the list of exercises to choose which one to keep. Upper case in English.',
+  },
+  'mergeDup.whatCombines': {
+    en: 'WHAT COMBINES',
+    note: 'Section label above the summary of what merging combines. Upper case in English.',
+  },
+  'mergeDup.combined': {
+    en: '{sets} sets across {workouts} workouts',
+    note: 'Row in the what-combines card; both are numbers.',
+  },
+  'mergeDup.repoint_one': {
+    en: '{count} routine re-points automatically',
+    note: 'Row in the what-combines card: one routine will switch to the kept exercise. {count} is 1.',
+  },
+  'mergeDup.repoint_other': {
+    en: '{count} routines re-point automatically',
+    note: 'Row in the what-combines card: several routines will switch to the kept exercise. {count} is a number.',
+  },
+  'mergeDup.prHeader': {
+    en: 'PERSONAL RECORDS · BEST OF EACH KEPT',
+    note: 'Heading above the table of personal records after merge. Upper case in English.',
+  },
+  'mergeDup.fromDup': {
+    en: 'from dup',
+    note: 'Tag on a record row: the value comes from the duplicate exercise. Lower case in English. Max 10 characters.',
+  },
+  'mergeDup.kept': {
+    en: 'kept',
+    note: 'Tag on a record row: the value stays from the kept exercise. Lower case in English. Max 10 characters.',
+  },
+  'mergeDup.finePrint': {
+    en: 'Nothing is deleted except the duplicate’s empty entry. Merging can’t be undone.',
+    note: 'Fine print at the bottom of the merge detail screen.',
+  },
+  'mergeDup.mergeCount': {
+    en: 'Merge {count} exercises',
+    note: 'Header title of the merge detail screen; {count} is a number of exercises (2 or more).',
+  },
+  'mergeDup.mergeInto': {
+    en: 'Merge into {name}',
+    note: 'Primary button on the merge detail screen; {name} is the kept exercise name. One line, truncated if long.',
+  },
+  'mergeDup.confirmTitle': {
+    en: 'Merge these exercises?',
+    note: 'Title of the confirmation sheet before merging.',
+  },
+  'mergeDup.confirm_one': {
+    en: '{sets} sets and {count} routine will point to {name}. Your history and personal records are kept — only the duplicate’s empty entry is removed.',
+    note: 'Body of the confirmation sheet; {sets} is a number of sets, {count} is 1 routine, {name} is the kept exercise name (shown in bold).',
+  },
+  'mergeDup.confirm_other': {
+    en: '{sets} sets and {count} routines will point to {name}. Your history and personal records are kept — only the duplicate’s empty entry is removed.',
+    note: 'Body of the confirmation sheet; {sets} is a number of sets, {count} is the number of routines, {name} is the kept exercise name (shown in bold).',
+  },
+  'mergeDup.cantUndo': {
+    en: 'This can’t be undone.',
+    note: 'Warning line in the confirmation sheet.',
+  },
+  'mergeDup.merge': {
+    en: 'Merge',
+    note: 'Confirm button in the merge confirmation sheet. Max 8 characters; fixed-width button.',
+  },
+  'mergeDup.intro': {
+    en: 'These look like the same lift saved twice. Merging keeps every set and PR.',
+    note: 'Intro line above the list of duplicate groups. PR means personal record.',
+  },
+  'mergeDup.remaining': {
+    en: '{n} REMAINING',
+    note: 'Section label after a merge: how many duplicate groups are left. Upper case in English.',
+  },
+  'mergeDup.merged': {
+    en: 'Merged',
+    note: 'Title on the merge success receipt.',
+  },
+  'mergeDup.receiptSub': {
+    en: '{name} · {sets} sets',
+    note: 'Subtitle on the merge receipt; {name} is the kept exercise name, {sets} the total sets.',
+  },
+  'mergeDup.setsMoved': {
+    en: 'Sets moved',
+    note: 'Receipt row label: number of sets moved to the kept exercise.',
+  },
+  'mergeDup.routinesUpdated': {
+    en: 'Routines updated',
+    note: 'Receipt row label: number of routines switched to the kept exercise.',
+  },
+  'mergeDup.newPr': {
+    en: 'New PR gained',
+    note: 'Receipt row label: a new personal record resulted from the merge.',
+  },
+  'mergeDup.prLine': {
+    en: '{metric} · {value}',
+    note: 'Receipt row value: a record category and its value, e.g. Best set · 100 kg × 5.',
+  },
+  'mergeDup.rename': {
+    en: 'Rename exercise',
+    note: 'Button on the merge receipt that renames the kept exercise, and title of the rename text prompt.',
+  },
+  'mergeDup.emptyTitle': {
+    en: 'No duplicates found',
+    note: 'Empty-state title when no duplicate exercises exist.',
+  },
+  'mergeDup.emptyBody': {
+    en: 'Your library is clean. {scope}',
+    note: 'Empty-state body; {scope} is one of the two scope sentences.',
+  },
+  'mergeDup.scopeAll': {
+    en: 'Ischys compares names, equipment and import source across all {total} exercises.',
+    note: 'Scope sentence in the empty state; {total} is a number of exercises. Keep Ischys untranslated.',
+  },
+  'mergeDup.scopeWhole': {
+    en: 'Ischys compares names, equipment and import source across your whole library.',
+    note: 'Scope sentence in the empty state when the exercise count is unknown. Keep Ischys untranslated.',
+  },
+  'mergeDup.spotOne': {
+    en: 'IF YOU SPOT ONE ANYWAY',
+    note: 'Label of the tip card in the empty state. Upper case in English.',
+  },
+  'mergeDup.spotOneBody': {
+    en: 'Select both in the exercise library and choose Merge.',
+    note: 'Tip text in the empty state explaining how to merge two exercises by hand.',
+  },
+  'mergeDup.reasonCatalog': {
+    en: 'Keeps images, how-to and muscle data',
+    note: 'One-line reason shown under the Keep list when the preselected exercise is a built-in one.',
+  },
+  'mergeDup.reasonHistory': {
+    en: 'More history — fewer records move',
+    note: 'One-line reason shown under the Keep list when the preselected exercise has more history.',
+  },
+  'mergeDup.activeSession': {
+    en: 'A workout is in progress that uses one of these exercises. Finish it first.',
+    note: 'Error message when a merge or delete is blocked because a workout in progress uses the exercise.',
+  },
+  'mergeDup.metric.1rm': {
+    en: '1RM',
+    note: 'Record label in the merge tables for estimated one-rep max. Keep 1RM untranslated.',
+  },
+  'mergeDup.metric.bestSet': {
+    en: 'Best set',
+    note: 'Record label in the merge tables: heaviest single set. Sentence case in English.',
+  },
+  'mergeDup.metric.maxReps': {
+    en: 'Most reps',
+    note: 'Record label in the merge tables: most repetitions in one set.',
+  },
+  'mergeDup.metric.bestVolume': {
+    en: 'Best volume',
+    note: 'Record label in the merge tables: most total weight lifted in one exercise.',
+  },
+  'profiles.inWorkout': {
+    en: 'IN WORKOUT · {clock}',
+    note: 'Profile switcher row sub line while that profile has a workout running; {clock} is elapsed time such as 12:34. Upper case in English.',
+  },
+  'profiles.noWorkoutsYet': {
+    en: 'NO WORKOUTS YET',
+    note: 'Profile row sub line for a profile with no completed workouts. Upper case in English.',
+  },
+  'profiles.lastToday': {
+    en: 'LAST · TODAY',
+    note: 'Profile switcher row sub line: last workout was today. Upper case in English.',
+  },
+  'profiles.lastDay': {
+    en: 'LAST · {date}',
+    note: 'Profile switcher row sub line: last workout date; {date} is a short date such as TUE 30 SEP. Upper case in English.',
+  },
+  'profiles.ownerHealthWatch': {
+    en: 'OWNER · HEALTH · WATCH',
+    note: 'Sub line of the owner profile in Manage profiles: this profile owns Health and Watch. Upper case in English.',
+  },
+  'profiles.manageCount_one': {
+    en: '{count} WORKOUT · SINCE {date}',
+    note: 'Sub line of a profile in Manage profiles: one workout; {date} is a month and year such as JUL 2026. Upper case in English.',
+  },
+  'profiles.manageCount_other': {
+    en: '{count} WORKOUTS · SINCE {date}',
+    note: 'Sub line of a profile in Manage profiles: several workouts; {date} is a month and year such as JUL 2026. Upper case in English.',
+  },
+  'profiles.phoneOwner': {
+    en: 'the phone\'s owner',
+    note: 'How copy refers to the profile that owns the phone when it still has the default name. Lower case, used mid-sentence.',
+  },
+  'profiles.thisProfile': {
+    en: 'this profile',
+    note: 'Fallback mid-sentence name for a profile with no name. Lower case.',
+  },
+  'profiles.copySub_one': {
+    en: '{count} ROUTINE · COPIES, NOT LINKED',
+    note: 'Sub line of the copy-routines toggle for one routine. Upper case in English.',
+  },
+  'profiles.copySub_other': {
+    en: '{count} ROUTINES · COPIES, NOT LINKED',
+    note: 'Sub line of the copy-routines toggle for several routines. Upper case in English.',
+  },
+  'profiles.copyYour': {
+    en: 'Copy your routines',
+    note: 'Label of the toggle on New profile when the current profile is the default-named owner.',
+  },
+  'profiles.copyTheirs': {
+    en: 'Copy {name}\'s routines',
+    note: 'Label of the toggle on New profile; {name} is the current profile first name.',
+  },
+  'profiles.footerWhose': {
+    en: '{name}\'s workouts',
+    note: 'Start of the Health and Watch footer on New profile; {name} is the new profile first name.',
+  },
+  'profiles.footerThis': {
+    en: 'This profile\'s workouts',
+    note: 'Start of the Health and Watch footer on New profile when no name is typed yet.',
+  },
+  'profiles.footer': {
+    en: '{whose} stay in Ischys. {health} and the Watch belong to {owner}.',
+    note: 'Footer under the Health and Watch rows on New profile; {whose} is the previous phrase, {health} is Apple Health or Health Connect, {owner} is a person name or the phone owner phrase.',
+  },
+  'profiles.possessive': {
+    en: '{name}\'s',
+    note: 'First name in possessive form, used mid-sentence in the delete sheet.',
+  },
+  'profiles.possessiveThis': {
+    en: 'this profile\'s',
+    note: 'Possessive used mid-sentence in the delete sheet when the profile has no name.',
+  },
+  'profiles.deleteLead': {
+    en: 'This erases {whose} ',
+    note: 'Start of the delete-profile sheet body; {whose} is a possessive name. Keep the trailing space. A count and a unit word follow.',
+  },
+  'profiles.deleteWorkouts_one': {
+    en: ' workout, ',
+    note: 'Delete sheet body: unit word after a count of 1 workout. Keep the surrounding spaces and the comma.',
+  },
+  'profiles.deleteWorkouts_other': {
+    en: ' workouts, ',
+    note: 'Delete sheet body: unit word after a count of workouts. Keep the surrounding spaces and the comma.',
+  },
+  'profiles.deleteRoutines_one': {
+    en: ' routine, ',
+    note: 'Delete sheet body: unit word after a count of 1 routine. Keep the surrounding spaces and the comma.',
+  },
+  'profiles.deleteRoutines_other': {
+    en: ' routines, ',
+    note: 'Delete sheet body: unit word after a count of routines. Keep the surrounding spaces and the comma.',
+  },
+  'profiles.deleteRecords_one': {
+    en: ' record and every measurement from this phone. Other profiles aren\'t affected. This can\'t be undone.',
+    note: 'Delete sheet body ending after a count of 1 personal record. Keep the leading space.',
+  },
+  'profiles.deleteRecords_other': {
+    en: ' records and every measurement from this phone. Other profiles aren\'t affected. This can\'t be undone.',
+    note: 'Delete sheet body ending after a count of personal records. Keep the leading space.',
+  },
+  'profiles.yourWorkout': {
+    en: 'Your workout',
+    note: 'Fallback workout name in the finish-first sheet when the running workout has no name.',
+  },
+  'profiles.finishYours': {
+    en: 'Finish your workout first',
+    note: 'Title of the sheet that blocks switching profile while the default-named owner has a workout running.',
+  },
+  'profiles.finishTheirs': {
+    en: 'Finish {name}\'s workout first',
+    note: 'Title of the sheet that blocks switching profile while a workout runs; {name} is that profile first name or the phone owner phrase.',
+  },
+  'profiles.finishLead': {
+    en: '{routine} has been running for ',
+    note: 'Start of the finish-first sheet body; {routine} is the workout name. A running clock follows. Keep the trailing space.',
+  },
+  'profiles.finishTail': {
+    en: '. Only one workout can run at a time. Finish or discard it, then switch to {target}.',
+    note: 'End of the finish-first sheet body after the clock; {target} is a profile first name or the phone owner phrase.',
+  },
+  'export.title': {
+    en: 'Export data',
+    note: 'Title of the export format alert, and the Settings row label for exporting data.',
+  },
+  'export.chooseFormat': {
+    en: 'Choose a format',
+    note: 'Message of the export format alert; its buttons are JSON, CSV and Cancel.',
+  },
+  'export.sharingUnavailable': {
+    en: 'Sharing unavailable',
+    note: 'Alert title when the system share sheet is not available to export a file.',
+  },
+  'export.failed': {
+    en: 'Export failed',
+    note: 'Alert title when exporting data fails.',
+  },
+  'profiles.title': {
+    en: 'Profiles',
+    note: 'Title of the Manage profiles screen.',
+  },
+  'profiles.reorderLabel': {
+    en: 'Reorder {name}',
+    note: 'Screen-reader label of a profile drag handle; {name} is the profile name. Not visible.',
+  },
+  'profiles.reorderHint': {
+    en: 'Drag up or down',
+    note: 'Screen-reader hint of a profile drag handle. Not visible.',
+  },
+  'profiles.moveUp': {
+    en: 'Move up',
+    note: 'Screen-reader action: move the profile one place up. Not visible.',
+  },
+  'profiles.moveDown': {
+    en: 'Move down',
+    note: 'Screen-reader action: move the profile one place down. Not visible.',
+  },
+  'profiles.rowLabel': {
+    en: '{name}, {sub}',
+    note: 'Screen-reader label of a profile row; {name} is the profile name, {sub} its lower-cased sub line. Not visible.',
+  },
+  'profiles.add': {
+    en: 'Add profile',
+    note: 'Add-profile row label, submit button label and screen-reader label on Manage profiles and New profile. Max 14 characters on the button.',
+  },
+  'profiles.reorderFooter': {
+    en: 'Drag to reorder. The switcher shows profiles in this order.',
+    note: 'Footer under the profile list on Manage profiles.',
+  },
+  'profiles.new': {
+    en: 'New profile',
+    note: 'Title of the New profile screen.',
+  },
+  'profiles.name': {
+    en: 'NAME',
+    note: 'Caption above the name field on profile screens. Upper case in English.',
+  },
+  'profiles.namePlaceholder': {
+    en: 'Name',
+    note: 'Placeholder and screen-reader label of the profile name input.',
+  },
+  'profiles.initials': {
+    en: 'INITIALS',
+    note: 'Caption above the initials field on profile screens. Upper case in English. Max 10 characters; the field is narrow.',
+  },
+  'profiles.initialsLabel': {
+    en: 'Initials',
+    note: 'Screen-reader label of the profile initials input. Not visible.',
+  },
+  'profiles.duplicate': {
+    en: 'You already have a {name}. Change the initials to tell them apart.',
+    note: 'Hint under the name field when another profile has the same name; {name} is that name.',
+  },
+  'profiles.healthWatch': {
+    en: 'HEALTH & WATCH',
+    note: 'Section label above the Health and Watch rows. Upper case in English.',
+  },
+  'profiles.rowOff': {
+    en: '{name}, off',
+    note: 'Screen-reader label of a Health or Watch row that is off for a new profile; {name} is Apple Health, Health Connect or Apple Watch. Not visible.',
+  },
+  'profiles.startWith': {
+    en: 'START WITH',
+    note: 'Section label above the copy-routines toggle on New profile. Upper case in English.',
+  },
+  'profiles.addFailed': {
+    en: 'Couldn\'t add the profile. Try again.',
+    note: 'Error line above the Add profile button when creating a profile fails.',
+  },
+  'profiles.exportThis': {
+    en: 'Export this profile',
+    note: 'Row label and screen-reader label on Edit profile for exporting this profile’s data.',
+  },
+  'profiles.exportFormats': {
+    en: 'CSV · JSON',
+    note: 'Row value showing the export formats. Keep CSV and JSON untranslated.',
+  },
+  'profiles.deleteRow': {
+    en: 'Delete profile',
+    note: 'Destructive row label and screen-reader label on Edit profile.',
+  },
+  'profiles.ownerNote': {
+    en: 'This is the phone owner\'s profile. It can\'t be deleted.',
+    note: 'Note on Edit profile for the owner profile, which cannot be deleted.',
+  },
+  'profiles.workoutNote': {
+    en: 'Finish the workout in progress to delete this profile.',
+    note: 'Note on Edit profile when a workout is running under that profile.',
+  },
+  'deleteProfile.sharingUnavailable': {
+    en: 'Sharing unavailable.',
+    note: 'Inline message in the delete-profile sheet when the system share sheet is unavailable for the export.',
+  },
+  'deleteProfile.exportFailed': {
+    en: 'Couldn\'t export. Try again.',
+    note: 'Inline message in the delete-profile sheet when the export fails.',
+  },
+  'deleteProfile.deleteFailed': {
+    en: 'Couldn\'t delete {name}. Try again.',
+    note: 'Inline message in the delete-profile sheet when deleting fails; {name} is the profile first name.',
+  },
+  'deleteProfile.alertTitle': {
+    en: 'Couldn\'t delete {name}',
+    note: 'Alert title when deleting a profile fails after the sheet has closed; {name} is the profile first name.',
+  },
+  'deleteProfile.alertBody': {
+    en: 'Some of {whose} data may still be on this phone. Open Manage profiles and delete again.',
+    note: 'Alert message when deleting a profile fails after the sheet has closed; {whose} is a possessive name.',
+  },
+  'deleteProfile.title': {
+    en: 'Delete {name}?',
+    note: 'Title of the delete-profile confirmation sheet; {name} is the full profile name.',
+  },
+  'deleteProfile.bodyPlain': {
+    en: 'This erases {whose} data from this phone. Other profiles aren\'t affected. This can\'t be undone.',
+    note: 'Body of the delete-profile sheet while the counts are still loading; {whose} is a possessive name.',
+  },
+  'deleteProfile.exportLabel': {
+    en: 'Export {whose} data first',
+    note: 'Screen-reader label of the export button in the delete-profile sheet; {whose} is a possessive name. Not visible.',
+  },
+  'deleteProfile.exportButton': {
+    en: 'Export {name}\'s data first',
+    note: 'Button in the delete-profile sheet that exports first; {name} is the profile first name. One line, wide button.',
+  },
+  'deleteProfile.deleteButton': {
+    en: 'Delete {name}',
+    note: 'Destructive button in the delete-profile sheet and its screen-reader label; {name} is the profile first name. One line.',
+  },
+  'finishFirst.go': {
+    en: 'Go to workout',
+    note: 'Button on the finish-first sheet that opens the running workout, and its screen-reader label. One line.',
+  },
+  'switcher.title': {
+    en: 'Switch profile',
+    note: 'Title of the profile switcher sheet.',
+  },
+  'switcher.manage': {
+    en: 'Manage',
+    note: 'Small button in the profile switcher header that opens Manage profiles. Max 8 characters.',
+  },
+  'switcher.manageLabel': {
+    en: 'Manage profiles',
+    note: 'Screen-reader label of the Manage button in the profile switcher. Not visible.',
+  },
+  'switcher.searchPlaceholder': {
+    en: 'Search {n} profiles',
+    note: 'Placeholder of the profile search field; {n} is the number of profiles.',
+  },
+  'switcher.searchLabel': {
+    en: 'Search profiles',
+    note: 'Screen-reader label of the profile search field. Not visible.',
+  },
+  'switcher.rowLabel': {
+    en: '{name}, {sub}',
+    note: 'Screen-reader label of a profile row; {name} is the profile name, {sub} its sub line. Not visible.',
+  },
+  'rest.seconds': {
+    en: '{n}s',
+    note: 'Rest duration in seconds in the rest picker and rest rows, e.g. 30s. {n} is a number; keep it short. Max 5 characters.',
+  },
+  'routineEdit.new': {
+    en: 'New Routine',
+    note: 'Header title of the routine editor when creating a routine. One line.',
+  },
+  'routineEdit.edit': {
+    en: 'Edit Routine',
+    note: 'Header title of the routine editor when editing a routine with no name. One line.',
+  },
+  'routineEdit.namePlaceholder': {
+    en: 'Routine name',
+    note: 'Placeholder of the routine name input in the routine editor.',
+  },
+  'routineEdit.nameError': {
+    en: 'Give your routine a name to save it.',
+    note: 'Error line under the routine name input when saving without a name.',
+  },
+  'routineEdit.exercisesCount': {
+    en: '{n} exercises',
+    note: 'Meta line under the routine name: number of exercises; followed by a separator and the sets count.',
+  },
+  'routineEdit.emptyTitle': {
+    en: 'Build your routine',
+    note: 'Empty-state title in the routine editor.',
+  },
+  'routineEdit.emptySub': {
+    en: 'Add exercises and set target reps and weights. Pull them up instantly every session.',
+    note: 'Empty-state body in the routine editor.',
+  },
+  'routineEdit.replaceLabel': {
+    en: 'Replace {name}',
+    note: 'Screen-reader label of the replace button on an exercise card; {name} is the exercise name. Not visible.',
+  },
+  'routineEdit.removeLabel': {
+    en: 'Remove {name}',
+    note: 'Screen-reader label of the remove button on an exercise card; {name} is the exercise name. Not visible.',
+  },
+  'routineEdit.restTimer': {
+    en: 'Rest Timer',
+    note: 'Row label on an exercise card in the routine editor, before the rest duration.',
+  },
+  'routineEdit.superset': {
+    en: 'Superset',
+    note: 'Row label on an exercise card in the routine editor, before the superset state.',
+  },
+  'routineEdit.leaveLabel': {
+    en: 'Leave superset {tag}',
+    note: 'Screen-reader label of the superset row when the exercise is in a superset; {tag} is a letter and number such as A1. Not visible.',
+  },
+  'routineEdit.ssWith': {
+    en: '{tag} · with {names}',
+    note: 'Superset row value; {tag} is a letter and number such as A1, {names} is a comma-separated list of partner exercise names.',
+  },
+  'routineEdit.leave': {
+    en: 'Leave',
+    note: 'Small action text on the superset row that removes the exercise from its superset. Max 8 characters.',
+  },
+  'routineEdit.none': {
+    en: 'None',
+    note: 'Superset row value when the exercise is not in a superset.',
+  },
+  'routineEdit.colType': {
+    en: 'TYPE',
+    note: 'Column header of the set-type column in the routine editor. Upper case in English. Max 6 characters; fixed-width column.',
+  },
+  'routineEdit.type.normal': {
+    en: 'Working',
+    note: 'Set type shown in the TYPE column: a normal working set. Max 10 characters; fixed-width column.',
+  },
+  'routineEdit.type.warmup': {
+    en: 'Warmup',
+    note: 'Set type shown in the TYPE column: a warm-up set. Max 10 characters; fixed-width column.',
+  },
+  'routineEdit.type.drop': {
+    en: 'Drop set',
+    note: 'Set type shown in the TYPE column: a drop set. Max 10 characters; fixed-width column.',
+  },
+  'routineEdit.type.failure': {
+    en: 'To failure',
+    note: 'Set type shown in the TYPE column: a set taken to failure. Max 10 characters; fixed-width column.',
+  },
+  'routineView.exercises_one': {
+    en: '{count} EXERCISE',
+    note: 'Routine meta line: exercise count for one exercise. Upper case in English.',
+  },
+  'routineView.exercises_other': {
+    en: '{count} EXERCISES',
+    note: 'Routine meta line: exercise count. Upper case in English.',
+  },
+  'routineView.sets_one': {
+    en: '{count} SET',
+    note: 'Routine meta line: set count for one set. Upper case in English.',
+  },
+  'routineView.sets_other': {
+    en: '{count} SETS',
+    note: 'Routine meta line: set count. Upper case in English.',
+  },
+  'routineView.then': {
+    en: 'then {tag}',
+    note: 'Exercise meta in a superset: this exercise rests after the next partner; {tag} is a letter and number such as A2. Lower case in English.',
+  },
+  'routineView.restAfterRound': {
+    en: 'Rest after round {clock}',
+    note: 'Exercise meta in a superset: the rest taken after each round; {clock} is a duration such as 1:30.',
+  },
+  'routineView.restOff': {
+    en: 'Rest off',
+    note: 'Exercise meta: the rest timer is off for this exercise.',
+  },
+  'routineView.rest': {
+    en: 'Rest {clock}',
+    note: 'Exercise meta: rest duration; {clock} is a duration such as 2:30.',
+  },
+  'routineView.notDone': {
+    en: 'NOT DONE YET',
+    note: 'Line under the routine title when the routine has never been performed. Upper case in English.',
+  },
+  'routineView.lastWithDuration': {
+    en: 'LAST · {day} · {duration}',
+    note: 'Line under the routine title: last performed date and workout length; {day} is a short date, {duration} is H:MM. Upper case in English.',
+  },
+  'routineView.last': {
+    en: 'LAST · {day}',
+    note: 'Line under the routine title: last performed date; {day} is a short date. Upper case in English.',
+  },
+  'routineView.noExercises': {
+    en: 'No exercises yet',
+    note: 'Empty-state title in the routine view when the routine has no exercises.',
+  },
+  'routineView.noExercisesSub': {
+    en: 'Add some before this routine can be started.',
+    note: 'Empty-state body in the routine view.',
+  },
+  'routineView.header': {
+    en: 'ROUTINE',
+    note: 'Small caption in the routine view header. Upper case in English.',
+  },
+  'routineView.editLabel': {
+    en: 'Edit routine',
+    note: 'Screen-reader label of the Edit button in the routine view. Not visible.',
+  },
+  'routineView.edit': {
+    en: 'Edit',
+    note: 'Edit button in the routine view header. Max 6 characters; fixed-width button.',
+  },
+  'routineView.addExercises': {
+    en: 'Add exercises',
+    note: 'Footer button of an empty routine view, opens the routine editor. One line.',
+  },
+  'routineView.start': {
+    en: 'Start Routine',
+    note: 'Footer button of the routine view that starts a workout from this routine. One line.',
+  },
+  'routineView.colTarget': {
+    en: 'TARGET {unit}',
+    note: 'Table column header for target weight and reps; {unit} is KG or LB. Upper case in English. Max 12 characters; fixed-width column.',
+  },
+  'routineView.colLast': {
+    en: 'LAST',
+    note: 'Table column header for the previous performance of each set. Upper case in English. Max 6 characters; fixed-width column.',
+  },
+  'newExercise.title': {
+    en: 'New Exercise',
+    note: 'Header title of the custom exercise form. One line.',
+  },
+  'newExercise.name': {
+    en: 'NAME',
+    note: 'Caption above the exercise name input. Upper case in English.',
+  },
+  'newExercise.namePlaceholder': {
+    en: 'e.g. Incline Bench Press',
+    note: 'Placeholder example in the exercise name input. Use a familiar exercise name.',
+  },
+  'newExercise.category': {
+    en: 'CATEGORY',
+    note: 'Caption above the category chips. Upper case in English.',
+  },
+  'newExercise.primary': {
+    en: 'Primary muscle',
+    note: 'Row label of the primary muscle picker in the custom exercise form.',
+  },
+  'newExercise.secondary': {
+    en: 'Secondary muscles',
+    note: 'Row label of the secondary muscles picker in the custom exercise form.',
+  },
+  'newExercise.none': {
+    en: 'None',
+    note: 'Row value when no muscle is selected in the custom exercise form.',
+  },
+  'newExercise.selected': {
+    en: '{n} selected',
+    note: 'Row value: number of secondary muscles selected.',
+  },
+  'newExercise.equipment': {
+    en: 'EQUIPMENT',
+    note: 'Caption above the equipment chips. Upper case in English.',
+  },
+  'newExercise.kind': {
+    en: 'KIND',
+    note: 'Caption above the exercise kind selector (weighted or bodyweight). Upper case in English.',
+  },
+  'newExercise.kindWeighted': {
+    en: 'Weighted',
+    note: 'Exercise kind option: tracked with an added weight. Max 12 characters; segmented control.',
+  },
+  'newExercise.kindBodyweight': {
+    en: 'Bodyweight',
+    note: 'Exercise kind option: tracked with body weight. Max 12 characters; segmented control.',
+  },
+  'newExercise.howTo': {
+    en: 'HOW TO',
+    note: 'Caption above the optional how-to steps input. Upper case in English.',
+  },
+  'newExercise.howToPlaceholder': {
+    en: 'One instruction per line',
+    note: 'Placeholder of the how-to steps input.',
+  },
+  'newExercise.failed': {
+    en: 'Failed to create exercise',
+    note: 'Error line and alert message when creating a custom exercise fails with no detail.',
+  },
+  'newExercise.couldNotSave': {
+    en: 'Could not save',
+    note: 'Alert title when creating a custom exercise fails.',
+  },
+  'library.all': {
+    en: 'All',
+    note: 'First filter chip in the exercise library: show every category. Max 6 characters; chip.',
+  },
+  'library.yourLifts': {
+    en: 'YOUR LIFTS',
+    note: 'Section header above the exercises you train most in the library. Upper case in English.',
+  },
+  'library.new': {
+    en: 'New',
+    note: 'Header button in the exercise library that opens the custom exercise form. Max 6 characters.',
+  },
+  'library.search': {
+    en: 'Search exercises',
+    note: 'Placeholder and screen-reader label of the exercise library search field.',
+  },
+  'library.noMatch': {
+    en: 'No exercises match "{query}"',
+    note: 'Empty-state line when a search finds nothing; {query} is what the user typed.',
+  },
+  'library.noneFound': {
+    en: 'No exercises found',
+    note: 'Empty-state line in the exercise library when there are no exercises.',
+  },
+  'library.loadFailed': {
+    en: 'Failed to load exercises',
+    note: 'Error line when loading the exercise list fails with no detail.',
+  },
+  'library.addFailed': {
+    en: 'Failed to add exercises',
+    note: 'Error line when adding the picked exercises to the workout fails with no detail.',
+  },
+  'library.merge': {
+    en: 'Merge {n}',
+    note: 'Floating button when two or more exercises are selected: merge the {n} selected exercises. One line.',
+  },
+  'library.addSuperset': {
+    en: 'Add as superset',
+    note: 'Floating button when two or more exercises are selected: add them as a superset. One line.',
+  },
+  'library.addCount_one': {
+    en: 'Add {count} exercise',
+    note: 'Floating primary button: add one selected exercise. One line.',
+  },
+  'library.addCount_other': {
+    en: 'Add {count} exercises',
+    note: 'Floating primary button: add several selected exercises; {count} is a number. One line.',
+  },
+  'library.selectHint': {
+    en: 'Selects this exercise',
+    note: 'Screen-reader hint of an exercise row in pick mode. Not visible.',
+  },
+  'library.opensHint': {
+    en: 'Opens exercise details',
+    note: 'Screen-reader hint of an exercise row when browsing. Not visible.',
+  },
+  'library.aboutLabel': {
+    en: 'About {name}',
+    note: 'Screen-reader label of the info button on an exercise row; {name} is the exercise name. Not visible.',
+  },
+  'exerciseDetail.loadFailed': {
+    en: 'Failed to load exercise',
+    note: 'Error line on the exercise detail screen when loading fails with no detail.',
+  },
+  'exerciseDetail.loadingTitle': {
+    en: 'Loading',
+    note: 'Header title of the exercise detail screen while the exercise loads. No ellipsis.',
+  },
+  'exerciseDetail.fallbackTitle': {
+    en: 'Exercise',
+    note: 'Header title of the exercise detail screen when the exercise has no name.',
+  },
+  'exerciseDetail.tabAbout': {
+    en: 'About',
+    note: 'Tab label on the exercise detail screen: description, muscles and how-to. Max 10 characters; fixed-width tab.',
+  },
+  'exerciseDetail.tabHistory': {
+    en: 'History',
+    note: 'Tab label on the exercise detail screen: past sessions. Max 10 characters; fixed-width tab.',
+  },
+  'exerciseDetail.tabCharts': {
+    en: 'Charts',
+    note: 'Tab label on the exercise detail screen: progress charts. Max 10 characters; fixed-width tab.',
+  },
+  'exerciseDetail.selectedRemove': {
+    en: 'Selected · Remove',
+    note: 'Bottom bar button when the exercise is already picked; tapping removes it. One line.',
+  },
+  'exerciseDetail.select': {
+    en: 'Select exercise',
+    note: 'Bottom bar button that picks this exercise. One line.',
+  },
+  'exerciseDetail.chipPrimary': {
+    en: 'PRIMARY',
+    note: 'Caption of the card showing the primary muscle. Upper case in English. Max 10 characters; three cards share a row.',
+  },
+  'exerciseDetail.chipSecondary': {
+    en: 'SECONDARY',
+    note: 'Caption of the card showing the secondary muscle. Upper case in English. Max 10 characters; three cards share a row.',
+  },
+  'exerciseDetail.chipEquip': {
+    en: 'EQUIP',
+    note: 'Caption of the card showing the equipment. Upper case in English; abbreviation of equipment. Max 8 characters; three cards share a row.',
+  },
+  'exerciseDetail.howTo': {
+    en: 'HOW TO',
+    note: 'Section label above the how-to steps. Upper case in English.',
+  },
+  'exerciseDetail.noSteps': {
+    en: 'No instructions yet.',
+    note: 'Line shown when the exercise has no how-to steps.',
+  },
+  'exerciseDetail.noHistory': {
+    en: 'No history yet.',
+    note: 'Line shown on the History tab when the exercise has never been trained.',
+  },
+  'exerciseDetail.pr': {
+    en: 'PR',
+    note: 'Pill on a past session that set a personal record. Keep short. Max 4 characters.',
+  },
+  'exerciseDetail.best': {
+    en: 'BEST',
+    note: 'Pill on a single set that was the personal best. Upper case in English. Max 6 characters.',
+  },
+  'exerciseDetail.rec.bestSet': {
+    en: 'BEST SET',
+    note: 'Record card and chart caption: the heaviest set. Upper case in English.',
+  },
+  'exerciseDetail.rec.est1rm': {
+    en: 'EST. 1RM',
+    note: 'Record card and chart caption: estimated one-rep max. Upper case in English. Keep 1RM untranslated.',
+  },
+  'exerciseDetail.rec.bestVolume': {
+    en: 'BEST VOLUME',
+    note: 'Record card and chart caption: most total weight in one session. Upper case in English.',
+  },
+  'exerciseDetail.rec.maxReps': {
+    en: 'MAX REPS',
+    note: 'Record card and chart caption: most reps in one set. Upper case in English.',
+  },
+  'exerciseDetail.noTrend': {
+    en: 'Not enough sessions for a trend',
+    note: 'Caption beside a chart title when there are too few sessions to show a trend.',
+  },
+  'exerciseDetail.flat': {
+    en: '→ flat',
+    note: 'Caption beside a chart title: the trend is flat. Keep the arrow.',
+  },
+  'exerciseDetail.perMonth': {
+    en: '{delta} {unit} / mo',
+    note: 'Caption beside a chart title: change per month; {delta} is an arrow and a signed number such as ↑ +1.5, {unit} is kg, lb or reps.',
+  },
+  'exerciseDetail.openCalc': {
+    en: 'Open the 1RM calculator with this set',
+    note: 'Screen-reader hint of the EST. 1RM record card. Not visible.',
+  },
+  'exerciseDetail.pointLabel': {
+    en: 'Point {n}',
+    note: 'Screen-reader fallback label of a chart point with no date; {n} is its position. Not visible.',
+  },
+  'exerciseDetail.range.3M': {
+    en: '3M',
+    note: 'Chart range button: last 3 months. Max 5 characters; fixed-width segment.',
+  },
+  'exerciseDetail.range.6M': {
+    en: '6M',
+    note: 'Chart range button: last 6 months. Max 5 characters; fixed-width segment.',
+  },
+  'exerciseDetail.range.1Y': {
+    en: '1Y',
+    note: 'Chart range button: last year. Max 5 characters; fixed-width segment.',
+  },
+  'exerciseDetail.range.ALL': {
+    en: 'ALL',
+    note: 'Chart range button: all time. Upper case in English. Max 5 characters; fixed-width segment.',
+  },
+  'health.ios.connect': {
+    en: 'Connect Apple Health',
+    note: 'The big connect button on the Health screen before connecting. One line. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.settingsSub': {
+    en: 'Save finished workouts to Fitness',
+    note: 'Sub line under the Health row in Settings. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.device': {
+    en: 'This iPhone',
+    note: 'Device phrase in "{device} · asked 12 Jun" on the Health screen. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.intro': {
+    en: 'Save finished workouts as Traditional Strength Training, and read heart rate and calories live from your Apple Watch.',
+    note: 'Intro paragraph on the Health screen before connecting. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.next': {
+    en: 'iOS asks you, not us. Ischys is told whether it may write, but never whether it may read — so afterwards this screen shows what data actually arrives instead of a permission list.',
+    note: 'Paragraph under WHAT HAPPENS NEXT on the Health screen before the system takes over the permission screen. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.disconnectBody': {
+    en: 'Ischys will stop reading and writing Health data. Any records already written stay in Health.',
+    note: 'Message of the Disconnect confirmation alert. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.unavailable': {
+    en: 'Apple Health needs a device build with HealthKit — it is not available on the simulator.',
+    note: 'Alert message when Health is not available on this device. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.writeAllowed': {
+    en: 'Allowed in Health',
+    note: 'Status of the Save finished workouts row when permission is granted. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.writeDenied': {
+    en: 'Denied in Health',
+    note: 'Status of the Save finished workouts row when permission is refused. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.writeDeniedExplainer': {
+    en: 'Health is blocking writes, so finished workouts aren\'t being saved there. Only you can change this — Ischys can\'t ask again.',
+    note: 'Explanation under the Save finished workouts row when writing is blocked. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.writeDeniedCta': {
+    en: 'Open Health → Sharing → Ischys',
+    note: 'Link under the write-blocked explanation. Keep Health and Ischys product names. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readsNote': {
+    en: 'iOS never tells apps whether a read was allowed. These choose what Ischys asks for — Health decides what it returns.',
+    note: 'Note under the ISCHYS ASKS HEALTH FOR heading. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readDenied': {
+    en: 'Nothing received yet',
+    note: 'Status text of a Health read row that has no data or no permission. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readDeniedExplainer': {
+    en: 'This means one of two things, and iOS won\'t say which: Health is holding the data back, or nothing has recorded any yet.',
+    note: 'Explanation shown when a Health read row is expanded and nothing can arrive. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.checkCta': {
+    en: 'Check in the Health app',
+    note: 'Link under a read row explainer. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.privacyNote': {
+    en: 'Health data stays on this device. Ischys reads only what it writes back.',
+    note: 'Privacy note at the bottom of the Health screens. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readHR.label': {
+    en: 'Heart rate',
+    note: 'Label of a Health read row. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readHR.offDesc': {
+    en: 'Live BPM from an Apple Watch',
+    note: 'Description of a Health read row when it is switched off. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readHR.explainer': {
+    en: 'This means one of two things, and iOS won\'t say which: Health is holding the data back, or nothing has recorded any yet. Heart rate needs an Apple Watch worn during the session.',
+    note: 'Explanation shown when a Health read row is expanded and nothing has arrived. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readEnergy.label': {
+    en: 'Active energy',
+    note: 'Label of a Health read row. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readEnergy.offDesc': {
+    en: 'Calories burned per session',
+    note: 'Description of a Health read row when it is switched off. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readEnergy.explainer': {
+    en: 'This means one of two things, and iOS won\'t say which: Health is holding the data back, or nothing has recorded any yet. Active energy needs an Apple Watch worn during the session.',
+    note: 'Explanation shown when a Health read row is expanded and nothing has arrived. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readBody.label': {
+    en: 'Waist and body fat',
+    note: 'Label of a Health read row. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readBody.offDesc': {
+    en: 'Into your measurement history',
+    note: 'Description of a Health read row when it is switched off. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.readBody.explainer': {
+    en: 'These are the only body measurements HealthKit has a type for — the rest of your measurements are logged here and stay here. Nothing is written back to Health.',
+    note: 'Explanation shown when a Health read row is expanded and nothing has arrived. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.useForBodyweight': {
+    en: 'Use Apple Health',
+    note: 'Button in the bodyweight sheet that reads the weight from Health. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.ios.noBodyweight': {
+    en: 'No bodyweight in Apple Health',
+    note: 'Toast shown when Health has no weight to read. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.connect': {
+    en: 'Connect to Health Connect',
+    note: 'The big connect button on the Health screen before connecting. One line. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.settingsSub': {
+    en: 'Save finished workouts, read heart rate',
+    note: 'Sub line under the Health row in Settings. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.device': {
+    en: 'This phone',
+    note: 'Device phrase in "{device} · asked 12 Jun" on the Health screen. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.intro': {
+    en: 'Save finished workouts as strength training, and read the heart rate and calories your watch or band recorded for them.',
+    note: 'Intro paragraph on the Health screen before connecting. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.next': {
+    en: 'Android asks you, not us. You choose exactly what Ischys may write and what it may read, and can change either in Health Connect at any time. This screen then shows what you allowed and what data actually arrives.',
+    note: 'Paragraph under WHAT HAPPENS NEXT on the Health screen before the system takes over the permission screen. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.disconnectBody': {
+    en: 'Ischys will stop reading and writing Health Connect data. Any records already written stay in Health Connect.',
+    note: 'Message of the Disconnect confirmation alert. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.unavailable': {
+    en: 'Health Connect is not available on this device.',
+    note: 'Alert message when Health is not available on this device. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.writeAllowed': {
+    en: 'Allowed in Health Connect',
+    note: 'Status of the Save finished workouts row when permission is granted. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.writeDenied': {
+    en: 'Not allowed in Health Connect',
+    note: 'Status of the Save finished workouts row when permission is refused. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.writeDeniedExplainer': {
+    en: 'Ischys isn\'t allowed to write exercise, so finished workouts aren\'t being saved to Health Connect. You can allow it there.',
+    note: 'Explanation under the Save finished workouts row when writing is blocked. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.writeDeniedCta': {
+    en: 'Open Health Connect',
+    note: 'Link under the write-blocked explanation. Keep Health and Ischys product names. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readsNote': {
+    en: 'These choose what Ischys asks for. What it may read is yours to allow in Health Connect.',
+    note: 'Note under the ISCHYS ASKS HEALTH FOR heading. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readDenied': {
+    en: 'Not allowed in Health Connect',
+    note: 'Status text of a Health read row that has no data or no permission. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readDeniedExplainer': {
+    en: 'Ischys isn\'t allowed to read this, so nothing can arrive. You can allow it in Health Connect.',
+    note: 'Explanation shown when a Health read row is expanded and nothing can arrive. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.checkCta': {
+    en: 'Open Health Connect',
+    note: 'Link under a read row explainer. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.privacyNote': {
+    en: 'Health data stays on this device. Ischys also reads your latest weight, for bodyweight exercises.',
+    note: 'Privacy note at the bottom of the Health screens. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readHR.label': {
+    en: 'Heart rate',
+    note: 'Label of a Health read row. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readHR.offDesc': {
+    en: 'Average and max per session',
+    note: 'Description of a Health read row when it is switched off. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readHR.explainer': {
+    en: 'Reading is allowed, but Health Connect has had no heart rate for a workout yet. It needs a watch or band that syncs to Health Connect, worn during the session.',
+    note: 'Explanation shown when a Health read row is expanded and nothing has arrived. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readEnergy.label': {
+    en: 'Active energy',
+    note: 'Label of a Health read row. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readEnergy.offDesc': {
+    en: 'Calories burned per session',
+    note: 'Description of a Health read row when it is switched off. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readEnergy.explainer': {
+    en: 'Reading is allowed, but Health Connect has had no active calories for a workout yet. They need a watch or band that syncs to Health Connect, worn during the session.',
+    note: 'Explanation shown when a Health read row is expanded and nothing has arrived. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readBody.label': {
+    en: 'Body fat',
+    note: 'Label of a Health read row. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readBody.offDesc': {
+    en: 'Into your measurement history',
+    note: 'Description of a Health read row when it is switched off. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.readBody.explainer': {
+    en: 'Reading is allowed, but Health Connect holds no body fat reading yet. It is the only body measurement Health Connect shares with your list — the rest are logged here and stay here. Nothing is written back.',
+    note: 'Explanation shown when a Health read row is expanded and nothing has arrived. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.useForBodyweight': {
+    en: 'Use Health Connect',
+    note: 'Button in the bodyweight sheet that reads the weight from Health. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.android.noBodyweight': {
+    en: 'No bodyweight in Health Connect',
+    note: 'Toast shown when Health has no weight to read. Keep the product names (Apple Health, Health Connect, Apple Watch, Ischys) untranslated.',
+  },
+  'health.thisPhone': {
+    en: 'this phone',
+    note: 'Mid-sentence device phrase on Android, e.g. "Health Connect on this phone belongs to…". Lower case.',
+  },
+  'health.thisIphone': {
+    en: 'this iPhone',
+    note: 'Mid-sentence device phrase on iOS, e.g. "Apple Health on this iPhone belongs to…". Lower case. Keep iPhone.',
+  },
+  'health.offFor': {
+    en: 'Off for {name}',
+    note: 'Title on the Health screen in a profile that is not the phone owner; {name} is that profile first name.',
+  },
+  'health.offBody': {
+    en: '{health} on {device} belongs to {owner}. {whose} workouts stay in Ischys.',
+    note: 'Body on the Health screen in a non-owner profile; {health} is Apple Health or Health Connect, {device} is this phone or this iPhone, {owner} is a person name or the phone owner phrase, {whose} is a possessive name.',
+  },
+  'health.ownerPossessive': {
+    en: 'the phone\'s owner\'s',
+    note: 'Possessive of the phone owner phrase, used mid-sentence. Lower case.',
+  },
+  'health.offLine': {
+    en: 'Health and the Watch work only in {whose} profile.',
+    note: 'Line on the Health screen in a non-owner profile; {whose} is a possessive such as Tom\'s or the phone\'s owner\'s.',
+  },
+  'health.recently': {
+    en: 'recently',
+    note: 'Fragment in "asked recently" when the date the user connected is unknown. Lower case.',
+  },
+  'health.needTitle': {
+    en: 'Health Connect needed',
+    note: 'Alert title when the Health Connect app is missing on Android. Keep the product name.',
+  },
+  'health.needBody': {
+    en: 'Install or update Health Connect from Google Play, then come back here to connect.',
+    note: 'Alert message when the Health Connect app is missing on Android. Keep the product names.',
+  },
+  'health.getHc': {
+    en: 'Get Health Connect',
+    note: 'Alert button that opens the Health Connect page on Google Play. Keep the product name.',
+  },
+  'health.notAvailable': {
+    en: 'Not available',
+    note: 'Alert title when Health is not available on this device.',
+  },
+  'health.nothingAllowedTitle': {
+    en: 'Nothing allowed yet',
+    note: 'Alert title after the Android permission prompt was dismissed with nothing allowed.',
+  },
+  'health.nothingAllowedBody': {
+    en: 'Ischys connects once you allow at least one thing. You can also allow them in Health Connect.',
+    note: 'Alert message after the Android permission prompt was dismissed with nothing allowed. Keep the product names.',
+  },
+  'health.openHc': {
+    en: 'Open Health Connect',
+    note: 'Alert button that opens the Health Connect settings. Keep the product name.',
+  },
+  'health.disconnectTitle': {
+    en: 'Disconnect {name}',
+    note: 'Title of the disconnect alert, and the destructive button label on the Health screen; {name} is Apple Health or Health Connect.',
+  },
+  'health.disconnect': {
+    en: 'Disconnect',
+    note: 'Destructive button in the disconnect alert. Max 12 characters.',
+  },
+  'health.whatNext': {
+    en: 'WHAT HAPPENS NEXT',
+    note: 'Heading of the explainer card on the Health screen before connecting. Upper case in English.',
+  },
+  'health.nextRich': {
+    en: 'iOS asks you, not us. Ischys is told whether it may {write}, but never whether it may {read} — so afterwards this screen shows what data actually arrives instead of a permission list.',
+    note: 'Explainer paragraph on the Health screen before connecting (iOS). {write} and {read} are replaced with the two emphasised words from health.writeWord and health.readWord. Keep both placeholders.',
+  },
+  'health.writeWord': {
+    en: 'write',
+    note: 'Single emphasised word inserted into health.nextRich for the {write} placeholder. Lower case.',
+  },
+  'health.readWord': {
+    en: 'read',
+    note: 'Single emphasised word inserted into health.nextRich for the {read} placeholder. Lower case.',
+  },
+  'health.privacy': {
+    en: 'Health data never leaves your device.',
+    note: 'Privacy note at the bottom of the Health screen before connecting.',
+  },
+  'health.linked': {
+    en: 'Linked to {name}',
+    note: 'Title of the status card once connected; {name} is Apple Health or Health Connect.',
+  },
+  'health.deviceAsked': {
+    en: '{device} · asked {date}',
+    note: 'Sub line of the status card; {device} is This iPhone or This phone, {date} is a short date such as 12 Jun or "recently".',
+  },
+  'health.writes': {
+    en: 'ISCHYS WRITES',
+    note: 'Section label above the Save finished workouts row on the Health screen. Upper case in English. Keep Ischys.',
+  },
+  'health.saveWorkouts': {
+    en: 'Save finished workouts',
+    note: 'Row label and screen-reader label of the switch that saves finished workouts to Health.',
+  },
+  'health.reassure': {
+    en: 'Your workouts are still saved in Ischys. Nothing is lost.',
+    note: 'Reassurance shown when writing to Health is blocked.',
+  },
+  'health.asks': {
+    en: 'ISCHYS ASKS HEALTH FOR',
+    note: 'Section label above the Health read rows. Upper case in English. Keep Ischys.',
+  },
+  'health.workoutsWritten': {
+    en: 'WORKOUTS WRITTEN',
+    note: 'Caption of a stat cell: how many workouts were saved to Health. Upper case in English. Max 18 characters; two cells share a row.',
+  },
+  'health.lastSynced': {
+    en: 'LAST SYNCED',
+    note: 'Caption of a stat cell: when Health was last synced. Upper case in English. Max 18 characters; two cells share a row.',
+  },
+  'health.receiving': {
+    en: 'Receiving · {value} last session',
+    note: 'Status of a Health read row that received data; {value} is a reading such as 132 bpm.',
+  },
+  'health.nothingYet': {
+    en: 'Nothing received yet',
+    note: 'Status of a Health read row that has received nothing.',
+  },
+  'common.ok': {
+    en: 'OK',
+    note: 'Generic OK button that dismisses an alert. Max 6 characters.',
+  },
+  'scope.thisPhone': {
+    en: 'THIS PHONE',
+    note: 'Label prefix on a Settings section whose settings apply to every profile on the phone. Upper case in English. Max 14 characters.',
+  },
+  'settings.title': {
+    en: 'Settings',
+    note: 'Title of the Settings screen.',
+  },
+  'settings.units': {
+    en: 'Units',
+    note: 'Settings row label for the weight unit; options KG and LB.',
+  },
+  'settings.effort': {
+    en: 'Effort per set',
+    note: 'Settings row label for the effort rating setting; options Off, RPE and RIR.',
+  },
+  'settings.effortOption': {
+    en: 'Effort per set: {option}',
+    note: 'Screen-reader label of one option of the effort setting; {option} is Off, RPE or RIR. Not visible.',
+  },
+  'settings.effortHelpRpe': {
+    en: 'Rate a set while you rest. RPE runs 6 to 10, where 10 means nothing left and 8 means two reps left.',
+    note: 'Help text under the effort setting when Off or RPE is selected.',
+  },
+  'settings.effortHelpRir': {
+    en: 'Rate a set while you rest. RIR counts the reps you had left, where 0 means nothing left.',
+    note: 'Help text under the effort setting when RIR is selected.',
+  },
+  'settings.effortFooter': {
+    en: 'Turning this off hides ratings everywhere but keeps them stored. Switching between RPE and RIR converts existing ratings.',
+    note: 'Footer under the TRAINING section in Settings explaining the effort setting.',
+  },
+  'settings.autoRest': {
+    en: 'Auto-start rest timer',
+    note: 'Settings toggle label: start the rest timer automatically after a set.',
+  },
+  'settings.keepNotes': {
+    en: 'Keep exercise notes',
+    note: 'Settings toggle label: carry exercise notes into the next workout.',
+  },
+  'settings.keepNotes.sub': {
+    en: 'Carry each exercise\'s note into your next workouts until you change or clear it',
+    note: 'Sub line under the Keep exercise notes toggle.',
+  },
+  'settings.restAlerts': {
+    en: 'Rest timer alerts',
+    note: 'Settings toggle label: notify when the rest timer ends.',
+  },
+  'settings.haptics': {
+    en: 'Haptic feedback',
+    note: 'Settings toggle label: vibration feedback.',
+  },
+  'settings.warmups': {
+    en: 'Count warmups in volume',
+    note: 'Settings toggle label: include warm-up sets in the volume total.',
+  },
+  'settings.deload': {
+    en: 'Deload advice',
+    note: 'Settings toggle label: show deload suggestions after workouts.',
+  },
+  'settings.platesSub': {
+    en: 'Used by the plate calculator',
+    note: 'Sub line under the Bar & plates row in Settings.',
+  },
+  'settings.weeklyGoal': {
+    en: 'Weekly goal',
+    note: 'Settings row label for the weekly workout target.',
+  },
+  'settings.weeklyGoalSub': {
+    en: 'Workouts a week, shown on Home',
+    note: 'Sub line under the Weekly goal row.',
+  },
+  'settings.goalDown': {
+    en: 'Decrease weekly goal',
+    note: 'Screen-reader label of the minus button of the weekly goal. Not visible.',
+  },
+  'settings.goalUp': {
+    en: 'Increase weekly goal',
+    note: 'Screen-reader label of the plus button of the weekly goal. Not visible.',
+  },
+  'settings.bodyweight': {
+    en: 'Bodyweight',
+    note: 'Settings row label and title of the bodyweight sheet.',
+  },
+  'settings.bodyweightSub': {
+    en: 'Counts toward volume for bodyweight moves',
+    note: 'Sub line under the Bodyweight row in Settings.',
+  },
+  'settings.notSet': {
+    en: 'Not set',
+    note: 'Value of the Bodyweight row when no bodyweight is stored.',
+  },
+  'settings.bodyweightText': {
+    en: 'Used to count bodyweight movements — pull-ups, dips, push-ups — toward your volume. It\'s snapshotted onto each workout, so changing it never rewrites past sessions.',
+    note: 'Explanation in the bodyweight sheet.',
+  },
+  'settings.bodyweightField': {
+    en: 'Bodyweight value',
+    note: 'Screen-reader label of the bodyweight number input. Not visible.',
+  },
+  'settings.appearance': {
+    en: 'Appearance',
+    note: 'Settings row label for the light/dark appearance; options Dark, Light and System.',
+  },
+  'settings.following': {
+    en: 'Following {device} · {scheme}',
+    note: 'Sub line under Appearance while System is selected; {device} is iPhone or phone, {scheme} is Dark or Light.',
+  },
+  'settings.deviceIos': {
+    en: 'iPhone',
+    note: 'Device name in "Following iPhone". Keep iPhone.',
+  },
+  'settings.devicePhone': {
+    en: 'phone',
+    note: 'Device name in "Following phone". Lower case.',
+  },
+  'settings.dark': {
+    en: 'Dark',
+    note: 'Appearance option and scheme name: dark mode. Max 8 characters; segmented control.',
+  },
+  'settings.light': {
+    en: 'Light',
+    note: 'Appearance option and scheme name: light mode. Max 8 characters; segmented control.',
+  },
+  'settings.system': {
+    en: 'System',
+    note: 'Appearance option: follow the system setting. Max 8 characters; segmented control.',
+  },
+  'settings.theme': {
+    en: 'Theme',
+    note: 'Settings row label for the accent colour theme; the value is the theme name.',
+  },
+  'settings.sectionProfile': {
+    en: 'PROFILE',
+    note: 'Settings section title. Upper case in English.',
+  },
+  'settings.profileFooter': {
+    en: 'Keep separate history for a client or someone you share this phone with.',
+    note: 'Footer under the PROFILE section in Settings when there is only one profile.',
+  },
+  'settings.profilesOnPhone': {
+    en: '{count} PROFILES ON THIS PHONE',
+    note: 'Sub line of the profile row in Settings with several profiles. Upper case in English.',
+  },
+  'settings.justYou': {
+    en: 'JUST YOU',
+    note: 'Sub line of the profile row in Settings with one profile. Upper case in English.',
+  },
+  'settings.managePerson': {
+    en: '{name}, manage profiles',
+    note: 'Screen-reader label of the profile row in Settings; {name} is the profile name. Not visible.',
+  },
+  'settings.sectionTraining': {
+    en: 'TRAINING',
+    note: 'Settings section title. Upper case in English.',
+  },
+  'settings.sectionData': {
+    en: 'DATA',
+    note: 'Settings section title. Upper case in English.',
+  },
+  'settings.sectionAppearance': {
+    en: 'APPEARANCE',
+    note: 'Settings section title. Upper case in English.',
+  },
+  'settings.sectionAlerts': {
+    en: 'ALERTS',
+    note: 'Settings section title. Upper case in English.',
+  },
+  'settings.sectionDevice': {
+    en: 'DEVICE',
+    note: 'Settings section title above the Health row. Upper case in English.',
+  },
+  'settings.sectionAbout': {
+    en: 'ABOUT',
+    note: 'Settings section title. Upper case in English.',
+  },
+  'settings.phoneFooter': {
+    en: 'Settings marked THIS PHONE are the same in every profile.',
+    note: 'Footer under the APPEARANCE section in Settings with several profiles. Keep it consistent with scope.thisPhone.',
+  },
+  'settings.exportWhose': {
+    en: 'Export {whose} data',
+    note: 'Settings row label with several profiles; {whose} is a possessive name such as Tom\'s.',
+  },
+  'settings.importInto': {
+    en: 'Import into {name}',
+    note: 'Settings row label with several profiles; {name} is the profile first name.',
+  },
+  'settings.inHistory': {
+    en: 'IN {whose} HISTORY',
+    note: 'Sub line of the Merge duplicates row with several profiles; {whose} is an upper-case possessive name. Upper case in English.',
+  },
+  'settings.importWorkout': {
+    en: 'Import workout',
+    note: 'Settings row label for importing a workout file.',
+  },
+  'settings.mergeSub': {
+    en: 'Same lift saved twice',
+    note: 'Sub line under the Merge duplicates row.',
+  },
+  'settings.privacy': {
+    en: 'Privacy',
+    note: 'Settings row label and title of the privacy alert.',
+  },
+  'settings.onDevice': {
+    en: 'On-device',
+    note: 'Value of the Privacy row: data stays on the device.',
+  },
+  'settings.backupIos': {
+    en: 'iCloud',
+    note: 'Backup service name on iOS inside the privacy alert. Keep the product name.',
+  },
+  'settings.backupAndroid': {
+    en: 'your Google account',
+    note: 'Backup account phrase on Android inside the privacy alert. Lower case, used mid-sentence.',
+  },
+  'settings.privacyBody': {
+    en: 'All your workout data lives on this device only. Nothing is sent to any server or third party. It backs up with your device ({backup}) like any other app.',
+    note: 'Message of the privacy alert; {backup} is iCloud or your Google account.',
+  },
+  'settings.privacyPolicy': {
+    en: 'Privacy policy',
+    note: 'Alert button that opens the privacy policy web page.',
+  },
+  'settings.sourceCode': {
+    en: 'Source code',
+    note: 'Settings row label that opens the GitHub repository.',
+  },
+  'settings.aboutRow': {
+    en: 'About Ischys',
+    note: 'Settings row label that opens the about alert. Keep Ischys.',
+  },
+  'settings.aboutBody': {
+    en: 'Private, on-device workout tracker.\n\nversion {version}\n\nExercise artwork by Workout Guide and Everkinetic, licensed\nCC BY-SA 4.0 (creativecommons.org/licenses/by-sa/4.0).\n\nΙσχύς — strength.',
+    note: 'Message of the About alert; keep the line breaks, the licence name and URL, and the Greek word.',
+  },
+  'import.title': {
+    en: 'Import history',
+    note: 'Title of the import screen. One line.',
+  },
+  'import.close': {
+    en: 'Close',
+    note: 'Screen-reader label of the X button on the import screen. Not visible.',
+  },
+  'import.chooseTitle': {
+    en: 'Choose an export to import',
+    note: 'Title in the file drop zone on the import screen.',
+  },
+  'import.chooseSub': {
+    en: 'Point Ischys at an Ischys JSON backup or a workout CSV export and we\'ll load every set into your log.',
+    note: 'Body in the file drop zone. Keep Ischys, JSON and CSV untranslated.',
+  },
+  'import.browse': {
+    en: 'Browse files',
+    note: 'Button that opens the system file picker, and its screen-reader label. One line.',
+  },
+  'import.whatImported': {
+    en: 'WHAT GETS IMPORTED',
+    note: 'Section label above the checklist of imported data. Upper case in English.',
+  },
+  'import.check1': {
+    en: 'Every set with weight × reps',
+    note: 'Checklist line: what the import brings in.',
+  },
+  'import.check2': {
+    en: 'Workout names, dates, and exercise groupings',
+    note: 'Checklist line: what the import brings in.',
+  },
+  'import.check3': {
+    en: 'Set types (warmup / drop / failure) mapped to Ischys',
+    note: 'Checklist line: what the import brings in. Keep Ischys untranslated.',
+  },
+  'import.check4': {
+    en: 'Notes on workouts and exercises',
+    note: 'Checklist line: what the import brings in.',
+  },
+  'import.supported': {
+    en: 'Supported: {json} (a full backup) and a {csv}. Cardio-only CSV rows (distance/duration without weight × reps) are skipped.',
+    note: 'Fine print on the import screen; {json} and {csv} are replaced by bold phrases from import.supportedJson and import.supportedCsv. Keep both placeholders.',
+  },
+  'import.supportedJson': {
+    en: 'Ischys JSON',
+    note: 'Bold phrase inserted into import.supported for {json}. Keep Ischys and JSON untranslated.',
+  },
+  'import.supportedCsv': {
+    en: 'workout CSV',
+    note: 'Bold phrase inserted into import.supported for {csv}. Keep CSV untranslated.',
+  },
+  'import.failed': {
+    en: 'Import failed',
+    note: 'Error banner text when an import fails with no detail.',
+  },
+  'import.selectedFile': {
+    en: 'SELECTED FILE',
+    note: 'Caption above the chosen file name. Upper case in English.',
+  },
+  'import.changeFile': {
+    en: 'Change file',
+    note: 'Button and screen-reader label that chooses another file. Max 14 characters.',
+  },
+  'import.reading': {
+    en: 'Reading file…',
+    note: 'Hint while the chosen file is being read. Keep the ellipsis.',
+  },
+  'import.unsupported': {
+    en: 'This doesn\'t look like an Ischys JSON backup or a workout CSV. Pick one of those and try again.',
+    note: 'Hint when the chosen file is not a supported format. Keep Ischys, JSON and CSV untranslated.',
+  },
+  'import.statWorkouts': {
+    en: 'WORKOUTS',
+    note: 'Caption of a stat cell in the import preview. Upper case in English. Max 10 characters; three cells share a row.',
+  },
+  'import.statExercises': {
+    en: 'EXERCISES',
+    note: 'Caption of a stat cell in the import preview. Upper case in English. Max 10 characters; three cells share a row.',
+  },
+  'import.statSets': {
+    en: 'SETS',
+    note: 'Caption of a stat cell in the import preview. Upper case in English. Max 10 characters; three cells share a row.',
+  },
+  'import.skipCardio': {
+    en: '{count} rows will be skipped (cardio / rest-only)',
+    note: 'Note in the import preview; {count} is a number of CSV rows.',
+  },
+  'import.skipNoName': {
+    en: '{count} rows will be skipped (no exercise name)',
+    note: 'Note in the import preview; {count} is a number of CSV rows.',
+  },
+  'import.weightUnit': {
+    en: 'WEIGHT UNIT',
+    note: 'Caption above the KG/LB selector in the import preview. Upper case in English.',
+  },
+  'import.unitUnknown': {
+    en: 'This file doesn\'t say, so weights are read as {unit}',
+    note: 'Note under the weight unit selector; {unit} is KG or LB.',
+  },
+  'import.firstWorkouts': {
+    en: 'FIRST WORKOUTS',
+    note: 'Caption above a short list of the first workouts found in the file. Upper case in English.',
+  },
+  'import.setsCount_one': {
+    en: '{count} set',
+    note: 'Number of sets in a previewed workout, one set. Lower case in English.',
+  },
+  'import.setsCount_other': {
+    en: '{count} sets',
+    note: 'Number of sets in a previewed workout. Lower case in English.',
+  },
+  'import.importFile': {
+    en: 'Import file',
+    note: 'Disabled import button label when the file is unsupported.',
+  },
+  'import.importCount_one': {
+    en: 'Import {count} workout{into}{unit}',
+    note: 'Import button label for one workout; {into} is an optional phrase such as " into Tom" (import.into), {unit} is an optional phrase such as " as KG" (import.asUnit); both may be empty.',
+  },
+  'import.importCount_other': {
+    en: 'Import {count} workouts{into}{unit}',
+    note: 'Import button label for several workouts; {into} is an optional phrase such as " into Tom" (import.into), {unit} is an optional phrase such as " as KG" (import.asUnit); both may be empty.',
+  },
+  'import.into': {
+    en: ' into {name}',
+    note: 'Optional phrase inside the import button label; keep the leading space; {name} is the profile first name.',
+  },
+  'import.asUnit': {
+    en: ' as {unit}',
+    note: 'Optional phrase inside the import button label; keep the leading space; {unit} is KG or LB.',
+  },
+  'import.importing': {
+    en: 'Importing…',
+    note: 'Caption under the progress ring while importing. Keep the ellipsis.',
+  },
+  'import.done': {
+    en: 'History imported',
+    note: 'Title on the import success screen.',
+  },
+  'import.doneStats': {
+    en: '{workouts} workouts · {exercises} exercises · {sets} sets',
+    note: 'Line on the import success screen; all three are numbers.',
+  },
+  'import.rowsSkipped': {
+    en: '{count} rows skipped',
+    note: 'Line on the import success screen; {count} is a number of CSV rows.',
+  },
+  'import.footnote': {
+    en: 'You can save more later from History.',
+    note: 'Footnote under the routines card on the import success screen.',
+  },
+  'import.tryAgain': {
+    en: 'Try again',
+    note: 'Button on the import error screen, and its screen-reader label. One line.',
+  },
+  'import.routines': {
+    en: 'ROUTINES',
+    note: 'Small caption of the routines card on the import success screen. Upper case in English.',
+  },
+  'import.routinesHeading': {
+    en: 'Save any as routines?',
+    note: 'Heading of the routines card on the import success screen.',
+  },
+  'import.routinesBody': {
+    en: 'Your import restored sessions, not routines. Pick the ones you still train. Each is built from its most recent session.',
+    note: 'Body of the routines card on the import success screen.',
+  },
+  'import.lastTrained': {
+    en: 'LAST TRAINED',
+    note: 'Right-hand column header of the list of workout titles. Upper case in English.',
+  },
+  'import.candidateHint': {
+    en: 'Saves this as a routine',
+    note: 'Screen-reader hint of a workout title row. Not visible.',
+  },
+  'import.seenOnceHint': {
+    en: 'Shows the titles trained once',
+    note: 'Screen-reader hint of the collapsed row. Not visible.',
+  },
+  'import.retry': {
+    en: 'Retry',
+    note: 'Footer button after some routines failed to be created.',
+  },
+  'import.skip': {
+    en: 'Skip',
+    note: 'Footer text button that leaves without creating routines. Max 8 characters.',
+  },
+  'import.sessions_one': {
+    en: '{count} SESSION',
+    note: 'Meta under a workout title: sessions count, one. Upper case in English.',
+  },
+  'import.sessions_other': {
+    en: '{count} SESSIONS',
+    note: 'Meta under a workout title: sessions count. Upper case in English.',
+  },
+  'import.exercisesMeta_one': {
+    en: '{count} EXERCISE',
+    note: 'Meta under a workout title: exercises count, one. Upper case in English.',
+  },
+  'import.exercisesMeta_other': {
+    en: '{count} EXERCISES',
+    note: 'Meta under a workout title: exercises count. Upper case in English.',
+  },
+  'import.titles_one': {
+    en: '{count} TITLE',
+    note: 'Left column header of the list of workout titles, one. Upper case in English.',
+  },
+  'import.titles_other': {
+    en: '{count} TITLES',
+    note: 'Left column header of the list of workout titles. Upper case in English.',
+  },
+  'import.seenOnce': {
+    en: '{count} MORE · SEEN ONCE',
+    note: 'Collapsed row that expands titles trained only once; {count} is a number. Upper case in English.',
+  },
+  'import.createRoutines_one': {
+    en: 'Create {count} routine',
+    note: 'Accent footer button: create one routine from the picked titles.',
+  },
+  'import.createRoutines_other': {
+    en: 'Create {count} routines',
+    note: 'Accent footer button: create several routines from the picked titles; {count} is a number.',
+  },
+  'import.partialFail': {
+    en: 'Created {created} of {attempted} · {names} failed',
+    note: 'Note under the footer button when some routines could not be created; {names} is a comma-separated list of titles.',
+  },
+  'import.warnDuplicates_one': {
+    en: '{count} workout already imported, skipped',
+    note: 'Import warning on the success screen: one workout was a duplicate.',
+  },
+  'import.warnDuplicates_other': {
+    en: '{count} workouts already imported, skipped',
+    note: 'Import warning on the success screen: several workouts were duplicates.',
+  },
+  'import.warnColumns': {
+    en: 'Couldn\'t recognise this CSV\'s columns — nothing was imported',
+    note: 'Import warning on the success screen when no CSV columns were recognised.',
+  },
+  'import.warnNoDate_one': {
+    en: '{count} workout skipped (no valid date)',
+    note: 'Import warning on the success screen: one workout had no valid date.',
+  },
+  'import.warnNoDate_other': {
+    en: '{count} workouts skipped (no valid date)',
+    note: 'Import warning on the success screen: several workouts had no valid date.',
+  },
+  'import.invalidJson': {
+    en: 'Not a valid Ischys JSON export',
+    note: 'Error banner when the chosen JSON file is not an Ischys export.',
+  },
+  'startFlow.body': {
+    en: '“{name}” is still running. Finish or discard it before starting another.',
+    note: 'Alert message when starting a workout while another is running; {name} is the running workout name (shown in quotes). Title is resume.title; buttons are Cancel and Resume.',
+  },
+  'demo.comingSoon': {
+    en: 'Coming soon',
+    note: 'Alert title for the not-yet-available local file upload for a demo video.',
+  },
+  'demo.comingSoonBody': {
+    en: 'Local file upload will be added in a later release.',
+    note: 'Alert message for the not-yet-available local file upload.',
+  },
+  'demo.artNote': {
+    en: 'Illustration for reference — follow the steps below for form.',
+    note: 'Note under the exercise artwork: the drawing is only a reference, the how-to steps give the form guidance.',
+  },
+  'demo.add': {
+    en: 'Add a demo video →',
+    note: 'Text link that opens the demo video editor. Keep the arrow.',
+  },
+  'demo.attribution': {
+    en: 'Image · {author}',
+    note: 'Credit line under an exercise image; {author} is the artist or source name.',
+  },
+  'demo.addLabel': {
+    en: 'ADD DEMO',
+    note: 'Label in the empty demo tile. Upper case in English. Max 12 characters.',
+  },
+  'demo.paste': {
+    en: 'Paste URL',
+    note: 'Chip in the empty demo tile that opens the URL editor. Max 14 characters.',
+  },
+  'demo.upload': {
+    en: 'Upload file',
+    note: 'Chip in the empty demo tile for uploading a file. Max 14 characters.',
+  },
+  'demo.source': {
+    en: 'Source · {host}',
+    note: 'Footer of a demo tile; {host} is a web domain such as youtube.com.',
+  },
+  'demo.change': {
+    en: 'Change',
+    note: 'Text button on a demo tile that opens the URL editor. Max 8 characters.',
+  },
+  'demo.urlTitle': {
+    en: 'Demo URL',
+    note: 'Title of the demo URL editor sheet.',
+  },
+  'demo.urlPlaceholder': {
+    en: 'https://…/incline-db-press.mp4',
+    note: 'Example URL in the demo URL input. Keep it as a URL.',
+  },
+  'demo.urlInvalid': {
+    en: 'Enter an http(s) link to a video.',
+    note: 'Error under the demo URL input when the text is not an http or https link.',
+  },
+  'demo.saveLabel': {
+    en: 'Save demo URL',
+    note: 'Screen-reader label of the Save button in the demo URL editor. Not visible.',
+  },
+  'musclePicker.noMatch': {
+    en: 'No muscles match "{query}"',
+    note: 'Empty-state line in the muscle picker; {query} is what the user typed.',
+  },
+  'musclePicker.search': {
+    en: 'Search muscles',
+    note: 'Placeholder of the search field in the muscle picker.',
+  },
+  'exerciseDetail.chartEmpty': {
+    en: 'Not enough data yet.',
+    note: 'Empty-state line inside a chart card on the exercise Charts tab.',
+  },
+  'restAlert.exactTitle': {
+    en: 'Rest alerts on time',
+    note: 'Android alert title asking to allow exact alarms so the rest timer alert is not delayed.',
+  },
+  'restAlert.exactBody': {
+    en: 'Android can delay the end-of-rest alert by a minute or more unless Ischys is allowed to set alarms. Turn on "Alarms & reminders" for Ischys to get it on the second.',
+    note: 'Android alert message; "Alarms & reminders" is the name of an Android system setting, translate it as Android does.',
+  },
+  'restAlert.openSettings': {
+    en: 'Open settings',
+    note: 'Android alert button that opens the system alarm settings.',
+  },
+  'workout.finishFailedBackground': {
+    en: 'Nothing was changed. Open the workout and try again.',
+    note: 'Alert message shown when finishing a workout from the Watch fails in the background; follows workout.finishFailedTitle.',
+  },
 };

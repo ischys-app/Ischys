@@ -3,6 +3,9 @@ import type { Lang } from './locale.ts';
 import { fold } from '../domain/fold.ts';
 import catalog from '../../assets/catalog/catalog.json' with { type: 'json' };
 import zh from './catalog/zh-Hans.json' with { type: 'json' };
+import { strings } from './strings/en.ts';
+import uiZh from './strings/zh-Hans.json' with { type: 'json' };
+import { createTranslator } from './translate.ts';
 
 type Named = { id: string; name: string };
 type Dict = Record<string, string>;
@@ -51,10 +54,20 @@ export function matchesSearch(query: string, labels: readonly string[]): boolean
 
 const muscleIdByEnglish = Object.fromEntries(catalog.muscles.map((m) => [m.name, m.id]));
 
+/** Muscle-map regions that are not catalog muscles, with their UI string keys. */
+const REGION_KEYS: Dict = {
+  'Front Delts': 'muscleRegion.frontDelts',
+  'Side Delts': 'muscleRegion.sideDelts',
+  'Rear Delts': 'muscleRegion.rearDelts',
+  Obliques: 'muscleRegion.obliques',
+};
+
 /** A muscle shown by its English name only (e.g. a muscle-map region). */
 export function muscleNameLabel(name: string, lang: Lang): string {
   const id = muscleIdByEnglish[name];
-  return id ? muscleLabel({ id, name }, lang) : name;
+  if (id) return muscleLabel({ id, name }, lang);
+  const key = REGION_KEYS[name];
+  return key ? createTranslator(lang, uiZh, strings)(key) : name;
 }
 
 /**

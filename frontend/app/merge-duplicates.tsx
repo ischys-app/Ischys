@@ -43,7 +43,9 @@ import { useWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { getLang } from '../src/i18n/current';
+import { fmtMonthYear } from '../src/lib/format';
 import { equipmentLabel, nameToStore } from '../src/i18n/catalogNames';
+import { t } from '../src/i18n';
 
 // --- Local glyphs (icons.tsx is owned by another stream) ------------------
 
@@ -104,18 +106,15 @@ function PencilGlyph({ size = 14, color: stroke }: { size?: number; color: strin
 // --- Reason tag -----------------------------------------------------------
 
 const REASON_META: Record<MergeReason, { label: string; fg: string; bg: string }> = themed(() => ({
-  same_name: { label: 'SAME NAME', fg: color.text3, bg: color.surface3 },
+  same_name: { label: 'mergeDup.sameName', fg: color.text3, bg: color.surface3 },
   // tokens.ts names the #4C8DFF "water" accent `drop`.
-  same_import: { label: 'SAME IMPORT', fg: color.drop, bg: withAlpha(color.drop, 0.1) },
-  similar_name: { label: 'SIMILAR NAME', fg: color.warning, bg: withAlpha(color.warning, 0.1) },
+  same_import: { label: 'mergeDup.sameImport', fg: color.drop, bg: withAlpha(color.drop, 0.1) },
+  similar_name: { label: 'mergeDup.similarName', fg: color.warning, bg: withAlpha(color.warning, 0.1) },
 }));
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 function sinceLabel(ms: number | null): string {
-  if (ms === null) return 'no history yet';
-  const d = new Date(ms);
-  return `since ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  if (ms === null) return t('mergeDup.noHistory');
+  return t('mergeDup.since', { date: fmtMonthYear(new Date(ms).toISOString()) });
 }
 
 type Step = 'loading' | 'list' | 'detail' | 'success';
@@ -155,7 +154,7 @@ export default function MergeDuplicates() {
       setTotalScanned(total);
       setStep('list');
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Could not scan the library');
+      setLoadError(e instanceof Error ? e.message : t('mergeDup.scanFailed'));
       setStep('list');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,9 +185,9 @@ export default function MergeDuplicates() {
     } catch (e) {
       setSheetOpen(false);
       if (e instanceof ActiveSessionError) {
-        Alert.alert('Can’t merge right now', e.message);
+        Alert.alert(t('mergeDup.cantMerge'), e.message);
       } else {
-        Alert.alert('Merge failed', e instanceof Error ? e.message : 'Something went wrong.');
+        Alert.alert(t('mergeDup.mergeFailed'), e instanceof Error ? e.message : t('mergeDup.somethingWrong'));
       }
     } finally {
       setMerging(false);
@@ -205,10 +204,10 @@ export default function MergeDuplicates() {
         .then(() =>
           setResult((r) => (r ? { ...r, survivorName: trimmed, survivorEnglishName: trimmed } : r)),
         )
-        .catch(() => Alert.alert('Rename failed', 'Could not rename the exercise.'));
+        .catch(() => Alert.alert(t('mergeDup.renameFailed'), t('mergeDup.renameFailedBody')));
     };
     if (Platform.OS === 'ios' && typeof Alert.prompt === 'function') {
-      Alert.prompt('Rename exercise', undefined, commit, 'plain-text', current.name);
+      Alert.prompt(t('mergeDup.rename'), undefined, commit, 'plain-text', current.name);
     } else {
       router.push(`/exercise/${id}`);
     }
@@ -220,6 +219,7 @@ export default function MergeDuplicates() {
   const combinedSets = active?.members.reduce((s, m) => s + m.setCount, 0) ?? 0;
   const combinedWorkouts = active?.members.reduce((s, m) => s + m.workoutCount, 0) ?? 0;
   const routinesRepoint = losers.reduce((s, m) => s + m.routineCount, 0);
+  const confirmParts = t('mergeDup.confirm', { sets: combinedSets, count: routinesRepoint, name: '\u0000' }).split('\u0000');
   const prRows =
     survivor != null ? reconcilePrs(survivor.prs, losers.map((l) => l.prs)) : [];
 
@@ -236,7 +236,7 @@ export default function MergeDuplicates() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: 100 + insets.top, paddingHorizontal: 16, paddingBottom: 120 + insets.bottom }}
         >
-          <Text style={styles.sectionLabel}>KEEP</Text>
+          <Text style={styles.sectionLabel}>{t('mergeDup.keep')}</Text>
           <View style={{ gap: 8 }}>
             {active.members.map((m) => {
               const sel = m.id === survivorId;
@@ -256,7 +256,7 @@ export default function MergeDuplicates() {
                       {m.name}
                     </Text>
                     <Text style={[styles.keepMeta, sel && { color: color.text2 }]}>
-                      {`${m.setCount} sets · ${m.workoutCount} workouts · ${sinceLabel(m.firstWorkoutMs)}`}
+                      {t('mergeDup.keepMeta', { sets: m.setCount, workouts: m.workoutCount, since: sinceLabel(m.firstWorkoutMs) })}
                     </Text>
                   </View>
                 </Pressable>
@@ -265,24 +265,24 @@ export default function MergeDuplicates() {
           </View>
           {survivor.isCatalog ? <Text style={styles.reasonLine}>{active.survivorReason}</Text> : null}
 
-          <Text style={[styles.sectionLabel, { paddingTop: 22 }]}>WHAT COMBINES</Text>
+          <Text style={[styles.sectionLabel, { paddingTop: 22 }]}>{t('mergeDup.whatCombines')}</Text>
           <View style={styles.combineCard}>
             <View style={styles.combineRow}>
               <Check size={15} color={color.success} strokeWidth={2.6} />
-              <Text style={styles.combineText}>{`${combinedSets} sets across ${combinedWorkouts} workouts`}</Text>
+              <Text style={styles.combineText}>{t('mergeDup.combined', { sets: combinedSets, workouts: combinedWorkouts })}</Text>
             </View>
             {routinesRepoint > 0 ? (
               <View style={styles.combineRow}>
                 <Check size={15} color={color.success} strokeWidth={2.6} />
                 <Text style={styles.combineText}>
-                  {`${routinesRepoint} ${routinesRepoint === 1 ? 'routine re-points' : 'routines re-point'} automatically`}
+                  {t('mergeDup.repoint', { count: routinesRepoint })}
                 </Text>
               </View>
             ) : null}
 
             {prRows.length > 0 ? (
               <View style={styles.prBlock}>
-                <Text style={styles.prHeader}>PERSONAL RECORDS · BEST OF EACH KEPT</Text>
+                <Text style={styles.prHeader}>{t('mergeDup.prHeader')}</Text>
                 <View style={{ gap: 7 }}>
                   {prRows.map((r) => (
                     <View key={r.metric} style={styles.prRow}>
@@ -291,7 +291,7 @@ export default function MergeDuplicates() {
                         {recordDisplay(r.metric, r.value, r.display, unit)}
                       </Text>
                       <Text style={[styles.prTag, r.fromDup && { color: color.success }]}>
-                        {r.fromDup ? 'from dup' : 'kept'}
+                        {r.fromDup ? t('mergeDup.fromDup') : t('mergeDup.kept')}
                       </Text>
                     </View>
                   ))}
@@ -301,23 +301,23 @@ export default function MergeDuplicates() {
           </View>
 
           <Text style={styles.finePrint}>
-            Nothing is deleted except the duplicate’s empty entry. Merging can’t be undone.
+            {t('mergeDup.finePrint')}
           </Text>
         </ScrollView>
 
         {/* Header: Cancel / title / spacer (M3) */}
         <View style={[styles.detailHeader, { paddingTop: headerPadTop }]}>
           <Pressable onPress={() => (manualIds ? router.back() : setStep('list'))} hitSlop={8}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={styles.cancel}>{t('common.cancel')}</Text>
           </Pressable>
-          <Text style={styles.detailTitle}>{`Merge ${active.members.length} exercises`}</Text>
+          <Text style={styles.detailTitle}>{t('mergeDup.mergeCount', { count: active.members.length })}</Text>
           <View style={{ width: 52 }} />
         </View>
 
         {/* Footer CTA */}
         <View style={[styles.footer, { paddingBottom: 34 + insets.bottom }]}>
           <PressableScale style={styles.primaryCta} onPress={() => setSheetOpen(true)}>
-            <Text style={styles.primaryCtaText} numberOfLines={1}>{`Merge into ${survivor.name}`}</Text>
+            <Text style={styles.primaryCtaText} numberOfLines={1}>{t('mergeDup.mergeInto', { name: survivor.name })}</Text>
           </PressableScale>
         </View>
 
@@ -327,19 +327,19 @@ export default function MergeDuplicates() {
             <View style={styles.grabber} />
           </View>
           <View style={styles.sheetBody}>
-            <Text style={styles.sheetTitle}>Merge these exercises?</Text>
+            <Text style={styles.sheetTitle}>{t('mergeDup.confirmTitle')}</Text>
             <Text style={styles.sheetText}>
-              {`${combinedSets} sets and ${routinesRepoint} ${routinesRepoint === 1 ? 'routine' : 'routines'} will point to `}
+              {confirmParts[0]}
               <Text style={styles.sheetStrong}>{survivor.name}</Text>
-              {'. Your history and personal records are kept — only the duplicate’s empty entry is removed.'}
+              {confirmParts[1]}
             </Text>
-            <Text style={styles.sheetWarn}>This can’t be undone.</Text>
+            <Text style={styles.sheetWarn}>{t('mergeDup.cantUndo')}</Text>
             <View style={{ gap: 10, marginTop: 20 }}>
               <PressableScale style={styles.primaryCta} onPress={doMerge} disabled={merging}>
-                {merging ? <ActivityIndicator color={color.accentFg} /> : <Text style={styles.primaryCtaText}>Merge</Text>}
+                {merging ? <ActivityIndicator color={color.accentFg} /> : <Text style={styles.primaryCtaText}>{t('mergeDup.merge')}</Text>}
               </PressableScale>
               <Pressable style={styles.cancelBtn} onPress={() => setSheetOpen(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
               </Pressable>
             </View>
           </View>
@@ -374,11 +374,11 @@ export default function MergeDuplicates() {
             <>
               {step === 'list' ? (
                 <Text style={styles.intro}>
-                  These look like the same lift saved twice. Merging keeps every set and PR.
+                  {t('mergeDup.intro')}
                 </Text>
               ) : (
                 <Text style={[styles.sectionLabel, { paddingTop: 26 }]}>
-                  {`${groups.length} REMAINING`}
+                  {t('mergeDup.remaining', { n: groups.length })}
                 </Text>
               )}
               <View style={{ gap: 10 }}>
@@ -397,10 +397,10 @@ export default function MergeDuplicates() {
 
       {/* Header (M2/M5/M6) */}
       <View style={[styles.header, { paddingTop: headerPadTop }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8} accessibilityLabel="Back" accessibilityRole="button">
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8} accessibilityLabel={t('common.back')} accessibilityRole="button">
           <BackChevron color={color.text2} />
         </Pressable>
-        <Text style={styles.title}>Merge duplicates</Text>
+        <Text style={styles.title}>{t('mergeDup.title')}</Text>
       </View>
     </View>
   );
@@ -415,7 +415,7 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, dimmed && { opacity: 0.65 }, pressed && { opacity: 0.85 }]}>
       <View style={styles.cardHeader}>
         <View style={[styles.reasonTag, { backgroundColor: meta.bg }]}>
-          <Text style={[styles.reasonText, { color: meta.fg }]}>{meta.label}</Text>
+          <Text style={[styles.reasonText, { color: meta.fg }]}>{t(meta.label)}</Text>
         </View>
         <View style={{ flex: 1 }} />
         <ChevronRight color={color.text3} />
@@ -427,7 +427,7 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
-            <Text style={styles.memberMeta} numberOfLines={1}>{`${equipmentLabel(m.equipment, getLang())} · ${m.setCount} sets`}</Text>
+            <Text style={styles.memberMeta} numberOfLines={1}>{t('mergeDup.memberMeta', { equipment: equipmentLabel(m.equipment, getLang()), sets: m.setCount })}</Text>
           </View>
         </View>
       ))}
@@ -448,24 +448,24 @@ function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: ()
           <Check size={16} color={color.success} strokeWidth={3.2} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.receiptTitle}>Merged</Text>
-          <Text style={styles.receiptSub} numberOfLines={1}>{`${result.survivorName} · ${result.totalSets} sets`}</Text>
+          <Text style={styles.receiptTitle}>{t('mergeDup.merged')}</Text>
+          <Text style={styles.receiptSub} numberOfLines={1}>{t('mergeDup.receiptSub', { name: result.survivorName, sets: result.totalSets })}</Text>
         </View>
       </View>
       <View style={styles.receiptRows}>
-        <ReceiptRow label="Sets moved" value={String(result.setsMoved)} />
-        <ReceiptRow label="Routines updated" value={String(result.routinesUpdated)} />
+        <ReceiptRow label={t('mergeDup.setsMoved')} value={String(result.setsMoved)} />
+        <ReceiptRow label={t('mergeDup.routinesUpdated')} value={String(result.routinesUpdated)} />
         {gained ? (
           <ReceiptRow
-            label="New PR gained"
-            value={`${prMetricLabel(gained.metric)} · ${recordDisplay(gained.metric, gained.value, gained.display, unit)}`}
+            label={t('mergeDup.newPr')}
+            value={t('mergeDup.prLine', { metric: prMetricLabel(gained.metric), value: recordDisplay(gained.metric, gained.value, gained.display, unit) })}
             success
           />
         ) : null}
       </View>
       <Pressable style={styles.renameBtn} onPress={onRename} accessibilityRole="button">
         <PencilGlyph color={color.text1} />
-        <Text style={styles.renameText}>Rename exercise</Text>
+        <Text style={styles.renameText}>{t('mergeDup.rename')}</Text>
       </Pressable>
     </View>
   );
@@ -487,18 +487,18 @@ function EmptyState({ total }: { total: number }) {
   useThemed();
   const scope =
     total > 0
-      ? `Ischys compares names, equipment and import source across all ${total} exercises.`
-      : 'Ischys compares names, equipment and import source across your whole library.';
+      ? t('mergeDup.scopeAll', { total })
+      : t('mergeDup.scopeWhole');
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
         <MergeGlyph size={28} color={color.text3} />
       </View>
-      <Text style={styles.emptyTitle}>No duplicates found</Text>
-      <Text style={styles.emptyBody}>{`Your library is clean. ${scope}`}</Text>
+      <Text style={styles.emptyTitle}>{t('mergeDup.emptyTitle')}</Text>
+      <Text style={styles.emptyBody}>{t('mergeDup.emptyBody', { scope })}</Text>
       <View style={styles.emptyCard}>
-        <Text style={styles.emptyCardLabel}>IF YOU SPOT ONE ANYWAY</Text>
-        <Text style={styles.emptyCardText}>Select both in the exercise library and choose Merge.</Text>
+        <Text style={styles.emptyCardLabel}>{t('mergeDup.spotOne')}</Text>
+        <Text style={styles.emptyCardText}>{t('mergeDup.spotOneBody')}</Text>
       </View>
     </View>
   );

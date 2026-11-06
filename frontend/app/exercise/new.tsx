@@ -34,21 +34,29 @@ import { MusclePickerSheet } from '../../src/components/MusclePickerSheet';
 import { PressableScale } from '../../src/components/PressableScale';
 import { accentA, color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { t } from '../../src/i18n';
+import { getLang } from '../../src/i18n/current';
+import { equipmentLabel } from '../../src/i18n/catalogNames';
 
-const EQUIPMENT_OPTIONS: { label: string; value: ExerciseEquipment }[] = [
-  { label: 'Barbell', value: 'barbell' },
-  { label: 'Dumbbell', value: 'dumbbell' },
-  { label: 'Machine', value: 'machine' },
-  { label: 'Cable', value: 'cable' },
-  { label: 'Bodyweight', value: 'bodyweight' },
-  { label: 'Kettlebell', value: 'kettlebell' },
-  { label: 'Band', value: 'band' },
-  { label: 'Other', value: 'other' },
+const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
+
+/** Stored equipment values; the label is the display name of each. */
+const EQUIPMENT_VALUES: ExerciseEquipment[] = [
+  'barbell',
+  'dumbbell',
+  'machine',
+  'cable',
+  'bodyweight',
+  'kettlebell',
+  'band',
+  'other',
 ];
+const equipmentOptions = (): { label: string; value: ExerciseEquipment }[] =>
+  EQUIPMENT_VALUES.map((value) => ({ label: titleCase(equipmentLabel(value, getLang())), value }));
 
-const KIND_OPTIONS: { label: string; value: ExerciseKind }[] = [
-  { label: 'Weighted', value: 'weighted' },
-  { label: 'Bodyweight', value: 'bodyweight' },
+const kindOptions = (): { label: string; value: ExerciseKind }[] => [
+  { label: t('newExercise.kindWeighted'), value: 'weighted' },
+  { label: t('newExercise.kindBodyweight'), value: 'bodyweight' },
 ];
 
 export default function NewExercise() {
@@ -127,17 +135,17 @@ export default function NewExercise() {
       });
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to create exercise';
+      const msg = e instanceof Error ? e.message : t('newExercise.failed');
       setError(msg);
-      if (Platform.OS !== 'web') Alert.alert('Could not save', msg);
+      if (Platform.OS !== 'web') Alert.alert(t('newExercise.couldNotSave'), msg);
       setSaving(false);
     }
   };
 
   const secondaryText =
     secondaryIds.length === 0
-      ? 'None'
-      : `${secondaryIds.length} selected`;
+      ? t('newExercise.none')
+      : t('newExercise.selected', { n: secondaryIds.length });
 
   const headerBottom = 100; // reserved space for the absolute header
 
@@ -165,13 +173,13 @@ export default function NewExercise() {
       >
         {/* NAME */}
         <View>
-          <Text style={styles.label}>NAME</Text>
+          <Text style={styles.label}>{t('newExercise.name')}</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             onFocus={() => setNameFocused(true)}
             onBlur={() => setNameFocused(false)}
-            placeholder="e.g. Incline Bench Press"
+            placeholder={t('newExercise.namePlaceholder')}
             placeholderTextColor={color.text3}
             autoCorrect={false}
             style={[
@@ -183,9 +191,9 @@ export default function NewExercise() {
 
         {/* CATEGORY */}
         <View>
-          <Text style={styles.label}>CATEGORY</Text>
+          <Text style={styles.label}>{t('newExercise.category')}</Text>
           {categories.length === 0 ? (
-            <Text style={styles.hint}>Loading…</Text>
+            <Text style={styles.hint}>{t('common.loading')}</Text>
           ) : (
             <View style={styles.chipsRow}>
               {categories.map((c) => {
@@ -221,12 +229,12 @@ export default function NewExercise() {
               onPress={() => setSheet('primary')}
               accessibilityRole="button"
             >
-              <Text style={styles.linkLabel}>Primary muscle</Text>
+              <Text style={styles.linkLabel}>{t('newExercise.primary')}</Text>
               <Text
                 style={styles.linkValue}
                 numberOfLines={1}
               >
-                {primaryMuscle ? primaryMuscle.name : 'None'}
+                {primaryMuscle ? primaryMuscle.name : t('newExercise.none')}
               </Text>
               <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.2} />
             </Pressable>
@@ -236,7 +244,7 @@ export default function NewExercise() {
               onPress={() => setSheet('secondary')}
               accessibilityRole="button"
             >
-              <Text style={styles.linkLabel}>Secondary muscles</Text>
+              <Text style={styles.linkLabel}>{t('newExercise.secondary')}</Text>
               <Text
                 style={styles.linkValue}
                 numberOfLines={1}
@@ -250,9 +258,9 @@ export default function NewExercise() {
 
         {/* EQUIPMENT */}
         <View>
-          <Text style={styles.label}>EQUIPMENT</Text>
+          <Text style={styles.label}>{t('newExercise.equipment')}</Text>
           <View style={styles.chipsRow}>
-            {EQUIPMENT_OPTIONS.map((opt) => {
+            {equipmentOptions().map((opt) => {
               const active = equipment === opt.value;
               return (
                 <Pressable
@@ -278,9 +286,9 @@ export default function NewExercise() {
 
         {/* KIND */}
         <View>
-          <Text style={styles.label}>KIND</Text>
+          <Text style={styles.label}>{t('newExercise.kind')}</Text>
           <View style={styles.segment}>
-            {KIND_OPTIONS.map((opt) => {
+            {kindOptions().map((opt) => {
               const active = kind === opt.value;
               return (
                 <Pressable
@@ -309,7 +317,7 @@ export default function NewExercise() {
 
         {/* HOW TO */}
         <View>
-          <Text style={styles.label}>HOW TO</Text>
+          <Text style={styles.label}>{t('newExercise.howTo')}</Text>
           <TextInput
             value={howto}
             onChangeText={setHowto}
@@ -317,7 +325,7 @@ export default function NewExercise() {
             onBlur={() => setHowtoFocused(false)}
             multiline
             textAlignVertical="top"
-            placeholder={'One instruction per line'}
+            placeholder={t('newExercise.howToPlaceholder')}
             placeholderTextColor={color.text3}
             style={[
               styles.howto,
@@ -332,9 +340,9 @@ export default function NewExercise() {
       {/* HEADER (absolute) */}
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={styles.cancel}>{t('common.cancel')}</Text>
         </Pressable>
-        <Text style={styles.title}>New Exercise</Text>
+        <Text style={styles.title}>{t('newExercise.title')}</Text>
         <PressableScale
           onPress={onSave}
           disabled={!canSave}
@@ -344,7 +352,7 @@ export default function NewExercise() {
           {saving ? (
             <ActivityIndicator color={color.accentFg} size="small" />
           ) : (
-            <Text style={styles.saveText}>Save</Text>
+            <Text style={styles.saveText}>{t('common.save')}</Text>
           )}
         </PressableScale>
       </View>

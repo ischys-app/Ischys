@@ -9,6 +9,8 @@
  * Pure, so `node --test` covers it.
  */
 
+import { fmtMonthNames } from '../lib/format.ts';
+
 const DAY = 86400000;
 
 export type ChartRangeId = '3M' | '6M' | '1Y' | 'ALL';
@@ -82,8 +84,6 @@ export function trendPerMonth(points: { t: number; value: number }[]): number | 
   return (num / den) * 30;
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 export type AxisTick = { label: string; pct: number };
 
 /**
@@ -118,7 +118,7 @@ export function axisTicks(times: number[], range: ChartRangeId): AxisTick[] {
   while (true) {
     const at = Math.max(first, Date.UTC(y, m, 1));
     if (at > last) break;
-    ticks.push({ label: MONTH_NAMES[m], pct: ((at - first) / span) * 100 });
+    ticks.push({ label: fmtMonthNames()[m], pct: ((at - first) / span) * 100 });
     m += 1;
     if (m > 11) {
       m = 0;

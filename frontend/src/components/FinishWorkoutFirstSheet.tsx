@@ -23,6 +23,7 @@ import { color, font, themed } from '../theme/tokens';
 import { useThemed } from '../theme/ThemeProvider';
 import { DraggableSheet } from './DraggableSheet';
 import { PressableScale } from './PressableScale';
+import { t } from '../i18n';
 
 export function FinishWorkoutFirstSheet() {
   useThemed();
@@ -66,9 +67,9 @@ export function FinishWorkoutFirstSheet() {
         {copy?.tail}
       </Text>
       <View style={styles.buttons}>
-        <PressableScale onPress={onGo} style={styles.go} accessibilityRole="button" accessibilityLabel="Go to workout">
+        <PressableScale onPress={onGo} style={styles.go} accessibilityRole="button" accessibilityLabel={t('finishFirst.go')}>
           <Text style={styles.goText} maxFontSizeMultiplier={textScale.control} numberOfLines={1}>
-            Go to workout
+            {t('finishFirst.go')}
           </Text>
         </PressableScale>
         <Pressable
@@ -77,7 +78,7 @@ export function FinishWorkoutFirstSheet() {
           accessibilityRole="button"
         >
           <Text style={styles.cancelText} maxFontSizeMultiplier={textScale.control}>
-            Cancel
+            {t('common.cancel')}
           </Text>
         </Pressable>
       </View>

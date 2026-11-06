@@ -25,6 +25,7 @@ import { getCountWarmups } from '../lib/warmupVolume';
 import { activeProfile, profileCount } from '../lib/activeProfile';
 import { exportFileStem } from '../domain/profiles';
 import { getProfile } from './profilesRepo';
+import { t } from '../i18n/t';
 
 type FullSet = { position: number; type: string; weight: number | null; reps: number | null; done: boolean; isPr: boolean; rpe: number | null };
 type FullExercise = { name: string; note: string | null; supersetGroup: number | null; sets: FullSet[] };
@@ -343,11 +344,11 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
   });
 
   if (duplicatesSkipped > 0) {
-    warnings.push(`${duplicatesSkipped} workout${duplicatesSkipped === 1 ? '' : 's'} already imported, skipped`);
+    warnings.push(t('import.warnDuplicates', { count: duplicatesSkipped }));
   }
   // Recognising no columns used to look identical to importing an empty file.
   if (parsed.unmapped) {
-    warnings.push("Couldn't recognise this CSV's columns — nothing was imported");
+    warnings.push(t('import.warnColumns'));
   }
 
   return {
@@ -388,7 +389,7 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
   try {
     workoutsIn = (backupWorkouts(text) ?? []) as JsonWorkout[];
   } catch {
-    throw new Error('Not a valid Ischys JSON export');
+    throw new Error(t('import.invalidJson'));
   }
 
   const cache = new Map<string, string>();
@@ -518,10 +519,10 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
   });
 
   if (duplicatesSkipped > 0) {
-    warnings.push(`${duplicatesSkipped} workout${duplicatesSkipped === 1 ? '' : 's'} already imported, skipped`);
+    warnings.push(t('import.warnDuplicates', { count: duplicatesSkipped }));
   }
   if (workoutsSkipped > 0) {
-    warnings.push(`${workoutsSkipped} workout${workoutsSkipped === 1 ? '' : 's'} skipped (no valid date)`);
+    warnings.push(t('import.warnNoDate', { count: workoutsSkipped }));
   }
 
   return {

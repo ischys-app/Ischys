@@ -7,6 +7,7 @@ import { color, font, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
 import { useThemed } from '../theme/ThemeProvider';
 import { ProfileAvatar } from './ProfileAvatar';
+import { t } from '../i18n';
 
 /**
  * Whose setting a section holds, with 2+ profiles (#117, P9): the profile's
@@ -28,7 +29,7 @@ export function SectionLabel({
   if (!scope) {
     return <Text maxFontSizeMultiplier={textScale.control} style={[styles.label, style]}>{children}</Text>;
   }
-  const who = scope.kind === 'profile' ? firstName(scope.profile.name) || scope.profile.name : 'THIS PHONE';
+  const who = scope.kind === 'profile' ? firstName(scope.profile.name) || scope.profile.name : t('scope.thisPhone');
   return (
     <View
       // With a scope the label is a row: `style` places the row (padding, margin).

@@ -40,6 +40,7 @@ import { runningWorkoutProfileId } from '../../src/lib/switchProfile';
 import { textScale } from '../../src/theme/textScale';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { t } from '../../src/i18n';
 
 export default function ProfileDetailScreen() {
   useThemed();
@@ -148,12 +149,12 @@ export default function ProfileDetailScreen() {
     if (!profile) return;
     const run = (fmt: 'json' | 'csv') =>
       exportProfile(fmt, profile.id).catch((e) => {
-        Alert.alert(e instanceof SharingUnavailable ? 'Sharing unavailable' : 'Export failed');
+        Alert.alert(e instanceof SharingUnavailable ? t('export.sharingUnavailable') : t('export.failed'));
       });
-    Alert.alert('Export data', 'Choose a format', [
+    Alert.alert(t('export.title'), t('export.chooseFormat'), [
       { text: 'JSON', onPress: () => void run('json') },
       { text: 'CSV', onPress: () => void run('csv') },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -189,7 +190,7 @@ export default function ProfileDetailScreen() {
 
           <View style={styles.fields}>
             <View style={styles.flexField}>
-              <SectionLabel style={styles.fieldLabel}>NAME</SectionLabel>
+              <SectionLabel style={styles.fieldLabel}>{t('profiles.name')}</SectionLabel>
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -200,25 +201,25 @@ export default function ProfileDetailScreen() {
                 onSubmitEditing={() => Keyboard.dismiss()}
                 onFocus={() => setFocused('name')}
                 onBlur={commitName}
-                placeholder="Name"
+                placeholder={t('profiles.namePlaceholder')}
                 placeholderTextColor={color.text3}
-                accessibilityLabel="Name"
+                accessibilityLabel={t('profiles.namePlaceholder')}
                 maxFontSizeMultiplier={textScale.control}
                 style={[styles.input, styles.nameInput, focused === 'name' && styles.inputFocused]}
               />
             </View>
             <View style={styles.initialsField}>
-              <SectionLabel style={styles.fieldLabel}>INITIALS</SectionLabel>
+              <SectionLabel style={styles.fieldLabel}>{t('profiles.initials')}</SectionLabel>
               <TextInput
                 value={initials}
-                onChangeText={(t) => setInitials(normalizeInitials(t))}
+                onChangeText={(text) => setInitials(normalizeInitials(text))}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 returnKeyType="done"
                 onSubmitEditing={() => Keyboard.dismiss()}
                 onFocus={() => setFocused('initials')}
                 onBlur={commitInitials}
-                accessibilityLabel="Initials"
+                accessibilityLabel={t('profiles.initialsLabel')}
                 maxFontSizeMultiplier={textScale.fixed}
                 style={[styles.input, styles.initialsInput, focused === 'initials' && styles.inputFocused]}
               />
@@ -230,13 +231,13 @@ export default function ProfileDetailScreen() {
               onPress={onExport}
               style={({ pressed }) => [styles.row, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityLabel="Export this profile"
+              accessibilityLabel={t('profiles.exportThis')}
             >
               <UploadIcon size={20} color={color.text2} />
               <Text style={styles.rowLabel} numberOfLines={1}>
-                Export this profile
+                {t('profiles.exportThis')}
               </Text>
-              <Text style={styles.rowValue}>CSV · JSON</Text>
+              <Text style={styles.rowValue}>{t('profiles.exportFormats')}</Text>
               <ChevronRightIcon size={15} color={color.text3} strokeWidth={2.2} />
             </Pressable>
           </View>
@@ -247,20 +248,20 @@ export default function ProfileDetailScreen() {
                 onPress={() => void openDelete()}
                 style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="Delete profile"
+                accessibilityLabel={t('profiles.deleteRow')}
               >
                 <TrashIcon size={20} color={color.error} strokeWidth={2} />
                 <Text style={[styles.rowLabel, styles.danger]} numberOfLines={1}>
-                  Delete profile
+                  {t('profiles.deleteRow')}
                 </Text>
               </Pressable>
             </View>
           ) : null}
           {block === 'owner' ? (
-            <Text style={styles.note}>This is the phone owner's profile. It can't be deleted.</Text>
+            <Text style={styles.note}>{t('profiles.ownerNote')}</Text>
           ) : null}
           {block === 'workout' ? (
-            <Text style={styles.note}>Finish the workout in progress to delete this profile.</Text>
+            <Text style={styles.note}>{t('profiles.workoutNote')}</Text>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -273,7 +274,7 @@ export default function ProfileDetailScreen() {
           }}
           style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
         >
           <Svg width={9} height={15} viewBox="0 0 9 15" fill="none">

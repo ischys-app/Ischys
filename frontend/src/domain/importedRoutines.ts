@@ -11,6 +11,9 @@
  * here where they can be tested.
  */
 import type { ImportedSession } from '../api/types.ts';
+import { getLang } from '../i18n/current.ts';
+import { t } from '../i18n/t.ts';
+import { fmtCardDay, fmtDayMonthOf } from '../lib/format.ts';
 
 /** One title the user can turn into a routine. */
 export type RoutineCandidate = {
@@ -127,15 +130,9 @@ export function splitSeenOnce(candidates: RoutineCandidate[]): {
   return { rows, seenOnce: candidates.filter((c) => !keep(c)) };
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
 /** `56 SESSIONS · 6 EXERCISES` — mono, tabular, under the name. */
 export function routineCandidateMeta(c: RoutineCandidate): string {
-  return `${plural(c.sessions, 'SESSION', 'SESSIONS')} · ${plural(
-    c.exerciseCount,
-    'EXERCISE',
-    'EXERCISES',
-  )}`;
+  return `${t('import.sessions', { count: c.sessions })} · ${t('import.exercisesMeta', { count: c.exerciseCount })}`;
 }
 
 /**
@@ -149,6 +146,9 @@ export function routineCandidateMeta(c: RoutineCandidate): string {
  */
 export function lastTrainedLabel(ms: number, newestAt: number): string {
   const d = new Date(ms);
+  if (getLang() === 'zh-Hans') {
+    return d.getFullYear() === new Date(newestAt).getFullYear() ? fmtDayMonthOf(d) : fmtCardDay(d);
+  }
   const day = `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`;
   const year = d.getFullYear();
   if (year === new Date(newestAt).getFullYear()) return day;
@@ -162,12 +162,12 @@ export function isRecentlyTrained(lastTrainedAt: number, newestAt: number): bool
 
 /** `10 TITLES` — the list header, left. */
 export function titlesHeaderLabel(count: number): string {
-  return plural(count, 'TITLE', 'TITLES');
+  return t('import.titles', { count });
 }
 
 /** `2 MORE · SEEN ONCE` — the collapsed row. */
 export function seenOnceLabel(count: number): string {
-  return `${count} MORE · SEEN ONCE`;
+  return t('import.seenOnce', { count });
 }
 
 /**
@@ -175,8 +175,8 @@ export function seenOnceLabel(count: number): string {
  * either way, so skipping never needs a second control.
  */
 export function createRoutinesLabel(picked: number): string {
-  if (picked === 0) return 'Done';
-  return `Create ${picked} routine${picked === 1 ? '' : 's'}`;
+  if (picked === 0) return t('common.done');
+  return t('import.createRoutines', { count: picked });
 }
 
 /**
@@ -189,7 +189,7 @@ export function partialFailureNote(
   failedNames: string[],
 ): string | null {
   if (failedNames.length === 0) return null;
-  return `Created ${created} of ${attempted} · ${failedNames.join(', ')} failed`;
+  return t('import.partialFail', { created, attempted, names: failedNames.join(', ') });
 }
 
 /**

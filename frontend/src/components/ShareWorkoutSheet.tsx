@@ -36,6 +36,7 @@ import { PressableScale } from './PressableScale';
 import { StarIcon } from './icons';
 import { Wordmark } from './Wordmark';
 import { useThemed } from '../theme/ThemeProvider';
+import { workoutLabel } from '../i18n/workoutLabel';
 
 type Layout = 'compact' | 'standard' | 'detailed';
 
@@ -329,7 +330,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
 
       <View style={cardStyles.middle}>
         <Text style={[cardStyles.name, { fontSize: nameSize }]} numberOfLines={2}>
-          {workout.name}
+          {workoutLabel(workout.name)}
         </Text>
 
         {layout === 'compact' ? (

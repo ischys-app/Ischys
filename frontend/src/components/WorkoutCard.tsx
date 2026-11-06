@@ -9,6 +9,7 @@ import { textScale } from '../theme/textScale';
 import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
 import { useThemed } from '../theme/ThemeProvider';
+import { workoutLabel } from '../i18n/workoutLabel';
 
 /** A recent-workout summary card. */
 export function WorkoutCard({
@@ -32,7 +33,7 @@ export function WorkoutCard({
       onLongPress={onLongPress}
       delayLongPress={400}
       accessibilityRole="button"
-      accessibilityLabel={workout.name}
+      accessibilityLabel={workoutLabel(workout.name)}
       accessibilityHint={
         accessibilityHint ?? (onLongPress ? 'Long-press to delete this workout.' : undefined)
       }
@@ -41,7 +42,7 @@ export function WorkoutCard({
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text maxFontSizeMultiplier={textScale.display} style={styles.name} numberOfLines={1}>
-            {workout.name}
+            {workoutLabel(workout.name)}
           </Text>
           <Text maxFontSizeMultiplier={textScale.control} style={styles.date}>{fmtWorkoutDate(workout.started_at)}</Text>
         </View>

@@ -46,6 +46,7 @@ import { PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
 import { haptics } from '../src/lib/haptics';
 import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { workoutLabel } from '../src/i18n/workoutLabel';
 
 type Step = 'file_pick' | 'preview' | 'progress' | 'success' | 'error';
 
@@ -93,7 +94,7 @@ function summarizeJson(text: string): ParsePayload {
         count += Array.isArray(ex?.sets) ? ex.sets.length : 0;
       }
       sets += count;
-      if (i < 5) firstWorkouts.push({ name: (w.name ?? 'Workout') || 'Workout', count });
+      if (i < 5) firstWorkouts.push({ name: workoutLabel(w.name), count });
     }
     return { supported: true, kind: 'json', weightUnitKnown: true, workouts: wk.length, exercises: exercises.size, sets, firstWorkouts };
   } catch {

@@ -109,3 +109,35 @@ test('fmtTimeOfDay: local 24-hour HH:MM', () => {
   assert.equal(fmtTimeOfDay(new Date(2026, 9, 29, 18, 2, 59).getTime()), '18:02');
   assert.equal(fmtTimeOfDay(new Date(2026, 9, 29, 7, 5).getTime()), '07:05');
 });
+
+// --- zh-Hans (#136): pinned via the trailing lang parameter ---
+import { fmtAgo, fmtDateOnly, fmtMonthYear, fmtWorkoutDate, metricLabel } from './format.ts';
+
+test('zh-Hans dates', () => {
+  assert.equal(fmtHeaderDate('2026-07-08', 'zh-Hans'), '周三 · 2026年7月8日');
+  assert.equal(fmtHeaderDate('2026-07-08', 'en'), 'WED · 8 JUL 2026');
+  assert.equal(fmtShortDayUpper(new Date(2026, 8, 30), 'zh-Hans'), '周三 9月30日');
+  assert.equal(fmtShortDayUpper(new Date(2026, 8, 30), 'en'), 'WED 30 SEP');
+  assert.equal(fmtWorkoutDate('2026-07-07', 'zh-Hans'), '周二 7月7日 · 00:00');
+  assert.equal(fmtWorkoutDate('2026-07-07', 'en'), 'Tue, 7 Jul · 00:00');
+  assert.equal(fmtDateOnly('2026-07-07', 'zh-Hans'), '周二 2026年7月7日');
+  assert.equal(fmtDateOnly('2026-07-07', 'en'), 'Tue, 7 Jul 2026');
+  assert.equal(fmtMonthYear('2024-01-15', 'zh-Hans'), '2024年1月');
+  assert.equal(fmtMonthYear('2024-01-15', 'en'), 'Jan 2024');
+  assert.equal(fmtMonthYear(null, 'zh-Hans'), '');
+});
+
+test('zh-Hans history group titles', () => {
+  const now = new Date(2026, 6, 11, 12);
+  assert.equal(fmtHistoryGroupTitle('2026-07-10', now, 'en'), 'THIS WEEK');
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', now, 'zh-Hans'), '2026年5月');
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', now, 'en'), 'MAY 2026');
+});
+
+test('zh-Hans words come from the string table, English when untranslated', () => {
+  assert.equal(metricLabel('best_set', 'en'), 'Best Set');
+  assert.equal(metricLabel('best_set', 'zh-Hans'), 'Best Set');
+  const now = new Date('2026-07-11T12:00:00Z');
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'en'), '1h ago');
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), '1h ago');
+});

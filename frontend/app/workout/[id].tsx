@@ -158,6 +158,7 @@ import {
   type Exercise,
 } from '../../src/components/workout/types';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { workoutLabel } from '../../src/i18n/workoutLabel';
 
 const START_ELAPSED = 12 * 60 + 47; // seeded "12:47"
 const DEFAULT_REST = 120;
@@ -1375,7 +1376,7 @@ export default function ActiveWorkout() {
     () =>
       buildWatchState(
         exercises,
-        name || 'Workout',
+        workoutLabel(name),
         {
           resting: restRemaining > 0,
           remaining: restRemaining,
@@ -1396,7 +1397,7 @@ export default function ActiveWorkout() {
       // stale mid-workout state (#45 on the watch side).
       buildFinishedWatchState(
         exercises,
-        name || 'Workout',
+        workoutLabel(name),
         startedAt,
         bwKg ?? 0,
         countWarmups,
@@ -1882,7 +1883,7 @@ export default function ActiveWorkout() {
     <View style={styles.root}>
       <WorkoutHeader
         topInset={insets.top}
-        name={name || 'Workout'}
+        name={workoutLabel(name)}
         status={`${statusText} · ${fmtClock(elapsed)}`}
         time={fmtClock(elapsed)}
         volume={String(volume)}

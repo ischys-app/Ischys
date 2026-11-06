@@ -59,6 +59,7 @@ import { textScale } from '../../src/theme/textScale';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { getLang } from '../../src/i18n/current';
 import { groupLabel } from '../../src/i18n/catalogNames';
+import { workoutLabel } from '../../src/i18n/workoutLabel';
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -531,7 +532,7 @@ export default function WorkoutSummary() {
           <View style={styles.checkBadge}>
             <CheckIcon size={30} color={color.accentFg} strokeWidth={3} />
           </View>
-          <Text maxFontSizeMultiplier={textScale.display} style={styles.workoutName}>{workout.name}</Text>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.workoutName}>{workoutLabel(workout.name)}</Text>
           <Text maxFontSizeMultiplier={textScale.control} style={styles.workoutWhen}>
             {formatWhen(workout.started_at, workout.ended_at)}
           </Text>

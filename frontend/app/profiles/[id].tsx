@@ -41,6 +41,7 @@ import { textScale } from '../../src/theme/textScale';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { t } from '../../src/i18n';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
 
 export default function ProfileDetailScreen() {
   useThemed();
@@ -282,7 +283,7 @@ export default function ProfileDetailScreen() {
           </Svg>
         </Pressable>
         <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={textScale.control} accessibilityRole="header">
-          {profile?.name ?? ''}
+          {profile ? profileNameLabel(profile.name) : ''}
         </Text>
       </View>
 

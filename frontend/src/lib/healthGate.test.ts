@@ -91,7 +91,7 @@ test('the Watch listeners and pushes are owner-gated', () => {
 });
 
 test('a non-owner pushes the off state to the Watch', () => {
-  assert.match(body(src, 'pushWatchState'), /buildOffWatchState\(activeProfile\(\)\.name\)/);
+  assert.match(body(src, 'pushWatchState'), /buildOffWatchState\(profileNameLabel\(activeProfile\(\)\.name\)\)/);
 });
 
 test('the root layout ignores Watch starts and finishes for a non-owner', () => {

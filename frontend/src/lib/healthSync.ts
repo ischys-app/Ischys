@@ -38,6 +38,7 @@ import { setBodyweightKg } from './bodyweight';
 import { watchSaveWaitMs } from './watchFinish';
 import { createWatchSaveLog } from './watchSave';
 import { buildOffWatchState } from './watchState';
+import { profileNameLabel } from '../i18n/defaultLabels';
 import {
   createWearSessionLog,
   parseWearSession,
@@ -577,7 +578,7 @@ export function pushWatchState(state: Record<string, unknown>): void {
   if (!Health.isWatchAvailable()) return;
   // While someone else's profile is active the Watch shows only "off for
   // ‹First›" (#117), whatever the caller meant to send.
-  const sent = isOwnerActive() ? state : buildOffWatchState(activeProfile().name);
+  const sent = isOwnerActive() ? state : buildOffWatchState(profileNameLabel(activeProfile().name));
   Health.updateWatchState({ themeId: currentThemeId, ...sent });
 }
 
@@ -591,7 +592,7 @@ export function pushWatchState(state: Record<string, unknown>): void {
  */
 export async function pushStartWatchState(): Promise<void> {
   if (!isOwnerActive()) {
-    pushWatchState(buildOffWatchState(activeProfile().name));
+    pushWatchState(buildOffWatchState(profileNameLabel(activeProfile().name)));
     return;
   }
   try {

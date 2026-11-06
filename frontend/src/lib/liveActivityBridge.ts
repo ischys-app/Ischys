@@ -25,7 +25,7 @@ import type { WorkoutOut } from '../api/types';
 import { getWorkout, listWorkouts, patchSet } from '../api/workouts';
 import { carryFor, completionPatch, resolveSet } from '../components/workout/setCarry';
 import { type Unit, weightText } from '../domain/units';
-import { firstName } from '../domain/profiles';
+import { liveActivityProfileFor } from '../domain/profiles';
 import { activeProfile, onProfileSwitch, profileCount } from './activeProfile';
 import { restAfterSet } from '../domain/supersets';
 import { setProgress } from './liveActivityProgress';
@@ -41,7 +41,7 @@ import { loadWeightUnit } from './weightUnit';
 export function liveActivityProfile(): LiveActivity.LiveActivityProfile | undefined {
   if (profileCount() <= 1) return undefined;
   const p = activeProfile();
-  return { name: firstName(p.name), initials: p.initials };
+  return liveActivityProfileFor(p);
 }
 
 /** Rest lives only in the workout screen's state, so it is relayed, not applied. */

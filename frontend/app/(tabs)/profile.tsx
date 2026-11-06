@@ -141,7 +141,7 @@ export default function Profile() {
       : trainingSince
         ? t('profile.trainingSinceOnly', { date: trainingSince })
         : '';
-  const initial = (profile?.name?.trim()?.[0] ?? '—').toUpperCase();
+  const initial = (profile?.name ? (Array.from(profileNameLabel(profile.name.trim()))[0] ?? '—') : '—').toUpperCase();
   const year = new Date().getFullYear();
 
   const displayStats: { label: string; value: string; unit: string }[] = [
@@ -179,7 +179,7 @@ export default function Profile() {
                     onChangeText={setDraft}
                     onSubmitEditing={commitName}
                     onBlur={commitName}
-                    placeholder={DEFAULT_NAME}
+                    placeholder={profileNameLabel(DEFAULT_NAME)}
                     placeholderTextColor={color.text3}
                     autoFocus
                     autoCapitalize="words"

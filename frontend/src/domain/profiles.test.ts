@@ -16,6 +16,8 @@ import {
   graphemesWith,
   exportFileStem,
   firstName,
+  profileInitialsLabel,
+  liveActivityProfileFor,
   finishFirstCopy,
   profileCallName,
   manageSubline,
@@ -324,4 +326,40 @@ test('finishFirstCopy: no workout name, a default-named owner, past an hour', ()
   });
   assert.equal(renamed.title, "Finish Kostas's workout first");
   assert.equal(finishFirstCopy({ ...{ running: { name: 'A', isOwner: false }, target: { name: 'B', isOwner: false } }, workoutName: null, elapsedMs: -5, defaultName: 'X' }).elapsed, '00:00');
+});
+
+test('finishFirstCopy shows stored default workout names translated, keeps the fallback', async () => {
+  const { setLang } = await import('../i18n/current.ts');
+  const zh = (await import('../i18n/strings/zh-Hans.json', { with: { type: 'json' } })).default as Record<string, string>;
+  const saved = { a: zh['workout.defaultName'], b: zh['workout.emptyName'], c: zh['profile.defaultName'] };
+  Object.assign(zh, { 'workout.defaultName': '训练', 'workout.emptyName': '空白训练', 'profile.defaultName': '运动员' });
+  try {
+    const base = {
+      running: { name: 'Athlete', isOwner: false },
+      target: { name: 'Maria', isOwner: false },
+      elapsedMs: 0,
+      defaultName: 'Athlete',
+    };
+    setLang('zh-Hans');
+    assert.ok(finishFirstCopy({ ...base, workoutName: 'Workout' }).lead.includes('训练'));
+    assert.ok(finishFirstCopy({ ...base, workoutName: 'Empty Workout' }).lead.includes('空白训练'));
+    assert.ok(finishFirstCopy({ ...base, workoutName: 'Push Day' }).lead.includes('Push Day'));
+    assert.ok(finishFirstCopy({ ...base, workoutName: 'Workout' }).title.includes('运动员'));
+    assert.equal(profileCallName({ name: 'Athlete', isOwner: false }, 'Athlete'), '运动员');
+    assert.equal(profileInitialsLabel({ name: 'Athlete', initials: 'A' }), '运');
+    assert.equal(profileInitialsLabel({ name: 'Athlete', initials: 'XY' }), 'XY');
+    assert.deepEqual(liveActivityProfileFor({ name: 'Athlete', initials: 'A' }), { name: '运动员', initials: '运' });
+    setLang('en');
+    assert.ok(finishFirstCopy({ ...base, workoutName: 'Workout' }).lead.includes('Workout'));
+    assert.ok(finishFirstCopy({ ...base, workoutName: '  ' }).lead.includes('Your workout'));
+    assert.ok(finishFirstCopy({ ...base, workoutName: null }).lead.includes('Your workout'));
+    assert.equal(profileInitialsLabel({ name: 'Athlete', initials: 'A' }), 'A');
+    assert.deepEqual(liveActivityProfileFor({ name: 'Maria Papadaki', initials: 'MP' }), { name: 'Maria', initials: 'MP' });
+  } finally {
+    setLang('en');
+    for (const [k, v] of [['workout.defaultName', saved.a], ['workout.emptyName', saved.b], ['profile.defaultName', saved.c]] as const) {
+      if (v === undefined) delete zh[k];
+      else zh[k] = v;
+    }
+  }
 });

@@ -2355,6 +2355,10 @@ export const strings: Record<string, StringDef> = {
     en: 'Go to workout',
     note: 'Button on the finish-first sheet that opens the running workout, and its screen-reader label. One line.',
   },
+  'switcher.announce': {
+    en: 'Switched to {name}',
+    note: 'Screen-reader announcement after switching profile; {name} is the profile name. Not visible.',
+  },
   'switcher.title': {
     en: 'Switch profile',
     note: 'Title of the profile switcher sheet.',

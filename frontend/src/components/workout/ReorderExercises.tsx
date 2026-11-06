@@ -5,6 +5,7 @@
  * follows the finger with no animation. Uses RN's built-in PanResponder +
  * Animated — no gesture-handler / reanimated.
  */
+import { t } from '../../i18n';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -137,9 +138,9 @@ export function ReorderExercises({ visible, exercises, topInset, onDone, onReord
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: topInset + 14 }]}>
-        <Text style={styles.title}>Reorder Exercises</Text>
-        <Pressable style={styles.done} onPress={onDone} accessibilityRole="button" accessibilityLabel="Done reordering">
-          <Text style={styles.doneText}>Done</Text>
+        <Text style={styles.title}>{t('reorder.title')}</Text>
+        <Pressable style={styles.done} onPress={onDone} accessibilityRole="button" accessibilityLabel={t('reorder.doneLabel')}>
+          <Text style={styles.doneText}>{t('common.done')}</Text>
         </Pressable>
       </View>
 
@@ -169,7 +170,7 @@ export function ReorderExercises({ visible, exercises, topInset, onDone, onReord
                 <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
                   {ex.name}
                 </Text>
-                <Text style={styles.setsLabel}>{ex.sets.length} sets</Text>
+                <Text style={styles.setsLabel}>{t('common.setsCount', { count: ex.sets.length })}</Text>
               </View>
               <View style={styles.grip} {...getResponder(ex.id).panHandlers}>
                 <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">

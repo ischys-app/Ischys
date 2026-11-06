@@ -1,4 +1,5 @@
 /** Bottom rest bar: idle "tap to start" button, or the active countdown card. */
+import { t } from '../../i18n';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
@@ -75,14 +76,14 @@ export function RestBar({
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.adjustText}>{'−15'}</Text>
             </Pressable>
             <View style={styles.center}>
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restKicker}>REST</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restKicker}>{t('restBar.rest')}</Text>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restTimer}>{fmtRest(remaining)}</Text>
             </View>
             <Pressable onPress={onPlus15} style={styles.adjust}>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.adjustText}>+15</Text>
             </Pressable>
             <Pressable onPress={onSkip} style={styles.skip}>
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.skipText}>Skip</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.skipText}>{t('restBar.skip')}</Text>
             </Pressable>
           </View>
           <View style={styles.track}>
@@ -93,7 +94,7 @@ export function RestBar({
         <Pressable onPress={onStart} style={styles.idle}>
           <ClockBarIcon size={15} color={color.accent} strokeWidth={2.2} />
           <Text maxFontSizeMultiplier={textScale.control} style={styles.idleText}>
-            Rest Timer <Text style={styles.idleHint}>— tap to start</Text>
+            {t('restBar.timer')} <Text style={styles.idleHint}>{t('restBar.tapToStart')}</Text>
           </Text>
         </Pressable>
       )}

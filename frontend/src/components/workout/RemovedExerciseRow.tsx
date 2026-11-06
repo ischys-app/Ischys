@@ -7,6 +7,7 @@
  * Presentational. Which rows exist, in what order, and what they say is
  * domain/workoutEdit.ts (`exerciseRows`).
  */
+import { t } from '../../i18n';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { color, font, themed } from '../../theme/tokens';
@@ -52,10 +53,10 @@ export function RemovedExerciseRow({ name, label, tag, onUndo }: Props) {
         onPress={onUndo}
         style={({ pressed }) => [styles.undo, pressed && styles.undoPressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Undo removing ${name}`}
+        accessibilityLabel={t('removedRow.undoLabel', { name })}
       >
         <UndoIcon size={14} color={color.text1} strokeWidth={2.4} />
-        <Text style={styles.undoText}>Undo</Text>
+        <Text style={styles.undoText}>{t('common.undo')}</Text>
       </Pressable>
     </View>
   );

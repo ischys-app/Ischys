@@ -3,6 +3,7 @@
  * Loads/persists to the local store when given a real workout id; falls back
  * to a local-only demo seed for id === 'demo' (or if the load fails).
  */
+import { t } from '../../src/i18n';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -704,11 +705,11 @@ export default function ActiveWorkout() {
     rememberLiveActivityHint();
     // This screen can open in the background (a Watch start): wait for the user.
     alertWhenActive(
-      'Live Activities are off',
-      'Turn on Live Activities for Ischys in Settings to see your rest timer on the Lock Screen.',
+      t('workout.liveOffTitle'),
+      t('workout.liveOffMessage'),
       [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => void Linking.openSettings().catch(() => {}) },
+        { text: t('common.notNow'), style: 'cancel' },
+        { text: t('workout.openSettings'), onPress: () => void Linking.openSettings().catch(() => {}) },
       ],
     );
   }, [liveActivity]);
@@ -1323,7 +1324,7 @@ export default function ActiveWorkout() {
         }
         // A finish from the Watch runs with the phone in the background, often
         // locked: the alert waits until the user opens the app.
-        alertWhenActive('Couldn’t finish workout', 'Nothing was changed. Try again.');
+        alertWhenActive(t('workout.finishFailedTitle'), t('common.nothingChanged'));
         return;
       }
     }
@@ -1769,7 +1770,7 @@ export default function ActiveWorkout() {
     const i = partners.findIndex((e) => e.id === exId);
     if (i === partners.length - 1) return null;
     const letter = ssLabels.get(me.supersetGroup);
-    return `None · then ${letter}${i + 2}`;
+    return t('workout.supersetNone', { tag: `${letter}${i + 2}` });
   };
 
   /**
@@ -1786,7 +1787,7 @@ export default function ActiveWorkout() {
     const rounds = Math.max(...partners.map((p) => roundCount(p.sets)));
     const doneRounds = supersetRoundsDone(partners);
     const current = Math.min(rounds, doneRounds + 1);
-    return `SUPERSET ${letter} · ROUND ${current} OF ${rounds}`;
+    return t('workout.supersetHeader', { letter: letter ?? '', current, rounds });
   };
 
   // --- effort per set (#84) -------------------------------------------
@@ -1876,7 +1877,7 @@ export default function ActiveWorkout() {
   // setting Off.
   const restEffortClearance = restRemaining > 0 && restBarEffort ? restEffortHeight : 0;
 
-  const statusText = status === 'active' ? 'In progress' : status;
+  const statusText = status === 'active' ? t('workout.statusActive') : status;
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
 
   return (
@@ -2053,9 +2054,9 @@ export default function ActiveWorkout() {
               onPress={() => setKeypadEffortSetId(null)}
               style={styles.kbdEffortKey}
               accessibilityRole="button"
-              accessibilityLabel="Back to the keypad bar"
+              accessibilityLabel={t('workout.keypadBackLabel')}
             >
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Back</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.keypadBack')}</Text>
             </Pressable>
             {/* Nothing to clear on an unrated set, so the key isn't there. */}
             {keypadEffort.rpe != null ? (
@@ -2063,9 +2064,9 @@ export default function ActiveWorkout() {
                 onPress={() => keypadEffort.rate(null)}
                 style={styles.kbdEffortKey}
                 accessibilityRole="button"
-                accessibilityLabel="Clear rating"
+                accessibilityLabel={t('workout.clearRating')}
               >
-                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Clear rating</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.clearRating')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -2085,16 +2086,16 @@ export default function ActiveWorkout() {
                   onPress={() => setPlateSheetOpen(true)}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Plate calculator"
+                  accessibilityLabel={t('workout.plateCalcLabel')}
                 >
-                  <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Plates</Text>
+                  <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.plates')}</Text>
                 </Pressable>
               ) : null}
               <Pressable
                 onPress={() => setKeypadEffortSetId(effortKeySet.setId)}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Rate this set"
+                accessibilityLabel={t('workout.rateSetLabel')}
               >
                 <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
               </Pressable>
@@ -2104,9 +2105,9 @@ export default function ActiveWorkout() {
               onPress={() => setPlateSheetOpen(true)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Plate calculator"
+              accessibilityLabel={t('workout.plateCalcLabel')}
             >
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Plates</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.plates')}</Text>
             </Pressable>
           ) : (
             <View />
@@ -2115,9 +2116,9 @@ export default function ActiveWorkout() {
             onPress={() => Keyboard.dismiss()}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Hide keyboard"
+            accessibilityLabel={t('workout.hideKeyboard')}
           >
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryDone}>Done</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryDone}>{t('workout.keyboardDone')}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -2221,9 +2222,9 @@ export default function ActiveWorkout() {
           <View style={styles.doneCheck}>
             <CheckIcon size={20} color={color.success} strokeWidth={3} />
           </View>
-          <Text style={styles.doneTitle}>All sets done</Text>
+          <Text style={styles.doneTitle}>{t('workout.allDone')}</Text>
           <Text style={styles.doneStat}>
-            {`${doneSets} ${doneSets === 1 ? 'set' : 'sets'} · ${volume} ${entryUnit} · ${fmtClock(elapsed)}`}
+            {t('workout.doneStat', { count: doneSets, volume, unit: entryUnit, clock: fmtClock(elapsed) })}
           </Text>
           <PressableScale
             style={styles.doneFinish}
@@ -2232,7 +2233,7 @@ export default function ActiveWorkout() {
               onFinish();
             }}
           >
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneFinishText}>Finish Workout</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneFinishText}>{t('workout.finishButton')}</Text>
           </PressableScale>
           <Pressable
             onPress={() => {
@@ -2243,7 +2244,7 @@ export default function ActiveWorkout() {
             style={({ pressed }) => [styles.doneAdd, pressed && styles.doneAddPressed]}
             accessibilityRole="button"
           >
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneAddText}>Add another exercise</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneAddText}>{t('workout.addAnother')}</Text>
           </Pressable>
         </View>
       </DraggableSheet>

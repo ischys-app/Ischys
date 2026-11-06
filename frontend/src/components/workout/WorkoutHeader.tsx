@@ -1,4 +1,5 @@
 /** Fixed top header: back, discard, title/status, Finish, and the TIME/VOLUME/SETS/HR/CAL strip. */
+import { t } from '../../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -93,25 +94,24 @@ function ConfirmDiscardSheet({
         <View style={styles.grabber} />
       </View>
       <View style={styles.sheetBody}>
-        <Text style={styles.sheetTitle}>Discard this workout?</Text>
+        <Text style={styles.sheetTitle}>{t('workoutHeader.discardTitle')}</Text>
         <Text style={styles.sheetText}>
-          Every set you&apos;ve logged, plus your time and volume, is deleted for good. This
-          can&apos;t be undone, and nothing is saved to your history.
+          {t('workoutHeader.discardBody')}
         </Text>
         <Pressable
           onPress={onConfirm}
           style={({ pressed }) => [styles.sheetDiscard, pressed && styles.sheetDiscardPressed]}
           accessibilityRole="button"
-          accessibilityLabel="Discard workout"
+          accessibilityLabel={t('workoutHeader.discard')}
         >
-          <Text maxFontSizeMultiplier={textScale.control} style={styles.sheetDiscardText}>Discard workout</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.sheetDiscardText}>{t('workoutHeader.discard')}</Text>
         </Pressable>
         <Pressable
           onPress={onCancel}
           style={({ pressed }) => [styles.sheetCancel, pressed && styles.sheetCancelPressed]}
           accessibilityRole="button"
         >
-          <Text maxFontSizeMultiplier={textScale.control} style={styles.sheetCancelText}>Keep going</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.sheetCancelText}>{t('workoutHeader.keepGoing')}</Text>
         </Pressable>
       </View>
     </DraggableSheet>
@@ -147,8 +147,8 @@ export function WorkoutHeader({
           style={styles.back}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel="Minimise workout"
-          accessibilityHint="Keeps it running and goes back"
+          accessibilityLabel={t('workoutHeader.minimise')}
+          accessibilityHint={t('workoutHeader.minimiseHint')}
         >
           <BackChevronIcon color={color.text2} strokeWidth={2.2} />
         </Pressable>
@@ -158,7 +158,7 @@ export function WorkoutHeader({
             style={({ pressed }) => [styles.discard, pressed && styles.discardPressed]}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel="Discard workout"
+            accessibilityLabel={t('workoutHeader.discard')}
           >
             {({ pressed }) => (
               <TrashIcon size={16} color={pressed ? color.error : color.text3} strokeWidth={2.2} />
@@ -176,7 +176,7 @@ export function WorkoutHeader({
                 {who.firstName}
               </Text>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.whoStarted} numberOfLines={1}>
-                {`· STARTED ${who.started}`}
+                {t('workoutHeader.startedBy', { time: who.started })}
               </Text>
             </View>
           ) : (
@@ -184,24 +184,24 @@ export function WorkoutHeader({
           )}
         </View>
         <PressableScale onPress={onFinish} style={styles.finish}>
-          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.finishText}>Finish</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.finishText}>{t('workoutHeader.finish')}</Text>
         </PressableScale>
       </View>
 
       <View style={styles.strip}>
         <View style={styles.statTime}>
-          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>TIME</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('workoutHeader.time')}</Text>
           <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{time}</Text>
         </View>
         <View style={styles.statVolume}>
-          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>VOLUME</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('workoutHeader.volume')}</Text>
           <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>
             {volume}
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statUnit}> {unit}</Text>
           </Text>
         </View>
         <View style={styles.statSets}>
-          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>SETS</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('workoutHeader.sets')}</Text>
           <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{sets}</Text>
         </View>
         {watchConnected && (
@@ -209,12 +209,12 @@ export function WorkoutHeader({
             <View style={styles.statHr}>
               <View style={styles.hrLabelRow}>
                 <PulsingHeart size={9} />
-                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>HR</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('workoutHeader.hr')}</Text>
               </View>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{String(heartRate)}</Text>
             </View>
             <View style={styles.statCal}>
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>CAL</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('workoutHeader.cal')}</Text>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{String(activeCal ?? 0)}</Text>
             </View>
           </>

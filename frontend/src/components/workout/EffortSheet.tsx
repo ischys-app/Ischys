@@ -6,6 +6,7 @@
  * ignored, the set was logged on the Watch, or the rating was simply wrong. A
  * tap saves and closes; so does Clear rating.
  */
+import { t } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,10 +43,8 @@ type Props = {
 const titleName = (name: string): string => name.replace(/\s*\([^)]*\)\s*$/, '').toUpperCase();
 
 /** What the scale means before it is touched, as a sentence. */
-const UNRATED: Record<EffortScaleKind, string> = {
-  rpe: '8 means about two reps left in the tank.',
-  rir: '0 means nothing left in the tank.',
-};
+const unrated = (kind: EffortScaleKind): string =>
+  kind === 'rir' ? t('effort.unratedRir') : t('effort.unratedRpe');
 
 export function EffortSheet({
   visible,
@@ -82,7 +81,7 @@ export function EffortSheet({
     >
       <View style={styles.grabber} />
       <Text style={styles.title} numberOfLines={1}>
-        {`${titleName(exerciseName)} · SET ${badge}`}
+        {t('effort.sheetTitle', { name: titleName(exerciseName), badge })}
       </Text>
       <Text style={styles.value} numberOfLines={1}>
         {lead}
@@ -94,12 +93,12 @@ export function EffortSheet({
         <EffortScale kind={kind} value={rpe} size="sheet" onPreview={setPreview} onCommit={onRate} />
       </View>
       <View style={styles.ends}>
-        <Text style={styles.end}>EASIER</Text>
-        <Text style={styles.end}>NOTHING LEFT</Text>
+        <Text style={styles.end}>{t('effort.easier')}</Text>
+        <Text style={styles.end}>{t('effort.nothingLeftEnd')}</Text>
       </View>
 
       <Text style={styles.meaning}>
-        {shown != null ? effortSentence(shown, kind) : UNRATED[kind]}
+        {shown != null ? effortSentence(shown, kind) : unrated(kind)}
       </Text>
 
       {/* Nothing to clear on an unrated set, so the button isn't there. */}
@@ -108,9 +107,9 @@ export function EffortSheet({
           onPress={() => onRate(null)}
           style={({ pressed }) => [styles.clear, pressed && styles.clearPressed]}
           accessibilityRole="button"
-          accessibilityLabel="Clear rating"
+          accessibilityLabel={t('workout.clearRating')}
         >
-          <Text style={styles.clearText}>Clear rating</Text>
+          <Text style={styles.clearText}>{t('workout.clearRating')}</Text>
         </Pressable>
       ) : null}
     </DraggableSheet>

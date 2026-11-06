@@ -15,6 +15,8 @@
  * a save that changed the workout's time: an entry Ischys wrote is moved to
  * match (#90), best-effort, and never as part of the save itself.
  */
+import { t } from '../../../src/i18n';
+import { workoutLabel } from '../../../src/i18n/workoutLabel';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -288,7 +290,7 @@ export default function EditWorkout() {
       setSaving(false);
       setConfirmSave(false);
       haptics.error();
-      Alert.alert('Couldn’t save', 'Nothing was changed. Try again.');
+      Alert.alert(t('editWorkout.saveFailed'), t('common.nothingChanged'));
       return;
     }
     // The edit is committed. If it moved the workout in time, the Health
@@ -508,9 +510,9 @@ export default function EditWorkout() {
 
           {missing && (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Nothing to edit</Text>
+              <Text style={styles.emptyTitle}>{t('editWorkout.missingTitle')}</Text>
               <Text style={styles.emptyBody}>
-                This workout isn{'’'}t in your history any more.
+                {t('editWorkout.missingBody')}
               </Text>
             </View>
           )}
@@ -520,21 +522,21 @@ export default function EditWorkout() {
               {/* DATE · START · DURATION */}
               <View style={styles.whenRow}>
                 <WhenCell
-                  label="DATE"
+                  label={t('editWorkout.whenDate')}
                   value={fmtCellDate(session.startedAt)}
-                  was={dateMoved ? `was ${fmtCellDate(stored.startedAt)}` : null}
+                  was={dateMoved ? t('editWorkout.was', { value: fmtCellDate(stored.startedAt) }) : null}
                   onPress={() => setWhenField('date')}
                 />
                 <WhenCell
-                  label="START"
+                  label={t('editWorkout.whenStart')}
                   value={fmtClock(session.startedAt)}
-                  was={startMoved ? `was ${fmtClock(stored.startedAt)}` : null}
+                  was={startMoved ? t('editWorkout.was', { value: fmtClock(stored.startedAt) }) : null}
                   onPress={() => setWhenField('start')}
                 />
                 <WhenCell
-                  label="DURATION"
+                  label={t('editWorkout.whenDuration')}
                   value={fmtHoursMinutes(session.durationSeconds)}
-                  was={durationMoved ? `was ${fmtHoursMinutes(stored.durationSeconds)}` : null}
+                  was={durationMoved ? t('editWorkout.was', { value: fmtHoursMinutes(stored.durationSeconds) }) : null}
                   onPress={() => setWhenField('duration')}
                 />
               </View>
@@ -616,8 +618,8 @@ export default function EditWorkout() {
                               haptics.select();
                               edit((s) => cycleSetType(s, ex.id, setId));
                             }}
-                            onWeightChange={(setId, t) => edit((s) => editSetWeight(s, ex.id, setId, t))}
-                            onRepsChange={(setId, t) => edit((s) => editSetReps(s, ex.id, setId, t))}
+                            onWeightChange={(setId, text) => edit((s) => editSetWeight(s, ex.id, setId, text))}
+                            onRepsChange={(setId, text) => edit((s) => editSetReps(s, ex.id, setId, text))}
                             onDeleteSet={(setId) => {
                               setOpenSetId(null);
                               edit((s) => removeSet(s, ex.id, setId));
@@ -662,11 +664,10 @@ export default function EditWorkout() {
                 {noSets && (
                   <View style={styles.emptyCard}>
                     <Text style={styles.emptyTitle}>
-                      {cards.length === 0 ? 'No exercises' : 'No sets'}
+                      {cards.length === 0 ? t('editWorkout.noExercises') : t('editWorkout.noSets')}
                     </Text>
                     <Text style={styles.emptyBody}>
-                      A workout needs at least one set to save. To remove the whole workout,
-                      delete it from History.
+                      {t('editWorkout.needSet')}
                     </Text>
                   </View>
                 )}
@@ -677,7 +678,7 @@ export default function EditWorkout() {
                   accessibilityRole="button"
                 >
                   <PlusIcon size={15} color={color.text1} strokeWidth={2.4} />
-                  <Text style={styles.addExerciseText}>Add Exercise</Text>
+                  <Text style={styles.addExerciseText}>{t('editWorkout.addExercise')}</Text>
                 </PressableScale>
               </View>
             </>
@@ -691,9 +692,9 @@ export default function EditWorkout() {
             onPress={() => Keyboard.dismiss()}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Hide keyboard"
+            accessibilityLabel={t('workout.hideKeyboard')}
           >
-            <Text style={styles.kbdAccessoryDone}>Done</Text>
+            <Text style={styles.kbdAccessoryDone}>{t('workout.keyboardDone')}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -709,12 +710,12 @@ export default function EditWorkout() {
           accessibilityRole="button"
           accessibilityState={{ disabled: saving || deciding }}
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </Pressable>
         <View style={styles.headerMid}>
-          <Text style={styles.editing}>EDITING</Text>
+          <Text style={styles.editing}>{t('editWorkout.editing')}</Text>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {stored?.name ?? ''}
+            {stored ? workoutLabel(stored.name) : ''}
           </Text>
         </View>
         {/* Inert until something changes, then the screen's one accent. */}
@@ -726,7 +727,7 @@ export default function EditWorkout() {
           accessibilityRole="button"
           accessibilityState={{ disabled: !savable || saving || deciding }}
         >
-          <Text style={[styles.saveText, savable && styles.saveTextOn]}>Save</Text>
+          <Text style={[styles.saveText, savable && styles.saveTextOn]}>{t('common.save')}</Text>
         </Pressable>
       </View>
 
@@ -808,8 +809,8 @@ function WhenCell({
       onPress={onPress}
       style={({ pressed }) => [styles.whenCell, pressed && styles.whenCellPressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${label.toLowerCase()}, ${value}`}
-      accessibilityHint="Opens the date and time picker"
+      accessibilityLabel={t('editWorkout.cellLabel', { label: label.toLowerCase(), value })}
+      accessibilityHint={t('editWorkout.cellHint')}
     >
       <View style={styles.whenLabelRow}>
         <Text style={styles.whenLabel}>{label}</Text>

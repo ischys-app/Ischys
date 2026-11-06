@@ -14,6 +14,7 @@
  * one tick and one save. Dragging well off the bar and letting go cancels,
  * and so does a touch the system takes away (a call, a system gesture).
  */
+import { t } from '../../i18n';
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, State } from 'react-native-gesture-handler';
@@ -127,8 +128,8 @@ export function EffortScale({ kind, value, size = 'bar', onPreview, onCommit }: 
         }}
         accessible
         accessibilityRole="adjustable"
-        accessibilityLabel={kind === 'rir' ? 'Reps in reserve' : 'Rate of perceived exertion'}
-        accessibilityValue={{ text: current != null ? effortLabel(current, kind) : 'Not rated' }}
+        accessibilityLabel={kind === 'rir' ? t('effort.rirName') : t('effort.rpeName')}
+        accessibilityValue={{ text: current != null ? effortLabel(current, kind) : t('effort.notRated') }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={(e) => {
           const from = selectedStep(value, kind);

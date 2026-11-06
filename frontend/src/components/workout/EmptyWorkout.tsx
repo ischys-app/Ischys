@@ -1,4 +1,5 @@
 /** Shown in the scroll area when the workout has no exercises. */
+import { t } from '../../i18n';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { color, font, themed } from '../../theme/tokens';
@@ -12,10 +13,9 @@ export function EmptyWorkout() {
       <View style={styles.icon}>
         <DumbbellIcon size={28} color={color.accent} strokeWidth={2} />
       </View>
-      <Text style={styles.title}>Empty workout</Text>
+      <Text style={styles.title}>{t('emptyWorkout.title')}</Text>
       <Text style={styles.sub}>
-        Add your first exercise to start logging. Rest timers and previous-set references kick in
-        automatically.
+        {t('emptyWorkout.sub')}
       </Text>
     </View>
   );

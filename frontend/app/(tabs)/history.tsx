@@ -1,3 +1,5 @@
+import { t } from '../../src/i18n';
+import { workoutLabel } from '../../src/i18n/workoutLabel';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
@@ -167,12 +169,12 @@ export default function History() {
   /** Delete, from a card's menu. Destroys logged sets, so it confirms first. */
   const confirmDelete = (w: WorkoutListItem) => {
     Alert.alert(
-      'Delete workout?',
-      `"${w.name}" and its ${w.total_sets} logged sets will be permanently removed. Personal records are recomputed.`,
+      t('history.deleteTitle'),
+      t('history.deleteMessage', { name: workoutLabel(w.name), count: w.total_sets }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             // Optimistic: the card disappears immediately, then we resync.
@@ -217,7 +219,7 @@ export default function History() {
         ListHeaderComponent={
           <>
             {error && <Text style={styles.error}>{error}</Text>}
-            {!loaded && !error && <Text style={styles.loading}>Loading…</Text>}
+            {!loaded && !error && <Text style={styles.loading}>{t('common.loading')}</Text>}
 
             {loaded && totalCount === 0 && (
               <EmptyState
@@ -236,8 +238,8 @@ export default function History() {
               // Activity heatmap
               <View style={styles.heatCard}>
                 <View style={styles.heatHeader}>
-                  <Text style={styles.heatLabel}>LAST 12 WEEKS</Text>
-                  <Text style={styles.heatSessions}>{`${activity?.sessions ?? 0} sessions`}</Text>
+                  <Text style={styles.heatLabel}>{t('history.heatLabel')}</Text>
+                  <Text style={styles.heatSessions}>{t('history.sessions', { count: activity?.sessions ?? 0 })}</Text>
                 </View>
                 <View style={styles.heatGrid}>
                   {heatColumns.map((cells, colIdx) => (
@@ -272,17 +274,17 @@ export default function History() {
             <View>
               <Link href={`/summary/${w.id}`} asChild>
                 <Link.Trigger>
-                  <WorkoutCard workout={w} accessibilityHint="Long-press for more actions." />
+                  <WorkoutCard workout={w} accessibilityHint={t('history.moreActionsHint')} />
                 </Link.Trigger>
                 <Link.Menu>
                   <Link.MenuAction
                     icon="pencil"
                     onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
                   >
-                    Edit workout
+                    {t('history.editWorkout')}
                   </Link.MenuAction>
                   <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
-                    Delete workout
+                    {t('history.deleteWorkout')}
                   </Link.MenuAction>
                 </Link.Menu>
               </Link>
@@ -307,9 +309,9 @@ export default function History() {
         style={[styles.header, { paddingTop: insets.top + 12 }]}
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
-        <Text style={styles.title}>History</Text>
+        <Text style={styles.title}>{t('tabs.history')}</Text>
         {loaded && (
-          <Text style={styles.count}>{`${totalCount} workouts`}</Text>
+          <Text style={styles.count}>{t('history.count', { count: totalCount })}</Text>
         )}
       </View>
     </View>
@@ -329,16 +331,16 @@ function EmptyState({ onStart }: { onStart: () => void }) {
       <View style={styles.emptyIcon}>
         <ClockCenteredIcon size={30} color={color.accent} strokeWidth={2} />
       </View>
-      <Text style={styles.emptyTitle}>No workouts yet</Text>
+      <Text style={styles.emptyTitle}>{t('history.emptyTitle')}</Text>
       <Text style={styles.emptySub}>
-        Every session you finish lands here — with volume, PRs, and a 12-week activity map.
+        {t('history.emptySub')}
       </Text>
       <Pressable
         onPress={onStart}
         style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
       >
         <PlayIcon size={16} color={color.accentFg} strokeWidth={2.6} />
-        <Text style={styles.ctaLabel}>Start your first workout</Text>
+        <Text style={styles.ctaLabel}>{t('history.emptyCta')}</Text>
       </Pressable>
     </View>
   );

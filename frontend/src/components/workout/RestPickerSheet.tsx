@@ -1,4 +1,5 @@
 /** Bottom sheet to pick an exercise's rest duration. */
+import { t } from '../../i18n';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DraggableSheet } from '../DraggableSheet';
@@ -22,9 +23,9 @@ export function RestPickerSheet({ visible, selectedSeconds, onSelect, onClose }:
         <View style={styles.grabber} />
       </View>
       <View style={styles.header}>
-        <Text style={styles.title}>Rest Timer</Text>
+        <Text style={styles.title}>{t('restBar.timer')}</Text>
         <Pressable onPress={onClose} hitSlop={8}>
-          <Text style={styles.done}>Done</Text>
+          <Text style={styles.done}>{t('workout.keyboardDone')}</Text>
         </Pressable>
       </View>
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
@@ -44,7 +45,7 @@ export function RestPickerSheet({ visible, selectedSeconds, onSelect, onClose }:
                     : opt.seconds === 0 && styles.optionLabelOff,
                 ]}
               >
-                {opt.label}
+                {opt.seconds === 0 ? t('common.off') : opt.label}
               </Text>
               {selected && <CheckIcon size={17} color={color.accent} strokeWidth={3} />}
             </Pressable>

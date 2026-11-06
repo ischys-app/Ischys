@@ -9,6 +9,7 @@
 import { type Unit, unitLabel } from '../../domain/units';
 import { color, themed, withAlpha } from '../../theme/tokens';
 import { getLang } from '../../i18n/current';
+import { t } from '../../i18n/t.ts';
 import { equipmentLabel } from '../../i18n/catalogNames';
 
 export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -99,14 +100,14 @@ export function fmtRest(totalSeconds: number): string {
 /** Human label for a rest duration, matching the picker options. */
 export function restLabel(seconds: number): string {
   const opt = REST_OPTIONS.find((o) => o.seconds === seconds);
-  if (opt) return opt.label;
-  if (seconds <= 0) return 'Off';
+  if (opt) return opt.seconds === 0 ? t('common.off') : opt.label;
+  if (seconds <= 0) return t('common.off');
   return fmtRest(seconds);
 }
 
 /** "Dumbbell · 150s rest". */
 export function exerciseMeta(ex: Pick<Exercise, 'equipment' | 'rest'>): string {
-  return `${equipmentLabel(ex.equipment, getLang())} · ${ex.rest}s rest`;
+  return t('workout.exerciseMeta', { equipment: equipmentLabel(ex.equipment, getLang()), seconds: ex.rest });
 }
 
 /** Weight-column header label, e.g. "KG" / "LB", or "+KG" / "+LB" (bodyweight). */

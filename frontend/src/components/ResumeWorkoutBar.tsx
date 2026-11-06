@@ -3,6 +3,8 @@
  * design (Home.dc.html, RESUME WORKOUT BAR). A blurred, accent-tinted glass bar
  * pinned above the tab bar; its clock ticks every second while mounted.
  */
+import { t } from '../i18n';
+import { workoutLabel } from '../i18n/workoutLabel';
 import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
 
@@ -57,13 +59,13 @@ export function ResumeWorkoutBar({ name, startedAt, onPress }: Props) {
               <View style={styles.dot} />
             </View>
             <View style={styles.middle}>
-              <Text maxFontSizeMultiplier={textScale.display} style={styles.title}>Workout in progress</Text>
+              <Text maxFontSizeMultiplier={textScale.display} style={styles.title}>{t('resume.title')}</Text>
               <Text maxFontSizeMultiplier={textScale.display} style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
-                {name} · {fmtClock(seconds)}
+                {workoutLabel(name)} · {fmtClock(seconds)}
               </Text>
             </View>
             <View style={styles.pill}>
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.pillLabel}>Resume</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.pillLabel}>{t('resume.button')}</Text>
               <Svg width={13} height={13} viewBox="0 0 24 24">
                 <Path
                   d="M9 6l6 6-6 6"

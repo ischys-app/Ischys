@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Easing } from 'react-native';
 
+import { t } from '../../src/i18n';
 import { TabBar } from '../../src/components/TabBar';
 import { useActiveProfile } from '../../src/lib/activeProfile';
 import { color } from '../../src/theme/tokens';
@@ -75,9 +76,9 @@ export default function TabsLayout() {
           sceneStyle: { backgroundColor: color.bg },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Home' }} />
-        <Tabs.Screen name="history" options={{ title: 'History' }} />
-        <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+        <Tabs.Screen name="index" options={{ title: t('tabs.home') }} />
+        <Tabs.Screen name="history" options={{ title: t('tabs.history') }} />
+        <Tabs.Screen name="profile" options={{ title: t('tabs.profile') }} />
       </Tabs>
     </Animated.View>
   );

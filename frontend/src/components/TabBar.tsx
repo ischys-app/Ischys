@@ -2,6 +2,7 @@
  * Floating glass tab bar — the custom bottom bar from the Ischys design
  * (Home.dc.html): a blurred, translucent pill with an accent-tinted active tab.
  */
+import { t } from '../i18n';
 import { BlurView } from 'expo-blur';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,9 +27,9 @@ type TabBarProps = {
 };
 
 const TABS: Record<string, { label: string; Icon: typeof HomeIcon }> = {
-  index: { label: 'Home', Icon: HomeIcon },
-  history: { label: 'History', Icon: HistoryIcon },
-  profile: { label: 'Profile', Icon: ProfileIcon },
+  index: { label: 'tabs.home', Icon: HomeIcon },
+  history: { label: 'tabs.history', Icon: HistoryIcon },
+  profile: { label: 'tabs.profile', Icon: ProfileIcon },
 };
 
 export function TabBar({ state, navigation }: TabBarProps) {
@@ -70,8 +71,8 @@ export function TabBar({ state, navigation }: TabBarProps) {
               onPress={onPress}
               onLongPress={switcher ? openSwitcher : undefined}
               delayLongPress={switcher ? 500 : undefined}
-              accessibilityLabel={who ? `Profile, ${first}` : undefined}
-              accessibilityActions={switcher ? [{ name: 'switch', label: 'Switch profile' }] : undefined}
+              accessibilityLabel={who ? t('tabs.profileWho', { name: first }) : undefined}
+              accessibilityActions={switcher ? [{ name: 'switch', label: t('tabs.switchProfile') }] : undefined}
               onAccessibilityAction={
                 switcher
                   ? (e) => {
@@ -91,7 +92,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
                 numberOfLines={who ? 1 : undefined}
                 style={[styles.label, { color: tint }, who && styles.labelWho]}
               >
-                {who ? first : meta.label}
+                {who ? first : t(meta.label)}
               </Text>
             </Pressable>
           );

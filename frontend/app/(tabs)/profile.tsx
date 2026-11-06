@@ -1,3 +1,4 @@
+import { t } from '../../src/i18n';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -23,6 +24,8 @@ import { recordDisplay } from '../../src/domain/records';
 import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
+import { getLang } from '../../src/i18n/current';
+import { muscleNameLabel } from '../../src/i18n/catalogNames';
 import { useThemed } from '../../src/theme/ThemeProvider';
 
 const BAR_MAX_HEIGHT = 56;
@@ -131,20 +134,20 @@ export default function Profile() {
   const trainingSince = fmtMonthYear(profile?.training_since);
   const location = profile?.location ?? '';
   const subtitle = location && trainingSince
-    ? `${location} · training since ${trainingSince}`
+    ? t('profile.trainingSince', { place: location, date: trainingSince })
     : location
       ? location
       : trainingSince
-        ? `training since ${trainingSince}`
+        ? t('profile.trainingSinceOnly', { date: trainingSince })
         : '';
   const initial = (profile?.name?.trim()?.[0] ?? '—').toUpperCase();
   const year = new Date().getFullYear();
 
   const displayStats: { label: string; value: string; unit: string }[] = [
-    { label: 'WORKOUTS', value: stats ? String(stats.workouts) : '—', unit: '' },
-    { label: 'THIS YEAR', value: stats ? String(stats.this_year) : '—', unit: '' },
-    { label: 'VOLUME LIFTED', value: vol.value, unit: vol.unit },
-    { label: 'CURRENT STREAK', value: stats ? String(stats.current_streak) : '—', unit: ' wk' },
+    { label: t('profile.statWorkouts'), value: stats ? String(stats.workouts) : '—', unit: '' },
+    { label: t('profile.statThisYear'), value: stats ? String(stats.this_year) : '—', unit: '' },
+    { label: t('profile.statVolume'), value: vol.value, unit: vol.unit },
+    { label: t('profile.statStreak'), value: stats ? String(stats.current_streak) : '—', unit: ` ${t('profile.weeksUnit')}` },
   ];
 
   return (
@@ -153,7 +156,7 @@ export default function Profile() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, headerH ? { paddingTop: headerH } : null]}
       >
-        {loading && <Text style={styles.loading}>Loading…</Text>}
+        {loading && <Text style={styles.loading}>{t('common.loading')}</Text>}
 
         {!loading && (
           <View>
@@ -183,7 +186,7 @@ export default function Profile() {
                     maxLength={40}
                     selectionColor={color.accent}
                     style={[styles.name, styles.nameInput]}
-                    accessibilityLabel="Your name"
+                    accessibilityLabel={t('profile.nameLabel')}
                   />
                 ) : (
                   <Text
@@ -191,7 +194,7 @@ export default function Profile() {
                     numberOfLines={1}
                     onPress={beginEditName}
                     accessibilityRole="button"
-                    accessibilityLabel="Edit your name"
+                    accessibilityLabel={t('profile.editName')}
                   >
                     {profile?.name ?? '—'}
                   </Text>
@@ -217,8 +220,8 @@ export default function Profile() {
             {/* Weekly bars card */}
             <View style={styles.barsCard}>
               <View style={styles.barsHeader}>
-                <Text style={styles.barsLabel}>{`WORKOUTS / WEEK · ${year}`}</Text>
-                <Text style={styles.barsAvg}>{`avg ${bars.avg.toFixed(1)}`}</Text>
+                <Text style={styles.barsLabel}>{t('profile.barsLabel', { year })}</Text>
+                <Text style={styles.barsAvg}>{t('profile.barsAvg', { value: bars.avg.toFixed(1) })}</Text>
               </View>
               <View style={styles.barsRow}>
                 {bars.counts.map((count, i) => {
@@ -244,7 +247,7 @@ export default function Profile() {
                   the 26 weeks read against the calendar rather than floating. */}
               <View style={styles.axisRow} pointerEvents="none">
                 {bars.counts.map((_, i) => {
-                  const tick = bars.ticks.find((t) => t.index === i);
+                  const tick = bars.ticks.find((tk) => tk.index === i);
                   return (
                     <View key={i} style={styles.axisCell}>
                       {tick && (
@@ -260,15 +263,15 @@ export default function Profile() {
 
             {/* Measurements — the three most recent, as a way in. The full
                 list lives on its own screen; this is a status line. */}
-            <Text style={styles.recordsLabel}>MEASUREMENTS</Text>
+            <Text style={styles.recordsLabel}>{t('profile.measurements')}</Text>
             <Pressable style={styles.muscleCard} onPress={() => router.push('/measurements')}>
               <View style={styles.muscleText}>
                 <Text style={styles.muscleTitle}>
-                  {measurements.size === 0 ? 'Nothing logged yet' : 'Latest'}
+                  {measurements.size === 0 ? t('profile.measurementsNone') : t('profile.measurementsLatest')}
                 </Text>
                 <Text style={styles.muscleSub}>
                   {measurements.size === 0
-                    ? 'Waist, arms, body fat and more'
+                    ? t('profile.measurementsHint')
                     : [...measurements.entries()]
                         .slice(0, 3)
                         .map(([m, r]) => formatMeasurement(r.value, m, { weightUnit: unit }))
@@ -283,18 +286,21 @@ export default function Profile() {
                 two figures at this size read as decoration. */}
             {muscle && (
               <>
-                <Text style={styles.recordsLabel}>MUSCLE MAP</Text>
+                <Text style={styles.recordsLabel}>{t('profile.muscleMap')}</Text>
                 <Pressable style={styles.muscleCard} onPress={() => router.push('/muscle-map')}>
                   <BodyMap side="front" work={muscle.work} historyDays={muscle.historyDays} width={92} />
                   <View style={styles.muscleText}>
-                    <Text style={styles.muscleTitle}>Last 7 days</Text>
+                    <Text style={styles.muscleTitle}>{t('profile.last7')}</Text>
                     <Text style={styles.muscleSub}>
                       {(() => {
                         const missed = [...muscle.work.entries()].filter(([, n]) =>
                           isNeglected(n, muscle.historyDays, false),
                         );
-                        if (missed.length === 0) return 'Everything has had work';
-                        return `${missed.length} not trained · ${missed.slice(0, 3).map(([r]) => r).join(', ')}`;
+                        if (missed.length === 0) return t('profile.allTrained');
+                        return t('profile.notTrained', {
+                          count: missed.length,
+                          names: missed.slice(0, 3).map(([r]) => muscleNameLabel(r, getLang())).join(', '),
+                        });
                       })()}
                     </Text>
                   </View>
@@ -304,10 +310,10 @@ export default function Profile() {
             )}
 
             {/* Records */}
-            <Text style={styles.recordsLabel}>RECENT RECORDS</Text>
+            <Text style={styles.recordsLabel}>{t('profile.recentRecords')}</Text>
             <View style={styles.recordsList}>
               {records && records.length === 0 && (
-                <Text style={styles.emptyRecords}>No records yet — finish a workout to log your first PR.</Text>
+                <Text style={styles.emptyRecords}>{t('profile.noRecords')}</Text>
               )}
               {records?.map((r, i) => (
                 // Name the lift when the local record carries it; fall back to
@@ -325,21 +331,21 @@ export default function Profile() {
             </View>
 
             {/* Tools — calculators that don't belong to any one workout. */}
-            <Text style={styles.recordsLabel}>TOOLS</Text>
+            <Text style={styles.recordsLabel}>{t('profile.tools')}</Text>
             <View style={styles.toolsList}>
               {[
-                { label: '1RM calculator', sub: 'Estimate from a set', to: '/one-rep-max' as const },
-                { label: 'Plate calculator', sub: 'Bar and plates', to: '/plates' as const },
-              ].map((t, i) => (
+                { label: t('profile.oneRmCalc'), sub: t('profile.oneRmSub'), to: '/one-rep-max' as const },
+                { label: t('profile.plateCalc'), sub: t('profile.plateSub'), to: '/plates' as const },
+              ].map((tool, i) => (
                 <Pressable
-                  key={t.to}
-                  onPress={() => router.push(t.to)}
+                  key={tool.to}
+                  onPress={() => router.push(tool.to)}
                   style={[styles.toolRow, i === 0 && styles.toolRowFirst]}
                   accessibilityRole="button"
                 >
                   <View style={styles.toolText}>
-                    <Text style={styles.toolLabel}>{t.label}</Text>
-                    <Text style={styles.toolSub}>{t.sub}</Text>
+                    <Text style={styles.toolLabel}>{tool.label}</Text>
+                    <Text style={styles.toolSub}>{tool.sub}</Text>
                   </View>
                   <ChevronRightIcon size={15} color={color.text3} strokeWidth={2.2} />
                 </Pressable>
@@ -354,9 +360,9 @@ export default function Profile() {
                 <DeviceIcon size={19} color={color.text2} strokeWidth={2} />
               </View>
               <View style={styles.statusText}>
-                <Text style={styles.statusTitle}>On this device · not synced</Text>
+                <Text style={styles.statusTitle}>{t('profile.onDevice')}</Text>
                 <Text style={styles.statusSub}>
-                  {Platform.OS === 'ios' ? 'Backs up with iCloud' : 'Backs up with your Google account'}
+                  {Platform.OS === 'ios' ? t('profile.backupIos') : t('profile.backupAndroid')}
                 </Text>
               </View>
               <Text style={styles.statusBadge}>SQLite</Text>
@@ -375,7 +381,7 @@ export default function Profile() {
             onPress={openProfileSwitcher}
             style={({ pressed }) => [styles.whoButton, pressed && styles.whoButtonPressed]}
             accessibilityRole="button"
-            accessibilityLabel={`Switch profile, current ${active.name}`}
+            accessibilityLabel={t('profile.switchCurrent', { name: active.name })}
           >
             <Text style={[styles.title, styles.whoName]} numberOfLines={1}>
               {firstName(active.name) || active.name}
@@ -385,7 +391,7 @@ export default function Profile() {
             </View>
           </Pressable>
         ) : (
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.title}>{t('tabs.profile')}</Text>
         )}
         <View style={styles.headerRight}>
           {multi && !active.isOwner && (
@@ -395,11 +401,11 @@ export default function Profile() {
               onPress={() => router.push('/health')}
               hitSlop={6}
               style={({ pressed }) => [styles.healthChip, styles.healthChipOff, pressed && styles.healthChipPressed]}
-              accessibilityLabel={`${healthCopy(Platform.OS).name} off`}
+              accessibilityLabel={t('profile.healthOffLabel', { name: healthCopy(Platform.OS).name })}
               accessibilityRole="button"
             >
               <HeartFilledIcon size={12} color={color.text3} />
-              <Text style={[styles.healthChipText, styles.healthChipTextOff]}>Health · off</Text>
+              <Text style={[styles.healthChipText, styles.healthChipTextOff]}>{t('profile.healthOffChip')}</Text>
             </Pressable>
           )}
           {healthConnected && !(multi && !active.isOwner) && (
@@ -407,18 +413,18 @@ export default function Profile() {
               onPress={() => router.push('/health')}
               hitSlop={6}
               style={({ pressed }) => [styles.healthChip, pressed && styles.healthChipPressed]}
-              accessibilityLabel={`${healthCopy(Platform.OS).name} connected`}
+              accessibilityLabel={t('profile.healthOnLabel', { name: healthCopy(Platform.OS).name })}
               accessibilityRole="button"
             >
               <HeartFilledIcon size={12} color={color.success} />
-              <Text style={styles.healthChipText}>Health · connected</Text>
+              <Text style={styles.healthChipText}>{t('profile.healthOnChip')}</Text>
             </Pressable>
           )}
           <Pressable
             onPress={() => router.push('/settings')}
             hitSlop={6}
             style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsButtonPressed]}
-            accessibilityLabel="Settings"
+            accessibilityLabel={t('profile.settingsLabel')}
             accessibilityRole="button"
           >
             <SettingsIcon size={18} color={color.text2} strokeWidth={2} />

@@ -1,4 +1,5 @@
 /** One exercise: header, note, rest-timer row, set grid, + Add Set. */
+import { t } from '../../i18n';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { effortRowLine, type EffortScaleKind } from '../../domain/effort';
@@ -136,7 +137,7 @@ export function ExerciseCard({
           onPress={onOpenDetail}
           disabled={!onOpenDetail}
           accessibilityRole="button"
-          accessibilityLabel={`About ${exercise.name}`}
+          accessibilityLabel={t('exerciseCard.about', { name: exercise.name })}
         >
           {(() => {
             // Line art when we have it for this movement, initials otherwise.
@@ -180,7 +181,7 @@ export function ExerciseCard({
             style={styles.menuButton}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={`More options for ${exercise.name}`}
+            accessibilityLabel={t('exerciseCard.more', { name: exercise.name })}
           >
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.menuGlyph}>{'⋯'}</Text>
           </Pressable>
@@ -213,9 +214,9 @@ export function ExerciseCard({
           <TextInput
             value={exercise.note}
             onChangeText={onNoteChange}
-            placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
+            placeholder={exercise.notePlaceholder ?? t('exerciseCard.notesPlaceholder')}
             placeholderTextColor={color.text3}
-            accessibilityLabel={`Notes for ${exercise.name}`}
+            accessibilityLabel={t('exerciseCard.notesLabel', { name: exercise.name })}
             multiline
             style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
           />
@@ -223,7 +224,7 @@ export function ExerciseCard({
           {/* Rest timer row */}
           <Pressable onPress={onOpenRest} style={styles.restRow}>
             <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.restLabel}>Rest Timer</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.restLabel}>{t('restBar.timer')}</Text>
             <View style={styles.restRight}>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restValue}>
                 {restOverrideLabel ?? restLabel(exercise.rest)}
@@ -236,10 +237,10 @@ export function ExerciseCard({
 
       {/* Column labels */}
       <View style={[styles.colHeader, edit && styles.colHeaderEdit]}>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colSet]}>SET</Text>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colPrev]}>{edit ? 'WAS' : 'PREV'}</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colSet]}>{t('exerciseCard.colSet')}</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colPrev]}>{edit ? t('exerciseCard.colWas') : t('exerciseCard.colPrev')}</Text>
         <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colReps]}>REPS</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colReps]}>{t('exerciseCard.colReps')}</Text>
         <View style={styles.colCheck} />
       </View>
 
@@ -261,8 +262,8 @@ export function ExerciseCard({
                 badge={badgeFor(s.type, working)}
                 onCycleType={() => onCycleType(s.id)}
                 onUsePrev={() => onUsePrev(s.id)}
-                onWeightChange={(t) => onWeightChange(s.id, t)}
-                onRepsChange={(t) => onRepsChange(s.id, t)}
+                onWeightChange={(text) => onWeightChange(s.id, text)}
+                onRepsChange={(text) => onRepsChange(s.id, text)}
                 onToggleDone={() => onToggleDone(s.id)}
                 onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
                 onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
@@ -289,8 +290,8 @@ export function ExerciseCard({
               badge={badgeFor(s.type, working)}
               onCycleType={() => onCycleType(s.id)}
               onUsePrev={() => onUsePrev(s.id)}
-              onWeightChange={(t) => onWeightChange(s.id, t)}
-              onRepsChange={(t) => onRepsChange(s.id, t)}
+              onWeightChange={(text) => onWeightChange(s.id, text)}
+              onRepsChange={(text) => onRepsChange(s.id, text)}
               onToggleDone={() => onToggleDone(s.id)}
               onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
               suggestion={suggestion}
@@ -325,18 +326,18 @@ export function ExerciseCard({
           isn't there, rather than sitting disabled. */}
       <View style={styles.footerRow}>
         <PressableScale onPress={onAddSet} style={[styles.addSet, styles.footerHalf]}>
-          <Text maxFontSizeMultiplier={textScale.control} style={styles.addSetText}>+ Add Set</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.addSetText}>{t('exerciseCard.addSet')}</Text>
         </PressableScale>
         {onWarmup && (
           <PressableScale
             onPress={onWarmup}
             style={[styles.addSet, styles.footerHalf]}
             accessibilityRole="button"
-            accessibilityLabel="Add warm-up sets"
+            accessibilityLabel={t('exerciseCard.warmupLabel')}
           >
             {/* Warning is the warm-up set-type colour, so the button matches the
                 W badges it creates. */}
-            <Text maxFontSizeMultiplier={textScale.control} style={[styles.addSetText, styles.warmupText]}>Warm-up</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={[styles.addSetText, styles.warmupText]}>{t('warmup.title')}</Text>
           </PressableScale>
         )}
       </View>

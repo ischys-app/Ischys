@@ -11,6 +11,7 @@
  * *velocity* not just position (§6), and hands that velocity to an interruptible
  * spring so drag → snap has no seam (§5). A light haptic telegraphs the reveal (§13).
  */
+import { t } from '../../i18n';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -126,7 +127,7 @@ export function SwipeToDelete({
           accessibilityLabel={accessibilityLabel}
         >
           <TrashIcon size={16} color="#fff" strokeWidth={2} />
-          <Text style={styles.deleteLabel}>Delete</Text>
+          <Text style={styles.deleteLabel}>{t('common.delete')}</Text>
         </Pressable>
       )}
 

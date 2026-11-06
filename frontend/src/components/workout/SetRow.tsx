@@ -1,4 +1,5 @@
 /** A single logged-set row — grid: [34 | 1fr | 74 | 56 | 40], height 50. Pixel-critical. */
+import { t } from '../../i18n';
 import { useState } from 'react';
 import {
   Platform,
@@ -143,7 +144,7 @@ export function SetRow({
       onDelete={onDelete}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      accessibilityLabel={`Delete set ${badge}`}
+      accessibilityLabel={t('setRow.deleteLabel', { badge })}
       radius={10}
       rowStyle={[
         styles.row,
@@ -170,8 +171,8 @@ export function SetRow({
             style={[styles.badge, { backgroundColor: meta.tintBg }]}
             hitSlop={4}
             accessibilityRole="button"
-            accessibilityLabel={`Set ${badge}, ${set.type}`}
-            accessibilityHint="Tap to change set type."
+            accessibilityLabel={t('setRow.typeLabel', { badge, type: t(`setType.${set.type}`) })}
+            accessibilityHint={t('setRow.typeHint')}
           >
             <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.badgeText, { color: meta.color }]}>{badge}</Text>
           </Pressable>
@@ -191,8 +192,8 @@ export function SetRow({
               onPress={edit.onWasPress}
               hitSlop={PREV_TAP_SLOP}
               accessibilityRole="button"
-              accessibilityLabel={`Set ${badge}, ${edit.was}`}
-              accessibilityHint="Switches this set between done and not done"
+              accessibilityLabel={t('setRow.wasLabel', { badge, was: edit.was })}
+              accessibilityHint={t('setRow.wasHint')}
             >
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.wasText} numberOfLines={1}>
                 {edit.was}
@@ -215,9 +216,11 @@ export function SetRow({
             hitSlop={PREV_TAP_SLOP}
             accessibilityRole="button"
             accessibilityLabel={
-              effortTap.kind === 'add' ? 'Rate this set' : `Effort ${effortTap.text}`
+              effortTap.kind === 'add'
+                ? t('setRow.rateSet')
+                : t('setRow.effort', { value: effortTap.text })
             }
-            accessibilityHint="Opens the effort scale"
+            accessibilityHint={t('setRow.effortHint')}
           >
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.prevText} numberOfLines={1}>
               {prev}
@@ -240,8 +243,8 @@ export function SetRow({
                 onPress={onUseSuggestion}
                 hitSlop={{ top: 2, bottom: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Suggested ${fmtNum(suggestion.weight)} ${unit} by ${suggestion.reps}`}
-                accessibilityHint="Fills this set with the suggestion"
+                accessibilityLabel={t('setRow.suggested', { weight: fmtNum(suggestion.weight), unit, reps: suggestion.reps })}
+                accessibilityHint={t('setRow.suggestedHint')}
               >
                 <Text
                   maxFontSizeMultiplier={textScale.fixed}
@@ -272,9 +275,11 @@ export function SetRow({
                   hitSlop={{ top: 2, bottom: 12, left: 6, right: 6 }}
                   accessibilityRole="button"
                   accessibilityLabel={
-                    effortLine.kind === 'add' ? 'Rate this set' : `Effort ${effortLine.text}`
+                    effortLine.kind === 'add'
+                      ? t('setRow.rateSet')
+                      : t('setRow.effort', { value: effortLine.text })
                   }
-                  accessibilityHint="Opens the effort scale"
+                  accessibilityHint={t('setRow.effortHint')}
                 >
                   <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
                     {effortLine.text}
@@ -334,7 +339,7 @@ export function SetRow({
             onPress={edit.onRemove}
             style={styles.removeCell}
             accessibilityRole="button"
-            accessibilityLabel={`Remove set ${badge}`}
+            accessibilityLabel={t('setRow.removeLabel', { badge })}
           >
             <RemoveCircleIcon size={20} color={color.text3} strokeWidth={2} />
           </Pressable>

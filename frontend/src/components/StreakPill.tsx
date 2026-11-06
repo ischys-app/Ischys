@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { color, font, themed, withAlpha } from '../theme/tokens';
@@ -10,7 +11,7 @@ export function StreakPill({ days }: { days: number }) {
   return (
     <View style={styles.pill}>
       <View style={styles.dot} />
-      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.text}>{days}-day streak</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.text}>{t('streak.days', { days })}</Text>
     </View>
   );
 }

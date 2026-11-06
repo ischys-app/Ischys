@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { RoutineListItem } from '../api/types';
@@ -32,7 +33,7 @@ export function RoutineCard({
           disabled={!onOpen}
           style={({ pressed }) => [styles.body, pressed && styles.bodyPressed]}
           accessibilityRole="button"
-          accessibilityLabel={`View ${routine.name}`}
+          accessibilityLabel={t('routineCard.view', { name: routine.name })}
         >
           <View style={styles.avatar}>
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.initials}>{routine.initials}</Text>
@@ -50,7 +51,7 @@ export function RoutineCard({
           onPress={onOverflow}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={`More options for ${routine.name}`}
+          accessibilityLabel={t('routineCard.more', { name: routine.name })}
           style={({ pressed }) => [styles.overflow, pressed && styles.overflowPressed]}
         >
           <Text maxFontSizeMultiplier={textScale.fixed} style={styles.overflowGlyph}>⋯</Text>
@@ -58,7 +59,7 @@ export function RoutineCard({
       </View>
       <PressableScale onPress={onStart} style={styles.cta}>
         <PlayFilledIcon size={16} color={color.accentFg} />
-        <Text maxFontSizeMultiplier={textScale.control} style={styles.ctaLabel}>Start Routine</Text>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.ctaLabel}>{t('routineCard.start')}</Text>
       </PressableScale>
     </View>
   );

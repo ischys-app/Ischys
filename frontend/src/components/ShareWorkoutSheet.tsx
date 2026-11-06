@@ -8,6 +8,7 @@
  * ref to get a PNG file URI, then hand it to expo-media-library (save) or
  * expo-sharing (share).
  */
+import { t } from '../i18n';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -37,6 +38,7 @@ import { StarIcon } from './icons';
 import { Wordmark } from './Wordmark';
 import { useThemed } from '../theme/ThemeProvider';
 import { workoutLabel } from '../i18n/workoutLabel';
+import { getLang } from '../i18n/current';
 
 type Layout = 'compact' | 'standard' | 'detailed';
 
@@ -57,6 +59,7 @@ const MONTH_UPPER = [
 function fmtCardDate(iso: string): string {
   const d = new Date(parseServerDate(iso));
   if (Number.isNaN(d.getTime())) return '';
+  if (getLang() === 'zh-Hans') return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -113,9 +116,9 @@ function ShareIcon({ size = 16, tint }: { size?: number; tint: string }) {
 }
 
 const LAYOUTS: { key: Layout; label: string }[] = [
-  { key: 'compact', label: 'Compact' },
-  { key: 'standard', label: 'Standard' },
-  { key: 'detailed', label: 'Detailed' },
+  { key: 'compact', label: 'share.layoutCompact' },
+  { key: 'standard', label: 'share.layoutStandard' },
+  { key: 'detailed', label: 'share.layoutDetailed' },
 ];
 
 export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
@@ -151,18 +154,18 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
         granted = req.granted;
       }
       if (!granted) {
-        Alert.alert('Permission needed', 'Ischys needs permission to save to Photos.');
+        Alert.alert(t('share.permTitle'), t('share.permBody'));
         return;
       }
       const uri = await capture();
       if (!uri) {
-        Alert.alert('Could not capture image', 'Please try again.');
+        Alert.alert(t('share.captureTitle'), t('share.tryAgain'));
         return;
       }
       await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Saved to Photos');
+      Alert.alert(t('share.savedTitle'));
     } catch {
-      Alert.alert('Save failed', 'Could not save to Photos.');
+      Alert.alert(t('share.saveFailedTitle'), t('share.saveFailedBody'));
     } finally {
       setBusy(false);
     }
@@ -174,17 +177,17 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
     try {
       const available = await Sharing.isAvailableAsync();
       if (!available) {
-        Alert.alert('Sharing unavailable', 'System sharing is not available on this device.');
+        Alert.alert(t('share.unavailableTitle'), t('share.unavailableBody'));
         return;
       }
       const uri = await capture();
       if (!uri) {
-        Alert.alert('Could not capture image', 'Please try again.');
+        Alert.alert(t('share.captureTitle'), t('share.tryAgain'));
         return;
       }
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: 'Share workout',
+        dialogTitle: t('share.dialogTitle'),
         UTI: 'public.png',
       });
     } catch {
@@ -205,12 +208,12 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Share workout</Text>
+        <Text style={styles.title}>{t('share.dialogTitle')}</Text>
         <Pressable
           onPress={onClose}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Close share sheet"
+          accessibilityLabel={t('share.closeLabel')}
           style={styles.closeBtn}
         >
           <Svg width={14} height={14} viewBox="0 0 24 24">
@@ -249,7 +252,7 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
                     accessibilityState={{ selected: active }}
                   >
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {l.label}
+                      {t(l.label)}
                     </Text>
                   </Pressable>
                 );
@@ -262,37 +265,37 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
                 disabled={busy}
                 style={[styles.saveBtn, busy && styles.actionDisabled]}
                 accessibilityRole="button"
-                accessibilityLabel="Save workout image to Photos"
+                accessibilityLabel={t('share.saveLabel')}
               >
                 <DownloadIcon tint={color.text1} />
-                <Text style={styles.saveBtnText}>Save image</Text>
+                <Text style={styles.saveBtnText}>{t('share.saveImage')}</Text>
               </PressableScale>
               <PressableScale
                 onPress={onShare}
                 disabled={busy}
                 style={[styles.shareBtn, busy && styles.actionDisabled]}
                 accessibilityRole="button"
-                accessibilityLabel="Share workout image"
+                accessibilityLabel={t('share.shareLabel')}
               >
                 <ShareIcon tint={color.accentFg} />
-                <Text style={styles.shareBtnText}>Share</Text>
+                <Text style={styles.shareBtnText}>{t('share.shareButton')}</Text>
               </PressableScale>
             </View>
           </>
         ) : (
           <>
             <View style={[styles.previewShot, styles.emptyPreview]}>
-              <Text style={styles.emptyText}>Nothing to share</Text>
-              <Text style={styles.emptySub}>This workout has no data yet.</Text>
+              <Text style={styles.emptyText}>{t('share.nothing')}</Text>
+              <Text style={styles.emptySub}>{t('share.nothingSub')}</Text>
             </View>
             <View style={styles.actionsRow}>
               <View style={[styles.saveBtn, styles.actionDisabled]}>
                 <DownloadIcon tint={color.text3} />
-                <Text style={[styles.saveBtnText, styles.disabledText]}>Save image</Text>
+                <Text style={[styles.saveBtnText, styles.disabledText]}>{t('share.saveImage')}</Text>
               </View>
               <View style={[styles.shareBtn, styles.actionDisabled]}>
                 <ShareIcon tint={color.text3} />
-                <Text style={[styles.shareBtnText, styles.disabledText]}>Share</Text>
+                <Text style={[styles.shareBtnText, styles.disabledText]}>{t('share.shareButton')}</Text>
               </View>
             </View>
           </>
@@ -335,7 +338,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
 
         {layout === 'compact' ? (
           <View style={cardStyles.compactStat}>
-            <Text style={cardStyles.compactStatLabel}>VOLUME</Text>
+            <Text style={cardStyles.compactStatLabel}>{t('share.cardVolume')}</Text>
             <Text style={cardStyles.compactStatValue}>
               {volume}
               <Text style={cardStyles.compactStatUnit}> {unit}</Text>
@@ -343,9 +346,9 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
           </View>
         ) : (
           <View style={cardStyles.statRow}>
-            <StatCell label="DURATION" value={duration} />
-            <StatCell label="VOLUME" value={volume} unit={` ${unit}`} />
-            <StatCell label="SETS" value={sets} />
+            <StatCell label={t('share.cardDuration')} value={duration} />
+            <StatCell label={t('share.cardVolume')} value={volume} unit={` ${unit}`} />
+            <StatCell label={t('share.cardSets')} value={sets} />
           </View>
         )}
 
@@ -378,7 +381,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
         <View style={cardStyles.prChipWrap}>
           <View style={cardStyles.prChip}>
             <StarIcon size={12} color={color.success} strokeWidth={2.4} />
-            <Text style={cardStyles.prChipText}>{`${prs.length} PR${prs.length === 1 ? '' : 's'}`}</Text>
+            <Text style={cardStyles.prChipText}>{t('share.prChip', { count: prs.length })}</Text>
           </View>
         </View>
       )}

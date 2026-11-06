@@ -1,4 +1,5 @@
 // Pure profile helpers (issue #117). No expo-* / react-native imports.
+import { fold } from './fold.ts';
 
 export type ProfileRow = {
   id: string;
@@ -216,7 +217,6 @@ export const SWITCHER_SEARCH_FROM = 9;
 
 /** Profiles whose name contains `query`, ignoring case and accents; all of them for a blank query. */
 export function filterProfiles<T extends { name: string }>(rows: readonly T[], query: string): T[] {
-  const fold = (s: string) => s.toLocaleLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const q = fold(query.trim());
   if (!q) return [...rows];
   return rows.filter((r) => fold(r.name).includes(q));

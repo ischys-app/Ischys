@@ -38,6 +38,7 @@ import { exerciseArt } from '../lib/exerciseArt';
 import { accentA, byScheme, color, font, themed } from '../theme/tokens';
 import { ExerciseArt } from './ExerciseArt';
 import { useThemed } from '../theme/ThemeProvider';
+import { t } from '../i18n';
 
 /** A demo URL the video player can load. Http(s) only. */
 const isHttpUrl = (u: string) => /^https?:\/\//i.test(u);
@@ -155,7 +156,7 @@ function EmptyTile({
 }) {
   useThemed();
   const onUpload = () =>
-    Alert.alert('Coming soon', 'Local file upload will be added in a later release.');
+    Alert.alert(t('demo.comingSoon'), t('demo.comingSoonBody'));
 
   // Bundled line-art loop, when we have artwork for this movement. Only a subset
   // of the catalog is covered, so this is a bonus over the empty state, not a
@@ -170,9 +171,9 @@ function EmptyTile({
         {/* The drawing identifies the movement; the HOW TO steps below it are the
             actual form guidance. Saying so keeps a schematic figure from being
             read as coaching. */}
-        <Text style={styles.artNote}>Illustration for reference — follow the steps below for form.</Text>
+        <Text style={styles.artNote}>{t('demo.artNote')}</Text>
         <Pressable onPress={onPasteUrl} hitSlop={6}>
-          <Text style={styles.addDemoLink}>Add a demo video →</Text>
+          <Text style={styles.addDemoLink}>{t('demo.add')}</Text>
         </Pressable>
       </>
     );
@@ -189,9 +190,9 @@ function EmptyTile({
             accessibilityIgnoresInvertColors
           />
         </View>
-        {imageAuthor ? <Text style={styles.attribution}>{`Image · ${imageAuthor}`}</Text> : null}
+        {imageAuthor ? <Text style={styles.attribution}>{t('demo.attribution', { author: imageAuthor })}</Text> : null}
         <Pressable onPress={onPasteUrl} hitSlop={6}>
-          <Text style={styles.addDemoLink}>Add a demo video →</Text>
+          <Text style={styles.addDemoLink}>{t('demo.add')}</Text>
         </Pressable>
       </>
     );
@@ -216,7 +217,7 @@ function EmptyTile({
             strokeLinejoin="round"
           />
         </Svg>
-        <Text style={styles.addDemoLabel}>ADD DEMO</Text>
+        <Text style={styles.addDemoLabel}>{t('demo.addLabel')}</Text>
       </View>
       <View style={styles.chipRow}>
         <Pressable style={styles.chipBtn} onPress={onPasteUrl} accessibilityRole="button">
@@ -229,7 +230,7 @@ function EmptyTile({
               strokeLinejoin="round"
             />
           </Svg>
-          <Text style={styles.chipText}>Paste URL</Text>
+          <Text style={styles.chipText}>{t('demo.paste')}</Text>
         </Pressable>
         <Pressable style={styles.chipBtn} onPress={onUpload} accessibilityRole="button">
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
@@ -241,7 +242,7 @@ function EmptyTile({
               strokeLinejoin="round"
             />
           </Svg>
-          <Text style={styles.chipText}>Upload file</Text>
+          <Text style={styles.chipText}>{t('demo.upload')}</Text>
         </Pressable>
       </View>
     </>
@@ -279,11 +280,11 @@ function PopulatedTile({ url, onChange }: { url: string; onChange: () => void })
             />
           </Svg>
           <Text style={styles.sourceText} numberOfLines={1}>
-            Source · {host}
+            {t('demo.source', { host })}
           </Text>
         </View>
         <Pressable onPress={onChange} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.changeText}>Change</Text>
+          <Text style={styles.changeText}>{t('demo.change')}</Text>
         </Pressable>
       </View>
     </>
@@ -361,7 +362,7 @@ function UrlEditorModal({
               onPress={onCancel}
               style={styles.closeBtn}
               accessibilityRole="button"
-              accessibilityLabel="Cancel"
+              accessibilityLabel={t('common.cancel')}
               hitSlop={8}
             >
               <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
@@ -374,12 +375,12 @@ function UrlEditorModal({
                 />
               </Svg>
             </Pressable>
-            <Text style={styles.sheetTitle}>Demo URL</Text>
+            <Text style={styles.sheetTitle}>{t('demo.urlTitle')}</Text>
           </View>
           <TextInput
             value={value}
             onChangeText={setValue}
-            placeholder="https://…/incline-db-press.mp4"
+            placeholder={t('demo.urlPlaceholder')}
             placeholderTextColor={color.text3}
             keyboardType="url"
             autoCapitalize="none"
@@ -388,7 +389,7 @@ function UrlEditorModal({
             selectionColor={color.accent}
             style={styles.input}
           />
-          {invalid && <Text style={styles.inputError}>Enter an http(s) link to a video.</Text>}
+          {invalid && <Text style={styles.inputError}>{t('demo.urlInvalid')}</Text>}
           <View style={styles.sheetActions}>
             <Pressable
               onPress={() => onSave(value)}
@@ -400,7 +401,7 @@ function UrlEditorModal({
                 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Save demo URL"
+              accessibilityLabel={t('demo.saveLabel')}
             >
               <Text
                 style={[
@@ -408,7 +409,7 @@ function UrlEditorModal({
                   { color: hasValue && !invalid ? color.accentFg : color.text3 },
                 ]}
               >
-                Save
+                {t('common.save')}
               </Text>
             </Pressable>
           </View>

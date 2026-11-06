@@ -63,6 +63,8 @@ import { setEffortMode } from '../src/lib/effortMode';
 import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvider';
+import { t } from '../src/i18n';
+import { profileNameLabel } from '../src/i18n/defaultLabels';
 
 /**
  * The shipped version, read from the build rather than retyped — these strings
@@ -84,15 +86,12 @@ const DEFAULT_SETTINGS: SettingsOut = {
   haptic_feedback: true,
 };
 
-const EFFORT_FOOTER =
-  'Turning this off hides ratings everywhere but keeps them stored. Switching between RPE and RIR converts existing ratings.';
-
 const DEVICE_SCOPE: SectionScope = { kind: 'device' };
 
-const APPEARANCE_OPTIONS: SegmentOption<Appearance>[] = [
-  { label: 'Dark', value: 'dark' },
-  { label: 'Light', value: 'light' },
-  { label: 'System', value: 'system' },
+const appearanceOptions = (): SegmentOption<Appearance>[] => [
+  { label: t('settings.dark'), value: 'dark' },
+  { label: t('settings.light'), value: 'light' },
+  { label: t('settings.system'), value: 'system' },
 ];
 
 const UNIT_OPTIONS: SegmentOption<Unit>[] = [
@@ -101,18 +100,15 @@ const UNIT_OPTIONS: SegmentOption<Unit>[] = [
 ];
 
 /** One control both turns effort ratings on and picks the scale (#84). */
-const EFFORT_OPTIONS: SegmentOption<EffortMode>[] = [
-  { label: 'Off', value: 'off' },
+const effortOptions = (): SegmentOption<EffortMode>[] => [
+  { label: t('common.off'), value: 'off' },
   { label: 'RPE', value: 'rpe' },
   { label: 'RIR', value: 'rir' },
 ];
 
 /** What the row says under the control, in the words of the scale chosen. */
-const EFFORT_HELP: Record<EffortMode, string> = {
-  off: 'Rate a set while you rest. RPE runs 6 to 10, where 10 means nothing left and 8 means two reps left.',
-  rpe: 'Rate a set while you rest. RPE runs 6 to 10, where 10 means nothing left and 8 means two reps left.',
-  rir: 'Rate a set while you rest. RIR counts the reps you had left, where 0 means nothing left.',
-};
+const effortHelp = (mode: EffortMode): string =>
+  t(mode === 'rir' ? 'settings.effortHelpRir' : 'settings.effortHelpRpe');
 
 /** Merge glyph: two overlapping circles (icons.tsx is owned by another stream). */
 function MergeIcon({ size = 19, color: strokeColor, strokeWidth = 2 }: { size?: number; color: string; strokeWidth?: number }) {
@@ -289,15 +285,15 @@ export default function Settings() {
     try {
       await exportProfile(fmt);
     } catch (e) {
-      showToast(e instanceof SharingUnavailable ? 'Sharing unavailable' : 'Export failed');
+      showToast(e instanceof SharingUnavailable ? t('export.sharingUnavailable') : t('export.failed'));
     }
   };
 
   const onExport = () => {
-    Alert.alert('Export data', 'Choose a format', [
+    Alert.alert(t('export.title'), t('export.chooseFormat'), [
       { text: 'JSON', onPress: () => doExport('json') },
       { text: 'CSV', onPress: () => doExport('csv') },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -347,7 +343,7 @@ export default function Settings() {
   const { profile, count } = useActiveProfile();
   const layout: 'off' | 'single' | 'multi' = !PROFILES_ENABLED ? 'off' : count >= 2 ? 'multi' : 'single';
   const multi = layout === 'multi';
-  const first = firstName(profile.name) || profile.name;
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
   const profileScope: SectionScope = { kind: 'profile', profile };
   const healthShown = Platform.OS === 'ios' || healthAvailability() !== 'unavailable';
 
@@ -355,7 +351,7 @@ export default function Settings() {
   const unitsRow = (
     <SegmentRow
       icon={<UnitsIcon size={20} color={color.text2} />}
-      label="Units"
+      label={t('settings.units')}
       options={UNIT_OPTIONS}
       value={settings.unit}
       onChange={(v) => patch({ unit: v })}
@@ -366,7 +362,7 @@ export default function Settings() {
   const autoRestRow = (last: boolean) => (
     <ToggleRow
       icon={<ClockRowIcon size={20} color={color.text2} strokeWidth={2} />}
-      label="Auto-start rest timer"
+      label={t('settings.autoRest')}
       value={settings.auto_start_rest_timer}
       onChange={(v) => patch({ auto_start_rest_timer: v })}
       isLast={last}
@@ -375,8 +371,8 @@ export default function Settings() {
   const keepNotesRow = (last: boolean) => (
     <ToggleRow
       icon={<EditIcon size={20} color={color.text2} />}
-      label="Keep exercise notes"
-      sub="Carry each exercise's note into your next workouts until you change or clear it"
+      label={t('settings.keepNotes')}
+      sub={t('settings.keepNotes.sub')}
       value={settings.keep_exercise_notes}
       onChange={(v) => patch({ keep_exercise_notes: v })}
       isLast={last}
@@ -385,7 +381,7 @@ export default function Settings() {
   const restAlertsRow = (last: boolean) => (
     <ToggleRow
       icon={<BellIcon size={20} color={color.text2} />}
-      label="Rest timer alerts"
+      label={t('settings.restAlerts')}
       value={settings.rest_timer_alerts}
       onChange={(v) => {
         patch({ rest_timer_alerts: v });
@@ -397,7 +393,7 @@ export default function Settings() {
   const hapticsRow = (last: boolean) => (
     <ToggleRow
       icon={<HapticIcon size={20} color={color.text2} />}
-      label="Haptic feedback"
+      label={t('settings.haptics')}
       value={settings.haptic_feedback}
       onChange={(v) => patch({ haptic_feedback: v })}
       isLast={last}
@@ -406,7 +402,7 @@ export default function Settings() {
   const warmupsRow = (last: boolean) => (
     <ToggleRow
       icon={<WarmupIcon size={20} color={color.text2} />}
-      label="Count warmups in volume"
+      label={t('settings.warmups')}
       value={countWarmups}
       onChange={(v) => {
         setCountWarmupsState(v);
@@ -418,7 +414,7 @@ export default function Settings() {
   const deloadRow = (last: boolean) => (
     <ToggleRow
       icon={<WarmupIcon size={20} color={color.text2} />}
-      label="Deload advice"
+      label={t('settings.deload')}
       value={deloadOn}
       onChange={(v) => {
         setDeloadOn(v);
@@ -430,8 +426,8 @@ export default function Settings() {
   const platesRow = (last: boolean) => (
     <LinkRow
       icon={<DumbbellIcon size={19} color={color.text2} />}
-      label="Bar &amp; plates"
-      sub="Used by the plate calculator"
+      label={t('plates.title')}
+      sub={t('settings.platesSub')}
       onPress={() => router.push('/plates')}
       isLast={last}
     />
@@ -449,9 +445,9 @@ export default function Settings() {
   const bodyweightRow = (last: boolean) => (
     <LinkRow
       icon={<BodyweightIcon size={20} color={color.text2} />}
-      label="Bodyweight"
-      sub="Counts toward volume for bodyweight moves"
-      value={bwDisplay != null ? `${bwDisplay} ${bwUnitLabel}` : 'Not set'}
+      label={t('settings.bodyweight')}
+      sub={t('settings.bodyweightSub')}
+      value={bwDisplay != null ? `${bwDisplay} ${bwUnitLabel}` : t('settings.notSet')}
       onPress={openBw}
       isLast={last}
     />
@@ -461,13 +457,16 @@ export default function Settings() {
       {LIGHT_MODE_ENABLED && (
         <SegmentRow
           icon={<AppearanceIcon color={color.text2} />}
-          label="Appearance"
+          label={t('settings.appearance')}
           sub={
             theme.appearance === 'system'
-              ? `Following ${Platform.OS === 'ios' ? 'iPhone' : 'phone'} · ${theme.systemScheme === 'dark' ? 'Dark' : 'Light'}`
+              ? t('settings.following', {
+                  device: Platform.OS === 'ios' ? t('settings.deviceIos') : t('settings.devicePhone'),
+                  scheme: theme.systemScheme === 'dark' ? t('settings.dark') : t('settings.light'),
+                })
               : undefined
           }
-          options={APPEARANCE_OPTIONS}
+          options={appearanceOptions()}
           value={theme.appearance}
           onChange={theme.setAppearance}
           padX={9}
@@ -476,7 +475,7 @@ export default function Settings() {
       )}
       <LinkRow
         icon={<PaletteIcon color={color.text2} />}
-        label="Theme"
+        label={t('settings.theme')}
         value={theme.palette.name}
         onPress={() => setThemeOpen((o) => !o)}
         isLast={!themeOpen}
@@ -527,27 +526,25 @@ export default function Settings() {
       >
         {layout !== 'off' && (
           <Section
-            title="PROFILE"
-            footer={
-              multi ? undefined : 'Keep separate history for a client or someone you share this phone with.'
-            }
+            title={t('settings.sectionProfile')}
+            footer={multi ? undefined : t('settings.profileFooter')}
           >
             <PersonRow
               profile={profile}
-              sub={multi ? `${count} PROFILES ON THIS PHONE` : 'JUST YOU'}
+              sub={multi ? t('settings.profilesOnPhone', { count }) : t('settings.justYou')}
               onPress={() => router.push('/profiles')}
             />
             {multi ? (
               <LinkRow
                 icon={<SwapIcon color={color.text2} />}
-                label="Switch profile"
+                label={t('switcher.title')}
                 onPress={openProfileSwitcher}
                 isLast
               />
             ) : (
               <RowShell
                 icon={<PlusIcon size={19} color={color.text2} strokeWidth={2.2} />}
-                label="Add profile"
+                label={t('profiles.add')}
                 onPress={() => router.push('/profiles/new')}
                 isLast
               />
@@ -558,7 +555,7 @@ export default function Settings() {
         {multi ? (
           <>
             {/* P9: the profile's own sections first, named; then THIS PHONE. */}
-            <Section title="TRAINING" scope={profileScope} footer={EFFORT_FOOTER}>
+            <Section title={t('settings.sectionTraining')} scope={profileScope} footer={t('settings.effortFooter')}>
               {unitsRow}
               {effortRow}
               {targetRow(false)}
@@ -570,43 +567,43 @@ export default function Settings() {
               {deloadRow(true)}
             </Section>
 
-            <Section title="DATA" scope={profileScope}>
+            <Section title={t('settings.sectionData')} scope={profileScope}>
               <LinkRow
                 icon={<UploadIcon size={20} color={color.text2} />}
-                label={`Export ${possessive(profile.name)} data`}
-                value="CSV · JSON"
+                label={t('settings.exportWhose', { whose: possessive(profileNameLabel(profile.name)) })}
+                value={t('profiles.exportFormats')}
                 sub={exportFileStem(count, profile.name, new Date()).toUpperCase()}
                 onPress={onExport}
                 isLast={false}
               />
               <LinkRow
                 icon={<DownloadIcon size={20} color={color.text2} />}
-                label={`Import into ${first}`}
+                label={t('settings.importInto', { name: first })}
                 onPress={onImport}
                 isLast={false}
               />
               <MergeRow
                 count={dupCount}
-                sub={`IN ${possessive(profile.name).toUpperCase()} HISTORY`}
+                sub={t('settings.inHistory', { whose: possessive(profileNameLabel(profile.name)).toUpperCase() })}
                 onPress={() => router.push('/merge-duplicates')}
               />
             </Section>
 
             <Section
-              title="APPEARANCE"
+              title={t('settings.sectionAppearance')}
               scope={DEVICE_SCOPE}
-              footer="Settings marked THIS PHONE are the same in every profile."
+              footer={t('settings.phoneFooter')}
             >
               {appearanceRows}
             </Section>
 
-            <Section title="ALERTS" scope={DEVICE_SCOPE}>
+            <Section title={t('settings.sectionAlerts')} scope={DEVICE_SCOPE}>
               {restAlertsRow(false)}
               {hapticsRow(true)}
             </Section>
 
             {healthShown && (
-              <Section title="HEALTH & WATCH" scope={DEVICE_SCOPE}>
+              <Section title={t('profiles.healthWatch')} scope={DEVICE_SCOPE}>
                 {profile.isOwner ? (
                   healthRow
                 ) : (
@@ -615,14 +612,14 @@ export default function Settings() {
                     <LinkRow
                       icon={<HeartFilledIcon size={20} color={color.text2} />}
                       label={healthCopy(Platform.OS).name}
-                      value={`Off for ${first}`}
+                      value={t('health.offFor', { name: first })}
                       onPress={() => router.push('/health')}
                       isLast={false}
                     />
                     <LinkRow
                       icon={<WatchIcon color={color.text2} />}
                       label={Platform.OS === 'ios' ? 'Apple Watch' : 'Watch'}
-                      value={`Off for ${first}`}
+                      value={t('health.offFor', { name: first })}
                       onPress={() => router.push('/health')}
                       isLast
                     />
@@ -634,7 +631,7 @@ export default function Settings() {
         ) : (
           <>
             {/* TRAINING */}
-            <Section title="TRAINING" footer={EFFORT_FOOTER}>
+            <Section title={t('settings.sectionTraining')} footer={t('settings.effortFooter')}>
               {unitsRow}
               {effortRow}
               {autoRestRow(false)}
@@ -651,23 +648,23 @@ export default function Settings() {
             {/* APPEARANCE (7b). Two independent settings: the appearance swaps
                 surfaces, text and status colours; the theme swaps only the accent,
                 which marks one action per screen. Both apply at once. */}
-            <Section title="APPEARANCE">{appearanceRows}</Section>
+            <Section title={t('settings.sectionAppearance')}>{appearanceRows}</Section>
 
             {/* Health is the only thing in this section: Apple Health on iOS, and
                 Health Connect on an Android that has it or can install it. */}
-            {healthShown && <Section title="DEVICE">{healthRow}</Section>}
+            {healthShown && <Section title={t('settings.sectionDevice')}>{healthRow}</Section>}
 
-            <Section title="DATA">
+            <Section title={t('settings.sectionData')}>
               <LinkRow
                 icon={<UploadIcon size={20} color={color.text2} />}
-                label="Export data"
+                label={t('export.title')}
                 value="CSV / JSON"
                 onPress={onExport}
                 isLast={false}
               />
               <LinkRow
                 icon={<DownloadIcon size={20} color={color.text2} />}
-                label="Import workout"
+                label={t('settings.importWorkout')}
                 value="CSV / JSON"
                 onPress={onImport}
                 isLast={false}
@@ -678,24 +675,24 @@ export default function Settings() {
         )}
 
         {/* ABOUT */}
-        <Section title="ABOUT">
+        <Section title={t('settings.sectionAbout')}>
           <LinkRow
             icon={<ShieldIcon size={20} color={color.text2} />}
-            label="Privacy"
-            value="On-device"
+            label={t('settings.privacy')}
+            value={t('settings.onDevice')}
             onPress={() => {
-              const backup = Platform.OS === 'ios' ? 'iCloud' : 'your Google account';
+              const backup = Platform.OS === 'ios' ? t('settings.backupIos') : t('settings.backupAndroid');
               Alert.alert(
-                'Privacy',
-                `All your workout data lives on this device only. Nothing is sent to any server or third party. It backs up with your device (${backup}) like any other app.`,
+                t('settings.privacy'),
+                t('settings.privacyBody', { backup }),
                 [
                   {
-                    text: 'Privacy policy',
+                    text: t('settings.privacyPolicy'),
                     onPress: () => {
                       Linking.openURL('https://ischys.app/privacy').catch(() => {});
                     },
                   },
-                  { text: 'OK', style: 'cancel' },
+                  { text: t('common.ok'), style: 'cancel' },
                 ],
               );
             }}
@@ -703,7 +700,7 @@ export default function Settings() {
           />
           <LinkRow
             icon={<CodeIcon size={20} color={color.text2} />}
-            label="Source code"
+            label={t('settings.sourceCode')}
             value="GitHub"
             onPress={() => {
               Linking.openURL('https://github.com/ischys-app/Ischys').catch(() => {});
@@ -712,15 +709,12 @@ export default function Settings() {
           />
           <LinkRow
             icon={<InfoIcon size={20} color={color.text2} />}
-            label="About Ischys"
+            label={t('settings.aboutRow')}
             value={APP_VERSION ? `v${APP_VERSION}` : undefined}
             onPress={() => {
               Alert.alert(
                 'Ischys · ΙΣΧΥΣ',
-                `Private, on-device workout tracker.\n\nversion ${APP_VERSION}\n\n` +
-                  'Exercise artwork by Workout Guide and Everkinetic, licensed\n' +
-                  'CC BY-SA 4.0 (creativecommons.org/licenses/by-sa/4.0).\n\n' +
-                  'Ισχύς — strength.',
+                t('settings.aboutBody', { version: String(APP_VERSION) }),
               );
             }}
             isLast
@@ -736,12 +730,12 @@ export default function Settings() {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
         >
           <BackChevronLeftIcon color={color.text2} />
         </Pressable>
-        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>{t('settings.title')}</Text>
       </View>
 
       {toast && (
@@ -765,10 +759,9 @@ export default function Settings() {
           <View style={styles.bwGrabber} />
         </View>
         <View style={styles.bwBody}>
-          <Text style={styles.bwTitle}>Bodyweight</Text>
+          <Text style={styles.bwTitle}>{t('settings.bodyweight')}</Text>
           <Text style={styles.bwText}>
-            Used to count bodyweight movements — pull-ups, dips, push-ups — toward your volume.
-            It&apos;s snapshotted onto each workout, so changing it never rewrites past sessions.
+            {t('settings.bodyweightText')}
           </Text>
           <View style={styles.bwInputRow}>
             <TextInput
@@ -781,7 +774,7 @@ export default function Settings() {
               autoFocus
               returnKeyType="done"
               onSubmitEditing={saveBw}
-              accessibilityLabel="Bodyweight value"
+              accessibilityLabel={t('settings.bodyweightField')}
             />
             <Text style={styles.bwUnit}>{bwUnitLabel}</Text>
           </View>
@@ -801,7 +794,7 @@ export default function Settings() {
             style={({ pressed }) => [styles.bwSave, pressed && styles.bwSavePressed]}
             accessibilityRole="button"
           >
-            <Text style={styles.bwSaveText}>Save</Text>
+            <Text style={styles.bwSaveText}>{t('common.save')}</Text>
           </Pressable>
         </View>
       </DraggableSheet>
@@ -847,8 +840,8 @@ function TargetRow({
   return (
     <RowShell
       icon={<TargetIcon size={20} color={color.text2} />}
-      label="Weekly goal"
-      sub="Workouts a week, shown on Home"
+      label={t('settings.weeklyGoal')}
+      sub={t('settings.weeklyGoalSub')}
       isLast={isLast}
       right={
         <View style={styles.stepper}>
@@ -858,7 +851,7 @@ function TargetRow({
             hitSlop={6}
             style={({ pressed }) => [styles.stepBtn, pressed && styles.stepBtnPressed]}
             accessibilityRole="button"
-            accessibilityLabel="Decrease weekly goal"
+            accessibilityLabel={t('settings.goalDown')}
           >
             <Text style={[styles.stepGlyph, atMin && styles.stepGlyphOff]}>−</Text>
           </Pressable>
@@ -869,7 +862,7 @@ function TargetRow({
             hitSlop={6}
             style={({ pressed }) => [styles.stepBtn, pressed && styles.stepBtnPressed]}
             accessibilityRole="button"
-            accessibilityLabel="Increase weekly goal"
+            accessibilityLabel={t('settings.goalUp')}
           >
             <Text style={[styles.stepGlyph, atMax && styles.stepGlyphOff]}>+</Text>
           </Pressable>
@@ -959,10 +952,10 @@ function EffortRow({
           <WarmupIcon size={20} color={color.text2} />
         </View>
         <Text style={[styles.rowLabel, styles.effortLabel]} numberOfLines={1}>
-          Effort per set
+          {t('settings.effort')}
         </Text>
         <View style={styles.effortSegment} accessibilityRole="radiogroup">
-          {EFFORT_OPTIONS.map((opt) => {
+          {effortOptions().map((opt) => {
             const selected = opt.value === value;
             return (
               <Pressable
@@ -973,7 +966,7 @@ function EffortRow({
                 style={[styles.effortOption, selected && styles.effortOptionOn]}
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
-                accessibilityLabel={`Effort per set: ${opt.label}`}
+                accessibilityLabel={t('settings.effortOption', { option: opt.label })}
               >
                 <Text style={[styles.effortOptionText, selected && styles.effortOptionTextOn]}>
                   {opt.label}
@@ -983,7 +976,7 @@ function EffortRow({
           })}
         </View>
       </View>
-      <Text style={styles.effortHelp}>{EFFORT_HELP[value]}</Text>
+      <Text style={styles.effortHelp}>{effortHelp(value)}</Text>
     </View>
   );
 }
@@ -1161,13 +1154,13 @@ function PersonRow({ profile, sub, onPress }: { profile: ProfileRow; sub: string
       onPress={onPress}
       style={({ pressed }) => [pressed && styles.rowPressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${profile.name}, manage profiles`}
+      accessibilityLabel={t('settings.managePerson', { name: profileNameLabel(profile.name) })}
     >
       <View style={[styles.row, styles.personRow, styles.rowDivider]}>
         <ProfileAvatar profile={profile} size={40} tint={color.accent} />
         <View style={styles.rowLabelCol}>
           <Text style={styles.personName} numberOfLines={1}>
-            {profile.name}
+            {profileNameLabel(profile.name)}
           </Text>
           <Text style={styles.rowSub} numberOfLines={1}>
             {sub}
@@ -1188,8 +1181,8 @@ function MergeRow({ count, sub, onPress }: { count: number; sub?: string; onPres
   return (
     <RowShell
       icon={<MergeIcon size={19} color={color.text2} />}
-      label="Merge duplicates"
-      sub={sub ?? 'Same lift saved twice'}
+      label={t('mergeDup.title')}
+      sub={sub ?? t('settings.mergeSub')}
       isLast
       onPress={onPress}
       right={

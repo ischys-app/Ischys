@@ -47,6 +47,8 @@ import { switchProfile } from '../../src/lib/switchProfile';
 import { textScale } from '../../src/theme/textScale';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { t } from '../../src/i18n';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
 
 const WATCH_NAME = Platform.OS === 'ios' ? 'Apple Watch' : 'Watch';
 
@@ -102,7 +104,7 @@ export default function NewProfileScreen() {
   const initials = initialsTyped || derived;
   const duplicate = duplicateProfileName(trimmed, rows);
   const owner = rows.find((r) => r.isOwner);
-  const ownerText = ownerLabel(owner?.name ?? DEFAULT_NAME, DEFAULT_NAME);
+  const ownerText = ownerLabel(profileNameLabel(owner?.name ?? DEFAULT_NAME), profileNameLabel(DEFAULT_NAME));
   const canAdd = trimmed !== '' && initials !== '' && !busy;
 
   const onAdd = async () => {
@@ -177,7 +179,7 @@ export default function NewProfileScreen() {
 
           <View style={styles.fields}>
             <View style={styles.flexField}>
-              <SectionLabel style={styles.fieldLabel}>NAME</SectionLabel>
+              <SectionLabel style={styles.fieldLabel}>{t('profiles.name')}</SectionLabel>
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -189,18 +191,18 @@ export default function NewProfileScreen() {
                 onSubmitEditing={() => Keyboard.dismiss()}
                 onFocus={() => setFocused('name')}
                 onBlur={() => setFocused(null)}
-                placeholder="Name"
+                placeholder={t('profiles.namePlaceholder')}
                 placeholderTextColor={color.text3}
-                accessibilityLabel="Name"
+                accessibilityLabel={t('profiles.namePlaceholder')}
                 maxFontSizeMultiplier={textScale.control}
                 style={[styles.input, styles.nameInput, focused === 'name' && styles.inputFocused]}
               />
             </View>
             <View style={styles.initialsField}>
-              <SectionLabel style={styles.fieldLabel}>INITIALS</SectionLabel>
+              <SectionLabel style={styles.fieldLabel}>{t('profiles.initials')}</SectionLabel>
               <TextInput
                 value={initialsTyped ?? derived}
-                onChangeText={(t) => setInitialsTyped(normalizeInitials(t))}
+                onChangeText={(text) => setInitialsTyped(normalizeInitials(text))}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 returnKeyType="done"
@@ -211,7 +213,7 @@ export default function NewProfileScreen() {
                   // Cleared: follow the name again.
                   if (initialsTyped === '') setInitialsTyped(null);
                 }}
-                accessibilityLabel="Initials"
+                accessibilityLabel={t('profiles.initialsLabel')}
                 maxFontSizeMultiplier={textScale.fixed}
                 style={[styles.input, styles.initialsInput, focused === 'initials' && styles.inputFocused]}
               />
@@ -219,32 +221,32 @@ export default function NewProfileScreen() {
           </View>
           {duplicate ? (
             <Text style={styles.hint}>
-              {`You already have a ${duplicate}. Change the initials to tell them apart.`}
+              {t('profiles.duplicate', { name: duplicate })}
             </Text>
           ) : null}
 
-          <SectionLabel style={{ ...styles.sectionLabel, ...styles.sectionTop }}>HEALTH & WATCH</SectionLabel>
+          <SectionLabel style={{ ...styles.sectionLabel, ...styles.sectionTop }}>{t('profiles.healthWatch')}</SectionLabel>
           <View style={styles.card}>
-            <View style={[styles.row, styles.rowDivider]} accessible accessibilityLabel={`${healthCopy(Platform.OS).name}, off`}>
+            <View style={[styles.row, styles.rowDivider]} accessible accessibilityLabel={t('profiles.rowOff', { name: healthCopy(Platform.OS).name })}>
               <HeartOutline />
               <Text style={styles.rowLabel} numberOfLines={1}>
                 {healthCopy(Platform.OS).name}
               </Text>
-              <Text style={styles.rowValue}>Off</Text>
+              <Text style={styles.rowValue}>{t('common.off')}</Text>
             </View>
-            <View style={styles.row} accessible accessibilityLabel={`${WATCH_NAME}, off`}>
+            <View style={styles.row} accessible accessibilityLabel={t('profiles.rowOff', { name: WATCH_NAME })}>
               <WatchGlyph />
               <Text style={styles.rowLabel} numberOfLines={1}>
                 {WATCH_NAME}
               </Text>
-              <Text style={styles.rowValue}>Off</Text>
+              <Text style={styles.rowValue}>{t('common.off')}</Text>
             </View>
           </View>
           <Text style={styles.footer}>{newProfileHealthFooter(trimmed, ownerText, healthCopy(Platform.OS).name)}</Text>
 
           {routineCount > 0 ? (
             <>
-              <SectionLabel style={styles.sectionLabel}>START WITH</SectionLabel>
+              <SectionLabel style={styles.sectionLabel}>{t('profiles.startWith')}</SectionLabel>
               <View style={styles.card}>
                 <Pressable
                   onPress={() => setCopy((v) => !v)}
@@ -269,17 +271,17 @@ export default function NewProfileScreen() {
         </ScrollView>
 
         <View style={[styles.bottom, { paddingBottom: keyboardShown ? 16 : Math.max(insets.bottom, 16) }]}>
-          {failed ? <Text style={styles.error}>Couldn't add the profile. Try again.</Text> : null}
+          {failed ? <Text style={styles.error}>{t('profiles.addFailed')}</Text> : null}
           <PressableScale
             onPress={onAdd}
             disabled={!canAdd}
             style={[styles.addBtn, !canAdd && styles.addBtnOff]}
             accessibilityRole="button"
-            accessibilityLabel="Add profile"
+            accessibilityLabel={t('profiles.add')}
             accessibilityState={{ disabled: !canAdd, busy }}
           >
             <Text maxFontSizeMultiplier={textScale.control} style={[styles.addText, !canAdd && styles.addTextOff]}>
-              Add profile
+              {t('profiles.add')}
             </Text>
           </PressableScale>
         </View>
@@ -293,11 +295,11 @@ export default function NewProfileScreen() {
           accessibilityRole="button"
         >
           <Text maxFontSizeMultiplier={textScale.control} style={styles.cancelText}>
-            Cancel
+            {t('common.cancel')}
           </Text>
         </Pressable>
         <Text maxFontSizeMultiplier={textScale.control} style={styles.title} accessibilityRole="header">
-          New profile
+          {t('profiles.new')}
         </Text>
         <View style={styles.headerSpacer} />
       </View>

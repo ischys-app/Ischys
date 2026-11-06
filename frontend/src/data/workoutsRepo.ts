@@ -33,13 +33,15 @@ import { toWorkoutListItem, toWorkoutSetOut, type WorkoutRow, type WorkoutSetRow
 import {
   completedSessionsFor,
   loadWorkout,
-  muscleLabel,
+  muscleTagFor,
   muscleTagsByWorkout,
 } from './queries';
 import { currentValues, prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
 import { getSettings } from './settingsRepo';
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
+import { getLang } from '../i18n/current';
+import { exerciseLabel } from '../i18n/catalogNames';
 
 const asSetLike = (s: WorkoutSetRow, kind?: 'weighted' | 'bodyweight'): SetLike => ({
   type: s.type as SetType,
@@ -746,7 +748,8 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   const exRows = exerciseIds.length
     ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, exerciseIds))
     : [];
-  const exNameById = new Map(exRows.map((e) => [e.id, e.name]));
+  const lang = getLang();
+  const exNameById = new Map(exRows.map((e) => [e.id, exerciseLabel(e, lang)]));
   const muscleRows = await db.select().from(schema.muscles);
   const muscleById = new Map(muscleRows.map((m) => [m.id, m]));
   const setsByWe = new Map<string, WorkoutSetRow[]>();
@@ -758,7 +761,7 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   const exPrimaryById = new Map(exRows.map((e) => [e.id, e.primaryMuscleId ? muscleById.get(e.primaryMuscleId) ?? null : null]));
   const volume_by_muscle = volumeByMuscle(
     wes.map((we) => ({
-      muscleLabel: muscleLabel(exPrimaryById.get(we.exerciseId) ?? null),
+      muscleLabel: muscleTagFor(exPrimaryById.get(we.exerciseId) ?? null),
       sets: (setsByWe.get(we.id) ?? []).map((s) => asSetLike(s, kindByWeId.get(we.id))),
     })),
   );

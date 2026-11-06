@@ -2,7 +2,7 @@
  * Exercise catalog + custom exercises + Exercise-Detail compute, on-device.
  * Ported from the original server implementation. Touches the DB — not node-tested.
  */
-import { and, eq, inArray, like, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
@@ -26,7 +26,10 @@ import {
   type PrCell,
 } from '../lib/mergeDuplicates';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
-import { toHistorySession, type ExerciseRow } from './map';
+import { toCategoryOut, toHistorySession, toMuscleOut, type ExerciseRow } from './map';
+import { filterExercises, sortByName } from './labels';
+import { getLang } from '../i18n/current';
+import { exerciseLabel } from '../i18n/catalogNames';
 import { completedSessionsFor, hydrateExercises, loadExercise } from './queries';
 import {
   currentValues,
@@ -35,6 +38,7 @@ import {
   recomputeForExercise,
   reflagExercisePrs,
 } from './recordStore';
+import { t } from '../i18n/t';
 
 /** 'Incline Bench Press' -> 'IB' (port of serializers.initials_of). */
 export function initialsOf(name: string): string {
@@ -50,29 +54,30 @@ const localDay = (ms: number): string => {
 
 export async function listCategories(): Promise<CategoryOut[]> {
   const rows = await db.select().from(schema.categories);
-  return rows.map((c) => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name));
+  const lang = getLang();
+  return sortByName(rows.map((c) => toCategoryOut(c, lang)), lang);
 }
 
 export async function listMuscles(): Promise<MuscleOut[]> {
   const rows = await db.select().from(schema.muscles);
-  return rows.map((m) => ({ id: m.id, name: m.name, group: m.group }));
+  const lang = getLang();
+  return rows.map((m) => toMuscleOut(m, lang));
 }
 
+/**
+ * The library, filtered and sorted by what the user reads. Search matches the
+ * display label or the stored English name, so it runs over hydrated rows
+ * rather than a SQL LIKE (736 catalog rows plus customs: small).
+ */
 export async function listExercises(
-  params: { search?: string; category?: string } = {},
+  params: { search?: string; categoryId?: string } = {},
 ): Promise<ExerciseOut[]> {
-  const filters = [] as ReturnType<typeof like>[];
-  if (params.search) filters.push(like(schema.exercises.name, `%${params.search}%`));
-  if (params.category) {
-    const cat = (await db.select().from(schema.categories).where(eq(schema.categories.name, params.category)))[0];
-    filters.push(eq(schema.exercises.categoryId, cat ? cat.id : '__none__'));
-  }
   const rows = await db
     .select()
     .from(schema.exercises)
-    .where(filters.length ? and(...filters) : undefined);
+    .where(params.categoryId ? eq(schema.exercises.categoryId, params.categoryId) : undefined);
   const byId = await hydrateExercises(rows as ExerciseRow[]);
-  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return sortByName(filterExercises([...byId.values()], { search: params.search }), getLang());
 }
 
 export async function getExercise(id: string): Promise<ExerciseOut> {
@@ -254,7 +259,10 @@ export async function getExerciseChart(
 /** One candidate row in a duplicate group, with the stats the flow shows. */
 export type MergeMemberView = {
   id: string;
+  /** Display label; comparisons and writes use `englishName`. */
   name: string;
+  /** The stored name. */
+  englishName: string;
   initials: string;
   equipment: string;
   isCatalog: boolean;
@@ -278,7 +286,10 @@ export type MergeGroupView = {
 /** Result of a merge write, for the M5 receipt. */
 export type MergeResult = {
   survivorId: string;
+  /** Display label of the survivor. */
   survivorName: string;
+  /** The survivor's stored name. */
+  survivorEnglishName: string;
   /** Sets that changed parent (the discarded rows' logged sets). */
   setsMoved: number;
   /** Distinct routines that were re-pointed. */
@@ -292,7 +303,7 @@ export type MergeResult = {
 /** Thrown when a live workout references a candidate — the merge is blocked. */
 export class ActiveSessionError extends Error {
   constructor() {
-    super('A workout is in progress that uses one of these exercises. Finish it first.');
+    super(t('mergeDup.activeSession'));
     this.name = 'ActiveSessionError';
   }
 }
@@ -403,6 +414,7 @@ export async function findDuplicateGroups(): Promise<MergeGroupView[]> {
 
   const groups = groupDuplicates(candidates);
   const byId = new Map(candidates.map((c) => [c.id, c]));
+  const lang = getLang();
 
   return groups.map((g) => ({
     reason: g.reason,
@@ -412,7 +424,8 @@ export async function findDuplicateGroups(): Promise<MergeGroupView[]> {
       const c = byId.get(m.id)!;
       return {
         id: c.id,
-        name: c.name,
+        name: exerciseLabel({ id: c.id, name: c.name, isCustom: !c.isCatalog }, lang),
+        englishName: c.name,
         initials: c.initials,
         equipment: c.equipment,
         isCatalog: c.isCatalog,
@@ -458,11 +471,13 @@ export async function buildManualGroup(ids: string[]): Promise<MergeGroupView | 
     prsByExercise(unique),
     routineCountsByExercise(unique),
   ]);
+  const lang = getLang();
   const members: MergeMemberView[] = rows.map((r) => {
     const stat = stats.get(r.id) ?? { setCount: 0, workoutCount: 0, firstWorkoutMs: null };
     return {
       id: r.id,
-      name: r.name,
+      name: exerciseLabel(r, lang),
+      englishName: r.name,
       initials: r.initials,
       equipment: r.equipment,
       isCatalog: r.userId === null && r.isCustom === 0,
@@ -489,8 +504,8 @@ export async function buildManualGroup(ids: string[]): Promise<MergeGroupView | 
     survivorId: survivor.id,
     survivorReason:
       catalog.length === 1
-        ? 'Keeps images, how-to and muscle data'
-        : 'More history — fewer records move',
+        ? t('mergeDup.reasonCatalog')
+        : t('mergeDup.reasonHistory'),
     members: sortedMembers,
   };
 }
@@ -616,7 +631,8 @@ export async function mergeExercises(
   const survivorStat = (await exerciseStats([survivorId])).get(survivorId);
   return {
     survivorId,
-    survivorName: survivorRow.name,
+    survivorName: exerciseLabel(survivorRow, getLang()),
+    survivorEnglishName: survivorRow.name,
     setsMoved,
     routinesUpdated,
     totalSets: survivorStat?.setCount ?? 0,

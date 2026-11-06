@@ -1,0 +1,25 @@
+{
+  "_comment": "Glossary for the zh-Hans translation script. Rows without extension:true come from the design spec and are fixed. Rows with extension:true were added by the builder; reviewers may edit them.",
+  "terms": [
+    { "en": "set", "zh": "组" },
+    { "en": "rep / reps", "zh": "次" },
+    { "en": "exercise", "zh": "动作" },
+    { "en": "workout", "zh": "训练" },
+    { "en": "routine", "zh": "训练计划" },
+    { "en": "warm-up set", "zh": "热身组" },
+    { "en": "drop set", "zh": "递减组" },
+    { "en": "failure set", "zh": "力竭组" },
+    { "en": "superset", "zh": "超级组" },
+    { "en": "personal record", "zh": "个人纪录", "note": "use 纪录, never 记录; the abbreviation PR stays PR" },
+    { "en": "rest", "zh": "休息", "extension": true },
+    { "en": "rest timer", "zh": "休息计时", "extension": true },
+    { "en": "volume (total weight lifted)", "zh": "训练量", "extension": true },
+    { "en": "bodyweight", "zh": "自重", "note": "for the exercise type; the user's own weight is 体重", "extension": true },
+    { "en": "muscle group", "zh": "肌群", "extension": true },
+    { "en": "plate calculator", "zh": "杠铃片计算器", "extension": true },
+    { "en": "history", "zh": "历史", "extension": true },
+    { "en": "template", "zh": "模板", "extension": true },
+    { "en": "estimated 1RM", "zh": "预估 1RM", "extension": true }
+  ],
+  "untranslated": ["RPE", "1RM", "PR", "kg", "lb", "Ischys"]
+}

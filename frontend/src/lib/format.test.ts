@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import zh from '../i18n/strings/zh-Hans.json' with { type: 'json' };
 import {
   addDays,
   daysBetween,
@@ -108,4 +109,84 @@ test('days between local midnights count calendar days, across a clock change to
 test('fmtTimeOfDay: local 24-hour HH:MM', () => {
   assert.equal(fmtTimeOfDay(new Date(2026, 9, 29, 18, 2, 59).getTime()), '18:02');
   assert.equal(fmtTimeOfDay(new Date(2026, 9, 29, 7, 5).getTime()), '07:05');
+});
+
+// --- zh-Hans (#136): pinned via the trailing lang parameter ---
+import { fmtAgo, fmtDateOnly, fmtMonthYear, fmtWorkoutDate, metricLabel } from './format.ts';
+
+test('zh-Hans dates', () => {
+  assert.equal(fmtHeaderDate('2026-07-08', 'zh-Hans'), '周三 · 2026年7月8日');
+  assert.equal(fmtHeaderDate('2026-07-08', 'en'), 'WED · 8 JUL 2026');
+  assert.equal(fmtShortDayUpper(new Date(2026, 8, 30), 'zh-Hans'), '周三 9月30日');
+  assert.equal(fmtShortDayUpper(new Date(2026, 8, 30), 'en'), 'WED 30 SEP');
+  assert.equal(fmtWorkoutDate('2026-07-07', 'zh-Hans'), '周二 7月7日 · 00:00');
+  assert.equal(fmtWorkoutDate('2026-07-07', 'en'), 'Tue, 7 Jul · 00:00');
+  assert.equal(fmtDateOnly('2026-07-07', 'zh-Hans'), '周二 2026年7月7日');
+  assert.equal(fmtDateOnly('2026-07-07', 'en'), 'Tue, 7 Jul 2026');
+  assert.equal(fmtMonthYear('2024-01-15', 'zh-Hans'), '2024年1月');
+  assert.equal(fmtMonthYear('2024-01-15', 'en'), 'Jan 2024');
+  assert.equal(fmtMonthYear(null, 'zh-Hans'), '');
+});
+
+test('zh-Hans history group titles', () => {
+  const now = new Date(2026, 6, 11, 12);
+  assert.equal(fmtHistoryGroupTitle('2026-07-10', now, 'en'), 'THIS WEEK');
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', now, 'zh-Hans'), '2026年5月');
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', now, 'en'), 'MAY 2026');
+});
+
+test('zh-Hans words come from the string table, English when untranslated', () => {
+  const table = zh as unknown as Record<string, string>;
+  const now = new Date('2026-07-11T12:00:00Z');
+
+  // Translated: zh output is exactly the value in the string table.
+  assert.equal(metricLabel('best_set', 'en'), 'Best Set');
+  assert.equal(metricLabel('best_set', 'zh-Hans'), table['record.bestSet']);
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'en'), '1h ago');
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), table['ago.hours'].replace('{n}', '1'));
+
+  // Untranslated: remove the keys from the imported table; zh falls back to English.
+  const savedBestSet = table['record.bestSet'];
+  const savedHours = table['ago.hours'];
+  delete table['record.bestSet'];
+  delete table['ago.hours'];
+  try {
+    assert.equal(metricLabel('best_set', 'zh-Hans'), 'Best Set');
+    assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), '1h ago');
+  } finally {
+    table['record.bestSet'] = savedBestSet;
+    table['ago.hours'] = savedHours;
+  }
+});
+
+import { fmtCardDay, fmtDayMonthOf, fmtLongDay, fmtMonthNames, fmtShortDay } from './format.ts';
+
+test('edit-workout and share-card day formats, en and zh-Hans', () => {
+  const d = new Date(2026, 6, 7); // Tue 7 Jul 2026
+  assert.equal(fmtShortDay(d, 'en'), 'Tue 7 Jul');
+  assert.equal(fmtShortDay(d, 'zh-Hans'), '周二 7月7日');
+  assert.equal(fmtLongDay(d, 'en'), 'Tue, 7 Jul 2026');
+  assert.equal(fmtLongDay(d, 'zh-Hans'), '周二 2026年7月7日');
+  assert.equal(fmtDayMonthOf(d, 'en'), '7 Jul');
+  assert.equal(fmtDayMonthOf(d, 'zh-Hans'), '7月7日');
+  assert.equal(fmtCardDay(d, 'en'), '7 JUL 2026');
+  assert.equal(fmtCardDay(d, 'zh-Hans'), '2026年7月7日');
+  assert.equal(fmtMonthNames('en')[0], 'Jan');
+  assert.equal(fmtMonthNames('en').length, 12);
+  assert.deepEqual(fmtMonthNames('zh-Hans').slice(0, 2), ['1月', '2月']);
+});
+
+import { fmtImportDay, fmtWeekInitials } from './format.ts';
+
+test('fmtWeekInitials: always seven, Monday first', () => {
+  assert.deepEqual(fmtWeekInitials('en'), ['M', 'T', 'W', 'T', 'F', 'S', 'S']);
+  assert.equal(fmtWeekInitials('zh-Hans').length, 7);
+});
+
+test('fmtImportDay: English is DD MON with a two-digit year only when it differs', () => {
+  const newest = new Date(2026, 5, 23);
+  assert.equal(fmtImportDay(new Date(2026, 8, 28), newest, 'en'), '28 SEP');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), newest, 'en'), '03 AUG 25');
+  assert.equal(fmtImportDay(new Date(2026, 5, 23), newest, 'zh-Hans'), '6月23日');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), newest, 'zh-Hans'), '2025年8月3日');
 });

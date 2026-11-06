@@ -21,6 +21,8 @@ import { DraggableSheet } from './DraggableSheet';
 import { UploadIcon } from './icons';
 import { PressableScale } from './PressableScale';
 import { ProfileAvatar } from './ProfileAvatar';
+import { t } from '../i18n';
+import { profileNameLabel } from '../i18n/defaultLabels';
 
 type Props = {
   visible: boolean;
@@ -59,7 +61,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
     };
   }, [visible, profile.id]);
 
-  const first = firstName(profile.name) || profile.name;
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
 
   const run = async (kind: 'export' | 'delete', fn: () => Promise<void>) => {
     if (busyRef.current) return;
@@ -79,7 +81,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
       try {
         await exportProfile('json', profile.id);
       } catch (e) {
-        setMessage(e instanceof SharingUnavailable ? 'Sharing unavailable.' : "Couldn't export. Try again.");
+        setMessage(e instanceof SharingUnavailable ? t('deleteProfile.sharingUnavailable') : t('deleteProfile.exportFailed'));
       }
     });
 
@@ -91,13 +93,13 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
       } catch (e) {
         if (__DEV__) console.warn('[profiles] delete failed', e);
         if (mounted.current) {
-          setMessage(`Couldn't delete ${first}. Try again.`);
+          setMessage(t('deleteProfile.deleteFailed', { name: first }));
         } else {
           // The sheet is gone (the switch to the owner dismissed it), so say
           // it from a system alert, which needs no mounted screen.
           Alert.alert(
-            `Couldn't delete ${first}`,
-            `Some of ${possessive(profile.name)} data may still be on this phone. Open Manage profiles and delete again.`,
+            t('deleteProfile.alertTitle', { name: first }),
+            t('deleteProfile.alertBody', { whose: possessive(profileNameLabel(profile.name)) }),
           );
         }
         return;
@@ -105,7 +107,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
       onDeleted();
     });
 
-  const body = counts ? deleteSheetBody(profile.name, counts) : null;
+  const body = counts ? deleteSheetBody(profileNameLabel(profile.name), counts) : null;
 
   return (
     <DraggableSheet visible={visible} onClose={busy ? () => {} : onClose} sheetStyle={styles.sheet}>
@@ -113,7 +115,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
       <View style={styles.head}>
         <ProfileAvatar profile={profile} size={40} />
         <Text style={styles.title} maxFontSizeMultiplier={textScale.display} accessibilityRole="header">
-          {`Delete ${profile.name}?`}
+          {t('deleteProfile.title', { name: profileNameLabel(profile.name) })}
         </Text>
       </View>
       <Text style={styles.body}>
@@ -127,7 +129,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
                 part.text
               ),
             )
-          : `This erases ${possessive(profile.name)} data from this phone. Other profiles aren't affected. This can't be undone.`}
+          : t('deleteProfile.bodyPlain', { whose: possessive(profileNameLabel(profile.name)) })}
       </Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
       <View style={styles.buttons}>
@@ -136,7 +138,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
           disabled={busy !== null}
           style={styles.exportBtn}
           accessibilityRole="button"
-          accessibilityLabel={`Export ${possessive(profile.name)} data first`}
+          accessibilityLabel={t('deleteProfile.exportLabel', { whose: possessive(profileNameLabel(profile.name)) })}
           accessibilityState={{ disabled: busy !== null, busy: busy === 'export' }}
         >
           {busy === 'export' ? (
@@ -145,7 +147,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
             <>
               <UploadIcon size={16} color={color.text1} strokeWidth={2.2} />
               <Text style={styles.exportText} maxFontSizeMultiplier={textScale.control} numberOfLines={1}>
-                {`Export ${first}'s data first`}
+                {t('deleteProfile.exportButton', { name: first })}
               </Text>
             </>
           )}
@@ -155,14 +157,14 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
           disabled={busy !== null}
           style={styles.deleteBtn}
           accessibilityRole="button"
-          accessibilityLabel={`Delete ${first}`}
+          accessibilityLabel={t('deleteProfile.deleteButton', { name: first })}
           accessibilityState={{ disabled: busy !== null, busy: busy === 'delete' }}
         >
           {busy === 'delete' ? (
             <ActivityIndicator color={color.accentFg} />
           ) : (
             <Text style={styles.deleteText} maxFontSizeMultiplier={textScale.control} numberOfLines={1}>
-              {`Delete ${first}`}
+              {t('deleteProfile.deleteButton', { name: first })}
             </Text>
           )}
         </PressableScale>
@@ -173,7 +175,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
           accessibilityRole="button"
         >
           <Text style={styles.cancelText} maxFontSizeMultiplier={textScale.control}>
-            Cancel
+            {t('common.cancel')}
           </Text>
         </Pressable>
       </View>

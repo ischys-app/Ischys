@@ -1,4 +1,5 @@
 /** Bottom-sheet menu for the ⋯ on a routine card — Edit / Rename / Duplicate / Reorder / Delete. */
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -80,12 +81,12 @@ export function RoutineMenuSheet({
 
   const handleDeleteTap = () => {
     Alert.alert(
-      'Delete routine',
-      `Delete "${routineName}"? This cannot be undone.`,
+      t('routineMenu.deleteTitle'),
+      t('routineMenu.deleteMessage', { name: routineName }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             onClose();
@@ -138,32 +139,32 @@ export function RoutineMenuSheet({
           {onEdit && (
             <MenuRow
               icon={<DumbbellIcon size={20} color={color.text2} strokeWidth={2} />}
-              label="Edit exercises"
+              label={t('routineMenu.edit')}
               onPress={handleEditTap}
               showDivider={false}
             />
           )}
           <MenuRow
             icon={<EditIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Rename"
+            label={t('routineMenu.rename')}
             onPress={handleRenameTap}
             showDivider={false}
           />
           <MenuRow
             icon={<CopyIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Duplicate"
+            label={t('routineMenu.duplicate')}
             onPress={handleDuplicateTap}
             showDivider={false}
           />
           <MenuRow
             icon={<ReorderIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Reorder routines"
+            label={t('routineMenu.reorder')}
             onPress={handleReorderTap}
             showDivider
           />
           <MenuRow
             icon={<TrashIcon size={20} color={color.error} strokeWidth={2} />}
-            label="Delete"
+            label={t('common.delete')}
             labelColor={color.error}
             onPress={handleDeleteTap}
             showDivider={false}
@@ -180,13 +181,13 @@ export function RoutineMenuSheet({
       >
         <Pressable style={styles.renameBackdrop} onPress={handleRenameCancel}>
           <Pressable style={styles.renameCard} onPress={() => {}}>
-            <Text style={styles.renameTitle}>Rename routine</Text>
+            <Text style={styles.renameTitle}>{t('routineMenu.renameTitle')}</Text>
             <TextInput
               value={draftName}
               onChangeText={setDraftName}
               autoFocus
               selectTextOnFocus
-              placeholder="Routine name"
+              placeholder={t('routineMenu.namePlaceholder')}
               placeholderTextColor={color.text3}
               style={styles.renameInput}
               maxLength={80}
@@ -202,7 +203,7 @@ export function RoutineMenuSheet({
                   pressed && styles.renameCancelPressed,
                 ]}
               >
-                <Text style={styles.renameCancelLabel}>Cancel</Text>
+                <Text style={styles.renameCancelLabel}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleRenameSave}
@@ -212,7 +213,7 @@ export function RoutineMenuSheet({
                   pressed && styles.renameSavePressed,
                 ]}
               >
-                <Text style={styles.renameSaveLabel}>Save</Text>
+                <Text style={styles.renameSaveLabel}>{t('common.save')}</Text>
               </Pressable>
             </View>
           </Pressable>

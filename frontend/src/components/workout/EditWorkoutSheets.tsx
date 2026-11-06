@@ -10,6 +10,7 @@
  * native date picker, and a duration in hours and minutes is not something a
  * system date picker offers anyway.
  */
+import { t } from '../../i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
@@ -24,7 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Unit } from '../../domain/units';
 import {
-  MONTH_NAMES,
+  monthNames,
   clampWhen,
   clampWhileTurning,
   daysInMonth,
@@ -304,19 +305,19 @@ export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: 
   const endMoved = fmtClock(end) !== fmtClock(storedEnd);
 
   const rows: { key: WhenField; label: string; value: string }[] = [
-    { key: 'date', label: 'Date', value: fmtLongDate(draft.startedAt) },
-    { key: 'start', label: 'Start', value: fmtClock(draft.startedAt) },
-    { key: 'duration', label: 'Duration', value: fmtHoursMinutes(draft.durationSeconds) },
+    { key: 'date', label: t('editWhen.date'), value: fmtLongDate(draft.startedAt) },
+    { key: 'start', label: t('editWhen.start'), value: fmtClock(draft.startedAt) },
+    { key: 'duration', label: t('editWhen.duration'), value: fmtHoursMinutes(draft.durationSeconds) },
   ];
 
   return (
     <EditSheet
       visible={field != null}
       onClose={onClose}
-      title="Date & time"
-      body="Changing the date moves this workout in History."
-      primary={{ label: 'Done', onPress: confirm }}
-      secondary={{ label: 'Cancel', onPress: onClose }}
+      title={t('editWhen.title')}
+      body={t('editWhen.body')}
+      primary={{ label: t('common.done'), onPress: confirm }}
+      secondary={{ label: t('common.cancel'), onPress: onClose }}
       footnoted={!!healthLine}
     >
       <View style={styles.rows}>
@@ -347,15 +348,15 @@ export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: 
               index={parts.day - 1}
               onChange={(i) => setStart({ day: i + 1 })}
               width={44}
-              accessibilityLabel="Day"
+              accessibilityLabel={t('editWhen.day')}
             />
             <Wheel
               key="month"
-              items={MONTH_NAMES}
+              items={monthNames()}
               index={parts.month}
               onChange={(i) => setStart({ month: i })}
               width={56}
-              accessibilityLabel="Month"
+              accessibilityLabel={t('editWhen.month')}
             />
             <Wheel
               key="year"
@@ -363,7 +364,7 @@ export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: 
               index={parts.year - firstYear}
               onChange={(i) => setStart({ year: firstYear + i })}
               width={64}
-              accessibilityLabel="Year"
+              accessibilityLabel={t('editWhen.year')}
             />
           </>
         ) : active === 'start' ? (
@@ -374,7 +375,7 @@ export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: 
               index={parts.hour}
               onChange={(i) => setStart({ hour: i })}
               width={44}
-              accessibilityLabel="Hour"
+              accessibilityLabel={t('editWhen.hour')}
             />
             <Text style={styles.wheelUnit}>:</Text>
             <Wheel
@@ -383,7 +384,7 @@ export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: 
               index={parts.minute}
               onChange={(i) => setStart({ minute: i })}
               width={44}
-              accessibilityLabel="Minute"
+              accessibilityLabel={t('editWhen.minute')}
             />
           </>
         ) : (
@@ -394,25 +395,27 @@ export function WhenSheet({ field, when, stored, healthLine, onDone, onClose }: 
               index={length.hours}
               onChange={(i) => setLength(i, length.minutes)}
               width={44}
-              accessibilityLabel="Hours"
+              accessibilityLabel={t('editWhen.hours')}
             />
-            <Text style={styles.wheelUnit}>h</Text>
+            <Text style={styles.wheelUnit}>{t('editWhen.hUnit')}</Text>
             <Wheel
               key="dm"
               items={DURATION_MINUTES}
               index={length.minutes}
               onChange={(i) => setLength(length.hours, i)}
               width={44}
-              accessibilityLabel="Minutes"
+              accessibilityLabel={t('editWhen.minutes')}
             />
-            <Text style={styles.wheelUnit}>min</Text>
+            <Text style={styles.wheelUnit}>{t('editWhen.minUnit')}</Text>
           </>
         )}
       </View>
 
       {/* Derived, never edited: the three fields above cannot contradict it. */}
       <Text style={[styles.ends, !!healthLine && styles.endsFootnoted]}>
-        {endMoved ? `ENDS ${fmtClock(end)} · WAS ${fmtClock(storedEnd)}` : `ENDS ${fmtClock(end)}`}
+        {endMoved
+          ? t('editWhen.endsWas', { time: fmtClock(end), was: fmtClock(storedEnd) })
+          : t('editWhen.ends', { time: fmtClock(end) })}
       </Text>
 
       {/* There from the moment the sheet opens, and the same before and after
@@ -447,10 +450,10 @@ export function SaveRecordsSheet({ visible, changes, unit, saving, onSave, onClo
     <EditSheet
       visible={visible}
       onClose={onClose}
-      title="Save changes?"
-      body="This changes your records. The new values come from your full history."
-      primary={{ label: 'Save changes', onPress: onSave, disabled: saving }}
-      secondary={{ label: 'Keep editing', onPress: onClose }}
+      title={t('editSave.title')}
+      body={t('editSave.body')}
+      primary={{ label: t('editSave.primary'), onPress: onSave, disabled: saving }}
+      secondary={{ label: t('editSave.keepEditing'), onPress: onClose }}
     >
       <ScrollView
         style={styles.records}
@@ -498,15 +501,15 @@ type DiscardSheetProps = {
 
 export function DiscardSheet({ visible, changeCount, onDiscard, onClose }: DiscardSheetProps) {
   useThemed();
-  const what = changeCount === 1 ? '1 change' : `${changeCount} changes`;
+  const what = changeCount === 1 ? t('editDiscard.one') : t('editDiscard.many', { count: changeCount });
   return (
     <EditSheet
       visible={visible}
       onClose={onClose}
-      title="Discard changes?"
-      body={`${what} to this workout won’t be saved. The workout stays as it was.`}
-      primary={{ label: 'Discard changes', onPress: onDiscard, tone: 'error' }}
-      secondary={{ label: 'Keep editing', onPress: onClose }}
+      title={t('editDiscard.title')}
+      body={t('editDiscard.body', { what })}
+      primary={{ label: t('editDiscard.primary'), onPress: onDiscard, tone: 'error' }}
+      secondary={{ label: t('editSave.keepEditing'), onPress: onClose }}
     />
   );
 }

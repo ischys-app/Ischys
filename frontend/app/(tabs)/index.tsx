@@ -1,3 +1,4 @@
+import { t } from '../../src/i18n';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -141,7 +142,7 @@ export default function Home() {
   };
 
   const handleReorder = () => {
-    Alert.alert('Coming soon', 'Reorder routines is not yet implemented.');
+    Alert.alert(t('home.comingSoon.title'), t('home.reorderComingSoon'));
   };
 
   return (
@@ -151,7 +152,7 @@ export default function Home() {
         contentContainerStyle={[styles.content, headerH ? { paddingTop: headerH } : null]}
       >
         {error && <Text style={styles.error}>{error}</Text>}
-        {!data && !error && <Text style={styles.loading}>Loading…</Text>}
+        {!data && !error && <Text style={styles.loading}>{t('common.loading')}</Text>}
 
         {data && isFirstRun && <EmptyState onStartEmpty={startEmpty} />}
         {data && !isFirstRun && (
@@ -188,7 +189,7 @@ export default function Home() {
         visible={!!menuFor}
         routineName={menuFor?.name ?? ''}
         initials={menuFor?.initials}
-        subline={menuFor ? `${menuFor.exercise_count} exercises` : undefined}
+        subline={menuFor ? t('home.exerciseCount', { count: menuFor.exercise_count }) : undefined}
         onEdit={() => menuFor && router.push(`/routine/${menuFor.id}`)}
         onRename={handleRename}
         onDuplicate={handleDuplicate}
@@ -221,7 +222,7 @@ function Populated({
       <View style={styles.summaryHead}>
         <View>
           <Text maxFontSizeMultiplier={textScale.control} style={styles.dateLabel}>{fmtHeaderDate(data.date)}</Text>
-          <Text maxFontSizeMultiplier={textScale.display} style={styles.thisWeek}>This week</Text>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.thisWeek}>{t('home.thisWeek')}</Text>
         </View>
         <StreakPill days={data.stats.streak_days} />
       </View>
@@ -231,18 +232,18 @@ function Populated({
         <View style={styles.grid}>
           <View style={styles.gridRow}>
             <View style={styles.gridCell}>
-              <StatTile label="Workouts" value={String(data.stats.workouts_done)} unit={` / ${data.stats.workouts_target}`} />
+              <StatTile label={t('home.statWorkouts')} value={String(data.stats.workouts_done)} unit={` / ${data.stats.workouts_target}`} />
             </View>
             <View style={styles.gridCell}>
-              <StatTile label="Volume" value={vol.value} unit={vol.unit} />
+              <StatTile label={t('home.statVolume')} value={vol.value} unit={vol.unit} />
             </View>
           </View>
           <View style={styles.gridRow}>
             <View style={styles.gridCell}>
-              <StatTile label="Sets" value={String(data.stats.sets)} />
+              <StatTile label={t('home.statSets')} value={String(data.stats.sets)} />
             </View>
             <View style={styles.gridCell}>
-              <StatTile label="Time" value={fmtDuration(data.stats.time_seconds)} unit=" h" />
+              <StatTile label={t('home.statTime')} value={fmtDuration(data.stats.time_seconds)} unit={` ${t('home.hoursUnit')}`} />
             </View>
           </View>
         </View>
@@ -250,16 +251,16 @@ function Populated({
       </View>
 
       {/* Quick start */}
-      <SectionLabel style={styles.quickStartLabel}>Quick Start</SectionLabel>
+      <SectionLabel style={styles.quickStartLabel}>{t('home.quickStart')}</SectionLabel>
       <PressableScale onPress={onStartEmpty} style={styles.quickStart}>
         <PlusIcon size={16} color={color.accent} strokeWidth={2.4} />
-        <Text maxFontSizeMultiplier={textScale.control} style={styles.quickStartText}>Start Empty Workout</Text>
+        <Text maxFontSizeMultiplier={textScale.control} style={styles.quickStartText}>{t('home.startEmpty')}</Text>
       </PressableScale>
 
       {/* My routines */}
       <View style={styles.sectionHead}>
         <SectionLabel>
-          My Routines <Text maxFontSizeMultiplier={textScale.control} style={styles.count}>({data.routines.length})</Text>
+          {t('home.myRoutines')} <Text maxFontSizeMultiplier={textScale.control} style={styles.count}>({data.routines.length})</Text>
         </SectionLabel>
         <View style={styles.pillRow}>
           <Pressable
@@ -267,14 +268,14 @@ function Populated({
             style={({ pressed }) => [styles.smallPill, pressed && styles.smallPillPressed]}
           >
             <PlusIcon size={13} color={color.text1} strokeWidth={2.4} />
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.smallPillText}>New</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.smallPillText}>{t('home.new')}</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/exercise-library?browse=1')}
             style={({ pressed }) => [styles.smallPill, pressed && styles.smallPillPressed]}
           >
             <SearchIcon size={13} color={color.text1} strokeWidth={2.2} />
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.smallPillText}>Explore</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.smallPillText}>{t('home.explore')}</Text>
           </Pressable>
         </View>
       </View>
@@ -292,9 +293,9 @@ function Populated({
 
       {/* Recent */}
       <View style={styles.sectionHead}>
-        <SectionLabel>Recent</SectionLabel>
+        <SectionLabel>{t('home.recent')}</SectionLabel>
         <Text maxFontSizeMultiplier={textScale.control} style={styles.allHistory} onPress={() => router.navigate('/(tabs)/history')}>
-          All history
+          {t('home.allHistory')}
         </Text>
       </View>
       <View style={styles.recentList}>
@@ -314,10 +315,9 @@ function EmptyState({ onStartEmpty }: { onStartEmpty: () => void }) {
       <View style={styles.emptyIcon}>
         <DumbbellIcon size={30} color={color.accent} strokeWidth={2} />
       </View>
-      <Text style={styles.emptyTitle}>Welcome to Ischys</Text>
+      <Text style={styles.emptyTitle}>{t('home.welcome')}</Text>
       <Text style={styles.emptySub}>
-        Your training log lives on your device — nothing leaves it. Build a routine to get started, or jump straight
-        into an empty session.
+        {t('home.welcomeSub')}
       </Text>
       <View style={styles.emptyButtons}>
         <PressableScale
@@ -325,14 +325,14 @@ function EmptyState({ onStartEmpty }: { onStartEmpty: () => void }) {
           style={styles.emptyPrimary}
         >
           <PlusIcon size={17} color={color.accentFg} strokeWidth={2.6} />
-          <Text style={styles.emptyPrimaryText}>Create your first routine</Text>
+          <Text style={styles.emptyPrimaryText}>{t('home.createFirstRoutine')}</Text>
         </PressableScale>
         <Pressable onPress={onStartEmpty} style={({ pressed }) => [styles.emptySecondary, pressed && styles.emptySecondaryPressed]}>
-          <Text style={styles.emptySecondaryText}>Start empty workout</Text>
+          <Text style={styles.emptySecondaryText}>{t('home.startEmptyLower')}</Text>
         </Pressable>
       </View>
       <Text style={styles.emptyImport} onPress={() => router.push('/import')}>
-        Coming from another app? <Text style={styles.emptyImportLink}>Import your history →</Text>
+        {t('home.importPrompt')}{' '}<Text style={styles.emptyImportLink}>{t('home.importLink')}</Text>
       </Text>
     </View>
   );

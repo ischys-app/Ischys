@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { WorkoutListItem } from '../api/types';
@@ -9,6 +10,7 @@ import { textScale } from '../theme/textScale';
 import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
 import { useThemed } from '../theme/ThemeProvider';
+import { workoutLabel } from '../i18n/defaultLabels';
 
 /** A recent-workout summary card. */
 export function WorkoutCard({
@@ -32,16 +34,16 @@ export function WorkoutCard({
       onLongPress={onLongPress}
       delayLongPress={400}
       accessibilityRole="button"
-      accessibilityLabel={workout.name}
+      accessibilityLabel={workoutLabel(workout.name)}
       accessibilityHint={
-        accessibilityHint ?? (onLongPress ? 'Long-press to delete this workout.' : undefined)
+        accessibilityHint ?? (onLongPress ? t('workoutCard.deleteHint') : undefined)
       }
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text maxFontSizeMultiplier={textScale.display} style={styles.name} numberOfLines={1}>
-            {workout.name}
+            {workoutLabel(workout.name)}
           </Text>
           <Text maxFontSizeMultiplier={textScale.control} style={styles.date}>{fmtWorkoutDate(workout.started_at)}</Text>
         </View>
@@ -49,15 +51,15 @@ export function WorkoutCard({
       </View>
 
       <View style={styles.stats}>
-        <Stat label="TIME" value={fmtDuration(workout.duration_seconds)} />
-        <Stat label="VOLUME" value={formatVolume(workout.total_volume, unit)} />
-        <Stat label="SETS" value={String(workout.total_sets)} />
+        <Stat label={t('workoutCard.time')} value={fmtDuration(workout.duration_seconds)} />
+        <Stat label={t('workoutCard.volume')} value={formatVolume(workout.total_volume, unit)} />
+        <Stat label={t('workoutCard.sets')} value={String(workout.total_sets)} />
       </View>
 
       {workout.muscle_tags.length > 0 ? (
         <View style={styles.tags}>
-          {workout.muscle_tags.map((t) => (
-            <TagChip key={t} label={t} />
+          {workout.muscle_tags.map((tag) => (
+            <TagChip key={tag} label={tag} />
           ))}
         </View>
       ) : null}

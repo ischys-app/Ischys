@@ -25,10 +25,13 @@ import {
 import { muscleWorkEntries } from '../src/data/muscleMapRepo';
 import { color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { getLang } from '../src/i18n/current';
+import { muscleNameLabel } from '../src/i18n/catalogNames';
+import { t } from '../src/i18n';
 
 const WINDOWS = [
-  { days: 7 as const, label: '7 DAYS' },
-  { days: 28 as const, label: '28 DAYS' },
+  { days: 7 as const, key: 'muscleMap.days7' },
+  { days: 28 as const, key: 'muscleMap.days28' },
 ];
 
 const fmtSets = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
@@ -76,7 +79,7 @@ export default function MuscleMapScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back} accessibilityRole="button">
           <BackChevronIcon color={color.text1} />
         </Pressable>
-        <Text style={styles.title}>Muscle map</Text>
+        <Text style={styles.title}>{t('muscleMap.title')}</Text>
         <View style={styles.back} />
       </View>
 
@@ -92,40 +95,40 @@ export default function MuscleMapScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
               >
-                <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{w.label}</Text>
+                <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{t(w.key)}</Text>
               </Pressable>
             );
           })}
         </View>
         <Text style={styles.scaleNote}>
-          {windowDays === 28 ? 'Sets per week, averaged over 28 days' : 'Sets in the last 7 days'}
+          {windowDays === 28 ? t('muscleMap.scale28') : t('muscleMap.scale7')}
         </Text>
 
         <View style={styles.figures}>
           <View style={styles.figure}>
             <BodyMap side="front" work={work} historyDays={historyDays} onPressRegion={setSelected} width={150} />
-            <Text style={styles.figureLabel}>FRONT</Text>
+            <Text style={styles.figureLabel}>{t('muscleMap.front')}</Text>
           </View>
           <View style={styles.figure}>
             <BodyMap side="back" work={work} historyDays={historyDays} onPressRegion={setSelected} width={150} />
-            <Text style={styles.figureLabel}>BACK</Text>
+            <Text style={styles.figureLabel}>{t('muscleMap.back')}</Text>
           </View>
         </View>
 
         <View style={styles.legend}>
-          {(['none', 'low', 'medium', 'high'] as const).map((t) => (
-            <View key={t} style={styles.legendItem}>
+          {(['none', 'low', 'medium', 'high'] as const).map((tier) => (
+            <View key={tier} style={styles.legendItem}>
               <View
                 style={[
                   styles.legendSwatch,
                   {
                     backgroundColor:
-                      t === 'none' ? color.surface3 : t === 'low' ? color.text3 : t === 'medium' ? color.text2 : color.text1,
+                      tier === 'none' ? color.surface3 : tier === 'low' ? color.text3 : tier === 'medium' ? color.text2 : color.text1,
                   },
                 ]}
               />
               <Text style={styles.legendText}>
-                {t === 'none' ? '0' : t === 'low' ? '<5' : t === 'medium' ? '5–9' : '10+'}
+                {tier === 'none' ? '0' : tier === 'low' ? '<5' : tier === 'medium' ? '5–9' : '10+'}
               </Text>
             </View>
           ))}
@@ -133,9 +136,11 @@ export default function MuscleMapScreen() {
 
         {neglected.length > 0 && (
           <>
-            <SectionLabel style={styles.sectionLabel}>NOT TRAINED</SectionLabel>
+            <SectionLabel style={styles.sectionLabel}>{t('muscleMap.notTrained')}</SectionLabel>
             <View style={styles.card}>
-              <Text style={styles.neglectedText}>{neglected.join(' · ')}</Text>
+              <Text style={styles.neglectedText}>
+                {neglected.map((r) => muscleNameLabel(r, getLang())).join(' · ')}
+              </Text>
             </View>
           </>
         )}
@@ -145,16 +150,16 @@ export default function MuscleMapScreen() {
         <View style={styles.grabberWrap}>
           <View style={styles.grabber} />
         </View>
-        <Text style={styles.sheetTitle}>{selected}</Text>
+        <Text style={styles.sheetTitle}>{selected ? muscleNameLabel(selected, getLang()) : ''}</Text>
         <Text style={styles.sheetValue}>
-          {`${fmtSets(selectedSets)} ${windowDays === 28 ? 'sets / week' : 'sets'}`}
+          {t(windowDays === 28 ? 'muscleMap.setsPerWeek' : 'muscleMap.sets', { n: fmtSets(selectedSets) })}
         </Text>
         <Text style={styles.sheetNote}>
           {selectedSets === 0
             ? historyDays >= 14
-              ? 'Nothing logged for this muscle in the window.'
-              : 'Not enough history yet to call this neglected.'
-            : `Counts direct work in full and indirect work at half. Currently ${tintFor(selectedSets)}.`}
+              ? t('muscleMap.noneLogged')
+              : t('muscleMap.notEnough')
+            : t('muscleMap.counts', { tint: t(`muscleMap.tint.${tintFor(selectedSets)}`) })}
         </Text>
       </DraggableSheet>
     </View>

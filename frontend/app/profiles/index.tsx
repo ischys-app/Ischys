@@ -33,6 +33,8 @@ import { refreshCurrentProfileStats } from '../../src/lib/switchProfile';
 import { textScale } from '../../src/theme/textScale';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { t } from '../../src/i18n';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
 
 const ROW = 64;
 const SHIFT_DURATION = 180;
@@ -179,11 +181,11 @@ export default function ManageProfilesScreen() {
                     style={styles.handle}
                     {...responder(p.id).panHandlers}
                     accessible
-                    accessibilityLabel={`Reorder ${p.name}`}
-                    accessibilityHint="Drag up or down"
+                    accessibilityLabel={t('profiles.reorderLabel', { name: profileNameLabel(p.name) })}
+                    accessibilityHint={t('profiles.reorderHint')}
                     accessibilityActions={[
-                      { name: 'moveUp', label: 'Move up' },
-                      { name: 'moveDown', label: 'Move down' },
+                      { name: 'moveUp', label: t('profiles.moveUp') },
+                      { name: 'moveDown', label: t('profiles.moveDown') },
                     ]}
                     onAccessibilityAction={onA11yAction(i)}
                   >
@@ -196,12 +198,12 @@ export default function ManageProfilesScreen() {
                     disabled={dragId !== null}
                     style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
                     accessibilityRole="button"
-                    accessibilityLabel={`${p.name}, ${manageSubline(p).toLowerCase()}`}
+                    accessibilityLabel={t('profiles.rowLabel', { name: profileNameLabel(p.name), sub: manageSubline(p).toLowerCase() })}
                   >
                     <ProfileAvatar profile={p} size={40} />
                     <View style={styles.texts}>
                       <Text style={styles.name} numberOfLines={1}>
-                        {p.name}
+                        {profileNameLabel(p.name)}
                       </Text>
                       <Text style={styles.sub} numberOfLines={1} maxFontSizeMultiplier={textScale.fixed}>
                         {manageSubline(p)}
@@ -217,15 +219,15 @@ export default function ManageProfilesScreen() {
             onPress={() => router.push('/profiles/new')}
             style={({ pressed }) => [styles.addRow, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel="Add profile"
+            accessibilityLabel={t('profiles.add')}
           >
             <ProfileAvatar profile={{ initials: '' }} size={40} variant="dashed" />
             <Text style={styles.addText} maxFontSizeMultiplier={textScale.control}>
-              Add profile
+              {t('profiles.add')}
             </Text>
           </Pressable>
         </View>
-        <Text style={styles.footer}>Drag to reorder. The switcher shows profiles in this order.</Text>
+        <Text style={styles.footer}>{t('profiles.reorderFooter')}</Text>
       </ScrollView>
 
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
@@ -233,7 +235,7 @@ export default function ManageProfilesScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
         >
           <Svg width={9} height={15} viewBox="0 0 9 15" fill="none">
@@ -241,7 +243,7 @@ export default function ManageProfilesScreen() {
           </Svg>
         </Pressable>
         <Text style={styles.title} maxFontSizeMultiplier={textScale.control} accessibilityRole="header">
-          Profiles
+          {t('profiles.title')}
         </Text>
       </View>
     </View>

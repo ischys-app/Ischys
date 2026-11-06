@@ -31,6 +31,7 @@ import { fmtDuration, fmtShortDayUpper } from '../../../src/lib/format';
 import { useWeightUnit } from '../../../src/lib/weightUnit';
 import { color, font, TAP_TARGET, themed } from '../../../src/theme/tokens';
 import { useThemed } from '../../../src/theme/ThemeProvider';
+import { t } from '../../../src/i18n';
 
 /** Header: 8 above the row, a 34pt row, 12 below. */
 const HEADER_TOP = 8;
@@ -42,10 +43,10 @@ const CTA_HEIGHT = 52;
 
 /** "Dumbbell · Rest 2:30", "Barbell · then A2", "Barbell · Rest after round 1:30". */
 function restText(rest: ViewRest): string {
-  if (rest.kind === 'then') return `then ${rest.tag}`;
+  if (rest.kind === 'then') return t('routineView.then', { tag: rest.tag });
   const clock = fmtRest(rest.seconds);
-  if (rest.kind === 'afterRound') return rest.seconds > 0 ? `Rest after round ${clock}` : 'Rest off';
-  return rest.seconds > 0 ? `Rest ${clock}` : 'Rest off';
+  if (rest.kind === 'afterRound') return rest.seconds > 0 ? t('routineView.restAfterRound', { clock }) : t('routineView.restOff');
+  return rest.seconds > 0 ? t('routineView.rest', { clock }) : t('routineView.restOff');
 }
 
 /**
@@ -148,11 +149,11 @@ export default function RoutineView() {
   }, [routine, history]);
 
   const lastLine = useMemo(() => {
-    if (!last) return 'NOT DONE YET';
+    if (!last) return t('routineView.notDone');
     const day = fmtShortDayUpper(new Date(last.startedAt));
     return last.durationSeconds > 0
-      ? `LAST · ${day} · ${fmtDuration(last.durationSeconds)}`
-      : `LAST · ${day}`;
+      ? t('routineView.lastWithDuration', { day, duration: fmtDuration(last.durationSeconds) })
+      : t('routineView.last', { day });
   }, [last]);
 
   const openBuilder = () => {
@@ -224,8 +225,8 @@ export default function RoutineView() {
 
               {isEmpty ? (
                 <View style={styles.empty}>
-                  <Text style={styles.emptyTitle}>No exercises yet</Text>
-                  <Text style={styles.emptySub}>Add some before this routine can be started.</Text>
+                  <Text style={styles.emptyTitle}>{t('routineView.noExercises')}</Text>
+                  <Text style={styles.emptySub}>{t('routineView.noExercisesSub')}</Text>
                 </View>
               ) : null}
             </View>
@@ -248,7 +249,7 @@ export default function RoutineView() {
           style={styles.backBtn}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
         >
           <Svg width={9} height={15} viewBox="0 0 9 15" fill="none">
             <Path
@@ -260,13 +261,13 @@ export default function RoutineView() {
             />
           </Svg>
         </Pressable>
-        <Text style={styles.headerLabel}>ROUTINE</Text>
+        <Text style={styles.headerLabel}>{t('routineView.header')}</Text>
         <PressableScale
           onPress={openBuilder}
           style={styles.editBtn}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Edit routine"
+          accessibilityLabel={t('routineView.editLabel')}
         >
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
             <Path
@@ -277,7 +278,7 @@ export default function RoutineView() {
               strokeLinejoin="round"
             />
           </Svg>
-          <Text style={styles.editText}>Edit</Text>
+          <Text style={styles.editText}>{t('routineView.edit')}</Text>
         </PressableScale>
       </View>
 
@@ -306,7 +307,7 @@ export default function RoutineView() {
             ) : (
               <PlayFilledIcon size={16} color={color.accentFg} />
             )}
-            <Text style={styles.ctaLabel}>{isEmpty ? 'Add exercises' : 'Start Routine'}</Text>
+            <Text style={styles.ctaLabel}>{isEmpty ? t('routineView.addExercises') : t('routineView.start')}</Text>
           </PressableScale>
         </View>
       ) : null}
@@ -340,9 +341,9 @@ function ExerciseCard({ card, hasLast }: { card: ViewCard; hasLast: boolean }) {
       {card.note ? <Text style={styles.note}>{card.note}</Text> : null}
 
       <View style={styles.tableHead}>
-        <Text style={[styles.th, styles.colSet]}>SET</Text>
-        <Text style={[styles.th, styles.colTarget]}>{`TARGET ${card.unitLabel}`}</Text>
-        {hasLast ? <Text style={styles.th}>LAST</Text> : null}
+        <Text style={[styles.th, styles.colSet]}>{t('exerciseCard.colSet')}</Text>
+        <Text style={[styles.th, styles.colTarget]}>{t('routineView.colTarget', { unit: card.unitLabel })}</Text>
+        {hasLast ? <Text style={styles.th}>{t('routineView.colLast')}</Text> : null}
       </View>
       {card.sets.map((s, i) => (
         <View key={s.key} style={[styles.row, i < card.sets.length - 1 && styles.rowRule]}>

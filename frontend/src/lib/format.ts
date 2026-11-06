@@ -1,10 +1,29 @@
 /** Presentation formatters for dashboard data. No external date libs. */
 import { type Unit, volumeToDisplay } from '../domain/units.ts';
+import { getLang } from '../i18n/current.ts';
+import type { Lang } from '../i18n/locale.ts';
+import { strings } from '../i18n/strings/en.ts';
+import zh from '../i18n/strings/zh-Hans.json' with { type: 'json' };
+import { createTranslator } from '../i18n/translate.ts';
 
 const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const WEEKDAY_TITLE = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_UPPER = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+// NOTE: the Chinese date literals below (WEEKDAY_ZH, zhDay) are hand-written.
+// They are outside the translation review state (zh-Hans.state.json) and the
+// shipped guard, so change them by hand and review them yourself.
+const WEEKDAY_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+/** Chinese month-day, e.g. "7月8日"; with year, "2026年7月8日". */
+function zhDay(d: Date, withYear: boolean): string {
+  return `${withYear ? `${d.getFullYear()}年` : ''}${d.getMonth() + 1}月${d.getDate()}日`;
+}
 const MONTH_TITLE = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Translate in an explicit language, so callers (and tests) can pin it. */
+function tr(key: string, lang: Lang, vars?: Record<string, string | number>): string {
+  return createTranslator(lang, zh, strings)(key, vars);
+}
 
 /** Parse an ISO string. Date-only (YYYY-MM-DD) is read in local time to avoid a UTC day-shift. */
 /** Ends with `Z`, `+hh:mm`, `-hh:mm`, `+hhmm` or `-hhmm`. */
@@ -24,8 +43,9 @@ function parse(iso: string): Date {
 }
 
 /** e.g. "WED · 8 JUL 2026" */
-export function fmtHeaderDate(iso: string): string {
+export function fmtHeaderDate(iso: string, lang: Lang = getLang()): string {
   const d = parse(iso);
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} · ${zhDay(d, true)}`;
   return `${WEEKDAY_UPPER[d.getDay()]} · ${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -40,7 +60,8 @@ export function fmtVolumeShort(kg: number, unit: Unit): { value: string; unit: s
 }
 
 /** e.g. "TUE 30 SEP" — the Routine View's last-performed line. Local time. */
-export function fmtShortDayUpper(d: Date): string {
+export function fmtShortDayUpper(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
   return `${WEEKDAY_UPPER[d.getDay()]} ${d.getDate()} ${MONTH_UPPER[d.getMonth()]}`;
 }
 
@@ -52,16 +73,18 @@ export function fmtDuration(sec: number): string {
 }
 
 /** e.g. "Tue, 7 Jul · 09:06" */
-export function fmtWorkoutDate(iso: string): string {
+export function fmtWorkoutDate(iso: string, lang: Lang = getLang()): string {
   const d = parse(iso);
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)} · ${hh}:${mm}`;
   return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} · ${hh}:${mm}`;
 }
 
 /** e.g. "Tue, 7 Jul 2026" — Exercise Detail → History tab session header. */
-export function fmtDateOnly(iso: string): string {
+export function fmtDateOnly(iso: string, lang: Lang = getLang()): string {
   const d = parse(iso);
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, true)}`;
   return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -98,10 +121,11 @@ export function parseIso(iso: string): Date {
 }
 
 /** e.g. "Jan 2024" — Profile subtitle "training since …". Returns '' for null/blank. */
-export function fmtMonthYear(iso?: string | null): string {
+export function fmtMonthYear(iso?: string | null, lang: Lang = getLang()): string {
   if (!iso) return '';
   const d = parse(iso);
   if (Number.isNaN(d.getTime())) return '';
+  if (lang === 'zh-Hans') return `${d.getFullYear()}年${d.getMonth() + 1}月`;
   return `${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -121,16 +145,16 @@ export function fmtVolumeLarge(kg: number, unit: Unit): { value: string; unit: s
 }
 
 /** Human label for a `RecordMetric` (records list on Profile / summary chips). */
-export function metricLabel(metric: string): string {
+export function metricLabel(metric: string, lang: Lang = getLang()): string {
   switch (metric) {
     case 'best_set':
-      return 'Best Set';
+      return tr('record.bestSet', lang);
     case 'est_1rm':
-      return 'Est. 1RM';
+      return tr('record.est1rm', lang);
     case 'best_volume':
-      return 'Best Volume';
+      return tr('record.bestVolume', lang);
     case 'max_reps':
-      return 'Max Reps';
+      return tr('record.maxReps', lang);
     default:
       return metric;
   }
@@ -144,15 +168,15 @@ export function metricLabel(metric: string): string {
  *   else    → "Nd ago"
  * Returns an empty string when `iso` is nullish or unparseable.
  */
-export function fmtAgo(iso?: string | null, now: Date = new Date()): string {
+export function fmtAgo(iso?: string | null, now: Date = new Date(), lang: Lang = getLang()): string {
   if (!iso) return '';
   const then = parse(iso);
   if (Number.isNaN(then.getTime())) return '';
   const diffSec = Math.max(0, Math.floor((now.getTime() - then.getTime()) / 1000));
-  if (diffSec < 30) return 'just now';
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  if (diffSec < 86_400) return `${Math.floor(diffSec / 3600)}h ago`;
-  return `${Math.floor(diffSec / 86_400)}d ago`;
+  if (diffSec < 30) return tr('ago.justNow', lang);
+  if (diffSec < 3600) return tr('ago.minutes', lang, { n: Math.floor(diffSec / 60) });
+  if (diffSec < 86_400) return tr('ago.hours', lang, { n: Math.floor(diffSec / 3600) });
+  return tr('ago.days', lang, { n: Math.floor(diffSec / 86_400) });
 }
 
 /**
@@ -160,12 +184,13 @@ export function fmtAgo(iso?: string | null, now: Date = new Date()): string {
  *   - THIS WEEK / LAST WEEK for the two most-recent Mon-Sun weeks
  *   - otherwise the calendar month, e.g. "JUL 2026".
  */
-export function fmtHistoryGroupTitle(workoutIso: string, now: Date = new Date()): string {
+export function fmtHistoryGroupTitle(workoutIso: string, now: Date = new Date(), lang: Lang = getLang()): string {
   const w = startOfDay(parse(workoutIso));
   const thisMon = startOfIsoWeek(startOfDay(now));
   const lastMon = addDays(thisMon, -7);
-  if (w.getTime() >= thisMon.getTime()) return 'THIS WEEK';
-  if (w.getTime() >= lastMon.getTime()) return 'LAST WEEK';
+  if (w.getTime() >= thisMon.getTime()) return tr('history.thisWeek', lang);
+  if (w.getTime() >= lastMon.getTime()) return tr('history.lastWeek', lang);
+  if (lang === 'zh-Hans') return `${w.getFullYear()}年${w.getMonth() + 1}月`;
   return `${MONTH_UPPER[w.getMonth()]} ${w.getFullYear()}`;
 }
 
@@ -173,4 +198,49 @@ export function fmtHistoryGroupTitle(workoutIso: string, now: Date = new Date())
 export function fmtTimeOfDay(ms: number): string {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** "Tue 7 Jul" / "周二 7月7日" — a short day cell. Local time. */
+export function fmtShortDay(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
+  return `${WEEKDAY_TITLE[d.getDay()]} ${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
+}
+
+/** "Tue, 7 Jul 2026" / "周二 2026年7月7日". Local time. */
+export function fmtLongDay(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, true)}`;
+  return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** "23 Jun" / "6月23日". Local time. */
+export function fmtDayMonthOf(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return zhDay(d, false);
+  return `${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
+}
+
+/** "7 JUL 2026" / "2026年7月7日" — the date on the share card. Local time. */
+export function fmtCardDay(d: Date, lang: Lang = getLang()): string {
+  if (lang === 'zh-Hans') return zhDay(d, true);
+  return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Monday-first weekday initials for the week bars: always exactly seven. */
+export function fmtWeekInitials(lang: Lang = getLang()): string[] {
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => tr(`profile.weekLetter.${i}`, lang));
+}
+
+/**
+ * "28 SEP", or "03 AUG 25" when `d` is in a different year from `newest`;
+ * "6月23日" / "2025年8月3日" in Chinese. Local time.
+ */
+export function fmtImportDay(d: Date, newest: Date, lang: Lang = getLang()): string {
+  const sameYear = d.getFullYear() === newest.getFullYear();
+  if (lang === 'zh-Hans') return zhDay(d, !sameYear);
+  const day = `${String(d.getDate()).padStart(2, '0')} ${MONTH_UPPER[d.getMonth()]}`;
+  return sameYear ? day : `${day} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
+}
+
+/** Month labels for a picker wheel: Jan..Dec, or 1月..12月. */
+export function fmtMonthNames(lang: Lang = getLang()): readonly string[] {
+  return lang === 'zh-Hans' ? MONTH_TITLE.map((_, i) => `${i + 1}月`) : MONTH_TITLE;
 }

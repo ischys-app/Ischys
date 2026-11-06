@@ -13,6 +13,7 @@
  * performs the write. See mergeDuplicates.test.ts.
  */
 import type { RecordMetric } from '../api/types.ts';
+import { t } from '../i18n/t.ts';
 
 /** A flat, DB-free view of one exercise + the stats the flow needs to show. */
 export type MergeCandidate = {
@@ -195,10 +196,10 @@ export function pickSurvivor(members: MergeCandidate[]): {
 } {
   const catalog = members.filter((m) => m.isCatalog);
   if (catalog.length === 1) {
-    return { survivorId: catalog[0].id, survivorReason: 'Keeps images, how-to and muscle data' };
+    return { survivorId: catalog[0].id, survivorReason: t('mergeDup.reasonCatalog') };
   }
   const byHistory = [...members].sort(compareHistoryDesc);
-  return { survivorId: byHistory[0].id, survivorReason: 'More history — fewer records move' };
+  return { survivorId: byHistory[0].id, survivorReason: t('mergeDup.reasonHistory') };
 }
 
 /** More history first: workouts, then sets, then earliest start, then id. */
@@ -341,13 +342,13 @@ export function reconcilePrs(survivor: PrCell[], losers: PrCell[][]): Reconciled
 export function prMetricLabel(metric: RecordMetric): string {
   switch (metric) {
     case 'est_1rm':
-      return '1RM';
+      return t('mergeDup.metric.1rm');
     case 'best_set':
-      return 'Best set';
+      return t('mergeDup.metric.bestSet');
     case 'max_reps':
-      return 'Most reps';
+      return t('mergeDup.metric.maxReps');
     case 'best_volume':
-      return 'Best volume';
+      return t('mergeDup.metric.bestVolume');
     default:
       return metric;
   }

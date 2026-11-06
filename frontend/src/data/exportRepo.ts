@@ -12,7 +12,7 @@ import * as schema from '../db/schema';
 import type { ImportedSession, ImportResult, SetType } from '../api/types';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
-import { backupWorkouts, readJsonSet, toJsonSet, type JsonSet } from './backupJson';
+import { backupWorkouts, readJsonSet, toBackupJson, type JsonSet } from './backupJson';
 import { toWorkoutCsv, parseWorkoutCsv, type ExportWorkout } from './workoutCsv';
 import type { Unit } from '../domain/units';
 import { equipmentFromNameSuffix } from '../domain/exerciseNaming';
@@ -25,6 +25,7 @@ import { getCountWarmups } from '../lib/warmupVolume';
 import { activeProfile, profileCount } from '../lib/activeProfile';
 import { exportFileStem } from '../domain/profiles';
 import { getProfile } from './profilesRepo';
+import { t } from '../i18n/t';
 
 type FullSet = { position: number; type: string; weight: number | null; reps: number | null; done: boolean; isPr: boolean; rpe: number | null };
 type FullExercise = { name: string; note: string | null; supersetGroup: number | null; sets: FullSet[] };
@@ -79,19 +80,7 @@ export async function exportData(
 ): Promise<string> {
   const workouts = await gatherCompleted(exec);
   if (format === 'csv') return toWorkoutCsv(workouts);
-  return JSON.stringify({
-    profile: { name: profile.name, initials: profile.initials },
-    workouts: workouts.map((w) => ({
-      id: w.id, name: w.name,
-      started_at: new Date(w.startedAt).toISOString(),
-      ended_at: w.endedAt === null ? null : new Date(w.endedAt).toISOString(),
-      duration_seconds: w.durationSeconds, total_volume: w.totalVolume, total_sets: w.totalSets, pr_count: w.prCount,
-      exercises: w.exercises.map((ex) => ({
-        name: ex.name, note: ex.note, superset_group: ex.supersetGroup,
-        sets: ex.sets.map(toJsonSet),
-      })),
-    })),
-  });
+  return toBackupJson(workouts, profile);
 }
 
 /** The stored exercise a file's name refers to, or null when there is none. */
@@ -355,11 +344,11 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
   });
 
   if (duplicatesSkipped > 0) {
-    warnings.push(`${duplicatesSkipped} workout${duplicatesSkipped === 1 ? '' : 's'} already imported, skipped`);
+    warnings.push(t('import.warnDuplicates', { count: duplicatesSkipped }));
   }
   // Recognising no columns used to look identical to importing an empty file.
   if (parsed.unmapped) {
-    warnings.push("Couldn't recognise this CSV's columns — nothing was imported");
+    warnings.push(t('import.warnColumns'));
   }
 
   return {
@@ -400,7 +389,7 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
   try {
     workoutsIn = (backupWorkouts(text) ?? []) as JsonWorkout[];
   } catch {
-    throw new Error('Not a valid Ischys JSON export');
+    throw new Error(t('import.invalidJson'));
   }
 
   const cache = new Map<string, string>();
@@ -530,10 +519,10 @@ async function importJsonBackup(text: string): Promise<ImportResult> {
   });
 
   if (duplicatesSkipped > 0) {
-    warnings.push(`${duplicatesSkipped} workout${duplicatesSkipped === 1 ? '' : 's'} already imported, skipped`);
+    warnings.push(t('import.warnDuplicates', { count: duplicatesSkipped }));
   }
   if (workoutsSkipped > 0) {
-    warnings.push(`${workoutsSkipped} workout${workoutsSkipped === 1 ? '' : 's'} skipped (no valid date)`);
+    warnings.push(t('import.warnNoDate', { count: workoutsSkipped }));
   }
 
   return {

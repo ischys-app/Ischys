@@ -10,6 +10,7 @@
  * What changes with the unit is the rounding (see `domain/loadRounding`) and
  * the labels: a pound lifter ramps through 135 and 185, not 61.2 and 83.9.
  */
+import { t } from '../../i18n';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -74,7 +75,7 @@ export function WarmupSheet({
     const s = solvePlatesForKg(kg, setup);
     if (s.kind !== 'exact') return '';
     return s.load.plates.length === 0
-      ? 'bar'
+      ? t('warmup.bar')
       : s.load.plates.flatMap((p) => Array<number>(p.n).fill(p.kg)).map(fmt).join(' + ');
   };
 
@@ -85,30 +86,30 @@ export function WarmupSheet({
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Warm-up</Text>
+        <Text style={styles.title}>{t('warmup.title')}</Text>
         <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.close}>Cancel</Text>
+          <Text style={styles.close}>{t('common.cancel')}</Text>
         </Pressable>
       </View>
       <Text style={styles.sub}>
-        Ramps to your first working set · {weightText(workingKg, unit)} {unit} × {workingReps}
+        {t('warmup.sub', { weight: weightText(workingKg, unit), unit, reps: workingReps })}
       </Text>
       <Text style={styles.subName} numberOfLines={1}>
         {exerciseName}
       </Text>
 
       <View style={styles.tableHead}>
-        <Text style={[styles.headCell, styles.colSet]}>SET</Text>
+        <Text style={[styles.headCell, styles.colSet]}>{t('warmup.colSet')}</Text>
         <Text style={[styles.headCell, styles.colPct]}>%</Text>
-        <Text style={[styles.headCell, styles.colWeight]}>{unitLabel(unit)} × REPS</Text>
+        <Text style={[styles.headCell, styles.colWeight]}>{t('warmup.colWeightReps', { unit: unitLabel(unit) })}</Text>
         {equipment === 'barbell' && (
-          <Text style={[styles.headCell, styles.colPlates]}>PLATES / SIDE</Text>
+          <Text style={[styles.headCell, styles.colPlates]}>{t('warmup.colPlates')}</Text>
         )}
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {rows.length === 0 ? (
-          <Text style={styles.empty}>Nothing to ramp — the working weight is already light.</Text>
+          <Text style={styles.empty}>{t('warmup.light')}</Text>
         ) : (
           rows.map((r, i) => (
             <View key={`${r.kg}-${i}`} style={styles.row}>
@@ -117,7 +118,7 @@ export function WarmupSheet({
                   <Text style={styles.badgeText}>W</Text>
                 </View>
               </View>
-              <Text style={[styles.cell, styles.colPct]}>{r.pct == null ? 'bar' : `${r.pct}%`}</Text>
+              <Text style={[styles.cell, styles.colPct]}>{r.pct == null ? t('warmup.bar') : `${r.pct}%`}</Text>
               <Text style={[styles.cell, styles.colWeight, styles.cellStrong]}>
                 {weightText(r.kg, unit)} × {r.reps}
               </Text>
@@ -132,7 +133,7 @@ export function WarmupSheet({
       </ScrollView>
 
       <View style={styles.setsRow}>
-        <Text style={styles.setsLabel}>Sets</Text>
+        <Text style={styles.setsLabel}>{t('warmup.sets')}</Text>
         <View style={styles.segment}>
           {SET_CHOICES.map((n) => {
             const on = n === chosen;
@@ -158,8 +159,8 @@ export function WarmupSheet({
       >
         <Text style={styles.insertText}>
           {rows.length === 0
-            ? 'Nothing to insert'
-            : `Insert ${rows.length} warm-up ${rows.length === 1 ? 'set' : 'sets'}`}
+            ? t('warmup.nothing')
+            : t('warmup.insert', { count: rows.length })}
         </Text>
       </PressableScale>
     </DraggableSheet>

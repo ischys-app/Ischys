@@ -40,7 +40,7 @@ import * as SecureStore from '../src/lib/secureStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackChevronIcon, HeartFilledIcon, ShieldIcon } from '../src/components/icons';
-import { fmtAgo, parseIso } from '../src/lib/format';
+import { fmtAgo, fmtDayMonthOf, parseIso } from '../src/lib/format';
 import {
   availability,
   getPermissions,
@@ -62,6 +62,8 @@ import { firstName, ownerLabel, OWNER_ID, possessive, type ProfileRow } from '..
 import { DEFAULT_NAME, useActiveProfile } from '../src/lib/activeProfile';
 import { color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { t } from '../src/i18n';
+import { profileNameLabel } from '../src/i18n/defaultLabels';
 
 // DECISION · HOW MUCH TO SAY ABOUT READS — Option A (recommended): intent switch
 // + data receipt. The switch is what Ischys ASKS for; the receipt is what
@@ -94,23 +96,24 @@ const DEFAULT_PREFS: Record<PrefKey, boolean> = {
 };
 
 const ANDROID = Platform.OS === 'android';
-const copy = healthCopy(Platform.OS);
+// Read per render, not at import: the language is only set once the root layout
+// has run.
+const getCopy = () => healthCopy(Platform.OS);
 
 // A read row's static copy. `offDesc` shows (no status colour) when the switch
 // is off; `explainer` is the in-place box revealed on an uncertain row.
-const READ_ROWS = (['readHR', 'readEnergy', 'readBody'] as const).map((pref) => ({
-  pref,
-  ...copy.reads[pref],
-}));
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const readRows = (copy: ReturnType<typeof getCopy>) =>
+  (['readHR', 'readEnergy', 'readBody'] as const).map((pref) => ({
+    pref,
+    ...copy.reads[pref],
+  }));
 
 /** "12 Jun" — the date the user asked (went through the connect prompt). */
 function fmtAsked(iso: string | null): string {
-  if (!iso) return 'recently';
+  if (!iso) return t('health.recently');
   const d = parseIso(iso);
-  if (Number.isNaN(d.getTime())) return 'recently';
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  if (Number.isNaN(d.getTime())) return t('health.recently');
+  return fmtDayMonthOf(d);
 }
 
 /**
@@ -139,6 +142,7 @@ export default function Health() {
 
 function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
   useThemed();
+  const copy = getCopy();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [ownerName, setOwnerName] = useState(DEFAULT_NAME);
@@ -153,9 +157,10 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
       live = false;
     };
   }, []);
-  const first = firstName(profile.name) || profile.name;
-  const owner = ownerLabel(ownerName, DEFAULT_NAME);
-  const ownerPossessive = owner === "the phone's owner" ? "the phone's owner's" : `${owner}'s`;
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
+  const owner = ownerLabel(profileNameLabel(ownerName), profileNameLabel(DEFAULT_NAME));
+  const ownerPossessive =
+    ownerName === DEFAULT_NAME ? t('health.ownerPossessive') : t('profiles.possessive', { name: owner });
 
   return (
     <View style={styles.root}>
@@ -164,7 +169,7 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
         >
           <BackChevronIcon color={color.text2} strokeWidth={2.2} />
@@ -182,14 +187,14 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
             <HeartFilledIcon size={24} color={color.text3} />
           </View>
           <View style={styles.offHeadText}>
-            <Text style={styles.offTitle} accessibilityRole="header">{`Off for ${first}`}</Text>
+            <Text style={styles.offTitle} accessibilityRole="header">{t('health.offFor', { name: first })}</Text>
             <Text style={styles.offBody}>
-              {`${copy.name} on ${ANDROID ? 'this phone' : 'this iPhone'} belongs to ${owner}. ${possessive(profile.name)} workouts stay in Ischys.`}
+              {t('health.offBody', { health: copy.name, device: ANDROID ? t('health.thisPhone') : t('health.thisIphone'), owner, whose: possessive(profileNameLabel(profile.name)) })}
             </Text>
           </View>
         </View>
         <Text style={styles.offLine}>
-          {`Health and the Watch work only in ${ownerPossessive} profile.`}
+          {t('health.offLine', { whose: ownerPossessive })}
         </Text>
       </ScrollView>
     </View>
@@ -198,6 +203,7 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
 
 function OwnerHealth() {
   useThemed();
+  const copy = getCopy();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -307,17 +313,17 @@ function OwnerHealth() {
     // Android 13 and earlier: Health Connect is an app, and may not be there.
     if (availability() === 'needsProvider') {
       Alert.alert(
-        'Health Connect needed',
-        'Install or update Health Connect from Google Play, then come back here to connect.',
+        t('health.needTitle'),
+        t('health.needBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Get Health Connect', onPress: () => void openProviderListing() },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('health.getHc'), onPress: () => void openProviderListing() },
         ],
       );
       return;
     }
     if (!isHealthAvailable()) {
-      Alert.alert('Not available', copy.unavailable);
+      Alert.alert(t('health.notAvailable'), copy.unavailable);
       return;
     }
     // The system's own prompt. On iOS the user answering does not tell us what
@@ -332,11 +338,11 @@ function OwnerHealth() {
       // Nothing was allowed. Android stops showing its screen after two
       // refusals, so point at the place where it can still be changed.
       Alert.alert(
-        'Nothing allowed yet',
-        'Ischys connects once you allow at least one thing. You can also allow them in Health Connect.',
+        t('health.nothingAllowedTitle'),
+        t('health.nothingAllowedBody'),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Open Health Connect', onPress: () => void openSettings() },
+          { text: t('common.notNow'), style: 'cancel' },
+          { text: t('health.openHc'), onPress: () => void openSettings() },
         ],
       );
     }
@@ -344,12 +350,12 @@ function OwnerHealth() {
 
   const onDisconnect = () => {
     Alert.alert(
-      `Disconnect ${copy.name}`,
+      t('health.disconnectTitle', { name: copy.name }),
       copy.disconnectBody,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Disconnect',
+          text: t('health.disconnect'),
           style: 'destructive',
           onPress: () => {
             void (async () => {
@@ -362,7 +368,7 @@ function OwnerHealth() {
     );
   };
 
-  const lastAgo = fmtAgo(lastSyncIso) || 'just now';
+  const lastAgo = fmtAgo(lastSyncIso) || t('ago.justNow');
 
   return (
     <View style={styles.root}>
@@ -372,7 +378,7 @@ function OwnerHealth() {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
         >
           <BackChevronIcon color={color.text2} strokeWidth={2.2} />
@@ -430,6 +436,7 @@ function ExternalLinkIcon({ size = 12, color: stroke }: { size?: number; color: 
 
 function Disconnected({ onConnect }: { onConnect: () => void }) {
   useThemed();
+  const copy = getCopy();
   return (
     <View style={styles.discRoot}>
       <View style={styles.discHero}>
@@ -440,15 +447,25 @@ function Disconnected({ onConnect }: { onConnect: () => void }) {
 
       {/* Sets the expectation before the system takes over the permission sheet. */}
       <View style={styles.nextCard}>
-        <Text style={styles.nextLabel}>WHAT HAPPENS NEXT</Text>
+        <Text style={styles.nextLabel}>{t('health.whatNext')}</Text>
         {ANDROID ? (
           <Text style={styles.nextBody}>{copy.next}</Text>
         ) : (
           <Text style={styles.nextBody}>
-            iOS asks you, not us. Ischys is told whether it may{' '}
-            <Text style={styles.nextEmph}>write</Text>, but never whether it may{' '}
-            <Text style={styles.nextEmph}>read</Text> — so afterwards this screen
-            shows what data actually arrives instead of a permission list.
+            {t('health.nextRich', {
+              write: `\u0001${t('health.writeWord')}\u0001`,
+              read: `\u0001${t('health.readWord')}\u0001`,
+            })
+              .split('\u0001')
+              .map((part, i) =>
+                i % 2 === 1 ? (
+                  <Text key={i} style={styles.nextEmph}>
+                    {part}
+                  </Text>
+                ) : (
+                  part
+                ),
+              )}
           </Text>
         )}
       </View>
@@ -465,7 +482,7 @@ function Disconnected({ onConnect }: { onConnect: () => void }) {
 
       <View style={styles.privacyRow}>
         <ShieldIcon size={15} color={color.text3} />
-        <Text style={styles.privacyNote}>Health data never leaves your device.</Text>
+        <Text style={styles.privacyNote}>{t('health.privacy')}</Text>
       </View>
     </View>
   );
@@ -495,6 +512,8 @@ function Connected({
   onDisconnect: () => void;
 }) {
   useThemed();
+  const copy = getCopy();
+  const READ_ROWS = readRows(copy);
   // Only 'nothing received' rows can expand their explainer.
   const [expanded, setExpanded] = useState<Record<ReadPref, boolean>>({
     readHR: false,
@@ -511,17 +530,17 @@ function Connected({
           <HeartFilledIcon size={17} color={color.error} />
         </View>
         <View style={styles.statusTextCol}>
-          <Text style={styles.statusTitle}>Linked to {copy.name}</Text>
-          <Text style={styles.statusSub}>{copy.device} · asked {askedLabel}</Text>
+          <Text style={styles.statusTitle}>{t('health.linked', { name: copy.name })}</Text>
+          <Text style={styles.statusSub}>{t('health.deviceAsked', { device: copy.device, date: askedLabel })}</Text>
         </View>
       </View>
 
       {/* ISCHYS WRITES — share auth IS exposed, so state it plainly. */}
-      <Text style={styles.sectionLabel}>ISCHYS WRITES</Text>
+      <Text style={styles.sectionLabel}>{t('health.writes')}</Text>
       <View style={[styles.card, denied && styles.cardDenied]}>
         <View style={styles.writeRow}>
           <View style={styles.rowTextCol}>
-            <Text style={styles.rowLabel}>Save finished workouts</Text>
+            <Text style={styles.rowLabel}>{t('health.saveWorkouts')}</Text>
             <View style={styles.statusLine}>
               <View style={[styles.statusDot, { backgroundColor: denied ? color.error : color.success }]} />
               <Text style={[styles.statusText, { color: denied ? color.error : color.success }]}>
@@ -531,7 +550,7 @@ function Connected({
           </View>
           {/* Denied → toggle is disabled. Leaving it flippable would imply
               Ischys can grant itself access. */}
-          <Toggle label="Save finished workouts" value={!denied && prefs.writeWorkouts} disabled={denied} onPress={() => onTogglePref('writeWorkouts', !prefs.writeWorkouts)} />
+          <Toggle label={t('health.saveWorkouts')} value={!denied && prefs.writeWorkouts} disabled={denied} onPress={() => onTogglePref('writeWorkouts', !prefs.writeWorkouts)} />
         </View>
         {denied && (
           <View style={styles.explainerBlockLast}>
@@ -550,12 +569,12 @@ function Connected({
         )}
       </View>
       {denied && (
-        <Text style={styles.reassure}>Your workouts are still saved in Ischys. Nothing is lost.</Text>
+        <Text style={styles.reassure}>{t('health.reassure')}</Text>
       )}
 
       {/* ISCHYS ASKS HEALTH FOR — reads, with the plain-words caveat. */}
       <View style={styles.readsHead}>
-        <Text style={styles.sectionLabelBare}>ISCHYS ASKS HEALTH FOR</Text>
+        <Text style={styles.sectionLabelBare}>{t('health.asks')}</Text>
         <Text style={styles.readsNote}>{copy.readsNote}</Text>
       </View>
       <Animated.View style={styles.card} layout={LinearTransition.springify().mass(0.55)}>
@@ -585,12 +604,12 @@ function Connected({
       {/* Stats block. */}
       <View style={styles.statsCard}>
         <View style={styles.statCell}>
-          <Text style={styles.statCellLabel}>WORKOUTS WRITTEN</Text>
+          <Text style={styles.statCellLabel}>{t('health.workoutsWritten')}</Text>
           <Text style={styles.statCellValue}>{String(workoutsWritten)}</Text>
         </View>
         <View style={styles.statCellDivider} />
         <View style={styles.statCell}>
-          <Text style={styles.statCellLabel}>LAST SYNCED</Text>
+          <Text style={styles.statCellLabel}>{t('health.lastSynced')}</Text>
           {/* A stale timestamp is itself the evidence that writing stopped. */}
           <Text style={[styles.statCellValue, denied && { color: color.warning }]}>{lastAgo}</Text>
         </View>
@@ -601,9 +620,9 @@ function Connected({
         onPress={onDisconnect}
         style={({ pressed }) => [styles.disconnectBtn, pressed && styles.disconnectBtnPressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Disconnect ${copy.name}`}
+        accessibilityLabel={t('health.disconnectTitle', { name: copy.name })}
       >
-        <Text style={styles.disconnectBtnText}>Disconnect {copy.name}</Text>
+        <Text style={styles.disconnectBtnText}>{t('health.disconnectTitle', { name: copy.name })}</Text>
       </Pressable>
     </View>
   );
@@ -636,6 +655,7 @@ function ReadRow({
   isLast: boolean;
 }) {
   useThemed();
+  const copy = getCopy();
   const kind = readRowKind(receipt, enabled, allowed);
   // A refused read (Android) explains itself the same way an empty one does.
   const uncertain = kind === 'nothing' || kind === 'denied';
@@ -653,7 +673,7 @@ function ReadRow({
       <View style={styles.statusLine}>
         <View style={[styles.statusDot, { backgroundColor: color.success }]} />
         <Text style={[styles.statusText, { color: color.success }]}>
-          Receiving · {receipt?.value} last session
+          {t('health.receiving', { value: receipt?.value ?? '' })}
         </Text>
       </View>
     );
@@ -668,7 +688,7 @@ function ReadRow({
     receiptNode = (
       <View style={styles.statusLine}>
         <View style={[styles.statusDot, { backgroundColor: color.warning }]} />
-        <Text style={[styles.statusText, { color: color.warning }]}>Nothing received yet</Text>
+        <Text style={[styles.statusText, { color: color.warning }]}>{t('health.nothingYet')}</Text>
       </View>
     );
   }

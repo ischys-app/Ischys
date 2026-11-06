@@ -35,6 +35,8 @@ import { useThemed } from '../theme/ThemeProvider';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, HeartFilledIcon, SearchIcon } from './icons';
 import { ProfileAvatar } from './ProfileAvatar';
+import { t } from '../i18n';
+import { profileNameLabel } from '../i18n/defaultLabels';
 
 /** DraggableSheet's 220ms exit, and a beat for the modal to go. */
 const SHEET_EXIT_MS = 300;
@@ -150,17 +152,17 @@ export function ProfileSwitcher() {
         <View style={styles.grabber} />
         <View style={styles.header}>
           <Text style={styles.title} maxFontSizeMultiplier={textScale.display} accessibilityRole="header">
-            Switch profile
+            {t('switcher.title')}
           </Text>
           <Pressable
             onPress={() => go('/profiles')}
             hitSlop={5}
             style={({ pressed }) => [styles.manage, pressed && styles.pressedDim]}
             accessibilityRole="button"
-            accessibilityLabel="Manage profiles"
+            accessibilityLabel={t('switcher.manageLabel')}
           >
             <Text style={styles.manageText} maxFontSizeMultiplier={textScale.control}>
-              Manage
+              {t('switcher.manage')}
             </Text>
           </Pressable>
         </View>
@@ -172,14 +174,14 @@ export function ProfileSwitcher() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={`Search ${all.length} profiles`}
+            placeholder={t('switcher.searchPlaceholder', { n: all.length })}
             placeholderTextColor={color.text3}
             selectionColor={color.text2}
             autoCorrect={false}
             returnKeyType="search"
             style={styles.searchInput}
             maxFontSizeMultiplier={textScale.control}
-            accessibilityLabel="Search profiles"
+            accessibilityLabel={t('switcher.searchLabel')}
           />
         </View>
       )}
@@ -206,12 +208,12 @@ export function ProfileSwitcher() {
                 style={({ pressed }) => [styles.row, (pressed || pressedId === p.id) && styles.rowPressed]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isCurrent }}
-                accessibilityLabel={`${p.name}, ${sub}`}
+                accessibilityLabel={t('switcher.rowLabel', { name: profileNameLabel(p.name), sub })}
               >
                 <ProfileAvatar profile={p} size={40} />
                 <View style={styles.rowText}>
                   <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={textScale.control}>
-                    {p.name}
+                    {profileNameLabel(p.name)}
                   </Text>
                   <View style={styles.subRow}>
                     {p.isOwner && <HeartFilledIcon size={11} color={color.text3} />}
@@ -233,11 +235,11 @@ export function ProfileSwitcher() {
         onPress={() => go('/profiles/new')}
         style={({ pressed }) => [styles.addRow, overflows && styles.addRowRule, pressed && styles.rowPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Add profile"
+        accessibilityLabel={t('profiles.add')}
       >
         <ProfileAvatar profile={{ initials: '' }} size={40} variant="dashed" />
         <Text style={styles.addText} maxFontSizeMultiplier={textScale.control}>
-          Add profile
+          {t('profiles.add')}
         </Text>
       </Pressable>
     </DraggableSheet>

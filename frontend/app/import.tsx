@@ -46,6 +46,8 @@ import { PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
 import { haptics } from '../src/lib/haptics';
 import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { profileNameLabel, workoutLabel } from '../src/i18n/defaultLabels';
+import { t } from '../src/i18n';
 
 type Step = 'file_pick' | 'preview' | 'progress' | 'success' | 'error';
 
@@ -93,7 +95,7 @@ function summarizeJson(text: string): ParsePayload {
         count += Array.isArray(ex?.sets) ? ex.sets.length : 0;
       }
       sets += count;
-      if (i < 5) firstWorkouts.push({ name: (w.name ?? 'Workout') || 'Workout', count });
+      if (i < 5) firstWorkouts.push({ name: workoutLabel(w.name), count });
     }
     return { supported: true, kind: 'json', weightUnitKnown: true, workouts: wk.length, exercises: exercises.size, sets, firstWorkouts };
   } catch {
@@ -291,7 +293,7 @@ function RoutineCandidateRow({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={candidate.name}
-      accessibilityHint="Saves this as a routine"
+      accessibilityHint={t('import.candidateHint')}
     >
       <SelectCircle selected={selected} />
       <View style={styles.candidateText}>
@@ -314,18 +316,17 @@ function RoutinesCard({ picks }: { picks: RoutinePicks }) {
   const { candidates, rows, seenOnce, expanded, picked, newestAt } = picks;
   return (
     <View style={styles.routinesCard}>
-      <Text style={styles.routinesLabel}>ROUTINES</Text>
-      <Text style={styles.routinesHeading}>Save any as routines?</Text>
+      <Text style={styles.routinesLabel}>{t('import.routines')}</Text>
+      <Text style={styles.routinesHeading}>{t('import.routinesHeading')}</Text>
       <Text style={styles.routinesBody}>
-        Your import restored sessions, not routines. Pick the ones you still train. Each is
-        built from its most recent session.
+        {t('import.routinesBody')}
       </Text>
 
       <View style={styles.routinesListHead}>
         <Text style={[styles.routinesListHeadText, styles.routinesListHeadLeft]}>
           {titlesHeaderLabel(candidates.length)}
         </Text>
-        <Text style={styles.routinesListHeadText}>LAST TRAINED</Text>
+        <Text style={styles.routinesListHeadText}>{t('import.lastTrained')}</Text>
       </View>
 
       <View style={styles.routinesList}>
@@ -345,7 +346,7 @@ function RoutinesCard({ picks }: { picks: RoutinePicks }) {
             style={styles.seenOnceRow}
             accessibilityRole="button"
             accessibilityLabel={seenOnceLabel(seenOnce.length)}
-            accessibilityHint="Shows the titles trained once"
+            accessibilityHint={t('import.seenOnceHint')}
           >
             <View style={styles.seenOnceChevron}>
               <ChevronDownIcon size={14} color={color.text3} />
@@ -378,7 +379,7 @@ function SuccessFooter({
 }) {
   useThemed();
   const count = offerRoutines ? picks.picked.size : 0;
-  const label = picks.retrying ? 'Retry' : createRoutinesLabel(count);
+  const label = picks.retrying ? t('import.retry') : createRoutinesLabel(count);
   // 34dp is the design's home-indicator allowance; a deeper inset wins.
   const paddingBottom = Math.max(34, bottomInset);
   return (
@@ -403,9 +404,9 @@ function SuccessFooter({
           onPress={onDone}
           style={styles.skipBtn}
           accessibilityRole="button"
-          accessibilityLabel={picks.retrying ? 'Done' : 'Skip'}
+          accessibilityLabel={picks.retrying ? t('common.done') : t('import.skip')}
         >
-          <Text style={styles.skipBtnText}>{picks.retrying ? 'Done' : 'Skip'}</Text>
+          <Text style={styles.skipBtnText}>{picks.retrying ? t('common.done') : t('import.skip')}</Text>
         </Pressable>
       )}
     </View>
@@ -563,7 +564,7 @@ export default function ImportScreen() {
           <SuccessState result={result} picks={offerRoutines ? picks : null} />
         )}
         {step === 'error' && (
-          <ErrorState message={errorMsg ?? 'Import failed'} onRetry={reset} />
+          <ErrorState message={errorMsg ?? t('import.failed')} onRetry={reset} />
         )}
       </ScrollView>
 
@@ -583,12 +584,12 @@ export default function ImportScreen() {
           ]}
           pointerEvents={inProgress ? 'none' : 'auto'}
           hitSlop={8}
-          accessibilityLabel="Close"
+          accessibilityLabel={t('import.close')}
           accessibilityRole="button"
         >
           <XGlyph color={color.text2} />
         </Pressable>
-        <Text style={styles.title} numberOfLines={1}>Import history</Text>
+        <Text style={styles.title} numberOfLines={1}>{t('import.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -623,34 +624,44 @@ function FilePickState({
         <View style={styles.dropzoneIconWrap}>
           <UploadIcon size={30} color={color.accent} strokeWidth={2} />
         </View>
-        <Text style={styles.dropzoneTitle}>Choose an export to import</Text>
+        <Text style={styles.dropzoneTitle}>{t('import.chooseTitle')}</Text>
         <Text style={styles.dropzoneSub}>
-          Point Ischys at an Ischys JSON backup or a workout CSV export and
-          we&apos;ll load every set into your log.
+          {t('import.chooseSub')}
         </Text>
         <PressableScale
           onPress={onPick}
           style={[styles.primaryBtn, styles.chooseBtn]}
           accessibilityRole="button"
-          accessibilityLabel="Browse files"
+          accessibilityLabel={t('import.browse')}
         >
-          <Text style={styles.primaryBtnText}>Browse files</Text>
+          <Text style={styles.primaryBtnText}>{t('import.browse')}</Text>
         </PressableScale>
       </View>
 
       {/* WHAT GETS IMPORTED checklist */}
-      <Text style={styles.checklistLabel}>WHAT GETS IMPORTED</Text>
+      <Text style={styles.checklistLabel}>{t('import.whatImported')}</Text>
       <View style={styles.checklistCard}>
-        <ChecklistRow text="Every set with weight × reps" />
-        <ChecklistRow text="Workout names, dates, and exercise groupings" />
-        <ChecklistRow text="Set types (warmup / drop / failure) mapped to Ischys" />
-        <ChecklistRow text="Notes on workouts and exercises" />
+        <ChecklistRow text={t('import.check1')} />
+        <ChecklistRow text={t('import.check2')} />
+        <ChecklistRow text={t('import.check3')} />
+        <ChecklistRow text={t('import.check4')} />
       </View>
 
       <Text style={styles.smallPrint}>
-        Supported: <Text style={styles.smallPrintStrong}>Ischys JSON</Text> (a
-        full backup) and a <Text style={styles.smallPrintStrong}>workout CSV</Text>.
-        Cardio-only CSV rows (distance/duration without weight × reps) are skipped.
+        {t('import.supported', {
+          json: `\u0001${t('import.supportedJson')}\u0001`,
+          csv: `\u0001${t('import.supportedCsv')}\u0001`,
+        })
+          .split('\u0001')
+          .map((part, i) =>
+            i % 2 === 1 ? (
+              <Text key={i} style={styles.smallPrintStrong}>
+                {part}
+              </Text>
+            ) : (
+              part
+            ),
+          )}
       </Text>
       {!!errorMsg && (
         <View style={styles.errorBanner}>
@@ -694,20 +705,20 @@ function PreviewState({
   // a note above it that is easy to scroll past.
   const unitSuffix =
     parse && parse.supported && parse.kind === 'csv' && !parse.weightUnitKnown
-      ? ` as ${weightUnit.toUpperCase()}`
+      ? t('import.asUnit', { unit: weightUnit.toUpperCase() })
       : '';
   // With 2+ profiles the button names the one the workouts go into (P11).
   const { profile, count } = useActiveProfile();
-  const first = firstName(profile.name);
-  const into = PROFILES_ENABLED && count >= 2 && first ? ` into ${first}` : '';
+  const first = firstName(profileNameLabel(profile.name));
+  const into = PROFILES_ENABLED && count >= 2 && first ? t('import.into', { name: first }) : '';
   const importLabel =
     parse && parse.supported
-      ? `Import ${workoutCount} workout${workoutCount === 1 ? '' : 's'}${into}${unitSuffix}`
-      : 'Import file';
+      ? t('import.importCount', { count: workoutCount, into, unit: unitSuffix })
+      : t('import.importFile');
 
   return (
     <View style={styles.previewWrap}>
-      <Text style={styles.label}>SELECTED FILE</Text>
+      <Text style={styles.label}>{t('import.selectedFile')}</Text>
       <View style={styles.fileRow}>
         <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
           {file.name}
@@ -719,19 +730,19 @@ function PreviewState({
             pressed && styles.changeBtnPressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Change file"
+          accessibilityLabel={t('import.changeFile')}
         >
-          <Text style={styles.changeBtnText}>Change file</Text>
+          <Text style={styles.changeBtnText}>{t('import.changeFile')}</Text>
         </Pressable>
       </View>
 
       {parse === null && (
-        <Text style={styles.parseHint}>Reading file…</Text>
+        <Text style={styles.parseHint}>{t('import.reading')}</Text>
       )}
 
       {parse && !parse.supported && (
         <Text style={styles.parseHint}>
-          This doesn&apos;t look like an Ischys JSON backup or a workout CSV. Pick one of those and try again.
+          {t('import.unsupported')}
         </Text>
       )}
 
@@ -739,24 +750,24 @@ function PreviewState({
         <>
           <View style={styles.summaryCard}>
             <View style={styles.statsRow}>
-              <StatCell label="WORKOUTS" value={parse.workouts} />
-              <StatCell label="EXERCISES" value={parse.exercises} />
-              <StatCell label="SETS" value={parse.sets} />
+              <StatCell label={t('import.statWorkouts')} value={parse.workouts} />
+              <StatCell label={t('import.statExercises')} value={parse.exercises} />
+              <StatCell label={t('import.statSets')} value={parse.sets} />
             </View>
             {(parse.cardioSkipped ?? 0) > 0 && (
               <Text style={styles.cardioSkip}>
-                {parse.cardioSkipped} rows will be skipped (cardio / rest-only)
+                {t('import.skipCardio', { count: parse.cardioSkipped ?? 0 })}
               </Text>
             )}
             {(parse.rowsSkipped ?? 0) > 0 && (
               <Text style={styles.cardioSkip}>
-                {parse.rowsSkipped} rows will be skipped (no exercise name)
+                {t('import.skipNoName', { count: parse.rowsSkipped ?? 0 })}
               </Text>
             )}
             {parse.kind === 'csv' && !parse.weightUnitKnown && (
               <>
                 <View style={styles.unitRow}>
-                  <Text style={styles.label}>WEIGHT UNIT</Text>
+                  <Text style={styles.label}>{t('import.weightUnit')}</Text>
                   <Segment
                     options={UNIT_OPTIONS}
                     value={weightUnit}
@@ -764,7 +775,7 @@ function PreviewState({
                   />
                 </View>
                 <Text style={styles.cardioSkip}>
-                  This file doesn&apos;t say, so weights are read as {weightUnit.toUpperCase()}
+                  {t('import.unitUnknown', { unit: weightUnit.toUpperCase() })}
                 </Text>
               </>
             )}
@@ -772,7 +783,7 @@ function PreviewState({
 
           {parse.firstWorkouts.length > 0 && (
             <>
-              <Text style={[styles.label, styles.firstLabel]}>FIRST WORKOUTS</Text>
+              <Text style={[styles.label, styles.firstLabel]}>{t('import.firstWorkouts')}</Text>
               <View style={styles.previewList}>
                 {parse.firstWorkouts.map((w, i) => (
                   <View key={`${w.name}-${i}`} style={styles.previewRow}>
@@ -784,7 +795,7 @@ function PreviewState({
                       {w.name}
                     </Text>
                     <Text style={styles.previewCount}>
-                      {w.count} set{w.count === 1 ? '' : 's'}
+                      {t('import.setsCount', { count: w.count })}
                     </Text>
                   </View>
                 ))}
@@ -890,7 +901,7 @@ function ProgressState() {
           <Text style={styles.ringPct}>{pct}%</Text>
         </View>
       </View>
-      <Text style={styles.progressCaption}>Importing…</Text>
+      <Text style={styles.progressCaption}>{t('import.importing')}</Text>
     </View>
   );
 }
@@ -913,14 +924,13 @@ function SuccessState({
       <View style={styles.successBadge}>
         <CheckIcon size={30} color={color.accentFg} strokeWidth={3} />
       </View>
-      <Text style={styles.successTitle}>History imported</Text>
+      <Text style={styles.successTitle}>{t('import.done')}</Text>
       <Text style={styles.successStats}>
-        {result.workouts_created} workouts · {result.exercises_created} exercises
-        · {result.sets_imported} sets
+        {t('import.doneStats', { workouts: result.workouts_created, exercises: result.exercises_created, sets: result.sets_imported })}
       </Text>
       {result.rows_skipped > 0 && (
         <Text style={styles.successSkipped}>
-          {result.rows_skipped} rows skipped
+          {t('import.rowsSkipped', { count: result.rows_skipped })}
         </Text>
       )}
       {result.warnings.map((w) => (
@@ -931,7 +941,7 @@ function SuccessState({
       {picks && (
         <>
           <RoutinesCard picks={picks} />
-          <Text style={styles.routinesFootnote}>You can save more later from History.</Text>
+          <Text style={styles.routinesFootnote}>{t('import.footnote')}</Text>
         </>
       )}
     </View>
@@ -958,9 +968,9 @@ function ErrorState({
           pressed && styles.retryBtnPressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Try again"
+        accessibilityLabel={t('import.tryAgain')}
       >
-        <Text style={styles.retryBtnText}>Try again</Text>
+        <Text style={styles.retryBtnText}>{t('import.tryAgain')}</Text>
       </Pressable>
     </View>
   );

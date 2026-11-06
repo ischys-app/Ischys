@@ -52,3 +52,42 @@ export function backupWorkouts(text: string): unknown[] | null {
   const workouts = (data as { workouts?: unknown }).workouts;
   return Array.isArray(workouts) ? workouts : null;
 }
+
+/** A completed workout as the exporter reads it: stored names, stored values. */
+export type BackupWorkout = {
+  id: string;
+  name: string;
+  startedAt: number;
+  endedAt: number | null;
+  notes: string | null;
+  durationSeconds: number;
+  totalVolume: number;
+  totalSets: number;
+  prCount: number;
+  exercises: {
+    name: string;
+    note: string | null;
+    supersetGroup: number | null;
+    sets: (BackupSet & { position: number })[];
+  }[];
+};
+
+/**
+ * The JSON backup's text. Names go out exactly as stored — never a display
+ * label — so a backup reads the same whatever language the phone is in.
+ */
+export function toBackupJson(workouts: BackupWorkout[], profile: { name: string; initials: string }): string {
+  return JSON.stringify({
+    profile: { name: profile.name, initials: profile.initials },
+    workouts: workouts.map((w) => ({
+      id: w.id, name: w.name,
+      started_at: new Date(w.startedAt).toISOString(),
+      ended_at: w.endedAt === null ? null : new Date(w.endedAt).toISOString(),
+      duration_seconds: w.durationSeconds, total_volume: w.totalVolume, total_sets: w.totalSets, pr_count: w.prCount,
+      exercises: w.exercises.map((ex) => ({
+        name: ex.name, note: ex.note, superset_group: ex.supersetGroup,
+        sets: ex.sets.map(toJsonSet),
+      })),
+    })),
+  });
+}

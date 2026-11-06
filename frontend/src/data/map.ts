@@ -1,9 +1,10 @@
 /**
- * Row → DTO translation for the local repo. Pure (type-only imports), so the
+ * Row → DTO translation for the local repo. Pure (no DB imports), so the
  * shape logic is unit-testable with fixture rows. The repo does the SQLite
  * fetch/join and hands already-loaded rows here. SQLite stores epoch-ms
  * integers and 0/1 booleans; the DTOs (mirroring the old server responses) want
- * ISO strings and real booleans.
+ * ISO strings and real booleans. Catalog names are display labels here (the
+ * stored English rides along as `englishName`); exports never read these DTOs.
  */
 import type {
   CategoryOut,
@@ -21,6 +22,9 @@ import type {
   WorkoutSetOut,
   WorkoutStatus,
 } from '../api/types.ts';
+import type { Lang } from '../i18n/locale.ts';
+import { getLang } from '../i18n/current.ts';
+import { categoryLabel, exerciseLabel, muscleLabel } from '../i18n/catalogNames.ts';
 
 // --- Row shapes (mirror src/db/schema.ts columns; kept local so this stays pure) ---
 export type ExerciseRow = {
@@ -98,25 +102,38 @@ const iso = (ms: number): string => new Date(ms).toISOString();
 const isoOrNull = (ms: number | null): string | null => (ms === null ? null : iso(ms));
 const bool = (n: number): boolean => n !== 0;
 
-export const toCategoryOut = (c: CategoryRow): CategoryOut => ({ id: c.id, name: c.name });
-export const toMuscleOut = (m: MuscleRow): MuscleOut => ({ id: m.id, name: m.name, group: m.group });
+// `name` is what the UI shows (the catalog label in the display language);
+// `englishName` is the stored value, for anything that must not change.
+export const toCategoryOut = (c: CategoryRow, lang: Lang = getLang()): CategoryOut => ({
+  id: c.id,
+  name: categoryLabel(c, lang),
+  englishName: c.name,
+});
+export const toMuscleOut = (m: MuscleRow, lang: Lang = getLang()): MuscleOut => ({
+  id: m.id,
+  name: muscleLabel(m, lang),
+  englishName: m.name,
+  group: m.group,
+});
 
 export function toExerciseOut(
   ex: ExerciseRow,
   category: CategoryRow | null,
   primaryMuscle: MuscleRow | null,
   secondaryMuscles: MuscleRow[],
+  lang: Lang = getLang(),
 ): ExerciseOut {
   return {
     id: ex.id,
-    name: ex.name,
+    name: exerciseLabel(ex, lang),
+    englishName: ex.name,
     initials: ex.initials,
     kind: ex.kind as ExerciseKind,
     equipment: ex.equipment,
     is_custom: bool(ex.isCustom),
-    category: category ? toCategoryOut(category) : null,
-    primary_muscle: primaryMuscle ? toMuscleOut(primaryMuscle) : null,
-    secondary_muscles: secondaryMuscles.map(toMuscleOut),
+    category: category ? toCategoryOut(category, lang) : null,
+    primary_muscle: primaryMuscle ? toMuscleOut(primaryMuscle, lang) : null,
+    secondary_muscles: secondaryMuscles.map((m) => toMuscleOut(m, lang)),
     how_to_steps: ex.howToSteps,
     image_url: ex.imageUrl,
     image_author: ex.imageAuthor,

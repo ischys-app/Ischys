@@ -4,6 +4,7 @@
  * Lists the workout's other exercises. One accent — Make superset — because
  * that is the only action here that changes anything.
  */
+import { t } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -58,21 +59,21 @@ export function SupersetSheet({
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Superset with…</Text>
+        <Text style={styles.title}>{t('exerciseMenu.supersetWith')}</Text>
         <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={styles.cancel}>{t('common.cancel')}</Text>
         </Pressable>
       </View>
       {anchorExercise ? (
         <Text style={styles.sub} numberOfLines={1}>
-          Pairs with {anchorExercise.name}
+          {t('supersetSheet.pairs', { name: anchorExercise.name })}
         </Text>
       ) : null}
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {candidates.length === 0 ? (
           <Text style={styles.empty}>
-            Add another exercise to this workout first — a superset needs a partner.
+            {t('supersetSheet.needPartner')}
           </Text>
         ) : (
           candidates.map((ex) => {
@@ -99,7 +100,7 @@ export function SupersetSheet({
                   </Text>
                   <Text style={styles.rowMeta} numberOfLines={1}>
                     {exerciseMeta(ex)}
-                    {ex.supersetGroup != null ? ' · already in a superset' : ''}
+                    {ex.supersetGroup != null ? t('supersetSheet.already') : ''}
                   </Text>
                 </View>
               </Pressable>
@@ -114,7 +115,7 @@ export function SupersetSheet({
         accessibilityRole="button"
       >
         <Text style={styles.ctaText}>
-          {picked.size === 0 ? 'Pick a partner' : 'Make superset'}
+          {picked.size === 0 ? t('supersetSheet.pick') : t('supersetSheet.make')}
         </Text>
       </PressableScale>
     </DraggableSheet>

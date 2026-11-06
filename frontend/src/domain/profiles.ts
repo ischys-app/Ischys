@@ -1,4 +1,7 @@
 // Pure profile helpers (issue #117). No expo-* / react-native imports.
+import { fold } from './fold.ts';
+import { fmtMonthYear, fmtShortDayUpper } from '../lib/format.ts';
+import { t } from '../i18n/t.ts';
 
 export type ProfileRow = {
   id: string;
@@ -23,9 +26,6 @@ export const PROFILE_SCOPED_KEYS: readonly string[] = [
   'ischys.plateSetup',
   'ischys.plateSetup.lb',
 ];
-
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 type SegmenterLike = { segment(s: string): Iterable<{ segment: string }> };
 
@@ -168,23 +168,25 @@ function clock(ms: number): string {
 }
 
 export function switcherSubline(p: ProfileRow, now: Date, inWorkoutSince: number | null): string {
-  if (inWorkoutSince !== null) return `IN WORKOUT · ${clock(now.getTime() - inWorkoutSince)}`;
-  if (p.lastWorkoutAt === null) return 'NO WORKOUTS YET';
+  if (inWorkoutSince !== null) return t('profiles.inWorkout', { clock: clock(now.getTime() - inWorkoutSince) });
+  if (p.lastWorkoutAt === null) return t('profiles.noWorkoutsYet');
   const d = new Date(p.lastWorkoutAt);
-  if (sameLocalDay(d, now)) return 'LAST · TODAY';
-  return `LAST · ${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  if (sameLocalDay(d, now)) return t('profiles.lastToday');
+  return t('profiles.lastDay', { date: fmtShortDayUpper(d) });
 }
 
 export function manageSubline(p: ProfileRow): string {
-  if (p.isOwner) return 'OWNER · HEALTH · WATCH';
-  if (p.workoutCount <= 0 || p.firstWorkoutAt === null) return 'NO WORKOUTS YET';
+  if (p.isOwner) return t('profiles.ownerHealthWatch');
+  if (p.workoutCount <= 0 || p.firstWorkoutAt === null) return t('profiles.noWorkoutsYet');
   const d = new Date(p.firstWorkoutAt);
-  const n = p.workoutCount === 1 ? '1 WORKOUT' : `${p.workoutCount} WORKOUTS`;
-  return `${n} · SINCE ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return t('profiles.manageCount', {
+    count: p.workoutCount,
+    date: fmtMonthYear(d.toISOString()).toUpperCase(),
+  });
 }
 
 export function ownerLabel(ownerName: string, defaultName: string): string {
-  return ownerName === defaultName ? "the phone's owner" : ownerName;
+  return ownerName === defaultName ? t('profiles.phoneOwner') : ownerName;
 }
 
 export function parseActiveWorkout(raw: string | null): { profileId: string; workoutId: string } | null {
@@ -216,7 +218,6 @@ export const SWITCHER_SEARCH_FROM = 9;
 
 /** Profiles whose name contains `query`, ignoring case and accents; all of them for a blank query. */
 export function filterProfiles<T extends { name: string }>(rows: readonly T[], query: string): T[] {
-  const fold = (s: string) => s.toLocaleLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const q = fold(query.trim());
   if (!q) return [...rows];
   return rows.filter((r) => fold(r.name).includes(q));
@@ -256,7 +257,7 @@ export function duplicateProfileName(name: string, rows: readonly { name: string
 
 /** The START WITH row's sub line. */
 export function copyRoutinesSub(count: number): string {
-  return `${count} ${count === 1 ? 'ROUTINE' : 'ROUTINES'} · COPIES, NOT LINKED`;
+  return t('profiles.copySub', { count });
 }
 
 /**
@@ -264,15 +265,15 @@ export function copyRoutinesSub(count: number): string {
  * an owner still called `defaultName` (Ruling R16).
  */
 export function copyRoutinesLabel(current: { name: string; isOwner: boolean }, defaultName: string): string {
-  if (current.isOwner && current.name === defaultName) return 'Copy your routines';
-  return `Copy ${firstName(current.name)}'s routines`;
+  if (current.isOwner && current.name === defaultName) return t('profiles.copyYour');
+  return t('profiles.copyTheirs', { name: firstName(current.name) });
 }
 
 /** The HEALTH & WATCH footer. `owner` comes from `ownerLabel`. */
 export function newProfileHealthFooter(name: string, owner: string, healthName: string): string {
   const first = firstName(name);
-  const whose = first ? `${first}'s workouts` : "This profile's workouts";
-  return `${whose} stay in Ischys. ${healthName} and the Watch belong to ${owner}.`;
+  const whose = first ? t('profiles.footerWhose', { name: first }) : t('profiles.footerThis');
+  return t('profiles.footer', { whose, health: healthName, owner });
 }
 
 /**
@@ -296,7 +297,7 @@ export function exercisesToCopy(
 /** "‹First›'s", or "this profile's" when the name has no words. */
 export function possessive(name: string): string {
   const first = firstName(name);
-  return first ? `${first}'s` : "this profile's";
+  return first ? t('profiles.possessive', { name: first }) : t('profiles.possessiveThis');
 }
 
 export type ProfileCounts = { workouts: number; routines: number; records: number };
@@ -304,20 +305,16 @@ export type ProfileCounts = { workouts: number; routines: number; records: numbe
 /** A run of the delete sheet's body; `count` runs are drawn in mono `text1`. */
 export type BodyPart = { text: string; count?: boolean };
 
-const plural = (n: number, one: string) => `${one}${n === 1 ? '' : 's'}`;
-
 /** The P8b body, split so the counts can be styled. */
 export function deleteSheetBody(name: string, c: ProfileCounts): BodyPart[] {
   return [
-    { text: `This erases ${possessive(name)} ` },
+    { text: t('profiles.deleteLead', { whose: possessive(name) }) },
     { text: String(c.workouts), count: true },
-    { text: ` ${plural(c.workouts, 'workout')}, ` },
+    { text: t('profiles.deleteWorkouts', { count: c.workouts }) },
     { text: String(c.routines), count: true },
-    { text: ` ${plural(c.routines, 'routine')}, ` },
+    { text: t('profiles.deleteRoutines', { count: c.routines }) },
     { text: String(c.records), count: true },
-    {
-      text: ` ${plural(c.records, 'record')} and every measurement from this phone. Other profiles aren't affected. This can't be undone.`,
-    },
+    { text: t('profiles.deleteRecords', { count: c.records }) },
   ];
 }
 
@@ -342,8 +339,8 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
  * owner still called `defaultName` (no pronouns, spec correction 4).
  */
 export function profileCallName(p: { name: string; isOwner: boolean }, defaultName: string): string {
-  if (p.isOwner && p.name.trim() === defaultName) return "the phone's owner";
-  return firstName(p.name) || p.name.trim() || 'this profile';
+  if (p.isOwner && p.name.trim() === defaultName) return t('profiles.phoneOwner');
+  return firstName(p.name) || p.name.trim() || t('profiles.thisProfile');
 }
 
 /** The P6 sheet's words. `elapsed` is drawn in mono, tabular, between `lead` and `tail`. */
@@ -361,14 +358,16 @@ export function finishFirstCopy(a: {
   elapsedMs: number;
   defaultName: string;
 }): FinishFirstCopy {
-  const routine = a.workoutName?.trim() || 'Your workout';
+  const routine = a.workoutName?.trim() || t('profiles.yourWorkout');
   // The running workout's profile is the one on screen, so a default-named
   // owner is "you" here, as in copyRoutinesLabel (Ruling R16).
   const ownerRuns = a.running.isOwner && a.running.name.trim() === a.defaultName;
   return {
-    title: ownerRuns ? 'Finish your workout first' : `Finish ${profileCallName(a.running, a.defaultName)}'s workout first`,
-    lead: `${routine} has been running for `,
+    title: ownerRuns
+      ? t('profiles.finishYours')
+      : t('profiles.finishTheirs', { name: profileCallName(a.running, a.defaultName) }),
+    lead: t('profiles.finishLead', { routine }),
     elapsed: clock(a.elapsedMs),
-    tail: `. Only one workout can run at a time. Finish or discard it, then switch to ${profileCallName(a.target, a.defaultName)}.`,
+    tail: t('profiles.finishTail', { target: profileCallName(a.target, a.defaultName) }),
   };
 }

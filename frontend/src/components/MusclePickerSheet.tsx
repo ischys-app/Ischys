@@ -27,6 +27,9 @@ import { accentA, color, font, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, SearchIcon } from './icons';
 import { useThemed } from '../theme/ThemeProvider';
+import { getLang } from '../i18n/current';
+import { groupLabel, matchesSearch } from '../i18n/catalogNames';
+import { t } from '../i18n';
 
 /** Module-scope cache — shared across both mount lifetimes of the sheet. */
 let cachedMuscles: MuscleOut[] | null = null;
@@ -118,8 +121,8 @@ export function MusclePickerSheet({
   }, [visible]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? muscles.filter((m) => m.name.toLowerCase().includes(q)) : muscles;
+    // Matches the shown label or the stored English name.
+    return muscles.filter((m) => matchesSearch(query, [m.name, m.englishName]));
   }, [muscles, query]);
 
   const grouped = useMemo(() => {
@@ -140,7 +143,7 @@ export function MusclePickerSheet({
     return orderedKeys.map((g) => ({ group: g, items: byGroup.get(g) ?? [] }));
   }, [filtered]);
 
-  const title = mode === 'primary' ? 'Primary muscle' : 'Secondary muscles';
+  const title = mode === 'primary' ? t('newExercise.primary') : t('newExercise.secondary');
 
   const isSelected = (m: MuscleOut): boolean => {
     if (mode === 'primary') return selectedPrimaryId === m.id;
@@ -168,9 +171,9 @@ export function MusclePickerSheet({
             onPress={onClose}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Done"
+            accessibilityLabel={t('common.done')}
           >
-            <Text style={styles.done}>Done</Text>
+            <Text style={styles.done}>{t('common.done')}</Text>
           </Pressable>
         </View>
       </View>
@@ -182,7 +185,7 @@ export function MusclePickerSheet({
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search muscles"
+          placeholder={t('musclePicker.search')}
           placeholderTextColor={color.text3}
           autoCorrect={false}
           autoCapitalize="none"
@@ -206,11 +209,11 @@ export function MusclePickerSheet({
             <ActivityIndicator color={color.text3} />
           </View>
         ) : filtered.length === 0 ? (
-          <Text style={styles.empty}>No muscles match "{query.trim()}"</Text>
+          <Text style={styles.empty}>{t('musclePicker.noMatch', { query: query.trim() })}</Text>
         ) : (
           grouped.map(({ group, items }) => (
             <View key={group} style={styles.group}>
-              <Text style={styles.groupLabel}>{group.toUpperCase()}</Text>
+              <Text style={styles.groupLabel}>{groupLabel(group, getLang()).toUpperCase()}</Text>
               {items.map((m) => {
                 const selected = isSelected(m);
                 return (

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { color, font, themed, withAlpha } from '../theme/tokens';
@@ -11,7 +12,7 @@ export function PrPill({ count }: { count: number }) {
   return (
     <View style={styles.pill}>
       <StarIcon size={12} color={color.success} strokeWidth={2.4} />
-      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.text}>{count} PR</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.text}>{t('pr.pill', { count })}</Text>
     </View>
   );
 }

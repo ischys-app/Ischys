@@ -10,6 +10,7 @@
  * number on the sheet is in the unit of the bar and plates it describes — a
  * pound rack reads "225 lb" and "45 lb × 2", never a converted kilogram.
  */
+import { t } from '../../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -49,7 +50,7 @@ const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 /** "25 + 15 + 1.25" — the stack read out the way a lifter would say it. */
 const stackLabel = (plates: PlateStack): string =>
   plates.length === 0
-    ? 'bar only'
+    ? t('plateSheet.barOnly')
     : plates.flatMap((p) => Array<number>(p.n).fill(p.kg)).map(fmt).join(' + ');
 
 /**
@@ -90,13 +91,13 @@ function LoadDetail({ load, unit }: { load: PlateLoad; unit: Unit }) {
   return (
     <>
       <View style={styles.eachSideRow}>
-        <Text style={styles.eachSideLabel}>EACH SIDE</Text>
+        <Text style={styles.eachSideLabel}>{t('plateSheet.eachSide')}</Text>
         <Text style={styles.eachSideValue}>{fmt(load.perSideKg)} {unit}</Text>
       </View>
       <PlateDrawing plates={load.plates} unit={unit} />
       <View style={styles.plateList}>
         {load.plates.length === 0 ? (
-          <Text style={styles.plateRow}>Just the bar</Text>
+          <Text style={styles.plateRow}>{t('plateSheet.justBar')}</Text>
         ) : (
           load.plates.map((p) => (
             <Text key={p.kg} style={styles.plateRow}>
@@ -141,21 +142,21 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Plates</Text>
+        <Text style={styles.title}>{t('plateSheet.title')}</Text>
         <Pressable onPress={onEditSetup} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.barChip}>{fmt(setup.barKg)} {unit} bar</Text>
+          <Text style={styles.barChip}>{t('plateSheet.bar', { weight: fmt(setup.barKg), unit })}</Text>
         </Pressable>
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
         {solution?.kind === 'below-bar' && (
           <View style={styles.belowBar}>
-            <Text style={styles.belowBarTitle}>Lighter than the bar</Text>
+            <Text style={styles.belowBarTitle}>{t('plateSheet.lighter')}</Text>
             <Text style={styles.belowBarBody}>
-              The bar alone is {fmt(setup.barKg)} {unit}.
+              {t('plateSheet.barAlone', { weight: fmt(setup.barKg), unit })}
             </Text>
             <Pressable onPress={onEditSetup} hitSlop={8} accessibilityRole="button">
-              <Text style={styles.switchBar}>Switch bar</Text>
+              <Text style={styles.switchBar}>{t('plateSheet.switchBar')}</Text>
             </Pressable>
           </View>
         )}
@@ -163,15 +164,15 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
         {rounded && (
           <>
             <Text style={styles.warning}>
-              {`${fmt(toDisplay(targetKg, unit) ?? 0)} ${unit} can't be loaded exactly. `}
+              {`${t('plateSheet.cantLoad', { weight: fmt(toDisplay(targetKg, unit) ?? 0), unit })} `}
               {rounded.stepKg > 0
-                ? `The smallest plate is ${fmt(rounded.stepKg / 2)} ${unit}, so the weight goes up in ${fmt(rounded.stepKg)} ${unit} steps.`
-                : 'There are no plates set up yet.'}
+                ? t('plateSheet.steps', { plate: fmt(rounded.stepKg / 2), step: fmt(rounded.stepKg), unit })
+                : t('plateSheet.noPlates')}
             </Text>
             <View style={styles.options}>
               {([
-                { load: rounded.below, heavier: false, tag: 'LIGHTER' },
-                { load: rounded.above, heavier: true, tag: 'HEAVIER' },
+                { load: rounded.below, heavier: false, tag: 'lighter' },
+                { load: rounded.above, heavier: true, tag: 'heavier' },
               ] as const).map(({ load, heavier, tag }) =>
                 load ? (
                   <Pressable
@@ -182,7 +183,9 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
                     accessibilityState={{ selected: chosen === load }}
                   >
                     <Text style={styles.optionTag}>
-                      {chosen === load ? `${tag} · SELECTED` : tag}
+                      {chosen === load
+                        ? t('plateSheet.selected', { tag: t(`plateSheet.${tag}Tag`) })
+                        : t(`plateSheet.${tag}Tag`)}
                     </Text>
                     <Text style={styles.optionKg}>{fmt(load.totalKg)} {unit}</Text>
                     <Text style={styles.optionDetail}>{stackLabel(load.plates)}</Text>
@@ -202,7 +205,7 @@ export function PlateSheet({ visible, targetKg, setup, onUse, onEditSetup, onClo
           onPress={() => onUse(loadToKg(chosen.totalKg, setup))}
           accessibilityRole="button"
         >
-          <Text style={styles.useText}>Use {fmt(chosen.totalKg)} {unit}</Text>
+          <Text style={styles.useText}>{t('plateSheet.use', { weight: fmt(chosen.totalKg), unit })}</Text>
         </PressableScale>
       )}
     </DraggableSheet>

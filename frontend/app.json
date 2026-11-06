@@ -18,7 +18,11 @@
         "NSSupportsLiveActivities": true,
         "ITSAppUsesNonExemptEncryption": false,
         "NSHealthShareUsageDescription": "Ischys reads your heart rate during a workout when an Apple Watch is recording it, and your bodyweight when you choose to fill it in from Health.",
-        "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness."
+        "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness.",
+        "CFBundleLocalizations": [
+          "en",
+          "zh-Hans"
+        ]
       },
       "entitlements": {
         "com.apple.security.application-groups": [
@@ -70,10 +74,29 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": [
+              "en",
+              "zh-Hans"
+            ],
+            "android": [
+              "en",
+              "zh-CN"
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "en": "./locales/en.json",
+      "zh-Hans": "./locales/zh-Hans.json"
     }
   }
 }

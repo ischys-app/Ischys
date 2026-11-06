@@ -1,6 +1,8 @@
 // Polyfill crypto.getRandomValues before anything (uuid v4 in the local repo
 // needs it; React Native/Hermes doesn't provide it natively). Must be first.
 import 'react-native-get-random-values';
+// Resolve the UI language before any screen module renders text.
+import '../src/i18n';
 
 import {
   JetBrainsMono_400Regular,
@@ -58,6 +60,7 @@ import {
 import { parseServerDate } from '../src/lib/serverTime';
 import { color } from '../src/theme/tokens';
 import { ThemeProvider, useThemed } from '../src/theme/ThemeProvider';
+import { t } from '../src/i18n';
 
 /**
  * Live Activity taps are drained here, not in the workout screen: an intent can
@@ -232,8 +235,8 @@ function useWatchFinish(dbReady: boolean) {
           // Usually in the background, woken by the Watch, maybe locked: the
           // alert waits until the user opens the app.
           alertWhenActive(
-            'Couldn’t finish workout',
-            'Nothing was changed. Open the workout and try again.',
+            t('workout.finishFailedTitle'),
+            t('workout.finishFailedBackground'),
           );
           return;
         }

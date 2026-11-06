@@ -20,17 +20,14 @@
 import type { RecordMetric } from '../api/types.ts';
 import { computeRecords, recordDisplay, type PRSession, type PRSet, type RecordValue } from './records.ts';
 import { groupLabels, roundCount } from './supersets.ts';
+import { fmtDayMonthOf, fmtLongDay, fmtMonthNames, fmtShortDay } from '../lib/format.ts';
+import { t } from '../i18n/t.ts';
 import { parseWeight, toDisplay, toKg, weightText, type Unit } from './units.ts';
 
 export type EditSetType = 'normal' | 'warmup' | 'drop' | 'failure';
 
 const TYPE_CYCLE: EditSetType[] = ['normal', 'warmup', 'drop', 'failure'];
-const TYPE_WORD: Record<EditSetType, string> = {
-  normal: 'normal',
-  warmup: 'warm-up',
-  drop: 'drop',
-  failure: 'failure',
-};
+const typeWord = (type: EditSetType): string => t(`workoutEdit.type.${type}`);
 
 // --- the workout as stored ---------------------------------------------------
 
@@ -500,7 +497,7 @@ function blockers(s: EditSession): { sets: Set<string>; exercises: Set<string> }
 export function exerciseHint(s: EditSession, exId: string): string | null {
   const ex = s.exercises.find((e) => e.id === exId);
   if (!ex || ex.removed || ex.sets.length > 0) return null;
-  return blockers(s).exercises.has(exId) ? 'Add a set, or remove this exercise.' : null;
+  return blockers(s).exercises.has(exId) ? t('workoutEdit.noSetHint') : null;
 }
 
 // --- the list on screen (13b) ------------------------------------------------
@@ -547,11 +544,11 @@ export function exerciseRows(s: EditSession): ExerciseRow[] {
     if (cards.length === group.length) {
       // Rounds are a count here: every one of them is done.
       const rounds = Math.max(...cards.map((e) => roundCount(e.sets)));
-      return `· ${rounds} ${rounds === 1 ? 'ROUND' : 'ROUNDS'}`;
+      return t('workoutEdit.ssRounds', { count: rounds });
     }
     // As `buildPlan` decides it: an addition with nothing logged is not saved.
     const left = cards.filter((e) => storedEx.has(e.id) || finalSets(s, e, stored).length > 0).length;
-    return left < 2 ? '· ENDS WHEN SAVED' : `· ${left} AFTER SAVE`;
+    return left < 2 ? t('workoutEdit.ssEndsWhenSaved') : t('workoutEdit.ssAfterSave', { count: left });
   };
 
   return shown.map((e, i) => {
@@ -563,11 +560,11 @@ export function exerciseRows(s: EditSession): ExerciseRow[] {
     return {
       exercise: e,
       removed: e.removed,
-      removedLabel: e.removed ? `REMOVED · ${setCount} ${setCount === 1 ? 'SET' : 'SETS'}` : null,
+      removedLabel: e.removed ? t('workoutEdit.removedLabel', { count: setCount }) : null,
       tag: letter ? `${letter}${group.findIndex((x) => x.id === e.id) + 1}` : null,
       header:
         letter && group.length >= 2 && group[0].id === e.id
-          ? { label: `SUPERSET ${letter}`, note: noteFor(group) }
+          ? { label: t('workoutEdit.ssHeader', { letter }), note: noteFor(group) }
           : null,
       railAbove: g != null && shown[i - 1]?.supersetGroup === g,
       railBelow: g != null && shown[i + 1]?.supersetGroup === g,
@@ -628,13 +625,13 @@ export function wasLabel(s: EditSession, exId: string, setId: string): string {
   const set = ex?.sets.find((x) => x.id === setId);
   if (!ex || !set) return '';
   const found = originalSets(s).get(setId);
-  if (!found) return blockers(s).sets.has(setId) ? 'needs reps' : 'new';
+  if (!found) return blockers(s).sets.has(setId) ? t('workoutEdit.was.needsReps') : t('workoutEdit.was.new');
   const was = found.set;
-  if (!was.done) return set.done ? 'now done' : 'not done';
+  if (!was.done) return set.done ? t('workoutEdit.was.nowDone') : t('workoutEdit.was.notDone');
   const weight = weightKg(set.weight, was, s.unit);
   const reps = repsOf(set.reps);
-  if (weight !== was.weight || reps !== was.reps) return `was ${setText(found.ex, was, s.unit)}`;
-  if (set.type !== was.type) return `was ${TYPE_WORD[was.type]}`;
+  if (weight !== was.weight || reps !== was.reps) return t('workoutEdit.was.value', { value: setText(found.ex, was, s.unit) });
+  if (set.type !== was.type) return t('workoutEdit.was.value', { value: typeWord(was.type) });
   return '';
 }
 
@@ -1001,28 +998,26 @@ export function durationFromParts(hours: number, minutes: number, stored?: numbe
   return hours * 3600 + minutes * 60;
 }
 
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-export const MONTH_NAMES: readonly string[] = MONTH;
+/** The month wheel's labels in the current language. */
+export function monthNames(): readonly string[] {
+  return fmtMonthNames();
+}
 
 /** "Tue 7 Jul" — the DATE cell. */
 export function fmtCellDate(ms: number): string {
-  const d = new Date(ms);
-  return `${WEEKDAY[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()]}`;
+  return fmtShortDay(new Date(ms));
 }
 
 /** "Tue, 7 Jul 2026" — the picker's Date row. */
 export function fmtLongDate(ms: number): string {
-  const d = new Date(ms);
-  return `${WEEKDAY[d.getDay()]}, ${d.getDate()} ${MONTH[d.getMonth()]} ${d.getFullYear()}`;
+  return fmtLongDay(new Date(ms));
 }
 
 /** "23 Jun" — where a record falls back to. */
 export function fmtDayMonth(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getDate()} ${MONTH[d.getMonth()]}`;
+  return fmtDayMonthOf(new Date(ms));
 }
 
 /** "09:06", local time. */
@@ -1152,12 +1147,7 @@ export function recordImpact(s: EditSession, ctx: RecordContext): RecordChange[]
   return out;
 }
 
-const METRIC_LABEL: Record<RecordMetric, string> = {
-  best_set: 'HEAVIEST WEIGHT',
-  est_1rm: 'EST. 1RM',
-  max_reps: 'MOST REPS',
-  best_volume: 'BEST VOLUME',
-};
+const metricLabel = (metric: RecordMetric): string => t(`workoutEdit.metric.${metric}`);
 
 const EM_DASH = '—';
 
@@ -1172,24 +1162,20 @@ export function recordRow(change: RecordChange, unit: Unit): RecordRow {
     return recordDisplay(change.metric, v.value, v.display, unit);
   };
   const gained = change.kind === 'gained';
-  let note = 'New record';
+  let note = t('workoutEdit.note.new');
   if (!gained) {
     note =
       change.to == null
-        ? 'No earlier record'
+        ? t('workoutEdit.note.none')
         : change.to.achievedAt != null
-          ? `From ${fmtDayMonth(change.to.achievedAt)}`
-          : 'From your history';
+          ? t('workoutEdit.note.from', { date: fmtDayMonth(change.to.achievedAt) })
+          : t('workoutEdit.note.history');
   }
-  return { metric: METRIC_LABEL[change.metric], from: text(change.from), to: text(change.to), note, gained };
+  return { metric: metricLabel(change.metric), from: text(change.from), to: text(change.to), note, gained };
 }
 
-const LINE_PREFIX: Record<RecordMetric, string> = {
-  best_set: '',
-  max_reps: '',
-  est_1rm: 'Est. 1RM ',
-  best_volume: 'Volume ',
-};
+const linePrefix = (metric: RecordMetric): string =>
+  metric === 'est_1rm' ? `${t('workoutEdit.prefix.est1rm')} ` : metric === 'best_volume' ? `${t('workoutEdit.prefix.volume')} ` : '';
 
 /**
  * The one neutral line a card shows while its exercise has a record moving:
@@ -1200,11 +1186,15 @@ export function recordLine(changes: readonly RecordChange[], unit: Unit): string
   const change = changes.find((c) => c.kind === 'lost') ?? changes[0];
   if (!change) return null;
   const full = (v: RecordValue) =>
-    `${LINE_PREFIX[change.metric]}${recordDisplay(change.metric, v.value, v.display, unit)}`;
-  if (change.kind === 'gained') return change.to ? `${full(change.to)} is a new record.` : null;
+    `${linePrefix(change.metric)}${recordDisplay(change.metric, v.value, v.display, unit)}`;
+  if (change.kind === 'gained') return change.to ? t('workoutEdit.line.newRecord', { value: full(change.to) }) : null;
   if (!change.from) return null;
-  const head = `${full(change.from)} was a record.`;
-  if (!change.to) return `${head} No earlier record.`;
-  const when = change.to.achievedAt != null ? ` · ${fmtDayMonth(change.to.achievedAt)}` : '';
-  return `${head} Falls back to ${full(change.to)}${when}`;
+  const value = full(change.from);
+  if (!change.to) return t('workoutEdit.line.wasRecordNone', { value });
+  if (change.to.achievedAt == null) return t('workoutEdit.line.fallsBack', { value, to: full(change.to) });
+  return t('workoutEdit.line.fallsBackOn', {
+    value,
+    to: full(change.to),
+    date: fmtDayMonth(change.to.achievedAt),
+  });
 }

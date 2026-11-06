@@ -1,4 +1,5 @@
 /** Popover menu anchored under an exercise's "⋯" button. */
+import { t } from '../../i18n';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { color, font, themed } from '../../theme/tokens';
@@ -31,20 +32,20 @@ export function ExerciseMenu({
         onPress={onReorderStart}
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Reorder exercises"
+        accessibilityLabel={t('exerciseMenu.reorder')}
       >
         <ReorderIcon size={15} color={color.text1} strokeWidth={2.2} />
-        <Text style={styles.itemText}>Reorder exercises</Text>
+        <Text style={styles.itemText}>{t('exerciseMenu.reorder')}</Text>
       </Pressable>
 
       <Pressable
         onPress={onReplace}
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Replace exercise"
+        accessibilityLabel={t('exerciseMenu.replace')}
       >
         <SyncIcon size={15} color={color.text1} strokeWidth={2.2} />
-        <Text style={styles.itemText}>Replace exercise</Text>
+        <Text style={styles.itemText}>{t('exerciseMenu.replace')}</Text>
       </Pressable>
 
       {onSuperset ? (
@@ -52,11 +53,11 @@ export function ExerciseMenu({
           onPress={onSuperset}
           style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
           accessibilityRole="button"
-          accessibilityLabel={inSuperset ? 'Leave superset' : 'Superset with another exercise'}
+          accessibilityLabel={inSuperset ? t('exerciseMenu.leaveSuperset') : t('exerciseMenu.supersetLabel')}
         >
           <ReorderIcon size={15} color={color.text1} strokeWidth={2.2} />
           <Text style={styles.itemText}>
-            {inSuperset ? 'Leave superset' : 'Superset with…'}
+            {inSuperset ? t('exerciseMenu.leaveSuperset') : t('exerciseMenu.supersetWith')}
           </Text>
         </Pressable>
       ) : null}
@@ -67,10 +68,10 @@ export function ExerciseMenu({
         onPress={onRemove}
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Remove exercise"
+        accessibilityLabel={t('exerciseMenu.remove')}
       >
         <TrashIcon size={15} color={color.error} strokeWidth={2.2} />
-        <Text style={[styles.itemText, styles.removeText]}>Remove exercise</Text>
+        <Text style={[styles.itemText, styles.removeText]}>{t('exerciseMenu.remove')}</Text>
       </Pressable>
     </View>
   );

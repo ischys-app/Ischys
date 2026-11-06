@@ -38,6 +38,10 @@ import { rankByUsage } from '../src/domain/exerciseRanking';
 import { registerPicker } from '../src/lib/exercisePicker';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { getLang } from '../src/i18n/current';
+import { equipmentLabel } from '../src/i18n/catalogNames';
+import { indexLetter } from '../src/data/labels';
+import { t } from '../src/i18n';
 
 const ALL = 'All';
 const DEFAULT_REST_SECONDS = 120;
@@ -58,11 +62,12 @@ type Group = { letter: string; items: ExerciseOut[] };
 /** How many trained lifts the shortcut section shows before it stops being one. */
 const TOP_LIFTS = 12;
 
-/** Group exercises alphabetically by first-letter of `name`. */
+/** Group exercises by the index letter of `name` (pinyin initial under zh-Hans). */
 function groupByLetter(items: ExerciseOut[]): Group[] {
+  const lang = getLang();
   const byLetter = new Map<string, ExerciseOut[]>();
   for (const ex of items) {
-    const L = (ex.name[0] ?? '#').toUpperCase();
+    const L = indexLetter(ex.name, lang);
     const arr = byLetter.get(L) ?? [];
     arr.push(ex);
     byLetter.set(L, arr);
@@ -132,7 +137,7 @@ export default function ExerciseLibrary() {
     try {
       const list = await listExercises({
         search: debouncedQuery || undefined,
-        category: filter !== ALL ? filter : undefined,
+        categoryId: filter !== ALL ? filter : undefined,
       });
       if (signal.cancelled) return;
       setExercises(list);
@@ -140,7 +145,7 @@ export default function ExerciseLibrary() {
       if (signal.cancelled) return;
       // Keep whatever list we already have — a transient failure (e.g. the DB
       // briefly unavailable right after unlock) must not blank a populated list.
-      setError(e instanceof Error ? e.message : 'Failed to load exercises');
+      setError(e instanceof Error ? e.message : t('library.loadFailed'));
     } finally {
       if (!signal.cancelled) setLoading(false);
     }
@@ -179,7 +184,7 @@ export default function ExerciseLibrary() {
     // user has already said what they want, and a shortcut would just repeat it.
     if (debouncedQuery || filter !== ALL) return letters;
     const top = rankByUsage(exercises, usage, { now: Date.now(), limit: TOP_LIFTS });
-    return top.length > 0 ? [{ title: 'YOUR LIFTS', data: top }, ...letters] : letters;
+    return top.length > 0 ? [{ title: t('library.yourLifts'), data: top }, ...letters] : letters;
   }, [exercises, usage, debouncedQuery, filter]);
   const selCount = selected.size;
   const isEmpty = !loading && exercises.length === 0;
@@ -257,14 +262,18 @@ export default function ExerciseLibrary() {
       );
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to add exercises');
+      setError(e instanceof Error ? e.message : t('library.addFailed'));
       addingRef.current = false;
       setAdding(false);
     }
   };
 
-  // Chip list: prepend "All" to the fetched categories.
-  const chipLabels = useMemo(() => [ALL, ...categories.map((c) => c.name)], [categories]);
+  // Chip list: prepend "All" to the fetched categories. The filter holds a
+  // category id (or ALL); the chip shows its label.
+  const chips = useMemo(
+    () => [{ key: ALL, label: t('library.all') }, ...categories.map((c) => ({ key: c.id, label: c.name }))],
+    [categories],
+  );
 
   const headerBottom = 158; // px reserved for the absolute header (matches HTML).
   const ctaHeight = 52;
@@ -323,8 +332,8 @@ export default function ExerciseLibrary() {
           isEmpty ? (
             <Text style={styles.empty}>
               {debouncedQuery
-                ? `No exercises match "${debouncedQuery}"`
-                : 'No exercises found'}
+                ? t('library.noMatch', { query: debouncedQuery })
+                : t('library.noneFound')}
             </Text>
           ) : null
         }
@@ -334,16 +343,16 @@ export default function ExerciseLibrary() {
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
         <View style={styles.headerTop}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={styles.cancel}>{t('common.cancel')}</Text>
           </Pressable>
-          <Text style={styles.title}>Add Exercise</Text>
+          <Text style={styles.title}>{t('editWorkout.addExercise')}</Text>
           <Pressable
             onPress={() => router.push('/exercise/new')}
             hitSlop={8}
             style={styles.newRow}
           >
             <PlusIcon size={15} color={color.accent} strokeWidth={2.4} />
-            <Text style={styles.new}>New</Text>
+            <Text style={styles.new}>{t('library.new')}</Text>
           </Pressable>
         </View>
 
@@ -356,8 +365,8 @@ export default function ExerciseLibrary() {
             onChangeText={setQuery}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            placeholder="Search exercises"
-            accessibilityLabel="Search exercises"
+            placeholder={t('library.search')}
+            accessibilityLabel={t('library.search')}
             placeholderTextColor={color.text3}
             returnKeyType="search"
             autoCorrect={false}
@@ -381,12 +390,12 @@ export default function ExerciseLibrary() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsContent}
         >
-          {chipLabels.map((label) => {
-            const active = filter === label;
+          {chips.map(({ key, label }) => {
+            const active = filter === key;
             return (
               <Pressable
-                key={label}
-                onPress={() => setFilter(label)}
+                key={key}
+                onPress={() => setFilter(key)}
                 style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
               >
                 <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
@@ -413,7 +422,7 @@ export default function ExerciseLibrary() {
               style={styles.mergeCta}
             >
               <MergeGlyph size={16} color={color.text1} />
-              <Text style={styles.mergeCtaText}>{`Merge ${selCount}`}</Text>
+              <Text style={styles.mergeCtaText}>{t('library.merge', { n: selCount })}</Text>
             </PressableScale>
           ) : null}
           {/* Only with a partner to pair with, and only when adding to a
@@ -424,7 +433,7 @@ export default function ExerciseLibrary() {
               disabled={adding}
               style={styles.mergeCta}
             >
-              <Text style={styles.mergeCtaText}>Add as superset</Text>
+              <Text style={styles.mergeCtaText}>{t('library.addSuperset')}</Text>
             </PressableScale>
           ) : null}
           <PressableScale
@@ -436,7 +445,7 @@ export default function ExerciseLibrary() {
               <ActivityIndicator color={color.accentFg} />
             ) : (
               <Text style={styles.ctaText}>
-                {`Add ${selCount} ${selCount === 1 ? 'exercise' : 'exercises'}`}
+                {t('library.addCount', { count: selCount })}
               </Text>
             )}
           </PressableScale>
@@ -467,7 +476,8 @@ function ExerciseRow({
   useThemed();
   const router = useRouter();
   const category = exercise.category?.name;
-  const meta = category ? `${exercise.equipment} · ${category}` : exercise.equipment;
+  const equipment = equipmentLabel(exercise.equipment, getLang());
+  const meta = category ? `${equipment} · ${category}` : equipment;
 
   const openDetail = () =>
     router.push(
@@ -489,7 +499,7 @@ function ExerciseRow({
       accessibilityRole="button"
       accessibilityState={selectable ? { selected } : undefined}
       accessibilityLabel={exercise.name}
-      accessibilityHint={selectable ? 'Selects this exercise' : 'Opens exercise details'}
+      accessibilityHint={selectable ? t('library.selectHint') : t('library.opensHint')}
     >
       {/* A selection circle up front, so a row reads as selectable before it is
           tapped. Without it, whole-row tapping isn't discoverable. */}
@@ -531,7 +541,7 @@ function ExerciseRow({
           }}
           hitSlop={4}
           accessibilityRole="button"
-          accessibilityLabel={`About ${exercise.name}`}
+          accessibilityLabel={t('library.aboutLabel', { name: exercise.name })}
         >
           {({ pressed }) => (
             <InfoIcon size={20} color={pressed ? color.text1 : color.text3} strokeWidth={2} />

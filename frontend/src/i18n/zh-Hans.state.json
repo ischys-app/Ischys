@@ -3390,11 +3390,11 @@
   },
   "ui:import.into": {
     "enHash": "ce7edb933eb1ced7",
-    "status": "ok"
+    "status": "manual"
   },
   "ui:import.asUnit": {
     "enHash": "9915271527d3273d",
-    "status": "ok"
+    "status": "manual"
   },
   "ui:import.importing": {
     "enHash": "c01c4324f1fa14fc",

@@ -186,7 +186,7 @@ export default function ProfileDetailScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.avatarWrap}>
-            <ProfileAvatar profile={{ initials: shownInitials }} size={84} />
+            <ProfileAvatar profile={{ initials: shownInitials, name }} size={84} />
           </View>
 
           <View style={styles.fields}>

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import zh from '../i18n/strings/zh-Hans.json' with { type: 'json' };
 import {
   addDays,
   daysBetween,
@@ -135,11 +136,27 @@ test('zh-Hans history group titles', () => {
 });
 
 test('zh-Hans words come from the string table, English when untranslated', () => {
-  assert.equal(metricLabel('best_set', 'en'), 'Best Set');
-  assert.equal(metricLabel('best_set', 'zh-Hans'), 'Best Set');
+  const table = zh as unknown as Record<string, string>;
   const now = new Date('2026-07-11T12:00:00Z');
+
+  // Translated: zh output is exactly the value in the string table.
+  assert.equal(metricLabel('best_set', 'en'), 'Best Set');
+  assert.equal(metricLabel('best_set', 'zh-Hans'), table['record.bestSet']);
   assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'en'), '1h ago');
-  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), '1h ago');
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), table['ago.hours'].replace('{n}', '1'));
+
+  // Untranslated: remove the keys from the imported table; zh falls back to English.
+  const savedBestSet = table['record.bestSet'];
+  const savedHours = table['ago.hours'];
+  delete table['record.bestSet'];
+  delete table['ago.hours'];
+  try {
+    assert.equal(metricLabel('best_set', 'zh-Hans'), 'Best Set');
+    assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'zh-Hans'), '1h ago');
+  } finally {
+    table['record.bestSet'] = savedBestSet;
+    table['ago.hours'] = savedHours;
+  }
 });
 
 import { fmtCardDay, fmtDayMonthOf, fmtLongDay, fmtMonthNames, fmtShortDay } from './format.ts';

@@ -8,11 +8,18 @@
  * Plural keys: zh has no singular, so `x_one` is skipped when `x_other` exists
  * and only `_other` is translated.
  * The API key comes from DEEPSEEK_API_KEY only and is never printed.
+ *
+ * State (src/i18n/zh-Hans.state.json) keeps, per key, enHash (hash of the English the
+ * translation answers) and, for ok/manual keys, zhHash (hash of the shipped Chinese).
+ * The shipped guard test fails when either no longer matches, so a hand edit is caught.
+ * To mark a hand fix `manual`: edit the Chinese value in its file, then set that key's
+ * state to { enHash: hashEn(current English), status: 'manual', zhHash: hashEn(new Chinese) }
+ * (hashEn is in scripts/i18n/core.mjs). Review never changes a manual entry.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
+import { CATALOG_NS, collectSources as collectSourcesFrom } from './sources.mjs';
 import { applyReview as applyVerdicts, buildPrompt, hashEn, invalidateStale, needsTranslation, parseResponse } from './core.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -37,33 +44,7 @@ const writeJson = (p, v) => {
   writeFileSync(p, JSON.stringify(v, null, 2) + '\n');
 };
 
-const CATALOG_NS = { ex: 'exercises', mu: 'muscles', cat: 'categories', grp: 'groups', eq: 'equipment' };
-
-async function collectSources() {
-  const items = [];
-  const { strings } = await import(pathToFileURL(join(ROOT, 'src/i18n/strings/en.ts')).href);
-  for (const [k, def] of Object.entries(strings)) {
-    if (k.endsWith('_one') && `${k.slice(0, -4)}_other` in strings) continue;
-    items.push({ key: `ui:${k}`, en: def.en, note: def.note });
-  }
-  const cat = JSON.parse(execFileSync('node', [join(ROOT, 'scripts/catalogSource.mjs')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
-  const notes = {
-    ex: 'Exercise name (gym exercise; keep equipment in parentheses translated, e.g. (杠铃)). Use the common Chinese gym name.',
-    mu: 'Muscle name.',
-    cat: 'Exercise category.',
-    grp: 'Muscle group.',
-    eq: 'Equipment type.',
-  };
-  for (const [prefix, ns] of Object.entries(CATALOG_NS)) {
-    const src = cat[ns];
-    const pairs = Array.isArray(src) ? src.map((v) => [v, v]) : Object.entries(src);
-    for (const [id, en] of pairs) items.push({ key: `${prefix}:${id}`, en, note: notes[prefix] });
-  }
-  for (const [k, en] of Object.entries(readJson(P.plistEn, {}))) {
-    items.push({ key: `plist:${k}`, en, note: 'iOS system permission dialog or app-name text shown by the OS. Plain, polite, accurate.' });
-  }
-  return items;
-}
+const collectSources = () => collectSourcesFrom(ROOT);
 
 /** Load all target files; returns accessor functions keyed by namespaced key. */
 function loadTargets() {

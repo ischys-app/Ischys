@@ -3,20 +3,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { getLang, setLang } from './current.ts';
-import { isZh, t } from './t.ts';
+import { t } from './t.ts';
 
 test('defaults to English; unknown keys return the key', () => {
   assert.equal(getLang(), 'en');
-  assert.equal(isZh(), false);
   assert.equal(t('no.such.key'), 'no.such.key');
 });
 
-test('isZh follows setLang', () => {
+test('unknown keys return the key in zh too', () => {
   setLang('zh-Hans');
-  assert.equal(isZh(), true);
   assert.equal(t('no.such.key'), 'no.such.key');
   setLang('en');
-  assert.equal(isZh(), false);
 });
 
 test('import button reads as one phrase in both languages', () => {

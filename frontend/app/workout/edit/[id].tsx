@@ -16,7 +16,7 @@
  * match (#90), best-effort, and never as part of the save itself.
  */
 import { t } from '../../../src/i18n';
-import { workoutLabel } from '../../../src/i18n/workoutLabel';
+import { workoutLabel } from '../../../src/i18n/defaultLabels';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {

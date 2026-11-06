@@ -48,6 +48,7 @@ import { textScale } from '../../src/theme/textScale';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { t } from '../../src/i18n';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
 
 const WATCH_NAME = Platform.OS === 'ios' ? 'Apple Watch' : 'Watch';
 
@@ -103,7 +104,7 @@ export default function NewProfileScreen() {
   const initials = initialsTyped || derived;
   const duplicate = duplicateProfileName(trimmed, rows);
   const owner = rows.find((r) => r.isOwner);
-  const ownerText = ownerLabel(owner?.name ?? DEFAULT_NAME, DEFAULT_NAME);
+  const ownerText = ownerLabel(profileNameLabel(owner?.name ?? DEFAULT_NAME), profileNameLabel(DEFAULT_NAME));
   const canAdd = trimmed !== '' && initials !== '' && !busy;
 
   const onAdd = async () => {

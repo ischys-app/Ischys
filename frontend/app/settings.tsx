@@ -64,6 +64,7 @@ import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvider';
 import { t } from '../src/i18n';
+import { profileNameLabel } from '../src/i18n/defaultLabels';
 
 /**
  * The shipped version, read from the build rather than retyped — these strings
@@ -342,7 +343,7 @@ export default function Settings() {
   const { profile, count } = useActiveProfile();
   const layout: 'off' | 'single' | 'multi' = !PROFILES_ENABLED ? 'off' : count >= 2 ? 'multi' : 'single';
   const multi = layout === 'multi';
-  const first = firstName(profile.name) || profile.name;
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
   const profileScope: SectionScope = { kind: 'profile', profile };
   const healthShown = Platform.OS === 'ios' || healthAvailability() !== 'unavailable';
 
@@ -569,7 +570,7 @@ export default function Settings() {
             <Section title={t('settings.sectionData')} scope={profileScope}>
               <LinkRow
                 icon={<UploadIcon size={20} color={color.text2} />}
-                label={t('settings.exportWhose', { whose: possessive(profile.name) })}
+                label={t('settings.exportWhose', { whose: possessive(profileNameLabel(profile.name)) })}
                 value={t('profiles.exportFormats')}
                 sub={exportFileStem(count, profile.name, new Date()).toUpperCase()}
                 onPress={onExport}
@@ -583,7 +584,7 @@ export default function Settings() {
               />
               <MergeRow
                 count={dupCount}
-                sub={t('settings.inHistory', { whose: possessive(profile.name).toUpperCase() })}
+                sub={t('settings.inHistory', { whose: possessive(profileNameLabel(profile.name)).toUpperCase() })}
                 onPress={() => router.push('/merge-duplicates')}
               />
             </Section>
@@ -1153,13 +1154,13 @@ function PersonRow({ profile, sub, onPress }: { profile: ProfileRow; sub: string
       onPress={onPress}
       style={({ pressed }) => [pressed && styles.rowPressed]}
       accessibilityRole="button"
-      accessibilityLabel={t('settings.managePerson', { name: profile.name })}
+      accessibilityLabel={t('settings.managePerson', { name: profileNameLabel(profile.name) })}
     >
       <View style={[styles.row, styles.personRow, styles.rowDivider]}>
         <ProfileAvatar profile={profile} size={40} tint={color.accent} />
         <View style={styles.rowLabelCol}>
           <Text style={styles.personName} numberOfLines={1}>
-            {profile.name}
+            {profileNameLabel(profile.name)}
           </Text>
           <Text style={styles.rowSub} numberOfLines={1}>
             {sub}

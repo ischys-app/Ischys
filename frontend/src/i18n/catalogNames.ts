@@ -75,7 +75,7 @@ export function muscleNameLabel(name: string, lang: Lang): string {
  * label). `null` means write nothing: the label was left as is, so the stored
  * English name must not be overwritten with a translation.
  */
-export function nameToStore(input: string, ex: { name: string; englishName: string }): string | null {
+export function nameToStore(input: string, ex: { name: string }): string | null {
   const trimmed = input.trim();
   return trimmed === ex.name ? null : trimmed;
 }

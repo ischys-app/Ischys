@@ -143,6 +143,8 @@ test('applyReview: ok marks ok, flagged deletes zh and keeps reason', () => {
     t,
   );
   assert.equal(state.a.status, 'ok');
+  assert.equal(state.a.zhHash, core.hashEn('甲'));
+  assert.equal(state.b.zhHash, undefined);
   assert.equal(state.b.status, 'flagged');
   assert.equal(state.b.reason, 'slang');
   assert.equal(t.m.b, undefined);

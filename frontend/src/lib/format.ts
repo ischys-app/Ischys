@@ -9,6 +9,9 @@ import { createTranslator } from '../i18n/translate.ts';
 const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const WEEKDAY_TITLE = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_UPPER = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+// NOTE: the Chinese date literals below (WEEKDAY_ZH, zhDay) are hand-written.
+// They are outside the translation review state (zh-Hans.state.json) and the
+// shipped guard, so change them by hand and review them yourself.
 const WEEKDAY_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 /** Chinese month-day, e.g. "7月8日"; with year, "2026年7月8日". */

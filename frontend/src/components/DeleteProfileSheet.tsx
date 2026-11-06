@@ -22,6 +22,7 @@ import { UploadIcon } from './icons';
 import { PressableScale } from './PressableScale';
 import { ProfileAvatar } from './ProfileAvatar';
 import { t } from '../i18n';
+import { profileNameLabel } from '../i18n/defaultLabels';
 
 type Props = {
   visible: boolean;
@@ -60,7 +61,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
     };
   }, [visible, profile.id]);
 
-  const first = firstName(profile.name) || profile.name;
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
 
   const run = async (kind: 'export' | 'delete', fn: () => Promise<void>) => {
     if (busyRef.current) return;
@@ -98,7 +99,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
           // it from a system alert, which needs no mounted screen.
           Alert.alert(
             t('deleteProfile.alertTitle', { name: first }),
-            t('deleteProfile.alertBody', { whose: possessive(profile.name) }),
+            t('deleteProfile.alertBody', { whose: possessive(profileNameLabel(profile.name)) }),
           );
         }
         return;
@@ -106,7 +107,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
       onDeleted();
     });
 
-  const body = counts ? deleteSheetBody(profile.name, counts) : null;
+  const body = counts ? deleteSheetBody(profileNameLabel(profile.name), counts) : null;
 
   return (
     <DraggableSheet visible={visible} onClose={busy ? () => {} : onClose} sheetStyle={styles.sheet}>
@@ -114,7 +115,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
       <View style={styles.head}>
         <ProfileAvatar profile={profile} size={40} />
         <Text style={styles.title} maxFontSizeMultiplier={textScale.display} accessibilityRole="header">
-          {t('deleteProfile.title', { name: profile.name })}
+          {t('deleteProfile.title', { name: profileNameLabel(profile.name) })}
         </Text>
       </View>
       <Text style={styles.body}>
@@ -128,7 +129,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
                 part.text
               ),
             )
-          : t('deleteProfile.bodyPlain', { whose: possessive(profile.name) })}
+          : t('deleteProfile.bodyPlain', { whose: possessive(profileNameLabel(profile.name)) })}
       </Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
       <View style={styles.buttons}>
@@ -137,7 +138,7 @@ export function DeleteProfileSheet({ visible, profile, onClose, onDeleted }: Pro
           disabled={busy !== null}
           style={styles.exportBtn}
           accessibilityRole="button"
-          accessibilityLabel={t('deleteProfile.exportLabel', { whose: possessive(profile.name) })}
+          accessibilityLabel={t('deleteProfile.exportLabel', { whose: possessive(profileNameLabel(profile.name)) })}
           accessibilityState={{ disabled: busy !== null, busy: busy === 'export' }}
         >
           {busy === 'export' ? (

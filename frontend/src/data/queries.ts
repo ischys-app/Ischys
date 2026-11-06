@@ -61,7 +61,7 @@ export async function loadExercise(id: string): Promise<ExerciseOut | null> {
 }
 
 /** Primary-muscle label for volume/tags: group || name || "Other", as displayed. */
-export function muscleLabel(primary: MuscleRow | null | undefined): string {
+export function muscleTagFor(primary: MuscleRow | null | undefined): string {
   return muscleTag(primary, getLang());
 }
 
@@ -171,7 +171,7 @@ export async function muscleTagsByWorkout(workoutIds: string[]): Promise<Map<str
   const primaryByEx = new Map(exRows.map((e) => [e.id, e.primaryMuscleId ? muscleById.get(e.primaryMuscleId) ?? null : null]));
 
   for (const we of wes) {
-    const label = muscleLabel(primaryByEx.get(we.exerciseId) ?? null);
+    const label = muscleTagFor(primaryByEx.get(we.exerciseId) ?? null);
     const list = tags.get(we.workoutId) ?? [];
     if (!list.includes(label)) list.push(label);
     tags.set(we.workoutId, list);

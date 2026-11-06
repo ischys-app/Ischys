@@ -6,7 +6,8 @@ export function hashEn(s) {
 }
 
 /**
- * state: Record<key, { enHash, status: 'pending'|'ok'|'flagged'|'manual', reason? }>.
+ * state: Record<key, { enHash, status: 'pending'|'ok'|'flagged'|'manual', zhHash?, reason? }>.
+ * zhHash (ok and manual) is hashEn of the shipped Chinese; a manual edit must set it.
  * A key needs translating when it is new or its English changed. Unchanged keys
  * are skipped whatever their status, except flagged ones, which only come back
  * with retryFlagged. Manual fixes survive while the English hash is unchanged.
@@ -152,10 +153,12 @@ export function applyReview(entries, state, targets) {
     }
     if (e.status === 'ok') {
       s.status = 'ok';
+      s.zhHash = hashEn(e.zh);
       delete s.reason;
       result.ok++;
     } else {
       s.status = 'flagged';
+      delete s.zhHash;
       s.reason = e.reason || '';
       targets.del(e.key);
       result.flagged++;

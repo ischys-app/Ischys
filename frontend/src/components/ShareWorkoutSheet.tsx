@@ -37,7 +37,7 @@ import { PressableScale } from './PressableScale';
 import { StarIcon } from './icons';
 import { Wordmark } from './Wordmark';
 import { useThemed } from '../theme/ThemeProvider';
-import { workoutLabel } from '../i18n/workoutLabel';
+import { workoutLabel } from '../i18n/defaultLabels';
 
 type Layout = 'compact' | 'standard' | 'detailed';
 

@@ -1,5 +1,5 @@
 import { t } from '../../src/i18n';
-import { workoutLabel } from '../../src/i18n/workoutLabel';
+import { workoutLabel } from '../../src/i18n/defaultLabels';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';

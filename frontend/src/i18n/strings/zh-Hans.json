@@ -900,5 +900,7 @@
   "record.bodyweightAbbr": "自重",
   "mergeDup.confirm_other": "{sets} 组和 {count} 个训练计划将指向{name}。你的历史和个人纪录会保留——只删除重复项的空条目。",
   "import.into": "到 {name}",
-  "import.asUnit": "（{unit}）"
+  "import.asUnit": "（{unit}）",
+  "workout.emptyName": "空白训练",
+  "profile.defaultName": "运动员"
 }

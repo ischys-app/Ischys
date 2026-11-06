@@ -10,7 +10,7 @@ import { textScale } from '../theme/textScale';
 import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
 import { useThemed } from '../theme/ThemeProvider';
-import { workoutLabel } from '../i18n/workoutLabel';
+import { workoutLabel } from '../i18n/defaultLabels';
 
 /** A recent-workout summary card. */
 export function WorkoutCard({

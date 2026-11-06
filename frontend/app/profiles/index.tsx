@@ -34,6 +34,7 @@ import { textScale } from '../../src/theme/textScale';
 import { color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { t } from '../../src/i18n';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
 
 const ROW = 64;
 const SHIFT_DURATION = 180;
@@ -180,7 +181,7 @@ export default function ManageProfilesScreen() {
                     style={styles.handle}
                     {...responder(p.id).panHandlers}
                     accessible
-                    accessibilityLabel={t('profiles.reorderLabel', { name: p.name })}
+                    accessibilityLabel={t('profiles.reorderLabel', { name: profileNameLabel(p.name) })}
                     accessibilityHint={t('profiles.reorderHint')}
                     accessibilityActions={[
                       { name: 'moveUp', label: t('profiles.moveUp') },
@@ -197,12 +198,12 @@ export default function ManageProfilesScreen() {
                     disabled={dragId !== null}
                     style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
                     accessibilityRole="button"
-                    accessibilityLabel={t('profiles.rowLabel', { name: p.name, sub: manageSubline(p).toLowerCase() })}
+                    accessibilityLabel={t('profiles.rowLabel', { name: profileNameLabel(p.name), sub: manageSubline(p).toLowerCase() })}
                   >
                     <ProfileAvatar profile={p} size={40} />
                     <View style={styles.texts}>
                       <Text style={styles.name} numberOfLines={1}>
-                        {p.name}
+                        {profileNameLabel(p.name)}
                       </Text>
                       <Text style={styles.sub} numberOfLines={1} maxFontSizeMultiplier={textScale.fixed}>
                         {manageSubline(p)}

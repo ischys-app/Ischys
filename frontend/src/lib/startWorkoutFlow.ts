@@ -7,6 +7,7 @@ import { t } from '../i18n/t';
 
 import { listWorkouts, startWorkout } from '../api/workouts';
 import { createStartGuard, type RunningChoice, type RunningWorkout, type StartOutcome } from './startGuard';
+import { workoutLabel } from '../i18n/defaultLabels';
 
 const guard = createStartGuard();
 
@@ -15,7 +16,7 @@ const askOnPhone = (running: RunningWorkout): Promise<RunningChoice> =>
   new Promise((resolve) => {
     Alert.alert(
       t('resume.title'),
-      t('startFlow.body', { name: running.name }),
+      t('startFlow.body', { name: workoutLabel(running.name) }),
       [
         { text: t('common.cancel'), style: 'cancel', onPress: () => resolve('cancel') },
         { text: t('resume.button'), isPreferred: true, onPress: () => resolve('resume') },

@@ -60,7 +60,7 @@ import { textScale } from '../../src/theme/textScale';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { getLang } from '../../src/i18n/current';
 import { groupLabel } from '../../src/i18n/catalogNames';
-import { workoutLabel } from '../../src/i18n/workoutLabel';
+import { workoutLabel } from '../../src/i18n/defaultLabels';
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {

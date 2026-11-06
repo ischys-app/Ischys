@@ -2,6 +2,14 @@ import type { StringDef } from '../translate.ts';
 
 /** English source strings. `note` is the context handed to the translator. */
 export const strings: Record<string, StringDef> = {
+  'workout.emptyName': {
+    en: 'Empty Workout',
+    note: 'Default title of a workout started empty, with no routine. Display only: the stored name stays English. Short noun, shown as a card or screen title.',
+  },
+  'profile.defaultName': {
+    en: 'Athlete',
+    note: 'Name shown for a profile whose owner has not set a name. Display only: the stored name stays English. One short word.',
+  },
   'workout.defaultName': {
     en: 'Workout',
     note: 'Default title of a workout that has no name of its own. Short noun, shown as a card or screen title.',

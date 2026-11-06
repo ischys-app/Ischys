@@ -69,10 +69,10 @@ const row = (over: Partial<ExerciseRow>): ExerciseRow => ({
 const chestRow = { id: chest.id, name: chest.name, group: chest.group };
 
 test('nameToStore writes nothing when the display label is left as is', () => {
-  assert.equal(nameToStore('卧推', { name: '卧推', englishName: 'Bench Press (Barbell)' }), null);
-  assert.equal(nameToStore('  卧推 ', { name: '卧推', englishName: 'Bench Press (Barbell)' }), null);
-  assert.equal(nameToStore('My bench', { name: '卧推', englishName: 'Bench Press (Barbell)' }), 'My bench');
-  assert.equal(nameToStore(' My bench ', { name: '卧推', englishName: 'Bench Press (Barbell)' }), 'My bench');
+  assert.equal(nameToStore('卧推', { name: '卧推' }), null);
+  assert.equal(nameToStore('  卧推 ', { name: '卧推' }), null);
+  assert.equal(nameToStore('My bench', { name: '卧推' }), 'My bench');
+  assert.equal(nameToStore(' My bench ', { name: '卧推' }), 'My bench');
 });
 
 test('rows become DTOs with the display label in name and the stored value in englishName', () => {

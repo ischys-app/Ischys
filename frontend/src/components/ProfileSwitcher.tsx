@@ -36,6 +36,7 @@ import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, HeartFilledIcon, SearchIcon } from './icons';
 import { ProfileAvatar } from './ProfileAvatar';
 import { t } from '../i18n';
+import { profileNameLabel } from '../i18n/defaultLabels';
 
 /** DraggableSheet's 220ms exit, and a beat for the modal to go. */
 const SHEET_EXIT_MS = 300;
@@ -207,12 +208,12 @@ export function ProfileSwitcher() {
                 style={({ pressed }) => [styles.row, (pressed || pressedId === p.id) && styles.rowPressed]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isCurrent }}
-                accessibilityLabel={t('switcher.rowLabel', { name: p.name, sub })}
+                accessibilityLabel={t('switcher.rowLabel', { name: profileNameLabel(p.name), sub })}
               >
                 <ProfileAvatar profile={p} size={40} />
                 <View style={styles.rowText}>
                   <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={textScale.control}>
-                    {p.name}
+                    {profileNameLabel(p.name)}
                   </Text>
                   <View style={styles.subRow}>
                     {p.isOwner && <HeartFilledIcon size={11} color={color.text3} />}

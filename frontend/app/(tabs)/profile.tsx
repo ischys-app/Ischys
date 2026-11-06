@@ -27,6 +27,7 @@ import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { getLang } from '../../src/i18n/current';
 import { muscleNameLabel } from '../../src/i18n/catalogNames';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
 
 const BAR_MAX_HEIGHT = 56;
 const BAR_MIN_HEIGHT = 3;
@@ -196,7 +197,7 @@ export default function Profile() {
                     accessibilityRole="button"
                     accessibilityLabel={t('profile.editName')}
                   >
-                    {profile?.name ?? '—'}
+                    {profile ? profileNameLabel(profile.name) : '—'}
                   </Text>
                 )}
                 {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -381,10 +382,10 @@ export default function Profile() {
             onPress={openProfileSwitcher}
             style={({ pressed }) => [styles.whoButton, pressed && styles.whoButtonPressed]}
             accessibilityRole="button"
-            accessibilityLabel={t('profile.switchCurrent', { name: active.name })}
+            accessibilityLabel={t('profile.switchCurrent', { name: profileNameLabel(active.name) })}
           >
             <Text style={[styles.title, styles.whoName]} numberOfLines={1}>
-              {firstName(active.name) || active.name}
+              {firstName(profileNameLabel(active.name)) || profileNameLabel(active.name)}
             </Text>
             <View style={styles.whoChevron}>
               <ChevronDownIcon size={16} color={color.text2} strokeWidth={2.6} />

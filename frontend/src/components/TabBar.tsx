@@ -16,6 +16,7 @@ import { textScale } from '../theme/textScale';
 import { HistoryIcon, HomeIcon, ProfileIcon } from './icons';
 import { ProfileAvatar } from './ProfileAvatar';
 import { useThemed } from '../theme/ThemeProvider';
+import { profileNameLabel } from '../i18n/defaultLabels';
 
 /** Minimal shape of the navigation tabBar props we consume. */
 type TabBarProps = {
@@ -39,7 +40,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
   // With 2+ profiles the Profile item shows whose data this is (P5). With one
   // it is exactly as before; only the long-press is there, unadvertised.
   const showWho = PROFILES_ENABLED && count > 1;
-  const first = firstName(profile.name) || profile.name;
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 10 }]} pointerEvents="box-none">

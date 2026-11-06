@@ -4,7 +4,7 @@
  * pinned above the tab bar; its clock ticks every second while mounted.
  */
 import { t } from '../i18n';
-import { workoutLabel } from '../i18n/workoutLabel';
+import { workoutLabel } from '../i18n/defaultLabels';
 import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
 

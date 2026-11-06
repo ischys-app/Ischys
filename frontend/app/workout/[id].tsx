@@ -159,7 +159,7 @@ import {
   type Exercise,
 } from '../../src/components/workout/types';
 import { useThemed } from '../../src/theme/ThemeProvider';
-import { workoutLabel } from '../../src/i18n/workoutLabel';
+import { workoutLabel } from '../../src/i18n/defaultLabels';
 
 const START_ELAPSED = 12 * 60 + 47; // seeded "12:47"
 const DEFAULT_REST = 120;

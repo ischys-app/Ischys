@@ -7,7 +7,3 @@ import zh from './strings/zh-Hans.json' with { type: 'json' };
 export function t(key: string, vars?: Vars): string {
   return createTranslator(getLang(), zh, strings)(key, vars);
 }
-
-export function isZh(): boolean {
-  return getLang() === 'zh-Hans';
-}

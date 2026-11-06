@@ -63,6 +63,7 @@ import { DEFAULT_NAME, useActiveProfile } from '../src/lib/activeProfile';
 import { color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { t } from '../src/i18n';
+import { profileNameLabel } from '../src/i18n/defaultLabels';
 
 // DECISION · HOW MUCH TO SAY ABOUT READS — Option A (recommended): intent switch
 // + data receipt. The switch is what Ischys ASKS for; the receipt is what
@@ -156,8 +157,8 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
       live = false;
     };
   }, []);
-  const first = firstName(profile.name) || profile.name;
-  const owner = ownerLabel(ownerName, DEFAULT_NAME);
+  const first = firstName(profileNameLabel(profile.name)) || profileNameLabel(profile.name);
+  const owner = ownerLabel(profileNameLabel(ownerName), profileNameLabel(DEFAULT_NAME));
   const ownerPossessive =
     ownerName === DEFAULT_NAME ? t('health.ownerPossessive') : t('profiles.possessive', { name: owner });
 
@@ -188,7 +189,7 @@ function HealthOffForProfile({ profile }: { profile: ProfileRow }) {
           <View style={styles.offHeadText}>
             <Text style={styles.offTitle} accessibilityRole="header">{t('health.offFor', { name: first })}</Text>
             <Text style={styles.offBody}>
-              {t('health.offBody', { health: copy.name, device: ANDROID ? t('health.thisPhone') : t('health.thisIphone'), owner, whose: possessive(profile.name) })}
+              {t('health.offBody', { health: copy.name, device: ANDROID ? t('health.thisPhone') : t('health.thisIphone'), owner, whose: possessive(profileNameLabel(profile.name)) })}
             </Text>
           </View>
         </View>

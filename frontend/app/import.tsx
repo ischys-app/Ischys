@@ -46,7 +46,7 @@ import { PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
 import { haptics } from '../src/lib/haptics';
 import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
-import { workoutLabel } from '../src/i18n/workoutLabel';
+import { profileNameLabel, workoutLabel } from '../src/i18n/defaultLabels';
 import { t } from '../src/i18n';
 
 type Step = 'file_pick' | 'preview' | 'progress' | 'success' | 'error';
@@ -709,7 +709,7 @@ function PreviewState({
       : '';
   // With 2+ profiles the button names the one the workouts go into (P11).
   const { profile, count } = useActiveProfile();
-  const first = firstName(profile.name);
+  const first = firstName(profileNameLabel(profile.name));
   const into = PROFILES_ENABLED && count >= 2 && first ? t('import.into', { name: first }) : '';
   const importLabel =
     parse && parse.supported

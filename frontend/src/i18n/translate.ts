@@ -19,7 +19,7 @@ function samePlaceholders(a: string, b: string): boolean {
 function interpolate(s: string, vars?: Vars): string {
   if (!vars) return s;
   return s.replace(PLACEHOLDER, (whole, name: string) =>
-    name in vars ? String(vars[name]) : whole,
+    Object.hasOwn(vars, name) ? String(vars[name]) : whole,
   );
 }
 

@@ -21,7 +21,7 @@ export function needsTranslation(key, en, state, opts = { retryFlagged: false })
 
 /** "Max 8 characters" / "Max 1 character" in a note -> number, else null. */
 export function maxLength(note) {
-  const m = /\bMax (\d+) characters?\b/.exec(note || '');
+  const m = /\bMax (\d+) characters?\b/i.exec(note || '');
   return m ? Number(m[1]) : null;
 }
 
@@ -105,4 +105,61 @@ export function buildPrompt(batch, glossary) {
     'Translate these strings. Return JSON only.\n' +
     JSON.stringify(batch.map((b) => ({ key: b.key, en: b.en, note: b.note })), null, 1);
   return { system, user };
+}
+
+/**
+ * Before any network call: drop the stored translation and state of every item whose
+ * English changed, so a failed or interrupted run can never leave an old translation
+ * showing for new English. targets: { get, del }. Returns the invalidated keys.
+ */
+export function invalidateStale(items, state, targets) {
+  const gone = [];
+  for (const it of items) {
+    const entry = state[it.key];
+    if (entry && entry.enHash !== hashEn(it.en)) {
+      targets.del(it.key);
+      delete state[it.key];
+      gone.push(it.key);
+    }
+  }
+  return gone;
+}
+
+/**
+ * Apply reviewer verdicts. entries: [{key, status:'ok'|'flagged', reason?, zh, enHash}].
+ * Throws (before mutating anything) on an unknown status. An entry is refused, not applied,
+ * when its key is not pending, is manual, or its zh / enHash no longer match what was reviewed.
+ * targets: { get, del }. Returns { ok, flagged, refused: [{key, reason}] }.
+ */
+export function applyReview(entries, state, targets) {
+  if (!Array.isArray(entries)) throw new Error('review file must be a JSON array');
+  for (const e of entries) {
+    if (e.status !== 'ok' && e.status !== 'flagged') {
+      throw new Error(`unknown review status for ${e.key}: ${JSON.stringify(e.status)}`);
+    }
+  }
+  const result = { ok: 0, flagged: 0, refused: [] };
+  for (const e of entries) {
+    const s = state[e.key];
+    let why = null;
+    if (!s) why = 'unknown key';
+    else if (s.status === 'manual') why = 'manual translation is never changed by review';
+    else if (s.status !== 'pending') why = `state is ${s.status}, not pending`;
+    else if (e.enHash !== s.enHash || e.zh !== targets.get(e.key)) why = 'stale: translation changed since review';
+    if (why) {
+      result.refused.push({ key: e.key, reason: why });
+      continue;
+    }
+    if (e.status === 'ok') {
+      s.status = 'ok';
+      delete s.reason;
+      result.ok++;
+    } else {
+      s.status = 'flagged';
+      s.reason = e.reason || '';
+      targets.del(e.key);
+      result.flagged++;
+    }
+  }
+  return result;
 }

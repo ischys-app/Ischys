@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildPrompt, hashEn, needsTranslation, parseResponse } from './core.mjs';
+import { applyReview as applyVerdicts, buildPrompt, hashEn, invalidateStale, needsTranslation, parseResponse } from './core.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const P = {
@@ -27,8 +27,9 @@ const P = {
 };
 
 const API_URL = 'https://api.deepseek.com/chat/completions';
-// DeepSeek's current docs list deepseek-flash / deepseek-v4-pro; the brief names deepseek-chat. Override with DEEPSEEK_MODEL.
-const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+// DeepSeek's docs (api-docs.deepseek.com) list deepseek-flash as the general model; thinking is on by default, so it is disabled below. Override with DEEPSEEK_MODEL.
+const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
+const TIMEOUT_MS = 120000;
 
 const readJson = (p, fallback) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : fallback);
 const writeJson = (p, v) => {
@@ -89,7 +90,7 @@ function loadTargets() {
 function writeReview(items, state, targets) {
   const rows = items
     .filter((it) => state[it.key]?.status === 'pending' && targets.get(it.key) !== undefined)
-    .map((it) => ({ key: it.key, en: it.en, zh: targets.get(it.key), note: it.note }));
+    .map((it) => ({ key: it.key, en: it.en, zh: targets.get(it.key), note: it.note, enHash: state[it.key].enHash }));
   writeJson(P.review, rows);
   return rows.length;
 }
@@ -98,7 +99,8 @@ async function callDeepSeek(messages) {
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}` },
-    body: JSON.stringify({ model: MODEL, messages, response_format: { type: 'json_object' }, temperature: 0 }),
+    body: JSON.stringify({ model: MODEL, messages, response_format: { type: 'json_object' }, temperature: 0, thinking: { type: 'disabled' } }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) {
     const err = new Error(`DeepSeek HTTP ${res.status}`);
@@ -119,8 +121,8 @@ async function callWithRetry(messages) {
       return await callDeepSeek(messages);
     } catch (e) {
       // Network errors (fetch TypeError) and 429/5xx are retryable. Only the message is kept, never headers.
-      const retryable = e.retryable === true || e instanceof TypeError;
-      if (!retryable || attempt >= 3) throw new Error(e instanceof TypeError ? 'network error' : e.message);
+      const retryable = e.retryable === true || e instanceof TypeError || e.name === 'TimeoutError' || e.name === 'AbortError';
+      if (!retryable || attempt >= 3) throw new Error(e.retryable ? e.message : e.name === 'TimeoutError' || e.name === 'AbortError' ? 'request timed out' : e instanceof TypeError ? 'network error' : e.message);
       await sleep(1000 * 2 ** attempt);
     }
   }
@@ -136,18 +138,19 @@ async function applyReview(file) {
   const entries = JSON.parse(readFileSync(file, 'utf8'));
   const state = readJson(P.state, {});
   const targets = loadTargets();
-  let ok = 0, flagged = 0;
-  for (const e of entries) {
-    const s = state[e.key];
-    if (!s) { console.warn(`unknown key skipped: ${e.key}`); continue; }
-    if (e.status === 'ok') { s.status = 'ok'; delete s.reason; ok++; }
-    else if (e.status === 'flagged') { s.status = 'flagged'; s.reason = e.reason || ''; targets.del(e.key); flagged++; }
+  let r;
+  try {
+    r = applyVerdicts(entries, state, targets);
+  } catch (e) {
+    console.error(`error: ${e.message}; nothing written`);
+    process.exit(1);
   }
   targets.save();
   writeJson(P.state, state);
+  for (const x of r.refused) console.warn(`refused ${x.key}: ${x.reason}`);
   const items = await collectSources();
   const left = writeReview(items, state, targets);
-  console.log(`review applied: ${ok} ok, ${flagged} flagged (English fallback); ${left} still pending`);
+  console.log(`review applied: ${r.ok} ok, ${r.flagged} flagged (English fallback), ${r.refused.length} refused; ${left} still pending`);
 }
 
 async function main() {
@@ -155,6 +158,7 @@ async function main() {
   if (reviewFile) return applyReview(reviewFile);
   if (arg('--lang') !== 'zh-Hans') { console.error('usage: --lang zh-Hans [--dry-run] [--retry-flagged] [--batch 60]'); process.exit(2); }
   const batchSize = Number(arg('--batch', '60'));
+  if (!Number.isInteger(batchSize) || batchSize < 1) { console.error('--batch must be a positive integer'); process.exit(2); }
   const dry = flag('--dry-run');
   if (!dry && !process.env.DEEPSEEK_API_KEY) { console.error('DEEPSEEK_API_KEY not set'); process.exit(1); }
 
@@ -174,6 +178,8 @@ async function main() {
   if (dry) return;
 
   const targets = loadTargets();
+  const dropped = invalidateStale(todo, state, targets);
+  if (dropped.length) { targets.save(); writeJson(P.state, state); console.log(`cleared ${dropped.length} outdated translations`); }
   const failed = [];
   const rejectedAll = {};
   for (const [bi, batch] of batches.entries()) {
@@ -192,8 +198,9 @@ async function main() {
         targets.set(it.key, ok[it.key]);
         state[it.key] = { enHash: hashEn(it.en), status: 'pending' };
       } else {
-        targets.del(it.key); // never leave a stale translation of changed English
-        delete state[it.key];
+        targets.del(it.key);
+        // A retried flagged item that is rejected again keeps its flagged status and reason.
+        if (state[it.key]?.status !== 'flagged') delete state[it.key];
         rejectedAll[it.key] = rejected[it.key];
       }
     }

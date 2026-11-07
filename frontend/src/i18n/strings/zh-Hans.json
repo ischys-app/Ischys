@@ -901,5 +901,10 @@
   "import.asUnit": "（{unit}）",
   "workout.emptyName": "空白训练",
   "profile.defaultName": "运动员",
-  "switcher.announce": "已切换到 {name}"
+  "switcher.announce": "已切换到 {name}",
+  "routineReorder.title": "重新排序训练计划",
+  "routineReorder.handleLabel": "重新排序{name}",
+  "routineReorder.handleHint": "向上或向下拖动",
+  "routineReorder.moveUp": "上移",
+  "routineReorder.moveDown": "下移"
 }

@@ -51,6 +51,8 @@ type Props<T extends { id: string }> = {
   row: (item: T) => ReorderRow;
   title: string;
   topInset: number;
+  /** Extra space below the last row (e.g. the bottom safe area on a full-screen route). */
+  bottomInset?: number;
   onDone: () => void;
   /** Called once per completed move, with the reordered array. */
   onReorder: (nextOrder: T[]) => void;
@@ -63,6 +65,7 @@ export function ReorderList<T extends { id: string }>({
   row,
   title,
   topInset,
+  bottomInset = 0,
   onDone,
   onReorder,
   moveActions,
@@ -180,7 +183,7 @@ export function ReorderList<T extends { id: string }>({
 
       <ScrollView
         style={styles.list}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, bottomInset > 0 && { paddingBottom: 40 + bottomInset }]}
         scrollEnabled={dragId == null}
         showsVerticalScrollIndicator={false}
       >

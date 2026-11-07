@@ -56,6 +56,7 @@ export default function ReorderRoutinesScreen() {
       row={routineRow}
       title={t('routineReorder.title')}
       topInset={insets.top}
+      bottomInset={insets.bottom}
       onDone={() => router.back()}
       onReorder={commit}
       moveActions={moveActions}

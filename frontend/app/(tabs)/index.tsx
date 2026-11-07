@@ -1,7 +1,7 @@
 import { t } from '../../src/i18n';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { deleteRoutine, duplicateRoutine, updateRoutine } from '../../src/api/routines';
@@ -142,7 +142,7 @@ export default function Home() {
   };
 
   const handleReorder = () => {
-    Alert.alert(t('home.comingSoon.title'), t('home.reorderComingSoon'));
+    router.push('/routine/reorder');
   };
 
   return (

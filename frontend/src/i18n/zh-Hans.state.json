@@ -8413,5 +8413,30 @@
     "enHash": "82eb217136cfddc1",
     "status": "ok",
     "zhHash": "41d4b02035d65742"
+  },
+  "ui:routineReorder.title": {
+    "enHash": "edf00567e2b9b310",
+    "status": "ok",
+    "zhHash": "eb32a3c4288a963f"
+  },
+  "ui:routineReorder.handleLabel": {
+    "enHash": "6887b8ad5b9abce3",
+    "status": "ok",
+    "zhHash": "6b558f2748e1d0fb"
+  },
+  "ui:routineReorder.handleHint": {
+    "enHash": "ccdf3f913534902b",
+    "status": "ok",
+    "zhHash": "9b59c13907eb3952"
+  },
+  "ui:routineReorder.moveUp": {
+    "enHash": "c66feb5eb8f217c7",
+    "status": "ok",
+    "zhHash": "f853a70b120418be"
+  },
+  "ui:routineReorder.moveDown": {
+    "enHash": "40bb50da160cdc21",
+    "status": "ok",
+    "zhHash": "e75e8b4e5c971227"
   }
 }

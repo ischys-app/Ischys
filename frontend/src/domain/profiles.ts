@@ -337,19 +337,8 @@ export function deleteSheetBody(name: string, c: ProfileCounts): BodyPart[] {
   ];
 }
 
-/** Where a row dragged `dy` points from `from` lands, in a list of `n` rows `slot` points apart. */
-export function dropIndex(from: number, dy: number, slot: number, n: number): number {
-  return Math.max(0, Math.min(n - 1, from + Math.round(dy / slot)));
-}
-
-/** A copy of `items` with the item at `from` moved to `to`. */
-export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
-  const next = [...items];
-  if (from === to) return next;
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
-  return next;
-}
+// Drag index math lives in domain/reorder.ts, shared with the other reorder lists.
+export { dropIndex, moveItem } from './reorder.ts';
 
 // --- Switching during a workout (P6) ---
 

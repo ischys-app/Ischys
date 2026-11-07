@@ -30,8 +30,6 @@
   "common.save": "保存",
   "common.delete": "删除",
   "common.loading": "加载中…",
-  "home.comingSoon.title": "即将推出",
-  "home.reorderComingSoon": "重新排序训练计划尚未实现。",
   "home.exerciseCount": "{count} 个动作",
   "home.thisWeek": "本周",
   "home.statWorkouts": "训练",
@@ -903,5 +901,10 @@
   "import.asUnit": "（{unit}）",
   "workout.emptyName": "空白训练",
   "profile.defaultName": "运动员",
-  "switcher.announce": "已切换到 {name}"
+  "switcher.announce": "已切换到 {name}",
+  "routineReorder.title": "重新排序训练计划",
+  "routineReorder.handleLabel": "重新排序{name}",
+  "routineReorder.handleHint": "向上或向下拖动",
+  "routineReorder.moveUp": "上移",
+  "routineReorder.moveDown": "下移"
 }

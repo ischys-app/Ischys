@@ -3,13 +3,14 @@
  * Touches the DB. No FK cascade, so child rows are removed explicitly. Sending
  * `exercises` on update replaces the whole list.
  */
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { atomically, db, type ProfileConnection } from '../db/client';
 import * as schema from '../db/schema';
 import type { RoutineExerciseIn, RoutineOut } from '../api/types';
 import type { LoggedExercise } from '../domain/routineView';
 import { exercisesToCopy } from '../domain/profiles';
+import { fullOrder } from '../domain/reorder';
 import { LOCAL_USER_ID, newId, nowMs } from './ids';
 import { toRoutineExerciseOut, toRoutineOut, type ExerciseRow } from './map';
 import { hydrateExercises } from './queries';
@@ -208,6 +209,52 @@ export async function deleteRoutine(id: string): Promise<void> {
   await atomically(async (tx) => {
     await clearExercises(tx, id);
     await tx.delete(schema.routines).where(eq(schema.routines.id, id));
+  });
+}
+
+/**
+ * The order every list of routines uses (Home, the Watch's Start screen, the
+ * reorder screen): `position`, then insertion order (rowid) for ties. New
+ * routines already took max(position) + 1, so the tiebreak only matters for
+ * rows that share a position (e.g. copied in from elsewhere); it is the order
+ * SQLite returned for `ORDER BY position` alone, so adding it moved nothing.
+ */
+export const ROUTINE_ORDER = [asc(schema.routines.position), asc(sql`rowid`)] as const;
+
+/** A routine as the reorder screen lists it. */
+export type RoutineOrderRow = { id: string; name: string; initials: string; exerciseCount: number };
+
+/** The current profile's routines in display order, with their exercise counts. */
+export async function listRoutinesInOrder(): Promise<RoutineOrderRow[]> {
+  const rows = await db
+    .select({ id: schema.routines.id, name: schema.routines.name, initials: schema.routines.initials })
+    .from(schema.routines)
+    .orderBy(...ROUTINE_ORDER);
+  const counts = await db
+    .select({ routineId: schema.routineExercises.routineId, n: count() })
+    .from(schema.routineExercises)
+    .groupBy(schema.routineExercises.routineId);
+  const byId = new Map(counts.map((c) => [c.routineId, c.n]));
+  return rows.map((r) => ({ ...r, exerciseCount: byId.get(r.id) ?? 0 }));
+}
+
+/**
+ * Stores a new display order for the current profile's routines, in one
+ * transaction. Every routine is rewritten to position 0..n-1, so rows that
+ * shared a position stop doing so; ids not in this profile are ignored and
+ * routines `ids` leaves out keep their relative order after the rest.
+ */
+export async function reorderRoutines(ids: readonly string[]): Promise<void> {
+  await atomically(async (tx) => {
+    const stored = await tx.select({ id: schema.routines.id }).from(schema.routines).orderBy(...ROUTINE_ORDER);
+    const order = fullOrder(
+      stored.map((r) => r.id),
+      ids,
+    );
+    const now = nowMs();
+    for (let i = 0; i < order.length; i++) {
+      await tx.update(schema.routines).set({ position: i, updatedAt: now }).where(eq(schema.routines.id, order[i]));
+    }
   });
 }
 

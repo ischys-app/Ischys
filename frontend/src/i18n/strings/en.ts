@@ -111,17 +111,9 @@ export const strings: Record<string, StringDef> = {
     en: 'Loading…',
     note: 'Placeholder text shown while a screen loads its data. Keep the ellipsis character.',
   },
-  'home.comingSoon.title': {
-    en: 'Coming soon',
-    note: 'Alert title shown when a not-yet-built feature is tapped. Short phrase.',
-  },
-  'home.reorderComingSoon': {
-    en: 'Reorder routines is not yet implemented.',
-    note: 'Alert message under Coming soon, after tapping Reorder routines in the routine menu.',
-  },
   'home.exerciseCount': {
     en: '{count} exercises',
-    note: 'Subline under the routine name in the routine menu sheet on Home; {count} is a number. One line.',
+    note: 'Subline under the routine name in the routine menu sheet on Home and in the Reorder Routines list; {count} is a number. One line.',
   },
   'home.thisWeek': {
     en: 'This week',
@@ -918,6 +910,26 @@ export const strings: Record<string, StringDef> = {
   'reorder.title': {
     en: 'Reorder Exercises',
     note: 'Title of the full-screen exercise reorder overlay.',
+  },
+  'routineReorder.title': {
+    en: 'Reorder Routines',
+    note: 'Title of the full-screen routine reorder list, opened from Reorder in a routine menu on Home. Same style as Reorder Exercises.',
+  },
+  'routineReorder.handleLabel': {
+    en: 'Reorder {name}',
+    note: 'Screen-reader label of a routine drag handle in the reorder list; {name} is the routine name. Not visible.',
+  },
+  'routineReorder.handleHint': {
+    en: 'Drag up or down',
+    note: 'Screen-reader hint of a routine drag handle in the reorder list. Not visible.',
+  },
+  'routineReorder.moveUp': {
+    en: 'Move up',
+    note: 'Screen-reader action: move the routine one place up in the list. Not visible.',
+  },
+  'routineReorder.moveDown': {
+    en: 'Move down',
+    note: 'Screen-reader action: move the routine one place down in the list. Not visible.',
   },
   'reorder.doneLabel': {
     en: 'Done reordering',

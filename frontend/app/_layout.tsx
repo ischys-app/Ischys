@@ -422,6 +422,14 @@ function AppStack() {
         }}
       />
       <Stack.Screen
+        name="routine/reorder"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: color.bg },
+        }}
+      />
+      <Stack.Screen
         name="routine/view/[id]"
         options={{
           headerShown: false,

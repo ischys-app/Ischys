@@ -11,8 +11,10 @@ export {
   createRoutine,
   updateRoutine,
   deleteRoutine,
+  listRoutinesInOrder,
+  reorderRoutines,
 } from '../data/routinesRepo';
-export type { RoutineHistory } from '../data/routinesRepo';
+export type { RoutineHistory, RoutineOrderRow } from '../data/routinesRepo';
 
 /**
  * Duplicate a routine: load the source, strip ids, then create a copy named

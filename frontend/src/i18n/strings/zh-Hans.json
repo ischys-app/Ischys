@@ -30,8 +30,6 @@
   "common.save": "保存",
   "common.delete": "删除",
   "common.loading": "加载中…",
-  "home.comingSoon.title": "即将推出",
-  "home.reorderComingSoon": "重新排序训练计划尚未实现。",
   "home.exerciseCount": "{count} 个动作",
   "home.thisWeek": "本周",
   "home.statWorkouts": "训练",

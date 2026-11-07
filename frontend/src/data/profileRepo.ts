@@ -21,6 +21,7 @@ import { getProfileName } from '../lib/profileName';
 import { LOCAL_USER_ID } from './ids';
 import { toWorkoutListItem, type WorkoutRow } from './map';
 import { muscleTagsByWorkout } from './queries';
+import { ROUTINE_ORDER } from './routinesRepo';
 import { getWeeklyTarget } from '../lib/weeklyTarget';
 import { getLang } from '../i18n/current';
 import { fmtWeekInitials } from '../lib/format';
@@ -85,7 +86,7 @@ export async function getDashboard(): Promise<Dashboard> {
     today: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i).getTime() === today.getTime(),
   }));
 
-  const routineRows = await db.select().from(schema.routines).orderBy(schema.routines.position);
+  const routineRows = await db.select().from(schema.routines).orderBy(...ROUTINE_ORDER);
   const routines = await Promise.all(
     routineRows.map(async (r) => {
       const res = await db.select().from(schema.routineExercises).where(eq(schema.routineExercises.routineId, r.id));

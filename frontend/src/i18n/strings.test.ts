@@ -52,3 +52,40 @@ test('every literal t() key used in source exists in en', () => {
   }
   assert.deepEqual(missing, []);
 });
+
+test('plural names a placeholder present in that entry', () => {
+  for (const [k, v] of Object.entries(strings)) {
+    if (v.plural === undefined) continue;
+    assert.ok(ph(v.en).includes(v.plural), `${k}: plural "${v.plural}" is not a placeholder of its en text`);
+  }
+});
+
+test('no key has both a _one/_other pair and plural', () => {
+  for (const [k, v] of Object.entries(strings)) {
+    if (v.plural === undefined) continue;
+    assert.ok(!(`${k}_one` in strings) && !(`${k}_other` in strings), `${k}: has a pair and plural`);
+    assert.ok(!/_(one|other)$/.test(k), `${k}: pair member carries plural`);
+  }
+});
+
+test('known single-form count keys declare their count variable', () => {
+  const expected: Record<string, string> = {
+    'streak.days': 'days',
+    'pr.pill': 'count',
+    'home.exerciseCount': 'count',
+    'history.deleteMessage': 'count',
+    'history.sessions': 'count',
+    'history.count': 'count',
+    'profile.notTrained': 'count',
+    'effort.nReps': 'n',
+    'workoutEdit.ssAfterSave': 'count',
+    'editDiscard.many': 'count',
+    'common.setsCount': 'count',
+    'summary.rampBody': 'days',
+    'summary.easeOff': 'days',
+    'summary.hold': 'days',
+    'summary.deloadAccepted': 'days',
+    'routineDiff.setsChanged': 'to',
+  };
+  for (const [k, v] of Object.entries(expected)) assert.equal(strings[k]?.plural, v, k);
+});

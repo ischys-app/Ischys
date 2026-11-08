@@ -889,7 +889,7 @@
   "settings.sectionDevice": "УСТРОЙСТВО",
   "settings.sectionAbout": "О ПРИЛОЖЕНИИ",
   "settings.phoneFooter": "Настройки с пометкой ЭТОТ ТЕЛЕФОН одинаковы во всех профилях.",
-  "settings.exportWhose": "Экспорт данных профиля «{whose}»",
+  "settings.exportWhose": "Экспорт профиля «{whose}»",
   "settings.importInto": "Импорт в профиль «{name}»",
   "settings.inHistory": "ИСТОРИЯ ПРОФИЛЯ «{whose}»",
   "settings.importWorkout": "Импорт тренировки",

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { exerciseLabel, matchesSearch, groupLabel, equipmentLabel, muscleLabel, categoryLabel } from './catalogNames.ts';
 import catalog from '../../assets/catalog/catalog.json' with { type: 'json' };
 import zh from './catalog/zh-Hans.json' with { type: 'json' };
+import ru from './catalog/ru.json' with { type: 'json' };
 
 const ex = catalog.exercises[0];
 const mutable = zh as unknown as { exercises: Record<string, string>; groups: Record<string, string> };
@@ -60,4 +61,23 @@ test('matchesSearch is bilingual, case and accent insensitive', () => {
   assert.equal(matchesSearch('cafe', ['Café']), true);
   assert.equal(matchesSearch('squat', ['卧推', 'Bench Press']), false);
   assert.equal(matchesSearch('  ', ['x']), true);
+});
+
+test('ru catalog: translated for catalog exercises, stored for renamed and custom', () => {
+  const table = ru as unknown as { exercises: Record<string, string> };
+  table.exercises[ex.id] = 'Тестовое упражнение';
+  try {
+    assert.equal(exerciseLabel({ id: ex.id, name: ex.name }, 'ru'), 'Тестовое упражнение');
+    assert.equal(exerciseLabel({ id: ex.id, name: 'My rename' }, 'ru'), 'My rename');
+    assert.equal(exerciseLabel({ id: ex.id, name: ex.name, isCustom: 1 }, 'ru'), ex.name);
+    assert.equal(exerciseLabel({ id: ex.id, name: ex.name }, 'zh-Hans') === 'Тестовое упражнение', false);
+  } finally {
+    delete table.exercises[ex.id];
+  }
+  assert.equal(exerciseLabel({ id: ex.id, name: ex.name }, 'ru'), ex.name);
+});
+
+test('search folds ё and case for Russian', () => {
+  assert.equal(matchesSearch('ёлочка', ['Елочка']), true);
+  assert.equal(matchesSearch('ЖИМ', ['Жим лёжа']), true);
 });

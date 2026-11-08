@@ -30,3 +30,13 @@ test('only the first tag decides', () => {
 test('no tags resolve to English', () => {
   assert.equal(resolveLang([]), 'en');
 });
+
+test('Russian tags resolve to ru; other Cyrillic-script languages stay English', () => {
+  for (const tag of ['ru-RU', 'ru', 'ru-UA', 'ru-KZ', 'ru-Cyrl-RU']) {
+    assert.equal(resolveLang([tag]), 'ru', tag);
+  }
+  for (const tag of ['uk-UA', 'be-BY', 'kk-KZ', 'ky', 'uz', 'ka', 'hy', 'az', 'ro-MD', 'sr-Cyrl']) {
+    assert.equal(resolveLang([tag]), 'en', tag);
+  }
+  assert.equal(resolveLang(['uk-UA', 'ru-RU']), 'en');
+});

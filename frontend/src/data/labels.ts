@@ -13,7 +13,9 @@ const collators = new Map<Lang, Intl.Collator>();
 export function compareLabels(lang: Lang): (a: string, b: string) => number {
   let c = collators.get(lang);
   if (!c) {
-    c = new Intl.Collator(lang === 'zh-Hans' ? 'zh-Hans-u-co-pinyin' : undefined);
+    c = new Intl.Collator(
+      lang === 'zh-Hans' ? 'zh-Hans-u-co-pinyin' : lang === 'ru' ? 'ru' : undefined,
+    );
     collators.set(lang, c);
   }
   return c.compare;

@@ -1075,5 +1075,11 @@
   "summary.rampBody_one": "Объём быстро вырос. Если удерживать его {days} день, организм успеет адаптироваться.",
   "summary.rampBody_few": "Объём быстро вырос. Если удерживать его {days} дня, организм успеет адаптироваться.",
   "summary.rampBody_many": "Объём быстро вырос. Если удерживать его {days} дней, организм успеет адаптироваться.",
-  "summary.rampBody_other": "Объём быстро вырос. Если удерживать его {days} дня, организм успеет адаптироваться."
+  "summary.rampBody_other": "Объём быстро вырос. Если удерживать его {days} дня, организм успеет адаптироваться.",
+  "restBar.skip": "Пропуск",
+  "plateSheet.eachSide": "НА СТОРОНУ",
+  "editWorkout.editing": "ПРАВКА",
+  "share.prChip_few": "{count} PR",
+  "share.prChip_many": "{count} PR",
+  "share.prChip_other": "{count} PR"
 }

@@ -112,6 +112,6 @@ test('ru: interpolation, placeholder mismatch, missing key, no count', () => {
 });
 
 test('ru table is ignored for zh-Hans and en', () => {
-  assert.equal(createTranslator('en', { 'zh-Hans': { ru } }, enRu)('w', { name: 'A' }), 'Hello A');
+  assert.equal(createTranslator('en', { 'zh-Hans': {}, ru }, enRu)('w', { name: 'A' }), 'Hello A');
   assert.equal(createTranslator('zh-Hans', { ru }, enRu)('w', { name: 'A' }), 'Hello A');
 });

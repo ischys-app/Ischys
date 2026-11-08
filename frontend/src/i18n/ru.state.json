@@ -9206,13 +9206,13 @@
   },
   "plist:NSHealthShareUsageDescription": {
     "enHash": "742c99463a4d92bd",
-    "status": "ok",
-    "ruHash": "fa2c6c99640082e8"
+    "status": "manual",
+    "ruHash": "e1c5d499e721ba34"
   },
   "plist:NSHealthUpdateUsageDescription": {
     "enHash": "151bdcbe7b84fadb",
-    "status": "ok",
-    "ruHash": "a3219cd3d810e305"
+    "status": "manual",
+    "ruHash": "cd3d6067f8864359"
   },
   "ui:effort.range_one": {
     "enHash": "c1033365de0998a6",
@@ -9268,5 +9268,35 @@
     "enHash": "c434460c9d7892ad",
     "status": "manual",
     "ruHash": "f87f0256e718d9c2"
+  },
+  "ui:restBar.skip": {
+    "enHash": "28d03596d24eeb4e",
+    "status": "manual",
+    "ruHash": "3a5575982f935fff"
+  },
+  "ui:plateSheet.eachSide": {
+    "enHash": "9479414cb94549ce",
+    "status": "manual",
+    "ruHash": "51f39be6f28cfbe6"
+  },
+  "ui:editWorkout.editing": {
+    "enHash": "bae7450005424c3c",
+    "status": "manual",
+    "ruHash": "dce8ddaffc07105f"
+  },
+  "ui:share.prChip_few": {
+    "enHash": "4f4b7ba055f7972c",
+    "status": "manual",
+    "ruHash": "e4bb037235b7b7b0"
+  },
+  "ui:share.prChip_many": {
+    "enHash": "4f4b7ba055f7972c",
+    "status": "manual",
+    "ruHash": "e4bb037235b7b7b0"
+  },
+  "ui:share.prChip_other": {
+    "enHash": "4f4b7ba055f7972c",
+    "status": "manual",
+    "ruHash": "e4bb037235b7b7b0"
   }
 }

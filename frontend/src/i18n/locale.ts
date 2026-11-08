@@ -1,4 +1,4 @@
-/** Maps OS locale tags to the app's app's languages. Pure: no native imports. */
+/** Maps OS locale tags to the app's languages. Pure: no native imports. */
 export type Lang = 'en' | 'zh-Hans' | 'ru';
 
 const TRADITIONAL_REGIONS = new Set(['TW', 'HK', 'MO']);

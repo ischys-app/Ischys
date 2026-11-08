@@ -1,5 +1,5 @@
 {
-  "_comment": "Deny-list for Russian output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only (both sides). Words starting with an allow stem are never flagged. Matching is lowercase with ё read as е. Flagged lines stay English unless the review sets \"denyCleared\": true. «армейский» is allowed on purpose: «армейский жим» is a standard gym term.",
+  "_comment": "Deny-list for Russian output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only (both sides). Words starting with an allow stem are never flagged. Matching is lowercase with ё read as е. Flagged lines stay English unless the review sets \"denyCleared\": true. «армейский» is allowed on purpose: «армейский жим» is a standard gym term. Slur and slogan entries have no English counterpart and are always flagged (укроп also hits the herb dill; review clears it).",
   "allow": [
     {
       "stem": "армейск",
@@ -24,6 +24,10 @@
     {
       "stem": "фронтальн",
       "why": "фронтальный подъём (front raise), not фронт (war front)"
+    },
+    {
+      "stem": "жидк",
+      "why": "жидкость (liquid), not the slur"
     }
   ],
   "deny": [
@@ -788,6 +792,102 @@
       "en": [
         "v"
       ],
+      "word": true
+    },
+    {
+      "stem": "страну",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "страной",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странам",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странами",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странах",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странов",
+      "en": [
+        "country",
+        "countries"
+      ]
+    },
+    {
+      "stem": "москал",
+      "en": []
+    },
+    {
+      "stem": "хохл",
+      "en": []
+    },
+    {
+      "stem": "хохол",
+      "en": []
+    },
+    {
+      "stem": "кацап",
+      "en": []
+    },
+    {
+      "stem": "бандер",
+      "en": []
+    },
+    {
+      "stem": "жид",
+      "en": []
+    },
+    {
+      "stem": "чурк",
+      "en": []
+    },
+    {
+      "stem": "хач",
+      "en": []
+    },
+    {
+      "stem": "пиндос",
+      "en": []
+    },
+    {
+      "stem": "укроп",
+      "en": []
+    },
+    {
+      "stem": "гойд",
+      "en": []
+    },
+    {
+      "stem": "zov",
+      "en": [],
       "word": true
     }
   ]

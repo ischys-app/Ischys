@@ -3,7 +3,7 @@
  * Translate new/changed English strings with DeepSeek. Languages and their files: langs.mjs.
  *
  *   node scripts/i18n/translate.mjs --lang zh-Hans|ru [--dry-run] [--retry-flagged] [--batch 60]
- *   node scripts/i18n/translate.mjs --apply-review <file> [--lang zh-Hans|ru]   (default zh-Hans)
+ *   node scripts/i18n/translate.mjs --apply-review <file> --lang zh-Hans|ru
  *
  * --dry-run: no network, no file writes; prints the counts and one sample prompt.
  *
@@ -158,9 +158,10 @@ async function applyReview(file) {
 }
 
 async function main() {
-  const usage = 'usage: --lang zh-Hans|ru [--dry-run] [--retry-flagged] [--batch 60] | --apply-review <file> [--lang zh-Hans|ru]';
+  const usage = 'usage: --lang zh-Hans|ru [--dry-run] [--retry-flagged] [--batch 60] | --apply-review <file> --lang zh-Hans|ru';
   const reviewFile = arg('--apply-review');
-  const code = arg('--lang', reviewFile ? 'zh-Hans' : undefined);
+  // Every mode needs an explicit --lang; nothing defaults to a language.
+  const code = arg('--lang');
   if (!Object.hasOwn(LANGS, code ?? '')) { console.error(usage); process.exit(2); }
   selectLang(code);
   if (reviewFile) return applyReview(reviewFile);

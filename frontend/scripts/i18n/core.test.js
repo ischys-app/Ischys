@@ -389,3 +389,15 @@ test('collectSources + expandPlurals (ru) produce the keys the runtime translato
     for (const cat of ['one', 'few', 'many', 'other']) assert.ok(ru.has(`ui:${base}_${cat}`), `${base}_${cat}`);
   }
 });
+
+test('denyHits: all «стран-» endings, slurs, ZOV and гойда are flagged; «странно», «жидкость» are not', () => {
+  for (const s of ['По странам', 'Выберите страну', 'Между странами', 'В странах', 'Страновой код', 'Этой страной']) {
+    assert.ok(core.denyHits(s, 'Something', denylist).length > 0, s);
+  }
+  for (const s of ['Странно', 'Странный вес', 'Жидкость']) {
+    assert.deepEqual(core.denyHits(s, 'Something', denylist), [], s);
+  }
+  for (const [s, stem] of [['Москаль', 'москал'], ['Хохлы', 'хохл'], ['кацап', 'кацап'], ['Жиды', 'жид'], ['Пиндосы', 'пиндос'], ['Укропы', 'укроп'], ['Бандеровцы', 'бандер'], ['Чурка', 'чурк'], ['Хачи', 'хач'], ['ZOV', 'zov'], ['Гойда', 'гойд']]) {
+    assert.deepEqual(core.denyHits(s, 'Press', denylist), [stem], s);
+  }
+});

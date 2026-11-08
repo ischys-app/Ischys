@@ -21,16 +21,14 @@ type Lang = { code: string; field: string; files: Record<string, string> };
 type Entry = { status: string; enHash?: string; [hash: string]: string | undefined };
 
 const ROOT = process.cwd();
-const readJson = <T,>(rel: string, fallback: T): T => {
-  const p = join(ROOT, rel);
-  return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')) as T) : fallback;
-};
+/** No fallback: a mistyped LANGS path must fail, never read as an empty table. */
+const readJson = <T,>(rel: string): T => JSON.parse(readFileSync(join(ROOT, rel), 'utf8')) as T;
 
 /** Every shipped value of a language, by namespaced key. */
 function shipped(lang: Lang): Map<string, string> {
-  const ui = readJson<Record<string, string>>(lang.files.ui, {});
-  const catalog = readJson<Record<string, Record<string, string>>>(lang.files.catalog, {});
-  const plist = readJson<Record<string, string>>(lang.files.plist, {});
+  const ui = readJson<Record<string, string>>(lang.files.ui);
+  const catalog = readJson<Record<string, Record<string, string>>>(lang.files.catalog);
+  const plist = readJson<Record<string, string>>(lang.files.plist);
   const out = new Map<string, string>();
   for (const [k, v] of Object.entries(ui)) out.set(`ui:${k}`, v);
   // locales/<lang>.json starts as a copy of the English text (the iOS fallback). Only a value that differs is translated.
@@ -49,8 +47,18 @@ test('LANGS covers zh-Hans and ru', () => {
   assert.deepEqual(langs.map((l) => l.code).sort(), ['ru', 'zh-Hans']);
 });
 
+test('every LANGS entry points at existing ui, catalog, plist and state files', () => {
+  for (const lang of langs) {
+    for (const f of ['ui', 'catalog', 'plist', 'state']) {
+      assert.ok(lang.files[f], `${lang.code}: files.${f} missing`);
+      assert.ok(existsSync(join(ROOT, lang.files[f])), `${lang.code}: files.${f} = ${lang.files[f]} does not exist`);
+    }
+  }
+});
+
 for (const lang of langs) {
-  const st = readJson<Record<string, Entry>>(lang.files.state, {});
+  const stPath = join(ROOT, lang.files.state);
+  const st = existsSync(stPath) ? readJson<Record<string, Entry>>(lang.files.state) : {};
   const hashField = `${lang.field}Hash`;
 
   test(`every shipped ${lang.code} value has state ok or manual`, () => {

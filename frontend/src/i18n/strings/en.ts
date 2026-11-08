@@ -533,6 +533,7 @@ export const strings: Record<string, StringDef> = {
   'effort.range': {
     en: '{from}–{to} REPS LEFT',
     note: 'Effort meaning for a half step, e.g. 1–2 REPS LEFT; keep the en dash. Upper case in English. Max 22 characters.',
+    plural: 'to',
   },
   'effort.oneRep': {
     en: '1 REP LEFT',
@@ -586,6 +587,7 @@ export const strings: Record<string, StringDef> = {
   'effort.tank.range': {
     en: 'about {from} to {to} reps left',
     note: 'Part of the effort sentence; {from} and {to} are spelled-out numbers. Lower case in English; inserted into the sentence.',
+    plural: 'to',
   },
   'effort.tank.one': {
     en: 'about one rep left',
@@ -1934,6 +1936,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.memberMeta': {
     en: '{equipment} · {sets} sets',
     note: 'Meta line under an exercise name on a duplicate group card; {equipment} is an equipment name.',
+    plural: 'sets',
   },
   'mergeDup.scanFailed': {
     en: 'Could not scan the library',
@@ -1998,6 +2001,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.mergeCount': {
     en: 'Merge {count} exercises',
     note: 'Header title of the merge detail screen; {count} is a number of exercises (2 or more).',
+    plural: 'count',
   },
   'mergeDup.mergeInto': {
     en: 'Merge into {name}',
@@ -2030,6 +2034,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.remaining': {
     en: '{n} REMAINING',
     note: 'Section label after a merge: how many duplicate groups are left. Upper case in English.',
+    plural: 'n',
   },
   'mergeDup.merged': {
     en: 'Merged',
@@ -2038,6 +2043,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.receiptSub': {
     en: '{name} · {sets} sets',
     note: 'Subtitle on the merge receipt; {name} is the kept exercise name, {sets} the total sets.',
+    plural: 'sets',
   },
   'mergeDup.setsMoved': {
     en: 'Sets moved',
@@ -2070,6 +2076,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.scopeAll': {
     en: 'Ischys compares names, equipment and import source across all {total} exercises.',
     note: 'Scope sentence in the empty state; {total} is a number of exercises. Keep Ischys untranslated.',
+    plural: 'total',
   },
   'mergeDup.scopeWhole': {
     en: 'Ischys compares names, equipment and import source across your whole library.',
@@ -2402,6 +2409,7 @@ export const strings: Record<string, StringDef> = {
   'switcher.searchPlaceholder': {
     en: 'Search {n} profiles',
     note: 'Placeholder of the profile search field; {n} is the number of profiles.',
+    plural: 'n',
   },
   'switcher.searchLabel': {
     en: 'Search profiles',
@@ -2434,6 +2442,7 @@ export const strings: Record<string, StringDef> = {
   'routineEdit.exercisesCount': {
     en: '{n} exercises',
     note: 'Meta line under the routine name: number of exercises; followed by a separator and the sets count.',
+    plural: 'n',
   },
   'routineEdit.emptyTitle': {
     en: 'Build your routine',
@@ -2606,6 +2615,7 @@ export const strings: Record<string, StringDef> = {
   'newExercise.selected': {
     en: '{n} selected',
     note: 'Row value: number of secondary muscles selected.',
+    plural: 'n',
   },
   'newExercise.equipment': {
     en: 'EQUIPMENT',
@@ -2674,6 +2684,7 @@ export const strings: Record<string, StringDef> = {
   'library.merge': {
     en: 'Merge {n}',
     note: 'Floating button when two or more exercises are selected: merge the {n} selected exercises. One line.',
+    plural: 'n',
   },
   'library.addSuperset': {
     en: 'Add as superset',
@@ -3302,6 +3313,7 @@ export const strings: Record<string, StringDef> = {
   'settings.profilesOnPhone': {
     en: '{count} PROFILES ON THIS PHONE',
     note: 'Sub line of the profile row in Settings with several profiles. Upper case in English.',
+    plural: 'count',
   },
   'settings.justYou': {
     en: 'JUST YOU',
@@ -3482,10 +3494,12 @@ export const strings: Record<string, StringDef> = {
   'import.skipCardio': {
     en: '{count} rows will be skipped (cardio / rest-only)',
     note: 'Note in the import preview; {count} is a number of CSV rows.',
+    plural: 'count',
   },
   'import.skipNoName': {
     en: '{count} rows will be skipped (no exercise name)',
     note: 'Note in the import preview; {count} is a number of CSV rows.',
+    plural: 'count',
   },
   'import.weightUnit': {
     en: 'WEIGHT UNIT',
@@ -3542,6 +3556,7 @@ export const strings: Record<string, StringDef> = {
   'import.rowsSkipped': {
     en: '{count} rows skipped',
     note: 'Line on the import success screen; {count} is a number of CSV rows.',
+    plural: 'count',
   },
   'import.footnote': {
     en: 'You can save more later from History.',
@@ -3610,6 +3625,7 @@ export const strings: Record<string, StringDef> = {
   'import.seenOnce': {
     en: '{count} MORE · SEEN ONCE',
     note: 'Collapsed row that expands titles trained only once; {count} is a number. Upper case in English.',
+    plural: 'count',
   },
   'import.createRoutines_one': {
     en: 'Create {count} routine',

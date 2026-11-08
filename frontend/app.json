@@ -21,8 +21,7 @@
         "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness.",
         "CFBundleLocalizations": [
           "en",
-          "zh-Hans",
-          "ru"
+          "zh-Hans"
         ]
       },
       "entitlements": {
@@ -82,8 +81,7 @@
           "supportedLocales": {
             "ios": [
               "en",
-              "zh-Hans",
-              "ru"
+              "zh-Hans"
             ],
             "android": [
               "en",
@@ -99,8 +97,7 @@
     },
     "locales": {
       "en": "./locales/en.json",
-      "zh-Hans": "./locales/zh-Hans.json",
-      "ru": "./locales/ru.json"
+      "zh-Hans": "./locales/zh-Hans.json"
     }
   }
 }

@@ -224,7 +224,7 @@ test('ru history group titles', () => {
   assert.equal(fmtHistoryGroupTitle('2025-11-02', now, 'ru'), 'Ноябрь 2025');
 });
 
-test('ru relative phrases come from the string table (pipeline), English until translated', () => {
+test('ru relative phrases come from the string table', () => {
   const now = new Date('2026-07-11T12:00:00Z');
-  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'ru'), '1h ago');
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'ru'), '1 ч назад');
 });

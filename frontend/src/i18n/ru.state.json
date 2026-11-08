@@ -96,8 +96,8 @@
   },
   "ui:resume.button": {
     "enHash": "d640c7421da06661",
-    "status": "flagged",
-    "reason": "Wrong meaning: «Далее» = \"Next/Further\", not Resume. Suggest «Продолжить»/«Вернуться»"
+    "status": "manual",
+    "ruHash": "6c99e7d8fbd8fa26"
   },
   "ui:routineCard.view": {
     "enHash": "4998bc2791a16746",
@@ -766,8 +766,8 @@
   },
   "ui:effort.askRir": {
     "enHash": "d7022899d2618c45",
-    "status": "flagged",
-    "reason": "Meaning shift: «СКОЛЬКО ПОВТ.?» = \"HOW MANY REPS?\", which reads as reps done; the English asks reps LEFT (RIR). Suggest «ПОВТ. В ЗАПАСЕ?»"
+    "status": "ok",
+    "ruHash": "f7c79d94f2453389"
   },
   "ui:effort.askRpe": {
     "enHash": "e73bbbe2fbc0dc5e",
@@ -836,48 +836,28 @@
   },
   "ui:effort.tank.none": {
     "enHash": "6702503f8f8d68ef",
-    "status": "flagged",
-    "reason": "Combined with ui:effort.sentence (\"{tank} в запасе\") it gives «больше не могу в запасе» = \"can't do any more in reserve\", which is nonsense. Suggest «запаса нет» with the sentence reworked, or «ничего не осталось»"
+    "status": "manual",
+    "ruHash": "1f8c72dc6374d7e0"
   },
   "ui:effort.tank.fivePlus": {
     "enHash": "42af80b4e71d5173",
-    "status": "ok",
-    "ruHash": "74e8fad2554a35d1"
+    "status": "manual",
+    "ruHash": "782cfa40e336a4c9"
   },
   "ui:effort.tank.half": {
     "enHash": "509d0f59b52eb1bb",
-    "status": "ok",
-    "ruHash": "e6204f24d298a4cc"
-  },
-  "ui:effort.tank.range_one": {
-    "enHash": "c434460c9d7892ad",
-    "status": "ok",
-    "ruHash": "dac1eef3b7e641ee"
-  },
-  "ui:effort.tank.range_few": {
-    "enHash": "c434460c9d7892ad",
-    "status": "ok",
-    "ruHash": "87c2459769d9eab6"
-  },
-  "ui:effort.tank.range_many": {
-    "enHash": "c434460c9d7892ad",
-    "status": "flagged",
-    "reason": "Extra content: already contains «в запасе» (in reserve), but ui:effort.sentence appends «в запасе» again, giving a doubled phrase. Back-translation: \"about {from} to {to} reps in reserve\""
-  },
-  "ui:effort.tank.range_other": {
-    "enHash": "c434460c9d7892ad",
-    "status": "flagged",
-    "reason": "Extra content: already contains «в запасе» (in reserve), but ui:effort.sentence appends «в запасе» again, giving a doubled phrase. Back-translation: \"about {from} to {to} reps in reserve\""
+    "status": "manual",
+    "ruHash": "638611f2908581ed"
   },
   "ui:effort.tank.one": {
     "enHash": "5df88c80ce25017c",
-    "status": "flagged",
-    "reason": "Extra content: already contains «в запасе» (in reserve), but ui:effort.sentence appends «в запасе» again, giving a doubled phrase. Back-translation: \"about one rep in reserve\""
+    "status": "ok",
+    "ruHash": "670dcdafd996ffa6"
   },
   "ui:effort.tank.many": {
     "enHash": "b040d668ee2eb9c5",
-    "status": "flagged",
-    "reason": "Extra content: already contains «в запасе» (in reserve), but ui:effort.sentence appends «в запасе» again, giving a doubled phrase. Back-translation: \"about {n} reps in reserve\". Also {n} is a spelled-out number (2-4 likely), so «повторений» is wrong for those, e.g. «два повторений»"
+    "status": "manual",
+    "ruHash": "73bc06b116c513c9"
   },
   "ui:effort.sentence": {
     "enHash": "62f4f396e7123637",
@@ -1371,8 +1351,8 @@
   },
   "ui:supersetSheet.already": {
     "enHash": "07672c7f774373db",
-    "status": "flagged",
-    "reason": "edge spaces dropped (pipeline trim)"
+    "status": "ok",
+    "ruHash": "19e6e721ec3385b3"
   },
   "ui:supersetSheet.pick": {
     "enHash": "6eefef56f1ed10e3",
@@ -1511,8 +1491,8 @@
   },
   "ui:workoutHeader.cal": {
     "enHash": "775ff9d42af1111b",
-    "status": "flagged",
-    "reason": "Embarrassing: «КАЛ» in Russian means \"feces\". Use «ККАЛ»"
+    "status": "ok",
+    "ruHash": "cb4a0466daaa18da"
   },
   "ui:plateSheet.title": {
     "enHash": "4fb4c6f38a7c723a",
@@ -1966,68 +1946,68 @@
   },
   "ui:summary.stalledBody": {
     "enHash": "3bbb2ac40efdbd2d",
-    "status": "flagged",
-    "reason": "Mistranslation: \"чем давление\" = \"than pressure\"; English means \"than pushing (harder)\" does. Back: \"A week at X% often moves further than pressure.\""
+    "status": "ok",
+    "ruHash": "5fe9b77830e43698"
   },
   "ui:summary.rampBody_one": {
     "enHash": "15cebf4edaf2baf5",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза\" = a pause/break from training; English \"holding\" means keeping volume steady. Back: \"A pause of N days will let it catch up.\""
+    "status": "manual",
+    "ruHash": "eb3ef03ad38be52f"
   },
   "ui:summary.rampBody_few": {
     "enHash": "15cebf4edaf2baf5",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза\" = a pause/break from training; English \"holding\" means keeping volume steady. Back: \"A pause of N days will let it catch up.\""
+    "status": "manual",
+    "ruHash": "a221e491b9b6b010"
   },
   "ui:summary.rampBody_many": {
     "enHash": "15cebf4edaf2baf5",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза\" = a pause/break from training; English \"holding\" means keeping volume steady. Back: \"A pause of N days will let it catch up.\""
+    "status": "manual",
+    "ruHash": "8ddacfe97afc3b80"
   },
   "ui:summary.rampBody_other": {
     "enHash": "15cebf4edaf2baf5",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза\" = a pause/break from training; English \"holding\" means keeping volume steady. Back: \"A pause of N days will let it catch up.\""
+    "status": "manual",
+    "ruHash": "a221e491b9b6b010"
   },
   "ui:summary.easeOff_one": {
     "enHash": "ccf0ca481c821c44",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Снизить на {days} день\" reads as \"Reduce by N days\", not \"Ease off for N days\" (needs e.g. \"Снизить нагрузку на ... \")"
+    "status": "ok",
+    "ruHash": "c64325dc3fbbd23a"
   },
   "ui:summary.easeOff_few": {
     "enHash": "ccf0ca481c821c44",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Снизить на {days} день\" reads as \"Reduce by N days\", not \"Ease off for N days\" (needs e.g. \"Снизить нагрузку на ... \")"
+    "status": "ok",
+    "ruHash": "581e0bf1be9ffde5"
   },
   "ui:summary.easeOff_many": {
     "enHash": "ccf0ca481c821c44",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Снизить на {days} день\" reads as \"Reduce by N days\", not \"Ease off for N days\" (needs e.g. \"Снизить нагрузку на ... \")"
+    "status": "ok",
+    "ruHash": "a0cc649bbf3ac4fe"
   },
   "ui:summary.easeOff_other": {
     "enHash": "ccf0ca481c821c44",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Снизить на {days} день\" reads as \"Reduce by N days\", not \"Ease off for N days\" (needs e.g. \"Снизить нагрузку на ... \")"
+    "status": "ok",
+    "ruHash": "581e0bf1be9ffde5"
   },
   "ui:summary.hold_one": {
     "enHash": "526f33f1566c829e",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза на N дней\" = \"Pause/break for N days\" (implies stopping training); English \"Hold\" means keep volume steady."
+    "status": "ok",
+    "ruHash": "8c9800181e251dbd"
   },
   "ui:summary.hold_few": {
     "enHash": "526f33f1566c829e",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза на N дней\" = \"Pause/break for N days\" (implies stopping training); English \"Hold\" means keep volume steady."
+    "status": "ok",
+    "ruHash": "909cc6f93c11e464"
   },
   "ui:summary.hold_many": {
     "enHash": "526f33f1566c829e",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза на N дней\" = \"Pause/break for N days\" (implies stopping training); English \"Hold\" means keep volume steady."
+    "status": "ok",
+    "ruHash": "8c4587e0a0f075fe"
   },
   "ui:summary.hold_other": {
     "enHash": "526f33f1566c829e",
-    "status": "flagged",
-    "reason": "Meaning shift: \"Пауза на N дней\" = \"Pause/break for N days\" (implies stopping training); English \"Hold\" means keep volume steady."
+    "status": "ok",
+    "ruHash": "909cc6f93c11e464"
   },
   "ui:summary.deloadAccepted_one": {
     "enHash": "ce574d02deb04259",
@@ -2121,8 +2101,8 @@
   },
   "ui:summary.receiptUpdated": {
     "enHash": "b0e588345f90d02f",
-    "status": "flagged",
-    "reason": "Redundant/broken structure: {changes} is already count text (\"3 изменения\"), so result reads \"saved changes: 3 changes\". Should be \"{name} · сохранено: {changes}\"."
+    "status": "ok",
+    "ruHash": "fc0daac595aeac8a"
   },
   "ui:summary.receiptAdded": {
     "enHash": "4ceeb175f6b02dd4",
@@ -2596,13 +2576,13 @@
   },
   "ui:muscleMap.setsPerWeek": {
     "enHash": "beea1e6ce3a4ecf5",
-    "status": "flagged",
-    "reason": "Non-plural key with counted noun: \"{n} подходов / неделю\" wrong for 1-4 and fractional averages (e.g. \"2,5 подходов\"); use \"Подходов в неделю: {n}\" style."
+    "status": "ok",
+    "ruHash": "80d1d8919a504a79"
   },
   "ui:muscleMap.sets": {
     "enHash": "c899c6b2ef73628e",
-    "status": "flagged",
-    "reason": "Non-plural key with counted noun: \"{n} подходов\" wrong for 1-4 (\"3 подходов\"); use \"Подходы: {n}\" style."
+    "status": "ok",
+    "ruHash": "c4b4eb540cd23444"
   },
   "ui:muscleMap.noneLogged": {
     "enHash": "7d6c691e13c773ff",
@@ -2701,8 +2681,8 @@
   },
   "ui:mergeDup.keepMeta": {
     "enHash": "30930cd882f039fa",
-    "status": "flagged",
-    "reason": "Non-plural key: \"{sets} подходов · {workouts} тренировок\" wrong for 1-4 (\"2 подходов\", \"3 тренировок\"); use label style."
+    "status": "ok",
+    "ruHash": "b8774fbe2bc1dce3"
   },
   "ui:mergeDup.memberMeta_one": {
     "enHash": "8470df209f659388",
@@ -2766,8 +2746,8 @@
   },
   "ui:mergeDup.combined": {
     "enHash": "4bca3b493f2002d7",
-    "status": "flagged",
-    "reason": "Non-plural key: \"{sets} подходов в {workouts} тренировках\" wrong for 1-4 sets and for 1/21 workouts; use label style."
+    "status": "ok",
+    "ruHash": "702af362d9e1a415"
   },
   "ui:mergeDup.repoint_one": {
     "enHash": "eb3cd4dabbea6216",
@@ -2841,23 +2821,23 @@
   },
   "ui:mergeDup.confirm_one": {
     "enHash": "30ddaf40c92e2f68",
-    "status": "flagged",
-    "reason": "{sets} is a separate count not covered by the plural key: \"{sets} подходов\" wrong for 1-4 sets (\"3 подходов\")."
+    "status": "ok",
+    "ruHash": "4ec78f7f15e324ae"
   },
   "ui:mergeDup.confirm_few": {
     "enHash": "1f3ad5318fa57acf",
-    "status": "flagged",
-    "reason": "{sets} is a separate count not covered by the plural key: \"{sets} подходов\" wrong for 1-4 sets (\"3 подходов\")."
+    "status": "ok",
+    "ruHash": "e69c94273619fb48"
   },
   "ui:mergeDup.confirm_many": {
     "enHash": "1f3ad5318fa57acf",
-    "status": "flagged",
-    "reason": "{sets} is a separate count not covered by the plural key: \"{sets} подходов\" wrong for 1-4 sets (\"3 подходов\")."
+    "status": "ok",
+    "ruHash": "e69c94273619fb48"
   },
   "ui:mergeDup.confirm_other": {
     "enHash": "1f3ad5318fa57acf",
-    "status": "flagged",
-    "reason": "{sets} is a separate count not covered by the plural key: \"{sets} подходов\" wrong for 1-4 sets (\"3 подходов\")."
+    "status": "ok",
+    "ruHash": "e69c94273619fb48"
   },
   "ui:mergeDup.cantUndo": {
     "enHash": "76e10d039d864239",
@@ -3136,63 +3116,63 @@
   },
   "ui:profiles.deleteWorkouts_one": {
     "enHash": "46898e3cce3b7d7f",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "1e0181e11ffe04ea"
   },
   "ui:profiles.deleteWorkouts_few": {
     "enHash": "e0ea3e22a4e44551",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "929e99c47bf31e7e"
   },
   "ui:profiles.deleteWorkouts_many": {
     "enHash": "e0ea3e22a4e44551",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "4e0a7198d28b2033"
   },
   "ui:profiles.deleteWorkouts_other": {
     "enHash": "e0ea3e22a4e44551",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "929e99c47bf31e7e"
   },
   "ui:profiles.deleteRoutines_one": {
     "enHash": "1a1fdb3d85d8e8c9",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "c2686a17da515e2a"
   },
   "ui:profiles.deleteRoutines_few": {
     "enHash": "6787fda84dc2dca2",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "f32232100ce7fede"
   },
   "ui:profiles.deleteRoutines_many": {
     "enHash": "6787fda84dc2dca2",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "ab21d58bfe4371f8"
   },
   "ui:profiles.deleteRoutines_other": {
     "enHash": "6787fda84dc2dca2",
-    "status": "flagged",
-    "reason": "Leading and trailing spaces dropped; note says keep the surrounding spaces and comma (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "f32232100ce7fede"
   },
   "ui:profiles.deleteRecords_one": {
     "enHash": "1d06fbd10cb382e9",
-    "status": "flagged",
-    "reason": "Leading space dropped; note says keep it (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "ccc19f67e396d9dc"
   },
   "ui:profiles.deleteRecords_few": {
     "enHash": "41b5c49748aba53d",
-    "status": "flagged",
-    "reason": "Leading space dropped; note says keep it (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "9649f0df32eb2168"
   },
   "ui:profiles.deleteRecords_many": {
     "enHash": "41b5c49748aba53d",
-    "status": "flagged",
-    "reason": "Leading space dropped; note says keep it (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "5fc4d82ed5554bce"
   },
   "ui:profiles.deleteRecords_other": {
     "enHash": "41b5c49748aba53d",
-    "status": "flagged",
-    "reason": "Leading space dropped; note says keep it (count will run into the word). Wording/plural form itself is fine."
+    "status": "ok",
+    "ruHash": "9649f0df32eb2168"
   },
   "ui:profiles.yourWorkout": {
     "enHash": "d9b45ef7eeb0dfdd",
@@ -3211,8 +3191,8 @@
   },
   "ui:profiles.finishLead": {
     "enHash": "92f30068e94de467",
-    "status": "flagged",
-    "reason": "Trailing space dropped (note says keep it); the running clock will run into \"уже\". Back-translation \"{routine} has been going on already\" is fine."
+    "status": "ok",
+    "ruHash": "cdc7d48d8991ee36"
   },
   "ui:profiles.finishTail": {
     "enHash": "5222fce9d2c4d6ae",
@@ -3886,8 +3866,8 @@
   },
   "ui:library.aboutLabel": {
     "enHash": "c200f2ef2a407ce5",
-    "status": "flagged",
-    "reason": "Grammar error: \"О упражнении\" must be \"Об упражнении {name}\" (About exercise {name}). Screen-reader only."
+    "status": "ok",
+    "ruHash": "f89636963813ac02"
   },
   "ui:exerciseDetail.loadFailed": {
     "enHash": "1051c73c634bb232",
@@ -4306,13 +4286,13 @@
   },
   "ui:health.thisPhone": {
     "enHash": "54ee741e148d62fa",
-    "status": "flagged",
-    "reason": "Wrong case for its mid-sentence use \"on this phone\": nominative \"этот телефон\" yields \"Health Connect на этот телефон принадлежит...\"; should be prepositional \"этом телефоне\"."
+    "status": "ok",
+    "ruHash": "880ba97a372a078a"
   },
   "ui:health.thisIphone": {
     "enHash": "ffb89270a0656c70",
-    "status": "flagged",
-    "reason": "Wrong case for its mid-sentence use \"on this iPhone\": nominative \"этот iPhone\" yields \"Apple Health на этот iPhone...\"; should be prepositional \"этом iPhone\"."
+    "status": "ok",
+    "ruHash": "5efbd3c80f86ad9b"
   },
   "ui:health.offFor": {
     "enHash": "cea5493468c69174",
@@ -4961,13 +4941,13 @@
   },
   "ui:import.into": {
     "enHash": "ce7edb933eb1ced7",
-    "status": "flagged",
-    "reason": "Leading space dropped: ' into {name}' became 'в {name}', so the button reads 'тренировкув Tom'. Note requires keeping the leading space."
+    "status": "ok",
+    "ruHash": "5ae876408c9f2cad"
   },
   "ui:import.asUnit": {
     "enHash": "9915271527d3273d",
-    "status": "flagged",
-    "reason": "Leading space dropped: ' as {unit}' became 'как {unit}', so it glues to the previous word. Note requires keeping the leading space."
+    "status": "ok",
+    "ruHash": "d4e9b40083d39caf"
   },
   "ui:import.importing": {
     "enHash": "c01c4324f1fa14fc",
@@ -4981,8 +4961,8 @@
   },
   "ui:import.doneStats": {
     "enHash": "4fe4fa6e0ff9ccc0",
-    "status": "flagged",
-    "reason": "Non-plural key with counted nouns in genitive plural ('{workouts} тренировок · ... {sets} подходов') is wrong for 1 and 2-4 (e.g. '3 тренировок'). Use 'Тренировки: {workouts} · Упражнения: {exercises} · Подходы: {sets}'."
+    "status": "ok",
+    "ruHash": "e6530094c725536d"
   },
   "ui:import.rowsSkipped_one": {
     "enHash": "639b846559f88626",
@@ -5391,8 +5371,8 @@
   },
   "ex:014701df3fcf5db493337717235d27a8": {
     "enHash": "1013e854c3575c31",
-    "status": "flagged",
-    "reason": "Wrong meaning: back-translates to 'Alternating diagonal lunges'; a bound is a jump, not a lunge (should be прыжки)."
+    "status": "ok",
+    "ruHash": "7bee68cfe919d062"
   },
   "ex:a589e3f67d3254a798c610f4bb5e8963": {
     "enHash": "587201627e01839c",
@@ -5411,8 +5391,8 @@
   },
   "ex:9a5488d546da5a4fb8d28100da7e138f": {
     "enHash": "1a3b72aab605c856",
-    "status": "flagged",
-    "reason": "Grammar error: 'Попеременный взятие' (masc adjective with neuter noun); should be 'Попеременное взятие на грудь с виса'."
+    "status": "ok",
+    "ruHash": "9cde9822a39417bc"
   },
   "ex:f299e5d3a0f451f699103db2d34f2108": {
     "enHash": "69d18ebdadf8b0dd",
@@ -5491,8 +5471,8 @@
   },
   "ex:cca38cf0884a5f5e95576d71ea8e19e0": {
     "enHash": "252bb9c039e98b4d",
-    "status": "flagged",
-    "reason": "Extra content: back-translates to 'Good mornings with a barbell with a band'; English has no barbell. Should be 'Наклоны с резинкой (гуд морнинг)'."
+    "status": "ok",
+    "ruHash": "2d1e448e14e5c05c"
   },
   "ex:4771f727acd3579599eb885b455ce4b1": {
     "enHash": "ac026bca6165fd14",
@@ -5516,13 +5496,13 @@
   },
   "ex:c9c514aa17aa5bcabbb918ae9437afeb": {
     "enHash": "d5898bef3876ffe3",
-    "status": "flagged",
-    "reason": "Extra/confused content: 'Rollout with a roller with a barbell'; the barbell is the roller. Should be 'Выкатывание штанги на пресс'."
+    "status": "ok",
+    "ruHash": "618a0ac8f9100a5d"
   },
   "ex:ba75e6a1c6c25a8180acc952237536a5": {
     "enHash": "456b353b7044413a",
-    "status": "flagged",
-    "reason": "Extra/confused content: 'Rollout with a roller with a barbell on knees'; should be 'Выкатывание штанги на пресс с колен'."
+    "status": "ok",
+    "ruHash": "ab82ebaddbae7955"
   },
   "ex:05674cde112950e2910ed8ec62e936d0": {
     "enHash": "fbe520a560300fa6",
@@ -5566,8 +5546,8 @@
   },
   "ex:4661998cd4d055d69442b3f6e4dbe2dd": {
     "enHash": "4d35e9f98b989634",
-    "status": "flagged",
-    "reason": "'Толчок бёдрами' (hip thrusting) can read as a sexual phrase in Russian; use the standard 'Ягодичный мост со штангой' / 'Хип-траст со штангой'."
+    "status": "ok",
+    "ruHash": "d4007f23fa64810c"
   },
   "ex:795d6b5f45eb588592b1696f181a841c": {
     "enHash": "a48b371fc9309fef",
@@ -5591,8 +5571,8 @@
   },
   "ex:148869f8e4df5fdb841e7e7d944b4ab4": {
     "enHash": "b283802377b6f6dc",
-    "status": "flagged",
-    "reason": "Wrong meaning and grammar: 'Разгибание со штангой с скамьи' = 'Extension with barbell from bench' ('с скамьи' should be 'со скамьи'); exercise is an ab rollout: 'Выкатывание штанги со скамьи'."
+    "status": "ok",
+    "ruHash": "3164f72eee673c6d"
   },
   "ex:6ce390fa224957849fef8b53d5a4accb": {
     "enHash": "58988d7b8c9e294b",
@@ -5781,8 +5761,8 @@
   },
   "ex:416f1b9c87ed527ca901a9f18d7ec01d": {
     "enHash": "d8e246f72cc6f164",
-    "status": "flagged",
-    "reason": "Extra content: adds barbell ('Lift of a barbell from below from hang'); English names no equipment and the exercise is a kettlebell bottoms-up clean."
+    "status": "manual",
+    "ruHash": "6a6c4a9ea4bae548"
   },
   "ex:b51e805787065ae2b14b26df222cf1b7": {
     "enHash": "eb6ad440b106b578",
@@ -5856,8 +5836,8 @@
   },
   "ex:0a7f0b0a69345d0f8f60693865ff1257": {
     "enHash": "3d4b11099b71522b",
-    "status": "flagged",
-    "reason": "Missing content: 'hammer' dropped; back-translates to 'Curls on cable - rope handle'. Should be 'Молотковые сгибания на блоке с канатной рукоятью'."
+    "status": "ok",
+    "ruHash": "d1365da6c42f0447"
   },
   "ex:fb6c488090b255f1abf81d33fb4ce4d1": {
     "enHash": "60d079877ace17de",
@@ -6041,8 +6021,8 @@
   },
   "ex:9609eeeaea6853409806427bd9ef35a9": {
     "enHash": "668af61cbab87492",
-    "status": "flagged",
-    "reason": "Mistranslated equipment: a circus bell is an oversized dumbbell; 'Цирковая штанга' = 'circus barbell'. Should be 'Цирковая гантель'."
+    "status": "ok",
+    "ruHash": "8d4de63c52980866"
   },
   "ex:cbb4f3b60a555cd4999e964414f48243": {
     "enHash": "5137c8760c941186",
@@ -6156,8 +6136,8 @@
   },
   "ex:8f46f884c22b5a228b1d0fe2b717bf3a": {
     "enHash": "b84e8e8a2b7da47e",
-    "status": "flagged",
-    "reason": "'Распятие' is the religious word for crucifixion/crucifix; risky in a gym UI. Prefer a neutral strongman name such as 'Удержание рук в стороны (крест)'. Native check suggested."
+    "status": "ok",
+    "ruHash": "2eed9d9ff288e808"
   },
   "ex:b64e6be032375d33927dcc5bfd981a61": {
     "enHash": "3684429dd77f0d72",
@@ -6291,8 +6271,8 @@
   },
   "ex:e57fe4746d605d1b93a0be68ef78d42b": {
     "enHash": "c62bdae6bcb48d72",
-    "status": "flagged",
-    "reason": "Push press mistranslated as 'Жим двух гирь стоя' (standing press of two kettlebells); loses leg-drive push press (швунг)."
+    "status": "ok",
+    "ruHash": "b55aeafa427ee4ff"
   },
   "ex:ed0c35b4613e5af5b553d5b201663d1c": {
     "enHash": "852c5f09b62d468c",
@@ -6396,8 +6376,8 @@
   },
   "ex:34d4997284455ea791f21b58e483313b": {
     "enHash": "450d04f976d1c09e",
-    "status": "flagged",
-    "reason": "Adds 'стоя' (standing) absent from English 'Dumbbell One-Arm Shoulder Press'."
+    "status": "ok",
+    "ruHash": "caa71adab8ff533c"
   },
   "ex:4c4c014ddbf15e1480f828dc6f766aeb": {
     "enHash": "8228363a9972e825",
@@ -6441,8 +6421,8 @@
   },
   "ex:3829865920e053d99faf13845104042e": {
     "enHash": "4c0bb097f3bc0b49",
-    "status": "flagged",
-    "reason": "Adds 'сидя' (seated) absent from English 'Dumbbell Shoulder Press'."
+    "status": "ok",
+    "ruHash": "89fd8789fc86ff5b"
   },
   "ex:6d9e732d0c8a57d3bd2ff4497ae107ac": {
     "enHash": "4cf446ddfebb4c73",
@@ -6541,8 +6521,8 @@
   },
   "ex:1196c984d631532f90b13c5c1c25b6a9": {
     "enHash": "1b9b6e632fbb73ca",
-    "status": "flagged",
-    "reason": "'Быстрые прыжки на скакалке' = fast jump-rope; source exercise is a running skip drill, not rope."
+    "status": "ok",
+    "ruHash": "4a308cffde799bdb"
   },
   "ex:86d620a728c157e2b448075bc193e97c": {
     "enHash": "8ce726076b0406a6",
@@ -6591,8 +6571,8 @@
   },
   "ex:207e431c13585bf385d93c8fbba2194c": {
     "enHash": "159b48b585f1e896",
-    "status": "flagged",
-    "reason": "Wrong meaning: 'Тяга к груди с жимом' = row to chest with press; Forward Drag is a sled drag."
+    "status": "ok",
+    "ruHash": "83e4cf7aa062bcd5"
   },
   "ex:c8e33255e3385bb89754b67abca1a8ef": {
     "enHash": "6f9df5a343e7b5a8",
@@ -6751,8 +6731,8 @@
   },
   "ex:96feb14f493a55a7bdddeb4f1471f983": {
     "enHash": "a82c9aa9012e0499",
-    "status": "flagged",
-    "reason": "'Наклоны со штангой в висе' = good mornings while hanging; English means the barbell hangs (from chains/straps)."
+    "status": "ok",
+    "ruHash": "c595057cc40211f0"
   },
   "ex:bbd31f9ecfb854488ed4bf488e9ba4e9": {
     "enHash": "3033c4e8b853e38a",
@@ -6861,8 +6841,8 @@
   },
   "ex:5c05f0d5945750418ce76d093f28f8a7": {
     "enHash": "1ffc295f52aa538e",
-    "status": "flagged",
-    "reason": "Drops 'Inner' (back-translation: 'Incline biceps curl')."
+    "status": "ok",
+    "ruHash": "a7325680c5b78f45"
   },
   "ex:0dde06b2cc5459929e2f00217716a211": {
     "enHash": "2a125ebf1a36a38f",
@@ -6901,13 +6881,13 @@
   },
   "ex:469ab91cc0fc54a2821741047586cc65": {
     "enHash": "9f78f29e3db3d4ae",
-    "status": "flagged",
-    "reason": "'Тяга в наклоне на перекладине' = bent-over row on a bar; Inverted Row is a horizontal/Australian pull-up."
+    "status": "ok",
+    "ruHash": "7f11aac9e543bae5"
   },
   "ex:e38ffc65f98c579a9552bb68a05b96e9": {
     "enHash": "b0dff8a56076e983",
-    "status": "flagged",
-    "reason": "'Тяга в наклоне на перекладине с петлями' = bent-over row; Inverted Row is a horizontal/Australian pull-up."
+    "status": "ok",
+    "ruHash": "541c28d5a85b2c3c"
   },
   "ex:ce56abe3292759afb136d9bdfa56d7b4": {
     "enHash": "f3fec1dcf11658be",
@@ -7176,8 +7156,8 @@
   },
   "ex:76edff7575f65769a89113b6846b226b": {
     "enHash": "1287b1c773c56d66",
-    "status": "flagged",
-    "reason": "'(изометрия)' = isometric; 'Iso' here means iso-lateral, not isometric."
+    "status": "ok",
+    "ruHash": "95c92694f23ea47e"
   },
   "ex:dc988be8dd945928a169d1c6772027fe": {
     "enHash": "9bb01db029a9cd4e",
@@ -7386,8 +7366,8 @@
   },
   "ex:81dc025475dc5809bcd050540e4ea264": {
     "enHash": "d5028473b89c6ac7",
-    "status": "flagged",
-    "reason": "'Силовой рывок' = power snatch; Muscle Snatch is a different lift (рывок без подседа)."
+    "status": "ok",
+    "ruHash": "8d3e30b97abfc15f"
   },
   "ex:672ad67a698653e8af57b7b65f559e04": {
     "enHash": "dd1057fcea51a612",
@@ -7411,13 +7391,13 @@
   },
   "ex:411485f3fae458788bccdaea1647badc": {
     "enHash": "302f706ad19cdf6b",
-    "status": "flagged",
-    "reason": "Wrong: 'leg curl on a glute-ham machine'; Natural GHR is done without a machine (Nordic-style)."
+    "status": "ok",
+    "ruHash": "56a1b09b46c2eec5"
   },
   "ex:5647eb29f61650ddab0b0a08443724b9": {
     "enHash": "20f105c65f155ed5",
-    "status": "flagged",
-    "reason": "Wrong exercise: 'Жим штанги из-за головы' = behind-the-neck overhead press; Neck Press is a bench press lowered to the neck."
+    "status": "ok",
+    "ruHash": "520a5cb93a8c346f"
   },
   "ex:9f54bf93ae2853e6ba2bf7f2dee4b004": {
     "enHash": "8fdb5e234e0bc5c4",
@@ -7711,8 +7691,8 @@
   },
   "ex:2bfcc1e8e2a5519cae697c6b906b8388": {
     "enHash": "fae1e97a1c098fbc",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Partial pushing/jerk movements\"; Power Partials are partial-range dumbbell shoulder raises (e.g. «Частичные подъёмы гантелей»)."
+    "status": "ok",
+    "ruHash": "d11d0bceaaa83b66"
   },
   "ex:c81e8eb04ede5aba820b84d70c44d062": {
     "enHash": "71730077270bee97",
@@ -7901,8 +7881,8 @@
   },
   "ex:e3809174b5ad5aae8fa5e93719367720": {
     "enHash": "8bab8051f7f428e2",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Flyes in machine with reverse grip\"; reverse flyes = rear-delt flyes (\"Обратные разведения в тренажёре\")."
+    "status": "ok",
+    "ruHash": "1a3f9068e2c24bf4"
   },
   "ex:60d91604e7505db189ea6e80cf4d01f2": {
     "enHash": "9abd0fa834db1969",
@@ -7951,8 +7931,8 @@
   },
   "ex:aefdf80e52dc543294c3a9efc5ffee4f": {
     "enHash": "b1bd9bfb07a3ac5e",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Romanian deadlift from blocks\" (с плинтов = block pull, the opposite of deficit); should be «стоя на возвышении/с дефицитом»."
+    "status": "ok",
+    "ruHash": "3ca3872cef9ba1f1"
   },
   "ex:24196795d8175418a15e580f8bc66d59": {
     "enHash": "bd6402c3f1ae5623",
@@ -8381,8 +8361,8 @@
   },
   "ex:877a73b4caf15ae589810280c1d139e1": {
     "enHash": "0ca3ec2c43c03e19",
-    "status": "flagged",
-    "reason": "denyHit болгар not cleared: adds \"Bulgarian\" (\"Bulgarian lunge in Smith machine\") absent from English \"Single-Leg Split Squat\"; use «Сплит-присед на одной ноге в тренажёре Смита»."
+    "status": "ok",
+    "ruHash": "7c19c60d847cd777"
   },
   "ex:08e7e704346555d2af7ac7b0e4f24960": {
     "enHash": "b00bb3dc92aaa501",
@@ -8441,8 +8421,8 @@
   },
   "ex:3843ac00d63b58c7b9dd39d06ffc3efa": {
     "enHash": "130777d22cb1f0b4",
-    "status": "flagged",
-    "reason": "Wrong exercise: \"Arm curl on Scott (preacher) bench\" = Preacher Curl; spider curl is done prone on an incline bench (e.g. «Паучьи сгибания рук»)."
+    "status": "ok",
+    "ruHash": "21a9ef4166483116"
   },
   "ex:79e641c77a0457199a7ba6d62c6e638c": {
     "enHash": "bd5f3204bcd75a95",
@@ -8756,8 +8736,8 @@
   },
   "ex:c51aebb7637b5dbb908f1e786c311e75": {
     "enHash": "7c6352feee45d30b",
-    "status": "flagged",
-    "reason": "Wrong meaning: \"Lunge on suspension straps\"; a fallout is an ab rollout-style movement (e.g. «Выкатывание на петлях»)."
+    "status": "ok",
+    "ruHash": "4a8e9f20f469aea4"
   },
   "ex:4e0393cbc6525564b6f32749f4baf995": {
     "enHash": "01feb71d57bd4811",
@@ -8976,8 +8956,8 @@
   },
   "ex:d2fecbb011e556eb8909104c6141b8fc": {
     "enHash": "f76cdb22900d1b57",
-    "status": "flagged",
-    "reason": "Wrong meaning + awkward: \"Pull-ups with reverse grip with wide grip\"; rear pull-up = behind the neck («Подтягивания за голову широким хватом»)."
+    "status": "ok",
+    "ruHash": "7a35666591e3d94c"
   },
   "ex:8713259a36c450bfbabe15b547658d4e": {
     "enHash": "b1a52b46a0268ee8",
@@ -9233,5 +9213,60 @@
     "enHash": "151bdcbe7b84fadb",
     "status": "ok",
     "ruHash": "a3219cd3d810e305"
+  },
+  "ui:effort.range_one": {
+    "enHash": "c1033365de0998a6",
+    "status": "ok",
+    "ruHash": "02cf7f0188546682"
+  },
+  "ui:effort.range_few": {
+    "enHash": "c1033365de0998a6",
+    "status": "ok",
+    "ruHash": "02cf7f0188546682"
+  },
+  "ui:effort.range_many": {
+    "enHash": "c1033365de0998a6",
+    "status": "ok",
+    "ruHash": "02cf7f0188546682"
+  },
+  "ui:effort.range_other": {
+    "enHash": "c1033365de0998a6",
+    "status": "ok",
+    "ruHash": "02cf7f0188546682"
+  },
+  "ui:effort.nReps_one": {
+    "enHash": "6b1e7b82b052d1b6",
+    "status": "ok",
+    "ruHash": "a18434f2405a3a4b"
+  },
+  "ui:effort.nReps_few": {
+    "enHash": "6b1e7b82b052d1b6",
+    "status": "ok",
+    "ruHash": "a18434f2405a3a4b"
+  },
+  "ui:effort.nReps_many": {
+    "enHash": "6b1e7b82b052d1b6",
+    "status": "ok",
+    "ruHash": "a18434f2405a3a4b"
+  },
+  "ui:effort.nReps_other": {
+    "enHash": "6b1e7b82b052d1b6",
+    "status": "ok",
+    "ruHash": "a18434f2405a3a4b"
+  },
+  "ui:plateSheet.use": {
+    "enHash": "b373934ba2f0f595",
+    "status": "ok",
+    "ruHash": "28d8a2344e5c37d0"
+  },
+  "ui:profiles.deleteLead": {
+    "enHash": "ffea09220f082ab1",
+    "status": "ok",
+    "ruHash": "ff4c6674cf687e3c"
+  },
+  "ui:effort.tank.range": {
+    "enHash": "c434460c9d7892ad",
+    "status": "manual",
+    "ruHash": "f87f0256e718d9c2"
   }
 }

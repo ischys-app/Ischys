@@ -587,7 +587,6 @@ export const strings: Record<string, StringDef> = {
   'effort.tank.range': {
     en: 'about {from} to {to} reps left',
     note: 'Part of the effort sentence; {from} and {to} are spelled-out numbers. Lower case in English; inserted into the sentence.',
-    plural: 'to',
   },
   'effort.tank.one': {
     en: 'about one rep left',

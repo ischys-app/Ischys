@@ -401,3 +401,33 @@ test('denyHits: all «стран-» endings, slurs, ZOV and гойда are flagg
     assert.deepEqual(core.denyHits(s, 'Press', denylist), [stem], s);
   }
 });
+
+test('parseResponse (ru, keepEdgeSpace): stored value carries the English edge whitespace exactly', () => {
+  const batch = [item('a', ' into {name}'), item('b', ' workout, '), item('c', '{routine} has been running for '), item('d', 'Start'), item('e', '\n  Done')];
+  const r = core.parseResponse(JSON.stringify({ a: 'в {name}', b: '  тренировку,', c: '{routine} идёт уже', d: ' Начать ', e: 'Готово' }), batch, { lang: LANGS.ru });
+  assert.deepEqual(r.rejected, {});
+  assert.deepEqual(r.ok, { a: ' в {name}', b: ' тренировку, ', c: '{routine} идёт уже ', d: 'Начать', e: '\n  Готово' });
+  assert.equal(LANGS.ru.keepEdgeSpace, true);
+});
+
+test('parseResponse (zh): edge whitespace still trimmed as before', () => {
+  const r = core.parseResponse(JSON.stringify({ a: ' 到 {name} ' }), [item('a', ' into {name}')]);
+  assert.deepEqual(r.ok, { a: '到 {name}' });
+  assert.ok(!LANGS['zh-Hans'].keepEdgeSpace);
+});
+
+test('withRetryReason appends the review reason only for a flagged entry with a reason', () => {
+  const it = item('a', 'Start', 'Button.');
+  const flagged = { enHash: core.hashEn('Start'), status: 'flagged', reason: 'political word' };
+  const out = core.withRetryReason(it, flagged);
+  assert.equal(out.note, 'Button. A previous translation was rejected by review: political word. Avoid that problem.');
+  assert.equal(out.en, it.en);
+  assert.equal(out.key, it.key);
+  assert.equal(it.note, 'Button.');
+  assert.equal(core.withRetryReason(it, { ...flagged, reason: '' }), it);
+  assert.equal(core.withRetryReason(it, { ...flagged, status: 'pending' }), it);
+  assert.equal(core.withRetryReason(it, undefined), it);
+  assert.equal(core.withRetryReason({ key: 'b', en: 'x' }, flagged).note, 'A previous translation was rejected by review: political word. Avoid that problem.');
+  // the note does not change what the translation answers
+  assert.equal(core.needsTranslation('a', out.en, { a: flagged }, { retryFlagged: true }), true);
+});

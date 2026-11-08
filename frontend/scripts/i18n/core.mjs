@@ -60,6 +60,24 @@ export function checkOne(item, out, untranslated, lang = ZH) {
   return null;
 }
 
+/** The model's trimmed text wrapped in exactly the English source's leading and trailing whitespace. */
+function withEdgeSpace(en, out) {
+  const text = out.trim();
+  if (en.trim() === '') return text;
+  return en.match(/^\s*/)[0] + text + en.match(/\s*$/)[0];
+}
+
+/**
+ * For a retried flagged item: append the review reason to the prompt note so the model
+ * knows what to avoid. Only the note changes (enHash is computed from en). Otherwise
+ * returns the item itself.
+ */
+export function withRetryReason(item, entry) {
+  if (entry?.status !== 'flagged' || !entry.reason) return item;
+  const hint = `A previous translation was rejected by review: ${String(entry.reason).replace(/[.\s]+$/, '')}. Avoid that problem.`;
+  return { ...item, note: item.note ? `${item.note} ${hint}` : hint };
+}
+
 /**
  * Validate a model response against its batch.
  * Returns { ok: Record<key, zh>, rejected: Record<key, reason> }. Keys not in the batch are ignored.
@@ -87,7 +105,7 @@ export function parseResponse(text, batch, opts = {}) {
     }
     const reason = checkOne(it, obj[it.key], untranslated, lang);
     if (reason) rejected[it.key] = reason;
-    else ok[it.key] = obj[it.key].trim();
+    else ok[it.key] = lang.keepEdgeSpace ? withEdgeSpace(it.en, obj[it.key]) : obj[it.key].trim();
   }
   return { ok, rejected };
 }

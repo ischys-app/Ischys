@@ -6,6 +6,8 @@
  *   node scripts/i18n/translate.mjs --apply-review <file> --lang zh-Hans|ru
  *
  * --dry-run: no network, no file writes; prints the counts and one sample prompt.
+ * --retry-flagged: also re-asks flagged keys; a stored review reason is appended to the note.
+ * ru (keepEdgeSpace) stores the English source's leading/trailing whitespace around the output.
  *
  * Plural keys: zh has no singular, so `x_one` is skipped when `x_other` exists
  * and only `_other` is translated. ru translates four forms per count key
@@ -28,7 +30,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CATALOG_NS, collectSources as collectSourcesFrom } from './sources.mjs';
-import { applyReview as applyVerdicts, buildPrompt, denyHits, expandPlurals, hashEn, invalidateStale, needsTranslation, parseResponse } from './core.mjs';
+import { applyReview as applyVerdicts, buildPrompt, denyHits, expandPlurals, hashEn, invalidateStale, needsTranslation, parseResponse, withRetryReason } from './core.mjs';
 import { LANGS } from './langs.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -173,7 +175,12 @@ async function main() {
   const glossary = readJson(P.glossary);
   const state = readJson(P.state, {});
   const items = await collectSources();
-  const todo = items.filter((it) => needsTranslation(it.key, it.en, state, { retryFlagged: flag('--retry-flagged') }));
+  const retry = flag('--retry-flagged');
+  // A retried flagged item tells the model why review rejected it (note only; enHash comes from en).
+  // Only when the English is unchanged, so the reason still applies.
+  const todo = items
+    .filter((it) => needsTranslation(it.key, it.en, state, { retryFlagged: retry }))
+    .map((it) => (retry && state[it.key]?.enHash === hashEn(it.en) ? withRetryReason(it, state[it.key]) : it));
   const batches = [];
   for (let i = 0; i < todo.length; i += batchSize) batches.push(todo.slice(i, i + batchSize));
 

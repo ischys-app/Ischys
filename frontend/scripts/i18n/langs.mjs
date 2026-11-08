@@ -8,6 +8,8 @@
  * lengthFactor: multiplies a note's "Max N characters" budget (rounded down).
  * plural: 'none' = one translated form per key; 'ru' = one/few/many/other per count key.
  * catalogNotes: optional per-prefix note overrides for catalog items.
+ * keepEdgeSpace: store the model's text with exactly the English source's leading and
+ *   trailing whitespace (fragments like " into {name}"); otherwise the output is trimmed.
  */
 export const LANGS = {
   'zh-Hans': {
@@ -42,6 +44,7 @@ export const LANGS = {
     scriptRegex: /[Ѐ-ӿ]/,
     lengthFactor: 1.35,
     plural: 'ru',
+    keepEdgeSpace: true,
     catalogNotes: {
       ex: 'Exercise name (gym exercise; keep equipment in parentheses translated, e.g. (штанга)). Use the common Russian gym name.',
     },

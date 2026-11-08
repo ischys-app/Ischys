@@ -451,13 +451,13 @@
   },
   "ui:profile.trainingSince": {
     "enHash": "12d5a6ce59dbc639",
-    "status": "ok",
-    "ruHash": "89b3d87579ea8501"
+    "status": "manual",
+    "ruHash": "3a07c33301282a37"
   },
   "ui:profile.trainingSinceOnly": {
     "enHash": "403c0c3f8323c2d8",
-    "status": "ok",
-    "ruHash": "789b4b680dbf2493"
+    "status": "manual",
+    "ruHash": "68fa9daee9c6715b"
   },
   "ui:profile.statWorkouts": {
     "enHash": "ca4b56b08f9b4925",
@@ -541,23 +541,23 @@
   },
   "ui:profile.notTrained_one": {
     "enHash": "0f2ca7ce38571a2f",
-    "status": "ok",
-    "ruHash": "de9c259340dee5af"
+    "status": "manual",
+    "ruHash": "62805ea8626f8830"
   },
   "ui:profile.notTrained_few": {
     "enHash": "0f2ca7ce38571a2f",
-    "status": "ok",
-    "ruHash": "de9c259340dee5af"
+    "status": "manual",
+    "ruHash": "62805ea8626f8830"
   },
   "ui:profile.notTrained_many": {
     "enHash": "0f2ca7ce38571a2f",
-    "status": "ok",
-    "ruHash": "de9c259340dee5af"
+    "status": "manual",
+    "ruHash": "62805ea8626f8830"
   },
   "ui:profile.notTrained_other": {
     "enHash": "0f2ca7ce38571a2f",
-    "status": "ok",
-    "ruHash": "de9c259340dee5af"
+    "status": "manual",
+    "ruHash": "62805ea8626f8830"
   },
   "ui:profile.recentRecords": {
     "enHash": "5df9bd082d92ed8a",
@@ -1276,8 +1276,8 @@
   },
   "ui:exerciseMenu.replace": {
     "enHash": "9b83399592ced213",
-    "status": "ok",
-    "ruHash": "f675dace12378b8c"
+    "status": "manual",
+    "ruHash": "c20163fda1931290"
   },
   "ui:exerciseMenu.leaveSuperset": {
     "enHash": "37cbd62bc3762117",
@@ -1296,8 +1296,8 @@
   },
   "ui:exerciseMenu.remove": {
     "enHash": "7f08855776c6fe9d",
-    "status": "ok",
-    "ruHash": "d7aa0bd773b0db89"
+    "status": "manual",
+    "ruHash": "be99b13612015a48"
   },
   "ui:removedRow.undoLabel": {
     "enHash": "5155023a23c6d97f",
@@ -1376,8 +1376,8 @@
   },
   "ui:warmup.colSet": {
     "enHash": "2992d15897b5bbe7",
-    "status": "ok",
-    "ruHash": "a8006a41bf165e95"
+    "status": "manual",
+    "ruHash": "688d3b936e85471a"
   },
   "ui:warmup.colWeightReps": {
     "enHash": "67375c359f8903d4",
@@ -1461,13 +1461,13 @@
   },
   "ui:workoutHeader.startedBy": {
     "enHash": "773acf2cf10a2cfa",
-    "status": "ok",
-    "ruHash": "0a24874a1afad220"
+    "status": "manual",
+    "ruHash": "06c7e9441c3e0d1a"
   },
   "ui:workoutHeader.finish": {
     "enHash": "a6c7a84baa6750fc",
-    "status": "ok",
-    "ruHash": "8be2bbf39a833998"
+    "status": "manual",
+    "ruHash": "ef05d57959cfde50"
   },
   "ui:workoutHeader.time": {
     "enHash": "5888675d99b95617",
@@ -1766,8 +1766,8 @@
   },
   "ui:share.layoutStandard": {
     "enHash": "ef6691545d2c5523",
-    "status": "ok",
-    "ruHash": "b9d2833dafb5a187"
+    "status": "manual",
+    "ruHash": "7c0ef1469bceef81"
   },
   "ui:share.layoutDetailed": {
     "enHash": "6d46fcd50a63e430",
@@ -2676,8 +2676,8 @@
   },
   "ui:mergeDup.since": {
     "enHash": "5d9267d05d5214b0",
-    "status": "ok",
-    "ruHash": "0f10c853ad1c8bb4"
+    "status": "manual",
+    "ruHash": "289d7d752e248b52"
   },
   "ui:mergeDup.keepMeta": {
     "enHash": "30930cd882f039fa",
@@ -2746,8 +2746,8 @@
   },
   "ui:mergeDup.combined": {
     "enHash": "4bca3b493f2002d7",
-    "status": "ok",
-    "ruHash": "702af362d9e1a415"
+    "status": "manual",
+    "ruHash": "7c5738d0b0f9fad4"
   },
   "ui:mergeDup.repoint_one": {
     "enHash": "eb3cd4dabbea6216",
@@ -3026,8 +3026,8 @@
   },
   "ui:profiles.ownerHealthWatch": {
     "enHash": "9c212393116e0c52",
-    "status": "ok",
-    "ruHash": "a63224b412801b9b"
+    "status": "manual",
+    "ruHash": "0056b5d1870231ce"
   },
   "ui:profiles.manageCount_one": {
     "enHash": "84f3b7e5fda40dd6",
@@ -3311,8 +3311,8 @@
   },
   "ui:profiles.exportThis": {
     "enHash": "fc12181a0960551a",
-    "status": "ok",
-    "ruHash": "9e56387427e10a63"
+    "status": "manual",
+    "ruHash": "12a1206476ccaa0b"
   },
   "ui:profiles.deleteRow": {
     "enHash": "47311af432a79c40",
@@ -4486,8 +4486,8 @@
   },
   "ui:settings.keepNotes": {
     "enHash": "af7f1f860cadda2d",
-    "status": "ok",
-    "ruHash": "2afe6e2e64e43abf"
+    "status": "manual",
+    "ruHash": "e5a19a6b0a174192"
   },
   "ui:settings.keepNotes.sub": {
     "enHash": "683e328bca1367af",
@@ -4566,8 +4566,8 @@
   },
   "ui:settings.appearance": {
     "enHash": "3907fa7f80722a6f",
-    "status": "ok",
-    "ruHash": "1731619efa3a66aa"
+    "status": "manual",
+    "ruHash": "9022ba3739723a99"
   },
   "ui:settings.following": {
     "enHash": "87ae0e8360a05400",
@@ -4676,18 +4676,18 @@
   },
   "ui:settings.exportWhose": {
     "enHash": "48a38d94c84de4c6",
-    "status": "ok",
-    "ruHash": "274280a71f2d4d32"
+    "status": "manual",
+    "ruHash": "204e10b65d349287"
   },
   "ui:settings.importInto": {
     "enHash": "6da1ae08b97e4453",
-    "status": "ok",
-    "ruHash": "1a9b8c679b7e3f8e"
+    "status": "manual",
+    "ruHash": "90e7d5ff4429f739"
   },
   "ui:settings.inHistory": {
     "enHash": "3befb90ddd843083",
-    "status": "ok",
-    "ruHash": "7bba0527099fcc77"
+    "status": "manual",
+    "ruHash": "b5d4a046b739d718"
   },
   "ui:settings.importWorkout": {
     "enHash": "399c8883930e1bfa",
@@ -4756,8 +4756,8 @@
   },
   "ui:import.chooseSub": {
     "enHash": "fd11fb092ac12840",
-    "status": "ok",
-    "ruHash": "053d8f6921a46d11"
+    "status": "manual",
+    "ruHash": "b3d5a185545cc9c7"
   },
   "ui:import.browse": {
     "enHash": "c8bb105f01017ced",

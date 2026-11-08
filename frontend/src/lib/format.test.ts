@@ -206,8 +206,10 @@ test('ru dates', () => {
   assert.equal(fmtMonthYear('2026-11-08', 'ru'), 'Ноябрь 2026');
   assert.equal(fmtMonthYear('2026-05-01', 'ru'), 'Май 2026');
   assert.equal(fmtMonthYear(null, 'ru'), '');
-  assert.equal(fmtShortDay(sun, 'ru'), 'Вс 8 ноября');
+  assert.equal(fmtShortDay(sun, 'ru'), 'Вс 8 нояб.');
   assert.equal(fmtShortDay(fri, 'ru'), 'Пт 1 мая');
+  assert.equal(fmtShortDay(new Date(2026, 8, 9), 'ru'), 'Ср 9 сент.');
+  assert.equal(fmtShortDay(new Date(2026, 1, 3), 'ru'), 'Вт 3 февр.');
   assert.equal(fmtLongDay(sun, 'ru'), 'Вс, 8 ноября 2026');
   assert.equal(fmtDayMonthOf(sun, 'ru'), '8 ноября');
   assert.equal(fmtDayMonthOf(fri, 'ru'), '1 мая');

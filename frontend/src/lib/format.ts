@@ -26,6 +26,8 @@ const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const WEEKDAY_RU_UPPER = WEEKDAY_RU.map((w) => w.toUpperCase());
 const MONTH_RU_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const MONTH_RU_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+/** Genitive abbreviations for a day + month ("9 сент."); мая/июня/июля stay whole. */
+const MONTH_RU_GEN_SHORT = ['янв.', 'февр.', 'марта', 'апр.', 'мая', 'июня', 'июля', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
 const MONTH_RU_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
 /** Russian day + genitive month, e.g. "8 ноября"; with year, "8 ноября 2026". */
@@ -220,10 +222,10 @@ export function fmtTimeOfDay(ms: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** "Tue 7 Jul" / "周二 7月7日" — a short day cell. Local time. */
+/** "Tue 7 Jul" / "周二 7月7日" / "Ср 9 сент." — a short day cell. Local time. */
 export function fmtShortDay(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
-  if (lang === 'ru') return `${WEEKDAY_RU[d.getDay()]} ${ruDay(d, false)}`;
+  if (lang === 'ru') return `${WEEKDAY_RU[d.getDay()]} ${d.getDate()} ${MONTH_RU_GEN_SHORT[d.getMonth()]}`;
   return `${WEEKDAY_TITLE[d.getDay()]} ${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
 }
 

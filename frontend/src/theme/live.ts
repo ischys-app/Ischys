@@ -18,6 +18,8 @@
  *
  * No React Native imports, so `node --test` covers it. See live.test.ts.
  */
+import { getLang } from '../i18n/current.ts';
+import { fontPlatform, localizeFontStyles } from './fontForLang.ts';
 import { accentFor, paletteById, type Palette } from './palettes.ts';
 
 export type Scheme = 'dark' | 'light';
@@ -147,14 +149,20 @@ export const color: Readonly<Tokens> = Object.defineProperties(
  * The proxy forwards every read to the set for the active theme. Its target is
  * a blank stand-in, never a built set: React Native freezes styles in dev, and
  * a proxy may not report a frozen target's property as anything but its value.
+ *
+ * In Russian each build goes through `localizeFontStyles` (Space Grotesk has no
+ * Cyrillic). The language is fixed for the session, but a set built before
+ * src/i18n set it (an early module-level read) is rebuilt once it is known.
  */
 export function themed<T extends object>(factory: () => T): T {
   const cache = new Map<string, T>();
   const current = (): T => {
-    let v = cache.get(key);
+    const lang = getLang();
+    const k = lang === 'ru' ? `${key}:ru` : key;
+    let v = cache.get(k);
     if (v === undefined) {
-      v = factory();
-      cache.set(key, v);
+      v = localizeFontStyles(factory(), lang, fontPlatform());
+      cache.set(k, v);
     }
     return v;
   };

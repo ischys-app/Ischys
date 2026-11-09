@@ -1,7 +1,10 @@
-/** Pure translator core: zh lookup with English fallback. No native imports. */
+/** Pure translator core: per-language lookup with English fallback. No native imports. */
 import type { Lang } from './locale.ts';
+import { ruPlural } from './plural.ts';
 
-export type StringDef = { en: string; note: string };
+/** `plural` names the count variable for a key that has no _one/_other pair. */
+export type StringDef = { en: string; note: string; plural?: string };
+export type Tables = Partial<Record<Exclude<Lang, 'en'>, Record<string, string>>>;
 export type Vars = Record<string, string | number>;
 
 const PLACEHOLDER = /\{(\w+)\}/g;
@@ -23,12 +26,46 @@ function interpolate(s: string, vars?: Vars): string {
   );
 }
 
+function translateRu(
+  ru: Record<string, string>,
+  en: Record<string, StringDef>,
+  key: string,
+  vars?: Vars,
+): string | undefined {
+  const isPair = en[`${key}_one`] !== undefined || en[`${key}_other`] !== undefined;
+  const countVar = en[key]?.plural ?? 'count';
+  const n = vars?.[countVar];
+  if (isPair || en[key]?.plural !== undefined) {
+    if (typeof n !== 'number') return undefined;
+    const cat = ruPlural(n);
+    const found = ru[`${key}_${cat}`];
+    // _one was translated from the English singular; every other form from the plural.
+    const source = (cat === 'one' ? en[`${key}_one`] : undefined) ?? en[`${key}_other`] ?? en[key];
+    if (found !== undefined && source !== undefined && samePlaceholders(found, source.en)) {
+      return interpolate(found, vars);
+    }
+    return undefined;
+  }
+  const found = ru[key];
+  const source = en[key];
+  if (found !== undefined && source !== undefined && samePlaceholders(found, source.en)) {
+    return interpolate(found, vars);
+  }
+  return undefined;
+}
+
 export function createTranslator(
   lang: Lang,
-  zh: Record<string, string>,
+  tables: Tables,
   en: Record<string, StringDef>,
 ): (key: string, vars?: Vars) => string {
+  const zh = tables['zh-Hans'] ?? {};
+  const ru = tables.ru ?? {};
   return (key, vars) => {
+    if (lang === 'ru') {
+      const r = translateRu(ru, en, key, vars);
+      if (r !== undefined) return r;
+    }
     // With a count, prefer the plural form, then the bare key. zh has no
     // singular, so its _other also serves count 1.
     const forms: string[] = [];

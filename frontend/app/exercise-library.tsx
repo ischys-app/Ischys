@@ -520,7 +520,8 @@ function ExerciseRow({
         }
       />
       <View style={styles.rowText}>
-        <Text style={styles.rowName} numberOfLines={1}>
+        {/* Russian catalog names run much longer, so they get two lines. */}
+        <Text style={styles.rowName} numberOfLines={getLang() === 'ru' ? 2 : 1}>
           {exercise.name}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>

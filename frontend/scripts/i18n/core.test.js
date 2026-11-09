@@ -210,3 +210,224 @@ test('invalidateStale removes zh and state only where English changed', () => {
   assert.deepEqual(t.m, { b: '同' });
   assert.deepEqual(Object.keys(state), ['b']);
 });
+
+// ---- Russian ----
+
+let LANGS;
+let denylist;
+test.before(async () => {
+  ({ LANGS } = await import('./langs.mjs'));
+  denylist = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, 'denylist.ru.json'), 'utf8'));
+});
+
+const pairItem = {
+  key: 'ui:home.sets_other',
+  en: '{count} sets',
+  note: 'Count on the card.',
+  plural: { base: 'ui:home.sets', one: '{count} set', var: 'count' },
+};
+const tagItem = { key: 'ui:rest.left', en: '{n} reps left', note: 'Banner.', plural: { base: 'ui:rest.left', var: 'n' } };
+
+test('LANGS: zh-Hans keeps today\'s values, ru has its own', () => {
+  const zh = LANGS['zh-Hans'];
+  assert.equal(zh.lengthFactor, 1);
+  assert.equal(zh.plural, 'none');
+  assert.equal(String(zh.scriptRegex), String(/[㐀-鿿豈-﫿]/));
+  assert.equal(zh.files.state, 'src/i18n/zh-Hans.state.json');
+  const ru = LANGS.ru;
+  assert.equal(ru.promptLanguage, 'Russian');
+  assert.equal(ru.lengthFactor, 1.35);
+  assert.equal(ru.plural, 'ru');
+  assert.ok(ru.scriptRegex.test('Жим'));
+  assert.equal(ru.files.review, '.i18n-review/ru.review.json');
+});
+
+test('expandPlurals: ru pair key becomes four forms with the right English', () => {
+  const out = core.expandPlurals([pairItem, item('ui:plain', 'Start')], LANGS.ru);
+  assert.deepEqual(out.map((i) => i.key), ['ui:home.sets_one', 'ui:home.sets_few', 'ui:home.sets_many', 'ui:home.sets_other', 'ui:plain']);
+  assert.deepEqual(out.map((i) => i.en), ['{count} set', '{count} sets', '{count} sets', '{count} sets', 'Start']);
+  assert.ok(out[0].note.startsWith('Count on the card.'));
+  assert.ok(out[0].note.includes('Russian plural form "one": used for counts like 1, 21, 101'));
+  assert.ok(out[1].note.includes('Russian plural form "few": used for counts like 2, 3, 4, 22'));
+  assert.ok(out[2].note.includes('Russian plural form "many": used for counts like 0, 5, 11, 25'));
+  assert.ok(out[3].note.includes('Russian plural form "other": used for counts like 1.5'));
+  assert.equal(out[4].note, 'note');
+});
+
+test('expandPlurals: ru plural-tagged key uses the single form for all four', () => {
+  const out = core.expandPlurals([tagItem], LANGS.ru);
+  assert.deepEqual(out.map((i) => i.key), ['ui:rest.left_one', 'ui:rest.left_few', 'ui:rest.left_many', 'ui:rest.left_other']);
+  assert.ok(out.every((i) => i.en === '{n} reps left'));
+  assert.ok(out[0].note.includes('"one"'));
+});
+
+test('expandPlurals: zh-Hans is the identity', () => {
+  const items = [pairItem, tagItem, item('ui:plain', 'Start')];
+  assert.deepEqual(core.expandPlurals(items, LANGS['zh-Hans']), items);
+});
+
+test('ru checks: Latin-only rejected, Cyrillic accepted', () => {
+  const ru = LANGS.ru;
+  assert.equal(core.checkOne(item('a', 'Bench Press'), 'Bench Press', ['RPE'], ru), 'no Russian characters in output');
+  assert.equal(core.checkOne(item('a', 'Bench Press'), 'Жим лёжа', ['RPE'], ru), null);
+  const r = core.parseResponse(JSON.stringify({ a: 'Start', b: 'Жим лёжа', c: 'RPE' }), [item('a', 'Start'), item('b', 'Bench Press'), item('c', 'RPE')], { lang: ru });
+  assert.equal(r.rejected.a, 'no Russian characters in output');
+  assert.deepEqual(r.ok, { b: 'Жим лёжа', c: 'RPE' });
+});
+
+test('overlong budget scales by lengthFactor: 20 -> 27 for ru, 20 for zh', () => {
+  const capped = item('a', 'Some label', 'Label. Max 20 characters.');
+  const ok27 = 'а'.repeat(27);
+  const bad28 = 'а'.repeat(28);
+  assert.equal(core.checkOne(capped, ok27, [], LANGS.ru), null);
+  assert.equal(core.checkOne(capped, bad28, [], LANGS.ru), 'overlong (max 27)');
+  assert.equal(core.checkOne(capped, '字'.repeat(21), [], LANGS['zh-Hans']), 'overlong (max 20)');
+  assert.equal(core.checkOne(capped, '字'.repeat(20), [], LANGS['zh-Hans']), null);
+});
+
+test('buildPrompt for ru: Russian, вы, glossary, no-agreement rule', () => {
+  const glossary = { terms: [{ en: 'set', ru: 'подход' }], untranslated: ['RPE', 'Ischys'] };
+  const { system, user } = core.buildPrompt([item('a', 'Start', 'Button.')], glossary, LANGS.ru);
+  for (const w of ['Russian', 'вы', 'ты', 'set', 'подход', 'RPE', 'Ischys', 'Подходы: {n}']) assert.ok(system.includes(w), w);
+  assert.ok(!system.includes('Chinese'));
+  assert.ok(user.includes('Button.'));
+});
+
+test('buildPrompt for zh is unchanged with or without the lang', () => {
+  const glossary = { terms: [{ en: 'set', zh: '组' }], untranslated: ['RPE'] };
+  const batch = [item('a', 'Start', 'Button.')];
+  assert.deepEqual(core.buildPrompt(batch, glossary, LANGS['zh-Hans']), core.buildPrompt(batch, glossary));
+  assert.ok(core.buildPrompt(batch, glossary).system.startsWith('You translate UI strings for a gym workout-tracking mobile app from English into Simplified Chinese for mainland China.'));
+});
+
+test('denyHits: stems flagged only when the English lacks them', () => {
+  assert.deepEqual(core.denyHits('Русские скручивания', 'Russian Twist', denylist), []);
+  assert.deepEqual(core.denyHits('Советский жим', 'Arnold Press', denylist), ['советск']);
+  assert.deepEqual(core.denyHits('Армейский жим', 'Military Press', denylist), []);
+  assert.deepEqual(core.denyHits('Армейский жим', 'Overhead Press', denylist), []);
+  assert.deepEqual(core.denyHits('Двойной подход', 'Double set', denylist), []);
+  assert.deepEqual(core.denyHits('Гимнастика', 'Gymnastics', denylist), []);
+  assert.deepEqual(core.denyHits('Страница истории', 'History page', denylist), []);
+  assert.deepEqual(core.denyHits('Военный жим', 'Shoulder Press', denylist), ['военн']);
+  assert.deepEqual(core.denyHits('Флаг России', 'Settings', denylist).sort(), ['росси', 'флаг']);
+});
+
+test('applyReview (ru): denyHits entry needs denyCleared to be ok', () => {
+  const h = core.hashEn('Arnold Press');
+  const mk = () => ({ a: { enHash: h, status: 'pending' }, b: { enHash: h, status: 'pending' }, c: { enHash: h, status: 'pending' } });
+  const state = mk();
+  const t = fakeTargets({ a: 'Советский жим', b: 'Советский жим', c: 'Советский жим' });
+  const opts = { lang: LANGS.ru, denylist };
+  const r = core.applyReview(
+    [
+      { key: 'a', status: 'ok', en: 'Arnold Press', ru: 'Советский жим', enHash: h, denyHits: ['советск'] },
+      { key: 'b', status: 'ok', en: 'Arnold Press', ru: 'Советский жим', enHash: h, denyHits: ['советск'], denyCleared: true },
+      // denyHits deleted by hand: recomputed from the denylist, still refused
+      { key: 'c', status: 'ok', en: 'Arnold Press', ru: 'Советский жим', enHash: h },
+    ],
+    state,
+    t,
+    opts,
+  );
+  assert.deepEqual(r.refused.map((x) => x.key), ['a', 'c']);
+  assert.match(r.refused[0].reason, /denyCleared/);
+  assert.equal(state.a.status, 'pending');
+  assert.equal(state.b.status, 'ok');
+  assert.equal(state.b.ruHash, core.hashEn('Советский жим'));
+  assert.equal(state.b.zhHash, undefined);
+  // flagging a denyHits entry is always allowed
+  const s2 = mk();
+  const t2 = fakeTargets({ a: 'Советский жим' });
+  const r2 = core.applyReview([{ key: 'a', status: 'flagged', reason: 'political', en: 'Arnold Press', ru: 'Советский жим', enHash: h, denyHits: ['советск'] }], s2, t2, opts);
+  assert.equal(r2.flagged, 1);
+  assert.equal(t2.m.a, undefined);
+});
+
+test('applyReview (ru): reads the ru field, refuses when English does not match', () => {
+  const h = core.hashEn('Start');
+  const state = { a: { enHash: h, status: 'pending' }, b: { enHash: h, status: 'pending' } };
+  const t = fakeTargets({ a: 'Начать', b: 'Начать' });
+  const r = core.applyReview(
+    [
+      { key: 'a', status: 'ok', en: 'Start', ru: 'Начать', enHash: h },
+      { key: 'b', status: 'ok', en: 'Stop', ru: 'Начать', enHash: h },
+    ],
+    state,
+    t,
+    { lang: LANGS.ru, denylist },
+  );
+  assert.equal(state.a.status, 'ok');
+  assert.deepEqual(r.refused.map((x) => x.key), ['b']);
+});
+
+test('denyHits: common UI words are not false positives; Z/V only as whole words', () => {
+  for (const s of ['Свой вес', 'Свободный вес', 'Думаете?', 'Грузить данные', 'Версия v1.2', 'Zoom', 'Фронтальный подъём', 'Странно', 'Выбрать упражнение', 'Победа над рекордом']) {
+    assert.deepEqual(core.denyHits(s, 'Something', denylist), [], s);
+  }
+  assert.deepEqual(core.denyHits('Жим Z', 'Press', denylist), ['z']);
+  assert.deepEqual(core.denyHits('Грузия', 'Press', denylist), ['грузи']);
+});
+
+test('collectSources + expandPlurals (ru) produce the keys the runtime translator reads', async () => {
+  const { collectSources } = await import('./sources.mjs');
+  const { strings } = await import('../../src/i18n/strings/en.ts');
+  const items = await collectSources(require('node:path').join(__dirname, '..', '..'));
+  const zh = core.expandPlurals(items, LANGS['zh-Hans']);
+  assert.equal(zh, items);
+  assert.ok(items.some((i) => i.key === 'ui:workout.doneStat_other'));
+  assert.ok(!items.some((i) => i.key === 'ui:workout.doneStat_one'));
+  const ru = new Map(core.expandPlurals(items, LANGS.ru).map((i) => [i.key, i.en]));
+  for (const cat of ['one', 'few', 'many', 'other']) {
+    assert.equal(ru.get(`ui:effort.nReps_${cat}`), strings['effort.nReps'].en);
+    assert.equal(ru.get(`ui:workout.doneStat_${cat}`), strings[cat === 'one' ? 'workout.doneStat_one' : 'workout.doneStat_other'].en);
+  }
+  assert.ok(!ru.has('ui:effort.nReps'));
+  // every pair and every plural-tagged key expands to exactly four forms
+  const bases = Object.keys(strings).filter((k) => strings[k].plural !== undefined || k.endsWith('_other'));
+  for (const k of bases) {
+    const base = k.endsWith('_other') ? k.slice(0, -6) : k;
+    for (const cat of ['one', 'few', 'many', 'other']) assert.ok(ru.has(`ui:${base}_${cat}`), `${base}_${cat}`);
+  }
+});
+
+test('denyHits: all «стран-» endings, slurs, ZOV and гойда are flagged; «странно», «жидкость» are not', () => {
+  for (const s of ['По странам', 'Выберите страну', 'Между странами', 'В странах', 'Страновой код', 'Этой страной']) {
+    assert.ok(core.denyHits(s, 'Something', denylist).length > 0, s);
+  }
+  for (const s of ['Странно', 'Странный вес', 'Жидкость']) {
+    assert.deepEqual(core.denyHits(s, 'Something', denylist), [], s);
+  }
+  for (const [s, stem] of [['Москаль', 'москал'], ['Хохлы', 'хохл'], ['кацап', 'кацап'], ['Жиды', 'жид'], ['Пиндосы', 'пиндос'], ['Укропы', 'укроп'], ['Бандеровцы', 'бандер'], ['Чурка', 'чурк'], ['Хачи', 'хач'], ['ZOV', 'zov'], ['Гойда', 'гойд']]) {
+    assert.deepEqual(core.denyHits(s, 'Press', denylist), [stem], s);
+  }
+});
+
+test('parseResponse (ru, keepEdgeSpace): stored value carries the English edge whitespace exactly', () => {
+  const batch = [item('a', ' into {name}'), item('b', ' workout, '), item('c', '{routine} has been running for '), item('d', 'Start'), item('e', '\n  Done')];
+  const r = core.parseResponse(JSON.stringify({ a: 'в {name}', b: '  тренировку,', c: '{routine} идёт уже', d: ' Начать ', e: 'Готово' }), batch, { lang: LANGS.ru });
+  assert.deepEqual(r.rejected, {});
+  assert.deepEqual(r.ok, { a: ' в {name}', b: ' тренировку, ', c: '{routine} идёт уже ', d: 'Начать', e: '\n  Готово' });
+  assert.equal(LANGS.ru.keepEdgeSpace, true);
+});
+
+test('parseResponse (zh): edge whitespace still trimmed as before', () => {
+  const r = core.parseResponse(JSON.stringify({ a: ' 到 {name} ' }), [item('a', ' into {name}')]);
+  assert.deepEqual(r.ok, { a: '到 {name}' });
+  assert.ok(!LANGS['zh-Hans'].keepEdgeSpace);
+});
+
+test('withRetryReason appends the review reason only for a flagged entry with a reason', () => {
+  const it = item('a', 'Start', 'Button.');
+  const flagged = { enHash: core.hashEn('Start'), status: 'flagged', reason: 'political word' };
+  const out = core.withRetryReason(it, flagged);
+  assert.equal(out.note, 'Button. A previous translation was rejected by review: political word. Avoid that problem.');
+  assert.equal(out.en, it.en);
+  assert.equal(out.key, it.key);
+  assert.equal(it.note, 'Button.');
+  assert.equal(core.withRetryReason(it, { ...flagged, reason: '' }), it);
+  assert.equal(core.withRetryReason(it, { ...flagged, status: 'pending' }), it);
+  assert.equal(core.withRetryReason(it, undefined), it);
+  assert.equal(core.withRetryReason({ key: 'b', en: 'x' }, flagged).note, 'A previous translation was rejected by review: political word. Avoid that problem.');
+  // the note does not change what the translation answers
+  assert.equal(core.needsTranslation('a', out.en, { a: flagged }, { retryFlagged: true }), true);
+});

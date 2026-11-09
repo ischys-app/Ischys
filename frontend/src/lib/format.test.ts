@@ -190,3 +190,43 @@ test('fmtImportDay: English is DD MON with a two-digit year only when it differs
   assert.equal(fmtImportDay(new Date(2026, 5, 23), newest, 'zh-Hans'), '6月23日');
   assert.equal(fmtImportDay(new Date(2025, 7, 3), newest, 'zh-Hans'), '2025年8月3日');
 });
+
+// --- ru: hand-written date tables ---
+test('ru dates', () => {
+  const sun = new Date(2026, 10, 8); // Sun 8 Nov 2026
+  const fri = new Date(2026, 4, 1); // Fri 1 May 2026
+  assert.equal(fmtHeaderDate('2026-11-08', 'ru'), 'ВС · 8 НОЯБРЯ 2026');
+  assert.equal(fmtHeaderDate('2026-05-01', 'ru'), 'ПТ · 1 МАЯ 2026');
+  assert.equal(fmtShortDayUpper(sun, 'ru'), 'ВС 8 НОЯБРЯ');
+  assert.equal(fmtShortDayUpper(fri, 'ru'), 'ПТ 1 МАЯ');
+  assert.equal(fmtWorkoutDate('2026-11-08', 'ru'), 'Вс, 8 ноября · 00:00');
+  assert.equal(fmtWorkoutDate('2026-05-01', 'ru'), 'Пт, 1 мая · 00:00');
+  assert.equal(fmtDateOnly('2026-11-08', 'ru'), 'Вс, 8 ноября 2026');
+  assert.equal(fmtDateOnly('2026-05-01', 'ru'), 'Пт, 1 мая 2026');
+  assert.equal(fmtMonthYear('2026-11-08', 'ru'), 'Ноябрь 2026');
+  assert.equal(fmtMonthYear('2026-05-01', 'ru'), 'Май 2026');
+  assert.equal(fmtMonthYear(null, 'ru'), '');
+  assert.equal(fmtShortDay(sun, 'ru'), 'Вс 8 нояб.');
+  assert.equal(fmtShortDay(fri, 'ru'), 'Пт 1 мая');
+  assert.equal(fmtShortDay(new Date(2026, 8, 9), 'ru'), 'Ср 9 сент.');
+  assert.equal(fmtShortDay(new Date(2026, 1, 3), 'ru'), 'Вт 3 февр.');
+  assert.equal(fmtLongDay(sun, 'ru'), 'Вс, 8 ноября 2026');
+  assert.equal(fmtDayMonthOf(sun, 'ru'), '8 ноября');
+  assert.equal(fmtDayMonthOf(fri, 'ru'), '1 мая');
+  assert.equal(fmtCardDay(sun, 'ru'), '8 НОЯБРЯ 2026');
+  assert.equal(fmtCardDay(fri, 'ru'), '1 МАЯ 2026');
+  assert.equal(fmtImportDay(new Date(2026, 5, 23), sun, 'ru'), '23 июня');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), sun, 'ru'), '3 августа 2025');
+  assert.deepEqual(fmtMonthNames('ru'), ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']);
+});
+
+test('ru history group titles', () => {
+  const now = new Date(2026, 6, 11);
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', now, 'ru'), 'Май 2026');
+  assert.equal(fmtHistoryGroupTitle('2025-11-02', now, 'ru'), 'Ноябрь 2025');
+});
+
+test('ru relative phrases come from the string table', () => {
+  const now = new Date('2026-07-11T12:00:00Z');
+  assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'ru'), '1 ч назад');
+});

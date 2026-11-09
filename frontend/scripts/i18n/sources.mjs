@@ -10,13 +10,20 @@ import { pathToFileURL } from 'node:url';
 
 export const CATALOG_NS = { ex: 'exercises', mu: 'muscles', cat: 'categories', grp: 'groups', eq: 'equipment' };
 
-/** root: the frontend directory. Returns [{key, en, note}]. */
+/** root: the frontend directory. Returns [{key, en, note, plural?: {base, one?, var}}]. */
 export async function collectSources(root) {
   const items = [];
   const { strings } = await import(pathToFileURL(join(root, 'src/i18n/strings/en.ts')).href);
   for (const [k, def] of Object.entries(strings)) {
     if (k.endsWith('_one') && `${k.slice(0, -4)}_other` in strings) continue;
-    items.push({ key: `ui:${k}`, en: def.en, note: def.note });
+    const item = { key: `ui:${k}`, en: def.en, note: def.note };
+    // Plural metadata for languages with several forms (see expandPlurals in core.mjs).
+    if (k.endsWith('_other') && `${k.slice(0, -6)}_one` in strings) {
+      item.plural = { base: `ui:${k.slice(0, -6)}`, one: strings[`${k.slice(0, -6)}_one`].en, var: 'count' };
+    } else if (def.plural !== undefined) {
+      item.plural = { base: `ui:${k}`, var: def.plural };
+    }
+    items.push(item);
   }
   const cat = JSON.parse(execFileSync('node', [join(root, 'scripts/catalogSource.mjs')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
   const notes = {

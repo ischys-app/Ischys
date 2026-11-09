@@ -3,8 +3,10 @@ import type { Lang } from './locale.ts';
 import { fold } from '../domain/fold.ts';
 import catalog from '../../assets/catalog/catalog.json' with { type: 'json' };
 import zh from './catalog/zh-Hans.json' with { type: 'json' };
+import ru from './catalog/ru.json' with { type: 'json' };
 import { strings } from './strings/en.ts';
 import uiZh from './strings/zh-Hans.json' with { type: 'json' };
+import uiRu from './strings/ru.json' with { type: 'json' };
 import { createTranslator } from './translate.ts';
 
 type Named = { id: string; name: string };
@@ -15,10 +17,26 @@ const englishExercises = byId(catalog.exercises);
 const englishMuscles = byId(catalog.muscles);
 const englishCategories = byId(catalog.categories);
 
-function pick(lang: Lang, english: Dict, translated: Dict, id: string, stored: string): string {
-  if (lang !== 'zh-Hans') return stored;
+type Table = { exercises: Dict; muscles: Dict; categories: Dict; groups: Dict; equipment: Dict };
+
+/** The catalog table for a language; English has none (stored values show). */
+function tableFor(lang: Lang): Table | undefined {
+  if (lang === 'zh-Hans') return zh as Table;
+  if (lang === 'ru') return ru as Table;
+  return undefined;
+}
+
+function pick(
+  lang: Lang,
+  english: Dict,
+  section: Exclude<keyof Table, 'groups' | 'equipment'>,
+  id: string,
+  stored: string,
+): string {
+  const table = tableFor(lang);
+  if (!table) return stored;
   if (english[id] !== stored) return stored;
-  return translated[id] || stored;
+  return table[section][id] || stored;
 }
 
 export function exerciseLabel(
@@ -26,23 +44,23 @@ export function exerciseLabel(
   lang: Lang,
 ): string {
   if (ex.isCustom) return ex.name;
-  return pick(lang, englishExercises, zh.exercises, ex.id, ex.name);
+  return pick(lang, englishExercises, 'exercises', ex.id, ex.name);
 }
 
 export function muscleLabel(m: Named, lang: Lang): string {
-  return pick(lang, englishMuscles, zh.muscles, m.id, m.name);
+  return pick(lang, englishMuscles, 'muscles', m.id, m.name);
 }
 
 export function categoryLabel(c: Named, lang: Lang): string {
-  return pick(lang, englishCategories, zh.categories, c.id, c.name);
+  return pick(lang, englishCategories, 'categories', c.id, c.name);
 }
 
 export function groupLabel(group: string, lang: Lang): string {
-  return lang === 'zh-Hans' ? (zh.groups as Dict)[group] || group : group;
+  return tableFor(lang)?.groups[group] || group;
 }
 
 export function equipmentLabel(value: string, lang: Lang): string {
-  return lang === 'zh-Hans' ? (zh.equipment as Dict)[value] || value : value;
+  return tableFor(lang)?.equipment[value] || value;
 }
 
 /** Case- and accent-insensitive substring match against any label. */
@@ -67,7 +85,7 @@ export function muscleNameLabel(name: string, lang: Lang): string {
   const id = muscleIdByEnglish[name];
   if (id) return muscleLabel({ id, name }, lang);
   const key = REGION_KEYS[name];
-  return key ? createTranslator(lang, uiZh, strings)(key) : name;
+  return key ? createTranslator(lang, { 'zh-Hans': uiZh, ru: uiRu }, strings)(key) : name;
 }
 
 /**

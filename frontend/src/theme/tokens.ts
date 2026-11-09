@@ -49,6 +49,10 @@ export const radius = {
 /**
  * Space Grotesk = interface; JetBrains Mono = ALL data (weights, reps, timers,
  * dates) with tabular figures so digits never shift.
+ *
+ * Space Grotesk has no Cyrillic: in Russian, `themed()` swaps the four
+ * interface families for the system font at the same weight (fontForLang.ts).
+ * Use them only inside a `themed()` style so that swap reaches them.
  */
 export const font = {
   // interface (Space Grotesk)

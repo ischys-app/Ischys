@@ -310,7 +310,7 @@ export default function MergeDuplicates() {
         {/* Header: Cancel / title / spacer (M3) */}
         <View style={[styles.detailHeader, { paddingTop: headerPadTop }]}>
           <Pressable onPress={() => (manualIds ? router.back() : setStep('list'))} hitSlop={8}>
-            <Text style={styles.cancel}>{t('common.cancel')}</Text>
+            <Text style={styles.cancel} numberOfLines={1}>{t('common.cancel')}</Text>
           </Pressable>
           <Text style={styles.detailTitle}>{t('mergeDup.mergeCount', { count: active.members.length })}</Text>
           <View style={{ width: 52 }} />
@@ -555,7 +555,8 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'space-between',
     },
-    cancel: { fontFamily: font.titleSemi, fontSize: 15, color: color.text2, width: 52 },
+    // minWidth, not width: «Отмена» is wider than 52 and must not wrap; Cancel/取消 still get 52.
+    cancel: { fontFamily: font.titleSemi, fontSize: 15, color: color.text2, minWidth: 52 },
     detailTitle: { fontFamily: font.titleSemi, fontSize: 16, letterSpacing: -0.16, color: color.text1 },
 
     intro: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, paddingHorizontal: 2, paddingBottom: 16 },

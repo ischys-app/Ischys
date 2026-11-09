@@ -174,3 +174,10 @@ test('muscle tags show the group label, else the muscle label, else Other', () =
     assert.equal(muscleTag(null, 'en'), 'Other');
   });
 });
+
+test('ru: lists sort alphabetically in Cyrillic, index letter is the uppercased first character', () => {
+  const sorted = sortByName([{ name: 'Жим' }, { name: 'Армейский жим' }, { name: 'Бёрпи' }], 'ru');
+  assert.deepEqual(sorted.map((x) => x.name), ['Армейский жим', 'Бёрпи', 'Жим']);
+  assert.equal(indexLetter('жим', 'ru'), 'Ж');
+  assert.equal(indexLetter('bench', 'ru'), 'B');
+});

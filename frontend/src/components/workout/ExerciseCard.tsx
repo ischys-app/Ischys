@@ -158,8 +158,9 @@ export function ExerciseCard({
           })()}
         </Pressable>
         <Pressable style={styles.headerText} onPress={onOpenDetail} disabled={!onOpenDetail}>
-          {/* A long name wraps to two lines while editing (E7); live keeps one. */}
-          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : 1}>
+          {/* A long name wraps to two lines while editing (E7); live keeps one,
+              except in Russian, whose catalog names run much longer (two lines). */}
+          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : getLang() === 'ru' ? 2 : 1}>
             {exercise.name}
           </Text>
           <View style={styles.metaRow}>

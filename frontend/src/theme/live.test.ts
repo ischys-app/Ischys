@@ -4,6 +4,8 @@ import { test } from 'node:test';
 
 import { activeScheme, applyTheme, byScheme, color, themed, tokensFor } from './live.ts';
 import { paletteById } from './palettes.ts';
+import { setFontPlatform } from './fontForLang.ts';
+import { setLang } from '../i18n/current.ts';
 
 const ember = paletteById('ember');
 const volt = paletteById('volt');
@@ -70,4 +72,40 @@ test('byScheme picks the value for the active appearance', () => {
   assert.equal(byScheme('d', 'l'), 'l');
   applyTheme('dark', ember);
   assert.equal(byScheme('d', 'l'), 'd');
+});
+
+test('in Russian a themed style uses the system font; English is unchanged', () => {
+  setLang('ru');
+  try {
+    const ru = themed(() => ({ t: { fontFamily: 'SpaceGrotesk_400Regular' } }));
+    assert.equal(ru.t.fontFamily, 'System');
+    assert.equal((ru.t as { fontWeight?: string }).fontWeight, '400');
+  } finally {
+    setLang('en');
+  }
+  const en = themed(() => ({ t: { fontFamily: 'SpaceGrotesk_400Regular' } }));
+  assert.deepEqual(en.t, { fontFamily: 'SpaceGrotesk_400Regular' });
+});
+
+test('a themed style built before the language is known follows it once set', () => {
+  const styles = themed(() => ({ t: { fontFamily: 'SpaceGrotesk_700Bold' } }));
+  assert.equal(styles.t.fontFamily, 'SpaceGrotesk_700Bold');
+  setLang('ru');
+  try {
+    assert.equal(styles.t.fontFamily, 'System');
+  } finally {
+    setLang('en');
+  }
+});
+
+test('the system font follows the injected platform', () => {
+  setFontPlatform('android');
+  setLang('ru');
+  try {
+    const styles = themed(() => ({ t: { fontFamily: 'SpaceGrotesk_500Medium' } }));
+    assert.equal(styles.t.fontFamily, 'sans-serif');
+  } finally {
+    setLang('en');
+    setFontPlatform('ios');
+  }
 });

@@ -74,10 +74,12 @@ export const strings: Record<string, StringDef> = {
   'streak.days': {
     en: '{days}-day streak',
     note: 'Green pill beside the This week heading on Home; {days} is the number of consecutive days. Max 18 characters; fixed-width pill.',
+    plural: 'days',
   },
   'pr.pill': {
     en: '{count} PR',
     note: 'Green pill on a workout card counting personal records; {count} is a number. Keep PR untranslated or use the short term for personal record. Max 10 characters.',
+    plural: 'count',
   },
   'workoutCard.time': {
     en: 'TIME',
@@ -114,6 +116,7 @@ export const strings: Record<string, StringDef> = {
   'home.exerciseCount': {
     en: '{count} exercises',
     note: 'Subline under the routine name in the routine menu sheet on Home and in the Reorder Routines list; {count} is a number. One line.',
+    plural: 'count',
   },
   'home.thisWeek': {
     en: 'This week',
@@ -230,6 +233,7 @@ export const strings: Record<string, StringDef> = {
   'history.deleteMessage': {
     en: '"{name}" and its {count} logged sets will be permanently removed. Personal records are recomputed.',
     note: 'Alert message when deleting a workout from History; {name} is the workout name, {count} the number of logged sets.',
+    plural: 'count',
   },
   'history.heatLabel': {
     en: 'LAST 12 WEEKS',
@@ -238,6 +242,7 @@ export const strings: Record<string, StringDef> = {
   'history.sessions': {
     en: '{count} sessions',
     note: 'Right side of the heat map header on History; {count} is the number of workouts in the last 12 weeks. Max 16 characters.',
+    plural: 'count',
   },
   'history.moreActionsHint': {
     en: 'Long-press for more actions.',
@@ -254,6 +259,7 @@ export const strings: Record<string, StringDef> = {
   'history.count': {
     en: '{count} workouts',
     note: 'Right side of the History header; total number of completed workouts. Max 16 characters.',
+    plural: 'count',
   },
   'history.emptyTitle': {
     en: 'No workouts yet',
@@ -342,6 +348,7 @@ export const strings: Record<string, StringDef> = {
   'profile.notTrained': {
     en: '{count} not trained · {names}',
     note: 'Subline of the muscle map card on Profile; {count} is how many muscle groups were not trained in 7 days, {names} up to three of them joined by commas. One line.',
+    plural: 'count',
   },
   'profile.recentRecords': {
     en: 'RECENT RECORDS',
@@ -526,6 +533,7 @@ export const strings: Record<string, StringDef> = {
   'effort.range': {
     en: '{from}–{to} REPS LEFT',
     note: 'Effort meaning for a half step, e.g. 1–2 REPS LEFT; keep the en dash. Upper case in English. Max 22 characters.',
+    plural: 'to',
   },
   'effort.oneRep': {
     en: '1 REP LEFT',
@@ -534,6 +542,7 @@ export const strings: Record<string, StringDef> = {
   'effort.nReps': {
     en: '{n} REPS LEFT',
     note: 'Effort meaning, several reps left; {n} is 2, 3 or 4. Upper case in English. Max 16 characters.',
+    plural: 'n',
   },
   'effort.meaning': {
     en: '@{rpe} · {text}',
@@ -686,6 +695,7 @@ export const strings: Record<string, StringDef> = {
   'workoutEdit.ssAfterSave': {
     en: '· {count} AFTER SAVE',
     note: 'Note after SUPERSET A in Edit Workout: how many exercises remain in the superset after saving. Keep the leading dot. Upper case in English. Max 22 characters.',
+    plural: 'count',
   },
   'workoutEdit.removedLabel_one': {
     en: 'REMOVED · {count} SET',
@@ -870,6 +880,7 @@ export const strings: Record<string, StringDef> = {
   'editDiscard.many': {
     en: '{count} changes',
     note: 'Count phrase at the start of the discard body for several pending changes; {count} is a number.',
+    plural: 'count',
   },
   'editDiscard.body': {
     en: '{what} to this workout won’t be saved. The workout stays as it was.',
@@ -1334,6 +1345,7 @@ export const strings: Record<string, StringDef> = {
   'common.setsCount': {
     en: '{count} sets',
     note: 'Number of sets: {count} is a number. Used under exercise names in the reorder overlay, in the summary exercise rows and the muscle split. Max 12 characters; fixed-width.',
+    plural: 'count',
   },
   'common.nothingChanged': {
     en: 'Nothing was changed. Try again.',
@@ -1410,18 +1422,22 @@ export const strings: Record<string, StringDef> = {
   'summary.rampBody': {
     en: 'This has climbed quickly. Holding for {days} days lets it catch up.',
     note: 'Body of the deload advice card for a fast volume rise; {days} is a number.',
+    plural: 'days',
   },
   'summary.easeOff': {
     en: 'Ease off for {days} days',
     note: 'Accept button of the deload advice card for a stalled lift; {days} is a number. Max 24 characters; fixed-width button.',
+    plural: 'days',
   },
   'summary.hold': {
     en: 'Hold for {days} days',
     note: 'Accept button of the deload advice card for a fast volume rise; {days} is a number. Max 24 characters; fixed-width button.',
+    plural: 'days',
   },
   'summary.deloadAccepted': {
     en: 'Suggestions will read {percent}% for {days} days. Nothing was written to your sets.',
     note: 'Receipt text after accepting deload advice; {percent} and {days} are numbers.',
+    plural: 'days',
   },
   'summary.routineChanged': {
     en: 'You changed this routine',
@@ -1498,6 +1514,7 @@ export const strings: Record<string, StringDef> = {
   'routineDiff.setsChanged': {
     en: '{from} → {to} sets',
     note: 'Detail on a routine-update row: the set count changed from {from} to {to}. Keep the arrow. Max 18 characters.',
+    plural: 'to',
   },
   'routineDiff.type.normal': {
     en: 'normal',
@@ -1918,6 +1935,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.memberMeta': {
     en: '{equipment} · {sets} sets',
     note: 'Meta line under an exercise name on a duplicate group card; {equipment} is an equipment name.',
+    plural: 'sets',
   },
   'mergeDup.scanFailed': {
     en: 'Could not scan the library',
@@ -1982,6 +2000,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.mergeCount': {
     en: 'Merge {count} exercises',
     note: 'Header title of the merge detail screen; {count} is a number of exercises (2 or more).',
+    plural: 'count',
   },
   'mergeDup.mergeInto': {
     en: 'Merge into {name}',
@@ -2014,6 +2033,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.remaining': {
     en: '{n} REMAINING',
     note: 'Section label after a merge: how many duplicate groups are left. Upper case in English.',
+    plural: 'n',
   },
   'mergeDup.merged': {
     en: 'Merged',
@@ -2022,6 +2042,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.receiptSub': {
     en: '{name} · {sets} sets',
     note: 'Subtitle on the merge receipt; {name} is the kept exercise name, {sets} the total sets.',
+    plural: 'sets',
   },
   'mergeDup.setsMoved': {
     en: 'Sets moved',
@@ -2054,6 +2075,7 @@ export const strings: Record<string, StringDef> = {
   'mergeDup.scopeAll': {
     en: 'Ischys compares names, equipment and import source across all {total} exercises.',
     note: 'Scope sentence in the empty state; {total} is a number of exercises. Keep Ischys untranslated.',
+    plural: 'total',
   },
   'mergeDup.scopeWhole': {
     en: 'Ischys compares names, equipment and import source across your whole library.',
@@ -2386,6 +2408,7 @@ export const strings: Record<string, StringDef> = {
   'switcher.searchPlaceholder': {
     en: 'Search {n} profiles',
     note: 'Placeholder of the profile search field; {n} is the number of profiles.',
+    plural: 'n',
   },
   'switcher.searchLabel': {
     en: 'Search profiles',
@@ -2418,6 +2441,7 @@ export const strings: Record<string, StringDef> = {
   'routineEdit.exercisesCount': {
     en: '{n} exercises',
     note: 'Meta line under the routine name: number of exercises; followed by a separator and the sets count.',
+    plural: 'n',
   },
   'routineEdit.emptyTitle': {
     en: 'Build your routine',
@@ -2590,6 +2614,7 @@ export const strings: Record<string, StringDef> = {
   'newExercise.selected': {
     en: '{n} selected',
     note: 'Row value: number of secondary muscles selected.',
+    plural: 'n',
   },
   'newExercise.equipment': {
     en: 'EQUIPMENT',
@@ -2658,6 +2683,7 @@ export const strings: Record<string, StringDef> = {
   'library.merge': {
     en: 'Merge {n}',
     note: 'Floating button when two or more exercises are selected: merge the {n} selected exercises. One line.',
+    plural: 'n',
   },
   'library.addSuperset': {
     en: 'Add as superset',
@@ -3286,6 +3312,7 @@ export const strings: Record<string, StringDef> = {
   'settings.profilesOnPhone': {
     en: '{count} PROFILES ON THIS PHONE',
     note: 'Sub line of the profile row in Settings with several profiles. Upper case in English.',
+    plural: 'count',
   },
   'settings.justYou': {
     en: 'JUST YOU',
@@ -3466,10 +3493,12 @@ export const strings: Record<string, StringDef> = {
   'import.skipCardio': {
     en: '{count} rows will be skipped (cardio / rest-only)',
     note: 'Note in the import preview; {count} is a number of CSV rows.',
+    plural: 'count',
   },
   'import.skipNoName': {
     en: '{count} rows will be skipped (no exercise name)',
     note: 'Note in the import preview; {count} is a number of CSV rows.',
+    plural: 'count',
   },
   'import.weightUnit': {
     en: 'WEIGHT UNIT',
@@ -3526,6 +3555,7 @@ export const strings: Record<string, StringDef> = {
   'import.rowsSkipped': {
     en: '{count} rows skipped',
     note: 'Line on the import success screen; {count} is a number of CSV rows.',
+    plural: 'count',
   },
   'import.footnote': {
     en: 'You can save more later from History.',
@@ -3594,6 +3624,7 @@ export const strings: Record<string, StringDef> = {
   'import.seenOnce': {
     en: '{count} MORE · SEEN ONCE',
     note: 'Collapsed row that expands titles trained only once; {count} is a number. Upper case in English.',
+    plural: 'count',
   },
   'import.createRoutines_one': {
     en: 'Create {count} routine',

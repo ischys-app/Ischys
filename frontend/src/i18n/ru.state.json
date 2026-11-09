@@ -1341,8 +1341,8 @@
   },
   "ui:supersetSheet.pairs": {
     "enHash": "6a6db50be058c57a",
-    "status": "ok",
-    "ruHash": "228ac9704a599cca"
+    "status": "manual",
+    "ruHash": "2d170ad1544e4f7c"
   },
   "ui:supersetSheet.needPartner": {
     "enHash": "016348f8232a8034",
@@ -1661,8 +1661,8 @@
   },
   "ui:exerciseCard.about": {
     "enHash": "c200f2ef2a407ce5",
-    "status": "ok",
-    "ruHash": "afe25e82ae8cd88a"
+    "status": "manual",
+    "ruHash": "f89636963813ac02"
   },
   "ui:exerciseCard.more": {
     "enHash": "62bd5d1f57c5461d",
@@ -3091,8 +3091,8 @@
   },
   "ui:profiles.footerWhose": {
     "enHash": "c91ea56a6fef9e2e",
-    "status": "ok",
-    "ruHash": "edb2ff2ff2ce6f40"
+    "status": "manual",
+    "ruHash": "da73b7f75de50646"
   },
   "ui:profiles.footerThis": {
     "enHash": "0fe5949d78ffeec3",
@@ -3101,8 +3101,8 @@
   },
   "ui:profiles.footer": {
     "enHash": "b1dafd597e2f510c",
-    "status": "ok",
-    "ruHash": "7a28523534d8e6ee"
+    "status": "manual",
+    "ruHash": "74eef8d84aebb9f2"
   },
   "ui:profiles.possessive": {
     "enHash": "186d1944e509931d",
@@ -3516,8 +3516,8 @@
   },
   "ui:routineEdit.ssWith": {
     "enHash": "dd32cd6e8ef7b8d8",
-    "status": "ok",
-    "ruHash": "70027f54d3f738ef"
+    "status": "manual",
+    "ruHash": "a09dbd8c14a9875e"
   },
   "ui:routineEdit.leave": {
     "enHash": "fc6e4a408d56be96",
@@ -4301,8 +4301,8 @@
   },
   "ui:health.offBody": {
     "enHash": "6a9f2988a71c339d",
-    "status": "ok",
-    "ruHash": "8048b669783f83f2"
+    "status": "manual",
+    "ruHash": "864a4257cededd76"
   },
   "ui:health.ownerPossessive": {
     "enHash": "f5ed1748134e2207",
@@ -9261,8 +9261,8 @@
   },
   "ui:profiles.deleteLead": {
     "enHash": "ffea09220f082ab1",
-    "status": "ok",
-    "ruHash": "ff4c6674cf687e3c"
+    "status": "manual",
+    "ruHash": "c115863859e0601f"
   },
   "ui:effort.tank.range": {
     "enHash": "c434460c9d7892ad",

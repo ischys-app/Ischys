@@ -70,11 +70,15 @@ If Ischys is useful to you, you can leave an optional tip on
   it from Apple Health or Health Connect, snapshotted per workout so past sessions
   keep their numbers.
 - **Merge duplicate exercises** without losing history or PRs.
-- **English, Simplified Chinese (简体中文) and Russian (Русский)** on iPhone
-  (Android from its next release) — the app follows your phone's first
-  language; any other language shows English. Exercise, muscle and equipment
-  names are translated too; the Watch app, widgets, Live Activity and how-to
-  steps stay English, and your data and exports are unchanged.
+- **English, Spanish (Español), Greek (Ελληνικά), Russian (Русский) and
+  Simplified Chinese (简体中文)** on iPhone (Android from its next release) — by
+  default the app follows your phone's first language, and any other language
+  shows English; **Settings → Language** picks any of the five regardless.
+  Exercise, muscle and equipment names are translated too (Greek: almost all
+  exercise names); the Watch app,
+  widgets, Live Activity and how-to steps stay English, text the phone draws
+  itself (Apple Health prompts, system menus) follows the phone's language, and
+  your data, backups and exports are unchanged.
   Spot a clumsy translation? Say so in
   [#136](https://github.com/ischys-app/Ischys/issues/136).
 - **736-exercise catalog** bundled in the app — names, muscles and instructions
@@ -143,8 +147,14 @@ the wrist, and the rest timer also shows on the Lock Screen as a Live Activity.
 **Is it on Android?** The Android app and its Wear OS companion are in closed
 testing on Google Play and coming soon. See [Platform support](#platform-support).
 
-**Which languages does it support?** English, Simplified Chinese and Russian on
-iPhone; Android gets them with its next release.
+**Which languages does it support?** English, Spanish, Greek, Russian and
+Simplified Chinese on iPhone; Android gets all five with its next release. The
+app follows your phone's first language (English if it is not one of the five),
+or pick any of them in Settings → Language. The app, exercise names (almost all
+in Greek), muscles and equipment are translated; the Apple Watch app, widgets, Live Activity and
+exercise instructions stay in English, and Apple Health prompts and system menus
+follow the phone's own language. Workouts, backups and exports are the same in
+every language.
 
 **Can I bring my history from another app?** Yes. Ischys imports a workout CSV
 export. See [importing your workout history](https://ischys.app/import-workout-history).

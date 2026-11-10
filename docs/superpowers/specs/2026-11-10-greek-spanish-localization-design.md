@@ -122,6 +122,6 @@ App Store listings are not part of this build. They go out with the release (see
 ## Afterwards
 
 - With the release:
-  - App Store listings for es-ES, es-MX and el (name, subtitle, keywords, description, What's New), made the same way as the ru and zh-Hans ones in 4.6.1.
+  - App Store listings for es-ES, es-MX and el. Apple has only these two Spanish listing languages, and es-MX is the one shown in every Latin American storefront, Argentina included (name, subtitle, keywords, description, What's New), made the same way as the ru and zh-Hans ones in 4.6.1.
   - The site FAQ, `inLanguage`, featureList, `llms.txt` and the README languages bullet.
 - Post on #136 that Greek and Spanish are out and corrections are welcome.

@@ -74,7 +74,8 @@ If Ischys is useful to you, you can leave an optional tip on
   Simplified Chinese (简体中文)** on iPhone (Android from its next release) — by
   default the app follows your phone's first language, and any other language
   shows English; **Settings → Language** picks any of the five regardless.
-  Exercise, muscle and equipment names are translated too; the Watch app,
+  Exercise, muscle and equipment names are translated too (Greek: almost all
+  exercise names); the Watch app,
   widgets, Live Activity and how-to steps stay English, text the phone draws
   itself (Apple Health prompts, system menus) follows the phone's language, and
   your data, backups and exports are unchanged.
@@ -149,8 +150,8 @@ testing on Google Play and coming soon. See [Platform support](#platform-support
 **Which languages does it support?** English, Spanish, Greek, Russian and
 Simplified Chinese on iPhone; Android gets all five with its next release. The
 app follows your phone's first language (English if it is not one of the five),
-or pick any of them in Settings → Language. The app, exercise names, muscles and
-equipment are translated; the Apple Watch app, widgets, Live Activity and
+or pick any of them in Settings → Language. The app, exercise names (almost all
+in Greek), muscles and equipment are translated; the Apple Watch app, widgets, Live Activity and
 exercise instructions stay in English, and Apple Health prompts and system menus
 follow the phone's own language. Workouts, backups and exports are the same in
 every language.

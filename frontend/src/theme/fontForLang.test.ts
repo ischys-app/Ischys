@@ -61,3 +61,11 @@ test('arrays and a bare style are localized too', () => {
     fontSize: 9,
   });
 });
+
+test('Greek swaps Space Grotesk styles for the system font; Spanish keeps them', () => {
+  const styles = { a: { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20 } };
+  assert.deepEqual(localizeFontStyles(styles, 'el', 'ios'), {
+    a: { fontFamily: 'System', fontWeight: '700', fontSize: 20 },
+  });
+  assert.equal(localizeFontStyles(styles, 'es', 'ios'), styles);
+});

@@ -65,6 +65,7 @@ import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvider';
 import { APP_LANGS, getLang, NATIVE_LANG_NAME, t, type Lang, type LangPref } from '../src/i18n';
+import { nameNeedsSystemFont } from '../src/i18n/scripts';
 import { fontPlatform, systemFontFor } from '../src/theme/fontForLang';
 import { profileNameLabel } from '../src/i18n/defaultLabels';
 import { upperDisplay } from '../src/i18n/upper';
@@ -1197,9 +1198,9 @@ function joinSentences(a: string, b: string): string {
   return getLang() === 'zh-Hans' ? `${a}${b}` : `${a} ${b}`;
 }
 
-/** Space Grotesk has Latin only: Cyrillic and CJK names take the system font. */
+/** Space Grotesk has Latin only: Greek, Cyrillic and CJK names take the system font. */
 function needsSystemFont(id: Lang): boolean {
-  return id !== 'en' && getLang() !== id;
+  return nameNeedsSystemFont(id, getLang());
 }
 
 function LinkRow({

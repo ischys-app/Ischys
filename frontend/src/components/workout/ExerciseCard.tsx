@@ -16,6 +16,7 @@ import { SetRow } from './SetRow';
 import { exerciseMeta, restLabel, weightColumnLabel, type Exercise, type SetType } from './types';
 import { useThemed } from '../../theme/ThemeProvider';
 import { getLang } from '../../i18n/current';
+import { allowsTwoLineNames } from '../../i18n/scripts';
 import { equipmentLabel } from '../../i18n/catalogNames';
 
 type Props = {
@@ -160,7 +161,7 @@ export function ExerciseCard({
         <Pressable style={styles.headerText} onPress={onOpenDetail} disabled={!onOpenDetail}>
           {/* A long name wraps to two lines while editing (E7); live keeps one,
               except in Russian, whose catalog names run much longer (two lines). */}
-          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : getLang() === 'ru' ? 2 : 1}>
+          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : allowsTwoLineNames(getLang()) ? 2 : 1}>
             {exercise.name}
           </Text>
           <View style={styles.metaRow}>

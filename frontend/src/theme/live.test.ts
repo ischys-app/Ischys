@@ -109,3 +109,15 @@ test('the system font follows the injected platform', () => {
     setFontPlatform('ios');
   }
 });
+
+test('Greek themed styles use the system font; Spanish keeps Space Grotesk', () => {
+  const styles = themed(() => ({ t: { fontFamily: 'SpaceGrotesk_400Regular' } }));
+  setLang('el');
+  try {
+    assert.equal(styles.t.fontFamily, 'System');
+    setLang('es');
+    assert.equal(styles.t.fontFamily, 'SpaceGrotesk_400Regular');
+  } finally {
+    setLang('en');
+  }
+});

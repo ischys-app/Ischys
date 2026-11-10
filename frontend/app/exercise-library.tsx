@@ -39,6 +39,7 @@ import { registerPicker } from '../src/lib/exercisePicker';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { getLang } from '../src/i18n/current';
+import { allowsTwoLineNames } from '../src/i18n/scripts';
 import { equipmentLabel } from '../src/i18n/catalogNames';
 import { indexLetter } from '../src/data/labels';
 import { t } from '../src/i18n';
@@ -522,7 +523,7 @@ function ExerciseRow({
       />
       <View style={styles.rowText}>
         {/* Russian catalog names run much longer, so they get two lines. */}
-        <Text style={styles.rowName} numberOfLines={getLang() === 'ru' ? 2 : 1}>
+        <Text style={styles.rowName} numberOfLines={allowsTwoLineNames(getLang()) ? 2 : 1}>
           {exercise.name}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>

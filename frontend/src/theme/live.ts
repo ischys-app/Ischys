@@ -19,6 +19,7 @@
  * No React Native imports, so `node --test` covers it. See live.test.ts.
  */
 import { getLang } from '../i18n/current.ts';
+import { usesSystemFont } from '../i18n/scripts.ts';
 import { fontPlatform, localizeFontStyles } from './fontForLang.ts';
 import { accentFor, paletteById, type Palette } from './palettes.ts';
 
@@ -158,7 +159,7 @@ export function themed<T extends object>(factory: () => T): T {
   const cache = new Map<string, T>();
   const current = (): T => {
     const lang = getLang();
-    const k = lang === 'ru' ? `${key}:ru` : key;
+    const k = usesSystemFont(lang) ? `${key}:sys` : key;
     let v = cache.get(k);
     if (v === undefined) {
       v = localizeFontStyles(factory(), lang, fontPlatform());

@@ -16,6 +16,8 @@ Nothing ever leaves the device.
 free · iPhone. Or [build it from source](#build--run) — it's open, MIT-licensed,
 and the whole thing runs on-device either way.
 
+If Ischys is useful to you, a ⭐ on GitHub helps other people find it.
+
 **Android and Wear OS:** the app now runs there too. It is in closed testing on
 Google Play and not publicly listed yet — coming soon. See
 [Platform support](#platform-support).
@@ -104,10 +106,9 @@ themes. The iOS extras have Android counterparts:
 | Live Activity | **Ongoing workout notification** with the rest countdown and actions (a Live Update on Android 16) |
 | Apple Watch app | **Wear OS app** — follows the phone's workout, logs sets and controls rest from the wrist, live heart rate and calories |
 
-**Where it stands.** The Android phone app is in closed testing on Google Play
-and is not publicly listed yet. The Wear OS app has been submitted to its own
-closed testing track and is awaiting Google's review. Google requires a new
-developer account to run a closed test before a public release, so both will be
+**Where it stands.** The Android phone app and the Wear OS app are in closed
+testing on Google Play, each on its own track, and are not publicly listed yet.
+Google requires a new developer account to run a closed test before a public release, so both will be
 publicly available soon, but there is no date. When it is public, the listing
 will be at `play.google.com/store/apps/details?id=app.ischys.mobile`.
 
@@ -122,6 +123,35 @@ will be at `play.google.com/store/apps/details?id=app.ischys.mobile`.
   workout but cannot start one or log sets.
 - The Wear OS app has been verified on an emulator paired with a real phone, not
   yet on real watch hardware.
+
+## FAQ
+
+**Is Ischys free?** Yes. It is free and MIT-licensed, with no subscription, no
+premium tier and no ads. Optional tips go to [Ko-fi](https://ko-fi.com/vplsdev).
+
+**Where is my data stored?** Only on your phone, in a local SQLite database.
+There is no account and no server, and the app uses no analytics or tracking service. It
+is included in your normal device backup, and you can export a JSON or CSV copy
+at any time.
+
+**Does it work offline?** Yes. The exercise catalog and all the training logic
+are bundled in the app, so it works with no connection.
+
+**Is there an Apple Watch app?** Yes. It mirrors and controls a live workout from
+the wrist, and the rest timer also shows on the Lock Screen as a Live Activity.
+
+**Is it on Android?** The Android app and its Wear OS companion are in closed
+testing on Google Play and coming soon. See [Platform support](#platform-support).
+
+**Which languages does it support?** English, Simplified Chinese and Russian on
+iPhone; Android gets them with its next release.
+
+**Can I bring my history from another app?** Yes. Ischys imports a workout CSV
+export. See [importing your workout history](https://ischys.app/import-workout-history).
+
+**How does it compare with other workout trackers?** There is a sourced, dated
+comparison of the open-source options at
+[ischys.app/compare](https://ischys.app/compare).
 
 ## Stack
 

@@ -13,6 +13,6 @@ test('app/_layout.tsx imports src/i18n right after the crypto polyfill', () => {
 test('src/i18n/index.ts injects the platform before it sets the language', () => {
   const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
   const platformAt = src.indexOf('setFontPlatform(');
-  const langAt = src.indexOf('setLang(lang)');
+  const langAt = src.indexOf('setLang(effectiveLang(pref');
   assert.ok(platformAt > 0 && langAt > 0 && platformAt < langAt);
 });

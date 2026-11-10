@@ -24,6 +24,7 @@ import {
 import { Animated, Appearance, StyleSheet, useColorScheme, View } from 'react-native';
 
 import type { Appearance as AppearancePref } from '../api/types';
+import { applyLangPref, getLang, getLangPref, systemLang, type Lang, type LangPref } from '../i18n';
 import { getSettings, updateSettings } from '../api/workouts';
 import { getThemeId, setThemeId as persistThemeId } from '../lib/themePref';
 import { accentAlpha, paletteById, type Palette, type ThemeId } from './palettes';
@@ -52,6 +53,12 @@ type ThemeValue = {
   accentA: (alpha: number) => string;
   setAppearance: (next: AppearancePref) => void;
   setTheme: (id: ThemeId) => void;
+  /** The Language setting (#136): System or a picked language. */
+  language: LangPref;
+  /** What System shows on this phone, for "Following iPhone · English". */
+  systemLanguage: Lang;
+  /** Switches the app's language at once; every subscribed screen re-renders. */
+  setLanguage: (next: LangPref) => void;
 };
 
 const ThemeContext = createContext<ThemeValue | null>(null);
@@ -65,6 +72,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Under a forced override this reports the override, not the phone. It is
   // only shown while System is selected, when there is no override.
   const systemScheme: Scheme = useColorScheme() === 'light' ? 'light' : 'dark';
+  // The language lives in src/i18n; this state only makes a change re-render
+  // everything that subscribed with useThemed(), the same path as appearance.
+  const [language, setLanguageState] = useState<LangPref>(getLangPref);
+  const lang = getLang();
 
   useEffect(() => {
     let alive = true;
@@ -111,10 +122,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setThemeIdState(next);
         void persistThemeId(next);
       },
+      language,
+      systemLanguage: systemLang(),
+      setLanguage: (next) => {
+        // Before the state change, so the re-render reads the new language.
+        applyLangPref(next);
+        setLanguageState(next);
+      },
     }),
     // `palette` is derived from themeId; listing the id keeps the memo stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scheme, appearance, systemScheme, themeId],
+    [scheme, appearance, systemScheme, themeId, language, lang],
   );
 
   // Hold the first frame until the stored appearance is known, so a light user
@@ -166,7 +184,7 @@ export function useTheme(): ThemeValue {
 }
 
 /**
- * Re-render this component when the appearance or accent changes. Any
+ * Re-render this component when the appearance, accent or language changes. Any
  * component that reads `color`, `accentA` or a `themed()` style calls it; the
  * values themselves come from those, live.
  */

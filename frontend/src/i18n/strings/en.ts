@@ -3301,6 +3301,22 @@ export const strings: Record<string, StringDef> = {
     en: 'Theme',
     note: 'Settings row label for the accent colour theme; the value is the theme name.',
   },
+  'settings.language': {
+    en: 'Language',
+    note: 'Settings row label: the language the app is shown in. Its value is System or a language name written in that language.',
+  },
+  'settings.languageFollowing': {
+    en: 'Following {device} · {language}',
+    note: 'Sub line under the System language option and the Language row; {device} is iPhone or phone, {language} is a language name in its own language (English, 简体中文, Русский). Keep it short.',
+  },
+  'settings.languageFooterIos': {
+    en: 'Apple Health prompts, system menus, the Watch and the Live Activity follow the iPhone language.',
+    note: 'Footer under the language list on iPhone: these parts are drawn by iOS or not translated, so this setting does not change them.',
+  },
+  'settings.languageFooterAndroid': {
+    en: 'Health Connect prompts, system menus and the watch follow the phone language.',
+    note: 'Footer under the language list on Android: these parts are drawn by Android or not translated, so this setting does not change them.',
+  },
   'settings.sectionProfile': {
     en: 'PROFILE',
     note: 'Settings section title. Upper case in English.',

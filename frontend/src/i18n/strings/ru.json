@@ -1083,7 +1083,8 @@
   "share.prChip_many": "{count} PR",
   "share.prChip_other": "{count} PR",
   "settings.language": "Язык",
-  "settings.languageFooterIos": "Запросы Apple Health, системные меню, Watch и Live Activity используют язык iPhone.",
-  "settings.languageFooterAndroid": "Запросы Health Connect, системные меню и часы используют язык телефона.",
-  "settings.languageFollowing": "Как в {device} · {language}"
+  "settings.languageFollowing": "Как в {device} · {language}",
+  "common.ok": "ОК",
+  "settings.languageFooterIos": "Запросы Apple Health и системные меню следуют языку iPhone.",
+  "settings.languageFooterAndroid": "Запросы Health Connect и системные меню следуют языку телефона."
 }

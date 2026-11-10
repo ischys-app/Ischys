@@ -9304,19 +9304,24 @@
     "status": "ok",
     "ruHash": "5bd57038dbadd651"
   },
-  "ui:settings.languageFooterIos": {
-    "enHash": "cf4d13dfdda57dfd",
-    "status": "ok",
-    "ruHash": "7add87a6c80972c6"
-  },
-  "ui:settings.languageFooterAndroid": {
-    "enHash": "f7feb0f96c7ec43c",
-    "status": "ok",
-    "ruHash": "e669bbfeef63614c"
-  },
   "ui:settings.languageFollowing": {
     "enHash": "86fa81c2980fc13e",
     "status": "manual",
     "ruHash": "8ff8ead8979260f6"
+  },
+  "ui:common.ok": {
+    "enHash": "565339bc4d33d728",
+    "status": "ok",
+    "ruHash": "dc0de6b1dc5cf3af"
+  },
+  "ui:settings.languageFooterIos": {
+    "enHash": "2d1d0fc45d166045",
+    "status": "ok",
+    "ruHash": "0e02ac03ada7e557"
+  },
+  "ui:settings.languageFooterAndroid": {
+    "enHash": "7bcf5a6dd26afe06",
+    "status": "ok",
+    "ruHash": "88399ee2a26cc193"
   }
 }

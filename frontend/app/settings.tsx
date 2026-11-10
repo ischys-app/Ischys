@@ -626,7 +626,7 @@ export default function Settings() {
             <Section
               title={t('settings.sectionAppearance')}
               scope={DEVICE_SCOPE}
-              footer={languageFooter ? `${languageFooter} ${t('settings.phoneFooter')}` : t('settings.phoneFooter')}
+              footer={languageFooter ? joinSentences(languageFooter, t('settings.phoneFooter')) : t('settings.phoneFooter')}
             >
               {appearanceRows}
             </Section>
@@ -1169,11 +1169,16 @@ function LanguageOptions({
             onPress={() => onPick(id)}
             style={({ pressed }) => [styles.langRow, i < ids.length - 1 && styles.rowDivider, pressed && styles.rowPressed]}
             accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
+            accessibilityState={{ checked: on, selected: on }}
             accessibilityLabel={id === 'system' ? `${name}, ${following}` : name}
+            accessibilityLanguage={id === 'system' ? undefined : id}
           >
             <View style={styles.rowLabelCol}>
-              <Text style={[styles.langName, on && styles.langNameOn, ownFont]} numberOfLines={1}>
+              <Text
+                style={[styles.langName, on && styles.langNameOn, ownFont]}
+                numberOfLines={1}
+                accessibilityLanguage={id === 'system' ? undefined : id}
+              >
                 {name}
               </Text>
               {id === 'system' && <Text style={styles.rowSub}>{following}</Text>}
@@ -1184,6 +1189,11 @@ function LanguageOptions({
       })}
     </View>
   );
+}
+
+/** Two sentences in one footer: Chinese runs them together, others take a space. */
+function joinSentences(a: string, b: string): string {
+  return getLang() === 'zh-Hans' ? `${a}${b}` : `${a} ${b}`;
 }
 
 /** Space Grotesk has Latin only: Cyrillic and CJK names take the system font. */
@@ -1457,7 +1467,7 @@ const styles = themed(() =>
     // Link right
     themeRow: { flexDirection: 'row', gap: 8, padding: 12 },
     langList: { paddingLeft: 49 },
-    langRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingRight: 16 },
+    langRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13, paddingRight: 16 },
     langName: { fontFamily: font.bodyMedium, fontSize: 14.5, fontWeight: '500', color: color.text2 },
     langNameOn: { fontFamily: font.titleSemi, fontWeight: '600', color: color.text1 },
     themeSwatchWrap: {

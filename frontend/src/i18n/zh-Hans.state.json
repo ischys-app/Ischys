@@ -8446,17 +8446,17 @@
   },
   "ui:settings.languageFollowing": {
     "enHash": "86fa81c2980fc13e",
-    "status": "ok",
-    "zhHash": "17c03a8685368c3a"
+    "status": "manual",
+    "zhHash": "6a201513fc9c1ba8"
   },
   "ui:settings.languageFooterIos": {
-    "enHash": "cf4d13dfdda57dfd",
-    "status": "ok",
-    "zhHash": "6149013d37aca165"
+    "enHash": "2d1d0fc45d166045",
+    "status": "manual",
+    "zhHash": "b9f5f0a6c4007077"
   },
   "ui:settings.languageFooterAndroid": {
-    "enHash": "f7feb0f96c7ec43c",
-    "status": "ok",
-    "zhHash": "036fb03733094b1e"
+    "enHash": "7bcf5a6dd26afe06",
+    "status": "manual",
+    "zhHash": "d2ad58f8cae3cfe1"
   }
 }

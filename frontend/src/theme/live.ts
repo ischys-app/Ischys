@@ -151,8 +151,8 @@ export const color: Readonly<Tokens> = Object.defineProperties(
  * a proxy may not report a frozen target's property as anything but its value.
  *
  * In Russian each build goes through `localizeFontStyles` (Space Grotesk has no
- * Cyrillic). The language is fixed for the session, but a set built before
- * src/i18n set it (an early module-level read) is rebuilt once it is known.
+ * Cyrillic). The set is chosen per read, so a change of language (the in-app
+ * Language setting, #136) picks the matching set on the next render.
  */
 export function themed<T extends object>(factory: () => T): T {
   const cache = new Map<string, T>();

@@ -27,7 +27,7 @@ import { accentA, color, font, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, SearchIcon } from './icons';
 import { useThemed } from '../theme/ThemeProvider';
-import { getLang } from '../i18n/current';
+import { getLang, onLangChange } from '../i18n/current';
 import { groupLabel, matchesSearch } from '../i18n/catalogNames';
 import { t } from '../i18n';
 
@@ -39,11 +39,14 @@ let inflight: Promise<MuscleOut[]> | null = null;
 // every file today; dropping the copy keeps it that way if that ever changes.
 // A read in flight is the previous file's, so it is not kept either.
 let generation = 0;
-onProfileSwitch(() => {
+function dropMuscles(): void {
   generation += 1;
   cachedMuscles = null;
   inflight = null;
-});
+}
+onProfileSwitch(dropMuscles);
+// Muscle names are localized when read (#136).
+onLangChange(dropMuscles);
 
 /** Load muscles once; subsequent callers get the cached list. */
 async function fetchMuscles(): Promise<MuscleOut[]> {

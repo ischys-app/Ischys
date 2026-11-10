@@ -27,6 +27,7 @@ import {
 } from '../../src/lib/historyPaging';
 import { accentA, color, font, themed } from '../../src/theme/tokens';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const HEAT_WEEKS = 12;
 const HEAT_DAYS = HEAT_WEEKS * 7; // 84
@@ -238,7 +239,7 @@ export default function History() {
               // Activity heatmap
               <View style={styles.heatCard}>
                 <View style={styles.heatHeader}>
-                  <Text style={styles.heatLabel}>{t('history.heatLabel')}</Text>
+                  <Text style={styles.heatLabel}>{upperDisplay(t('history.heatLabel'))}</Text>
                   <Text style={styles.heatSessions}>{t('history.sessions', { count: activity?.sessions ?? 0 })}</Text>
                 </View>
                 <View style={styles.heatGrid}>
@@ -257,7 +258,7 @@ export default function History() {
             )}
           </>
         }
-        renderSectionHeader={({ section }) => <Text style={styles.groupTitle}>{section.title}</Text>}
+        renderSectionHeader={({ section }) => <Text style={styles.groupTitle}>{upperDisplay(section.title)}</Text>}
         // The space under a group's last card, before the next group's title.
         renderSectionFooter={() => <View style={styles.groupEnd} />}
         ItemSeparatorComponent={ItemGap}
@@ -406,7 +407,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.2,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     heatSessions: {
       fontFamily: font.monoRegular,
@@ -425,7 +425,6 @@ const styles = themed(() =>
       fontSize: 11,
       letterSpacing: 1.54,
       color: color.text3,
-      textTransform: 'uppercase',
       paddingHorizontal: 2,
       paddingBottom: 12,
     },

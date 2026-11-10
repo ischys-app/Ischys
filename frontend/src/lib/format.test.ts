@@ -243,3 +243,72 @@ test('fmtVolumeShort / fmtVolumeLarge: Russian decimal comma, en and zh-Hans unc
     assert.deepEqual(fmtVolumeLarge(12_500, 'kg', lang), { value: '12.5', unit: 'k kg' });
   }
 });
+
+// --- el / es: hand-written date tables, exact strings ---
+test('el dates', () => {
+  const tue = new Date(2026, 10, 10); // Tue 10 Nov 2026
+  const fri = new Date(2026, 4, 1); // Fri 1 May 2026
+  assert.equal(fmtHeaderDate('2026-11-10', 'el'), 'ΤΡΙ · 10 ΝΟΕΜΒΡΙΟΥ 2026');
+  assert.equal(fmtHeaderDate('2026-05-01', 'el'), 'ΠΑΡ · 1 ΜΑΪΟΥ 2026');
+  assert.equal(fmtShortDayUpper(tue, 'el'), 'ΤΡΙ 10 ΝΟΕΜΒΡΙΟΥ');
+  assert.equal(fmtShortDayUpper(fri, 'el'), 'ΠΑΡ 1 ΜΑΪΟΥ');
+  assert.equal(fmtWorkoutDate('2026-11-10', 'el'), 'Τρί, 10 Νοεμβρίου · 00:00');
+  assert.equal(fmtWorkoutDate('2026-05-01', 'el'), 'Παρ, 1 Μαΐου · 00:00');
+  assert.equal(fmtDateOnly('2026-11-10', 'el'), 'Τρί, 10 Νοεμβρίου 2026');
+  assert.equal(fmtMonthYear('2026-11-10', 'el'), 'Νοέμβριο 2026');
+  assert.equal(fmtMonthYear('2026-05-01', 'el'), 'Μάιο 2026');
+  assert.equal(fmtMonthYear('2025-07-04', 'el'), 'Ιούλιο 2025');
+  assert.equal(fmtMonthYear(null, 'el'), '');
+  assert.equal(fmtShortDay(tue, 'el'), 'Τρί 10 Νοε');
+  assert.equal(fmtShortDay(fri, 'el'), 'Παρ 1 Μαΐ');
+  assert.equal(fmtLongDay(tue, 'el'), 'Τρί, 10 Νοεμβρίου 2026');
+  assert.equal(fmtDayMonthOf(tue, 'el'), '10 Νοεμβρίου');
+  assert.equal(fmtDayMonthOf(fri, 'el'), '1 Μαΐου');
+  assert.equal(fmtCardDay(tue, 'el'), '10 ΝΟΕΜΒΡΙΟΥ 2026');
+  assert.equal(fmtImportDay(new Date(2026, 5, 23), tue, 'el'), '23 Ιουνίου');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), tue, 'el'), '3 Αυγούστου 2025');
+  assert.deepEqual(fmtMonthNames('el'), ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ']);
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', new Date(2026, 6, 11), 'el'), 'Μάιος 2026');
+  assert.equal(fmtHistoryGroupTitle('2025-11-02', new Date(2026, 6, 11), 'el'), 'Νοέμβριος 2025');
+  // all-caps Greek carries no tonos
+  assert.doesNotMatch(fmtHeaderDate('2026-11-10', 'el'), /[άέήίόύώΆΈΉΊΌΎΏ]/u);
+  assert.doesNotMatch(fmtCardDay(new Date(2026, 8, 9), 'el'), /[άέήίόύώΆΈΉΊΌΎΏ]/u);
+});
+
+test('es dates', () => {
+  const tue = new Date(2026, 10, 10);
+  const fri = new Date(2026, 4, 1);
+  assert.equal(fmtHeaderDate('2026-11-10', 'es'), 'MAR · 10 NOV 2026');
+  assert.equal(fmtHeaderDate('2026-05-01', 'es'), 'VIE · 1 MAY 2026');
+  assert.equal(fmtShortDayUpper(tue, 'es'), 'MAR 10 NOV');
+  assert.equal(fmtShortDayUpper(new Date(2026, 10, 15), 'es'), 'DOM 15 NOV');
+  assert.equal(fmtShortDayUpper(new Date(2026, 10, 11), 'es'), 'MIÉ 11 NOV');
+  assert.equal(fmtShortDayUpper(new Date(2026, 10, 14), 'es'), 'SÁB 14 NOV');
+  assert.equal(fmtHeaderDate('2026-11-11', 'es'), 'MIÉ · 11 NOV 2026');
+  assert.equal(fmtWorkoutDate('2026-11-10', 'es'), 'mar, 10 nov · 00:00');
+  assert.equal(fmtWorkoutDate('2026-05-01', 'es'), 'vie, 1 may · 00:00');
+  assert.equal(fmtDateOnly('2026-11-10', 'es'), 'mar, 10 nov 2026');
+  assert.equal(fmtMonthYear('2026-11-10', 'es'), 'noviembre de 2026');
+  assert.equal(fmtMonthYear('2026-05-01', 'es'), 'mayo de 2026');
+  assert.equal(fmtMonthYear('2025-07-04', 'es'), 'julio de 2025');
+  assert.equal(fmtMonthYear(null, 'es'), '');
+  assert.equal(fmtShortDay(tue, 'es'), 'mar 10 nov');
+  assert.equal(fmtShortDay(new Date(2026, 10, 11), 'es'), 'mié 11 nov');
+  assert.equal(fmtShortDay(new Date(2026, 10, 14), 'es'), 'sáb 14 nov');
+  assert.equal(fmtLongDay(tue, 'es'), 'mar, 10 nov 2026');
+  assert.equal(fmtDayMonthOf(fri, 'es'), '1 may');
+  assert.equal(fmtDayMonthOf(tue, 'es'), '10 nov');
+  assert.equal(fmtCardDay(tue, 'es'), '10 NOV 2026');
+  assert.equal(fmtImportDay(new Date(2026, 8, 28), tue, 'es'), '28 SEP');
+  assert.equal(fmtImportDay(new Date(2025, 7, 3), tue, 'es'), '03 AGO 25');
+  assert.deepEqual(fmtMonthNames('es'), ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']);
+  assert.equal(fmtHistoryGroupTitle('2026-05-02', new Date(2026, 6, 11), 'es'), 'Mayo de 2026');
+  assert.equal(fmtHistoryGroupTitle('2025-11-02', new Date(2026, 6, 11), 'es'), 'Noviembre de 2025');
+});
+
+test('el / es volume formatters use the decimal comma', () => {
+  for (const lang of ['el', 'es'] as const) {
+    assert.deepEqual(fmtVolumeShort(6800, 'kg', lang), { value: '6,8', unit: 'k kg' });
+    assert.deepEqual(fmtVolumeLarge(1_840_000, 'kg', lang), { value: '1,84', unit: 'M kg' });
+  }
+});

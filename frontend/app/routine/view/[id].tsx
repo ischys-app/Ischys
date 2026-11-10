@@ -32,6 +32,7 @@ import { useWeightUnit } from '../../../src/lib/weightUnit';
 import { color, font, TAP_TARGET, themed } from '../../../src/theme/tokens';
 import { useThemed } from '../../../src/theme/ThemeProvider';
 import { t } from '../../../src/i18n';
+import { upperDisplay } from '../../../src/i18n/upper';
 
 /** Header: 8 above the row, a 34pt row, 12 below. */
 const HEADER_TOP = 8;
@@ -321,7 +322,7 @@ function ExerciseCard({ card, hasLast }: { card: ViewCard; hasLast: boolean }) {
     <View style={styles.card}>
       <View style={styles.cardHead}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{card.initials}</Text>
+          <Text style={styles.avatarText}>{upperDisplay(card.initials)}</Text>
         </View>
         <View style={styles.cardHeadText}>
           <Text style={styles.exName}>{card.name}</Text>

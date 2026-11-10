@@ -52,6 +52,7 @@ import { PressableScale } from '../../src/components/PressableScale';
 import { pickerIsActive, pickerIsSelected, pickerToggle } from '../../src/lib/exercisePicker';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { getLang } from '../../src/i18n/current';
+import { usesCommaDecimal } from '../../src/i18n/scripts';
 import { equipmentLabel } from '../../src/i18n/catalogNames';
 import { t } from '../../src/i18n';
 
@@ -615,7 +616,7 @@ function RecordCard({
 /** Trailing-zero-free number: 68.0 -> "68", 20.5 -> "20.5", 1740 -> "1,740". */
 function fmtChartValue(v: number): string {
   const rounded = Math.round(v * 10) / 10;
-  return getLang() === 'ru'
+  return usesCommaDecimal(getLang())
     ? localizeNumber(String(rounded))
     : String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

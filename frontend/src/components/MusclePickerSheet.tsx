@@ -30,6 +30,7 @@ import { useThemed } from '../theme/ThemeProvider';
 import { getLang, onLangChange } from '../i18n/current';
 import { groupLabel, matchesSearch } from '../i18n/catalogNames';
 import { t } from '../i18n';
+import { upperDisplay } from '../i18n/upper';
 
 /** Module-scope cache — shared across both mount lifetimes of the sheet. */
 let cachedMuscles: MuscleOut[] | null = null;
@@ -216,7 +217,7 @@ export function MusclePickerSheet({
         ) : (
           grouped.map(({ group, items }) => (
             <View key={group} style={styles.group}>
-              <Text style={styles.groupLabel}>{groupLabel(group, getLang()).toUpperCase()}</Text>
+              <Text style={styles.groupLabel}>{upperDisplay(groupLabel(group, getLang()))}</Text>
               {items.map((m) => {
                 const selected = isSelected(m);
                 return (

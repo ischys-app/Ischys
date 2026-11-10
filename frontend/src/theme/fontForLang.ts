@@ -11,6 +11,7 @@
  * injected by src/i18n/index.ts (ios until then).
  */
 import type { Lang } from '../i18n/locale.ts';
+import { usesSystemFont } from '../i18n/scripts.ts';
 
 export type FontPlatform = 'ios' | 'android';
 export type FontWeight = '400' | '500' | '600' | '700';
@@ -79,11 +80,11 @@ function localize(v: unknown, p: FontPlatform): unknown {
 }
 
 /**
- * For Russian, a copy of `styles` where every style with a Space Grotesk
+ * For Russian and Greek, a copy of `styles` where every style with a Space Grotesk
  * family uses the system font at that weight. Any other language gets
  * `styles` itself back.
  */
 export function localizeFontStyles<T>(styles: T, lang: Lang, p: FontPlatform = platform): T {
-  if (lang !== 'ru') return styles;
+  if (!usesSystemFont(lang)) return styles;
   return localize(styles, p) as T;
 }

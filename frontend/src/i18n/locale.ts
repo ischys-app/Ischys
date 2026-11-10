@@ -1,14 +1,16 @@
 /** Maps OS locale tags to the app's languages. Pure: no native imports. */
-export type Lang = 'en' | 'zh-Hans' | 'ru';
+export type Lang = 'en' | 'zh-Hans' | 'ru' | 'el' | 'es';
 
 const TRADITIONAL_REGIONS = new Set(['TW', 'HK', 'MO']);
 
-/** The first tag decides. Simplified Chinese -> zh-Hans; Russian -> ru; everything else (incl. Traditional) -> en. */
+/** The first tag decides. Simplified Chinese -> zh-Hans; Russian -> ru; Greek -> el; Spanish -> es; everything else (incl. Traditional) -> en. */
 export function resolveLang(tags: readonly string[]): Lang {
   const first = tags[0];
   if (!first) return 'en';
   const parts = first.split(/[-_]/).map((p) => p.toLowerCase());
   if (parts[0] === 'ru') return 'ru';
+  if (parts[0] === 'el') return 'el';
+  if (parts[0] === 'es') return 'es';
   if (parts[0] !== 'zh') return 'en';
   const rest = parts.slice(1);
   if (rest.includes('hant')) return 'en';
@@ -21,13 +23,15 @@ export function resolveLang(tags: readonly string[]): Lang {
 export type LangPref = 'system' | Lang;
 
 /** The languages the setting offers, in the order it lists them. */
-export const APP_LANGS: readonly Lang[] = ['en', 'zh-Hans', 'ru'];
+export const APP_LANGS: readonly Lang[] = ['en', 'es', 'el', 'ru', 'zh-Hans'];
 
 /** Each language named in itself, so it can be found from any language. */
 export const NATIVE_LANG_NAME: Readonly<Record<Lang, string>> = {
   en: 'English',
   'zh-Hans': '简体中文',
   ru: 'Русский',
+  es: 'Español',
+  el: 'Ελληνικά',
 };
 
 /** A stored preference; anything unrecognised (or nothing) is System. */

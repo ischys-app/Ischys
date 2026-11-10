@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { exerciseLabel, matchesSearch, groupLabel, equipmentLabel, muscleLabel, categoryLabel } from './catalogNames.ts';
 import catalog from '../../assets/catalog/catalog.json' with { type: 'json' };
 import zh from './catalog/zh-Hans.json' with { type: 'json' };
+import el from './catalog/el.json' with { type: 'json' };
 import ru from './catalog/ru.json' with { type: 'json' };
 
 const ex = catalog.exercises[0];
@@ -80,4 +81,24 @@ test('ru catalog: translated for catalog exercises, stored for renamed and custo
 test('search folds ё and case for Russian', () => {
   assert.equal(matchesSearch('ёлочка', ['Елочка']), true);
   assert.equal(matchesSearch('ЖИМ', ['Жим лёжа']), true);
+});
+
+test('el: exerciseLabel returns the Greek name; custom keeps its stored name', () => {
+  const m = el as unknown as { exercises: Record<string, string> };
+  m.exercises[ex.id] = 'Δοκιμή';
+  try {
+    assert.equal(exerciseLabel({ id: ex.id, name: ex.name, isCustom: 0 }, 'el'), 'Δοκιμή');
+    assert.equal(exerciseLabel({ id: ex.id, name: ex.name, isCustom: 1 }, 'el'), ex.name);
+  } finally {
+    delete m.exercises[ex.id];
+  }
+});
+
+test('search folds accents and final sigma for Spanish and Greek', () => {
+  assert.equal(matchesSearch('press banca', ['Press de banca']), false);
+  assert.equal(matchesSearch('press de banca', ['Press de Banca']), true);
+  assert.equal(matchesSearch('pesa', ['Pésa']), true);
+  assert.equal(matchesSearch('ασκηση', ['Άσκηση']), true);
+  assert.equal(matchesSearch('σ', ['ς']), true);
+  assert.equal(matchesSearch('ΣΩΜΑΤΟΣ', ['σώματος']), true);
 });

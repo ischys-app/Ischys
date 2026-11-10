@@ -65,8 +65,10 @@ import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvider';
 import { APP_LANGS, getLang, NATIVE_LANG_NAME, t, type Lang, type LangPref } from '../src/i18n';
+import { nameNeedsSystemFont } from '../src/i18n/scripts';
 import { fontPlatform, systemFontFor } from '../src/theme/fontForLang';
 import { profileNameLabel } from '../src/i18n/defaultLabels';
+import { upperDisplay } from '../src/i18n/upper';
 
 /**
  * The shipped version, read from the build rather than retyped — these strings
@@ -606,7 +608,7 @@ export default function Settings() {
                 icon={<UploadIcon size={20} color={color.text2} />}
                 label={t('settings.exportWhose', { whose: possessive(profileNameLabel(profile.name)) })}
                 value={t('profiles.exportFormats')}
-                sub={exportFileStem(count, profile.name, new Date()).toUpperCase()}
+                sub={upperDisplay(exportFileStem(count, profile.name, new Date()))}
                 onPress={onExport}
                 isLast={false}
               />
@@ -618,7 +620,7 @@ export default function Settings() {
               />
               <MergeRow
                 count={dupCount}
-                sub={t('settings.inHistory', { whose: possessive(profileNameLabel(profile.name)).toUpperCase() })}
+                sub={t('settings.inHistory', { whose: upperDisplay(possessive(profileNameLabel(profile.name))) })}
                 onPress={() => router.push('/merge-duplicates')}
               />
             </Section>
@@ -959,7 +961,7 @@ function Section({
           {title}
         </SectionLabel>
       ) : (
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionTitle}>{upperDisplay(title)}</Text>
       )}
       <View style={styles.card}>{children}</View>
       {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
@@ -1196,9 +1198,9 @@ function joinSentences(a: string, b: string): string {
   return getLang() === 'zh-Hans' ? `${a}${b}` : `${a} ${b}`;
 }
 
-/** Space Grotesk has Latin only: Cyrillic and CJK names take the system font. */
+/** Space Grotesk has Latin only: Greek, Cyrillic and CJK names take the system font. */
 function needsSystemFont(id: Lang): boolean {
-  return id !== 'en' && getLang() !== id;
+  return nameNeedsSystemFont(id, getLang());
 }
 
 function LinkRow({
@@ -1347,7 +1349,6 @@ const styles = themed(() =>
       fontSize: 11,
       letterSpacing: 1.54,
       color: color.text3,
-      textTransform: 'uppercase',
       paddingLeft: 2,
       paddingRight: 2,
       paddingBottom: 10,

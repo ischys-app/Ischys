@@ -9,6 +9,8 @@ import { useThemed } from '../theme/ThemeProvider';
 import { ProfileAvatar } from './ProfileAvatar';
 import { t } from '../i18n';
 import { profileNameLabel } from '../i18n/defaultLabels';
+import { upperChildren } from './upperChildren';
+import { upperDisplay } from '../i18n/upper';
 
 /**
  * Whose setting a section holds, with 2+ profiles (#117, P9): the profile's
@@ -28,7 +30,7 @@ export function SectionLabel({
 }) {
   useThemed();
   if (!scope) {
-    return <Text maxFontSizeMultiplier={textScale.control} style={[styles.label, style]}>{children}</Text>;
+    return <Text maxFontSizeMultiplier={textScale.control} style={[styles.label, style]}>{upperChildren(children)}</Text>;
   }
   const who = scope.kind === 'profile' ? firstName(profileNameLabel(scope.profile.name)) || profileNameLabel(scope.profile.name) : t('scope.thisPhone');
   return (
@@ -41,11 +43,11 @@ export function SectionLabel({
     >
       {scope.kind === 'profile' ? <ProfileAvatar profile={scope.profile} size={18} /> : <PhoneGlyph />}
       <Text maxFontSizeMultiplier={textScale.control} numberOfLines={1} style={[styles.label, styles.who]}>
-        {who}
+        {upperDisplay(who)}
       </Text>
       <Text maxFontSizeMultiplier={textScale.control} style={styles.label}>·</Text>
       <Text maxFontSizeMultiplier={textScale.control} numberOfLines={1} style={[styles.label, styles.title]}>
-        {children}
+        {upperChildren(children)}
       </Text>
     </View>
   );
@@ -68,7 +70,6 @@ const styles = themed(() =>
       fontSize: 11,
       letterSpacing: 1.54,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     scopeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
     who: { fontFamily: font.monoSemi, color: color.text2, flexShrink: 1 },

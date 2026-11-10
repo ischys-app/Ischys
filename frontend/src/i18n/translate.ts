@@ -1,6 +1,6 @@
 /** Pure translator core: per-language lookup with English fallback. No native imports. */
 import type { Lang } from './locale.ts';
-import { ruPlural } from './plural.ts';
+import { pluralFor, type PluralCategory } from './plural.ts';
 
 /** `plural` names the count variable for a key that has no _one/_other pair. */
 export type StringDef = { en: string; note: string; plural?: string };
@@ -26,7 +26,8 @@ function interpolate(s: string, vars?: Vars): string {
   );
 }
 
-function translateRu(
+function translatePlural(
+  rule: (n: number) => PluralCategory,
   ru: Record<string, string>,
   en: Record<string, StringDef>,
   key: string,
@@ -37,7 +38,7 @@ function translateRu(
   const n = vars?.[countVar];
   if (isPair || en[key]?.plural !== undefined) {
     if (typeof n !== 'number') return undefined;
-    const cat = ruPlural(n);
+    const cat = rule(n);
     const found = ru[`${key}_${cat}`];
     // _one was translated from the English singular; every other form from the plural.
     const source = (cat === 'one' ? en[`${key}_one`] : undefined) ?? en[`${key}_other`] ?? en[key];
@@ -60,10 +61,11 @@ export function createTranslator(
   en: Record<string, StringDef>,
 ): (key: string, vars?: Vars) => string {
   const zh = tables['zh-Hans'] ?? {};
-  const ru = tables.ru ?? {};
+  const rule = pluralFor(lang);
+  const own = lang === 'en' || lang === 'zh-Hans' ? undefined : (tables[lang] ?? {});
   return (key, vars) => {
-    if (lang === 'ru') {
-      const r = translateRu(ru, en, key, vars);
+    if (rule && own) {
+      const r = translatePlural(rule, own, en, key, vars);
       if (r !== undefined) return r;
     }
     // With a count, prefer the plural form, then the bare key. zh has no

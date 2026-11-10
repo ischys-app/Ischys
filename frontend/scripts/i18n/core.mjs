@@ -1,6 +1,7 @@
 /** Pure helpers for the translation script. No I/O, no network. */
 import { createHash } from 'node:crypto';
 import { LANGS } from './langs.mjs';
+import { upperDisplay } from '../../src/i18n/upper.ts';
 
 const ZH = LANGS['zh-Hans'];
 
@@ -78,6 +79,19 @@ export function withRetryReason(item, entry) {
   return { ...item, note: item.note ? `${item.note} ${hint}` : hint };
 }
 
+const GREEK = /[Ͱ-Ͽἀ-῿]/;
+
+/**
+ * Post-process a checked translation. Greek (field 'el'): when the English source has no
+ * lowercase letters (outside {placeholders}) and the output has Greek, store the all-caps
+ * display form without tonos. Placeholders are left untouched. Other languages: unchanged.
+ */
+export function normalizeOutput(en, out, lang) {
+  if (lang.field !== 'el') return out;
+  if (/[a-z]/.test(en.replace(PLACEHOLDER, ' ')) || !GREEK.test(out)) return out;
+  return out.split(/(\{[A-Za-z0-9_]+\})/).map((part, i) => (i % 2 ? part : upperDisplay(part))).join('');
+}
+
 /**
  * Validate a model response against its batch.
  * Returns { ok: Record<key, zh>, rejected: Record<key, reason> }. Keys not in the batch are ignored.
@@ -105,7 +119,10 @@ export function parseResponse(text, batch, opts = {}) {
     }
     const reason = checkOne(it, obj[it.key], untranslated, lang);
     if (reason) rejected[it.key] = reason;
-    else ok[it.key] = lang.keepEdgeSpace ? withEdgeSpace(it.en, obj[it.key]) : obj[it.key].trim();
+    else {
+      const text = lang.keepEdgeSpace ? withEdgeSpace(it.en, obj[it.key]) : obj[it.key].trim();
+      ok[it.key] = normalizeOutput(it.en, text, lang);
+    }
   }
   return { ok, rejected };
 }
@@ -116,6 +133,7 @@ export function parseResponse(text, batch, opts = {}) {
  */
 export function buildPrompt(batch, glossary, lang = ZH) {
   if (lang.code === 'ru') return buildPromptRu(batch, glossary, lang);
+  if (lang.code === 'el' || lang.code === 'es') return buildPromptElEs(batch, glossary, lang);
   const terms = glossary.terms.map((t) => `- ${t.en} => ${t.zh}${t.note ? ` (${t.note})` : ''}`).join('\n');
   const keep = glossary.untranslated.join(', ');
   const system = [
@@ -164,6 +182,46 @@ function buildPromptRu(batch, glossary, lang) {
   return { system, user };
 }
 
+const ELES_REGISTER = {
+  el: [
+    '- Use the informal singular «εσύ» (for example «Ξεκίνα»); never the formal plural. Use plain, standard Greek gym terminology.',
+    '- ALL-CAPS English must be translated into all-caps Greek with no tonos (accent marks): THIS WEEK becomes ΑΥΤΗ ΤΗΝ ΕΒΔΟΜΑΔΑ, never ΑΥΤΉ ΤΗΝ ΕΒΔΟΜΆΔΑ. Keep the dialytika (Ϊ, Ϋ).',
+  ],
+  es: [
+    '- Write neutral Spanish with «tú» (never «usted» or «vos»). Use vocabulary shared by Spain and Latin America and standard gym terms; avoid regional slang and words used in only one region.',
+    '- Never use «coger»; use «tomar» or «agarrar».',
+  ],
+};
+
+function buildPromptElEs(batch, glossary, lang) {
+  const terms = glossary.terms.map((t) => `- ${t.en} => ${t[lang.field]}${t.note ? ` (${t.note})` : ''}`).join('\n');
+  const keep = glossary.untranslated.join(', ');
+  const L = lang.promptLanguage;
+  const example = lang.code === 'el' ? 'Σετ: {n}' : 'Series: {n}';
+  const system = [
+    `You translate UI strings for a gym workout-tracking mobile app from English into ${L}.`,
+    'Rules:',
+    ...ELES_REGISTER[lang.code],
+    `- No idioms, jokes, slang, creative phrasing, or cultural references.`,
+    '- Do not use any country, nationality, region, flag, political or military words unless the English string has them.',
+    '- Use exactly these glossary translations (they are mandatory):',
+    terms,
+    `- Keep these terms verbatim in Latin letters, never translate them: ${keep}.`,
+    '- Keep every {placeholder} (for example {count}) verbatim: same names, same number of occurrences. Do not translate text inside braces.',
+    '- Each string has a context note describing where it appears. Follow it.',
+    `- If the note states a maximum length ("Max N characters"), your translation may use at most N × ${lang.lengthFactor} characters, rounded down (${L} is longer than English). Stay as short as possible; use standard abbreviations where needed.`,
+    `- Some notes say "${L} plural form ..." with example counts. Translate that key in the grammatical form that agrees with those counts: "one" is used for exactly 1, "other" for 0, 2, 5 and 1.5.`,
+    `- If a string has a number placeholder and is not marked as a plural form, phrase it so the noun does not depend on the number, for example «${example}».`,
+    `- Exercise, muscle and equipment names are gym terms: use the common ${L} gym name and keep any equipment in parentheses translated.`,
+    `- Do not add or remove punctuation, line breaks or whitespace that the English does not have, other than switching to ${L} punctuation where natural.`,
+    `Return only a JSON object mapping each key to its ${L} translation: {"key": "translation", ...}. Include every key exactly once and no other keys or text.`,
+  ].join('\n');
+  const user =
+    'Translate these strings. Return JSON only.\n' +
+    JSON.stringify(batch.map((b) => ({ key: b.key, en: b.en, note: b.note })), null, 1);
+  return { system, user };
+}
+
 const RU_FORMS = [
   ['one', '1, 21, 101'],
   ['few', '2, 3, 4, 22'],
@@ -171,23 +229,29 @@ const RU_FORMS = [
   ['other', '1.5'],
 ];
 
+const ONE_OTHER_FORMS = [
+  ['one', '1'],
+  ['other', '0, 2, 5, 1.5'],
+];
+
 /**
  * Plural keys carry item.plural = { base, one?, var? } (from sources.mjs): base is the
  * namespaced key without a form suffix, one the English singular of an _one/_other pair.
- * For a language with plural 'ru' each becomes base_one/_few/_many/_other; _one is
+ * For a language with plural 'ru' each becomes base_one/_few/_many/_other ('one-other': base_one/_other); _one is
  * translated from the singular, the rest from the plural (or the single form). This
  * matches what the runtime translator looks up. Other languages: items unchanged.
  */
 export function expandPlurals(items, lang = ZH) {
-  if (lang.plural !== 'ru') return items;
+  if (lang.plural !== 'ru' && lang.plural !== 'one-other') return items;
+  const forms = lang.plural === 'ru' ? RU_FORMS : ONE_OTHER_FORMS;
   const out = [];
   for (const it of items) {
     if (!it.plural) {
       out.push(it);
       continue;
     }
-    for (const [cat, examples] of RU_FORMS) {
-      const hint = `Russian plural form "${cat}": used for counts like ${examples}.`;
+    for (const [cat, examples] of forms) {
+      const hint = `${lang.promptLanguage} plural form "${cat}": used for counts like ${examples}.`;
       out.push({
         key: `${it.plural.base}_${cat}`,
         en: cat === 'one' && it.plural.one !== undefined ? it.plural.one : it.en,
@@ -198,7 +262,9 @@ export function expandPlurals(items, lang = ZH) {
   return out;
 }
 
-const norm = (s) => String(s).toLowerCase().replace(/ё/g, 'е');
+// Lowercase, ё read as е, Greek tonos and final sigma and Spanish acute accents and ü folded away (ñ stays).
+const FOLD = { ά: 'α', έ: 'ε', ή: 'η', ί: 'ι', ό: 'ο', ύ: 'υ', ώ: 'ω', ΐ: 'ι', ΰ: 'υ', ϊ: 'ι', ϋ: 'υ', ς: 'σ', á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u' };
+const norm = (s) => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[άέήίόύώΐΰϊϋςáéíóúü]/g, (c) => FOLD[c]);
 const words = (s) => norm(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 
 /**

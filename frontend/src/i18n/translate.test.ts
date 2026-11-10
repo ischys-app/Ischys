@@ -115,3 +115,42 @@ test('ru table is ignored for zh-Hans and en', () => {
   assert.equal(createTranslator('en', { 'zh-Hans': {}, ru }, enRu)('w', { name: 'A' }), 'Hello A');
   assert.equal(createTranslator('zh-Hans', { ru }, enRu)('w', { name: 'A' }), 'Hello A');
 });
+
+const es = {
+  x_one: '{count} serie',
+  x_other: '{count} series',
+  z_one: 'Queda {n}',
+  z_other: 'Quedan {n}',
+  w: 'Hola, {name}',
+};
+
+test('es: one/other by count', () => {
+  const t = createTranslator('es', { es }, enRu);
+  assert.equal(t('x', { count: 1 }), '1 serie');
+  assert.equal(t('x', { count: 3 }), '3 series');
+});
+
+test('es: custom count variable picks the right form', () => {
+  const t = createTranslator('es', { es }, enRu);
+  assert.equal(t('z', { n: 1 }), 'Queda 1');
+  assert.equal(t('z', { n: 3 }), 'Quedan 3');
+});
+
+test('es: missing _one renders English; wrong placeholder renders English', () => {
+  const t = createTranslator('es', { es: { x_other: '{count} series', w: 'Hola, {nombre}' } }, enRu);
+  assert.equal(t('x', { count: 1 }), '1 set');
+  assert.equal(t('x', { count: 3 }), '3 series');
+  assert.equal(t('w', { name: 'Ana' }), 'Hello Ana');
+});
+
+test('el: uses its own table with one/other', () => {
+  const el = { x_one: '{count} σετ', x_other: '{count} σετ', w: 'Γεια, {name}' };
+  const t = createTranslator('el', { el, es }, enRu);
+  assert.equal(t('x', { count: 2 }), '2 σετ');
+  assert.equal(t('w', { name: 'Άννα' }), 'Γεια, Άννα');
+});
+
+test('es/el tables are ignored for other languages', () => {
+  assert.equal(createTranslator('ru', { es }, enRu)('w', { name: 'A' }), 'Hello A');
+  assert.equal(createTranslator('en', { es }, enRu)('w', { name: 'A' }), 'Hello A');
+});

@@ -39,13 +39,9 @@ import {
   reflagExercisePrs,
 } from './recordStore';
 import { t } from '../i18n/t';
+import { initialsOf } from './initials';
 
-/** 'Incline Bench Press' -> 'IB' (port of serializers.initials_of). */
-export function initialsOf(name: string): string {
-  const words = name.replace(/\(/g, ' ').split(/\s+/).filter((w) => /^[a-z0-9]/i.test(w));
-  const letters = words.slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-  return letters || name.slice(0, 2).toUpperCase();
-}
+export { initialsOf };
 
 const localDay = (ms: number): string => {
   const d = new Date(ms);

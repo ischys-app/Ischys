@@ -3,6 +3,7 @@ import { fold } from './fold.ts';
 import { fmtMonthYear, fmtShortDayUpper } from '../lib/format.ts';
 import { t } from '../i18n/t.ts';
 import { profileNameLabel, workoutLabel } from '../i18n/defaultLabels.ts';
+import { upperDisplay } from '../i18n/upper.ts';
 
 export type ProfileRow = {
   id: string;
@@ -75,9 +76,9 @@ export function deriveInitials(name: string): string {
   const w = words(name);
   if (w.length === 0) return '';
   const first = graphemes(w[0])[0] ?? '';
-  if (w.length === 1) return first.toLocaleUpperCase();
+  if (w.length === 1) return upperDisplay(first);
   const last = graphemes(w[w.length - 1])[0] ?? '';
-  return (first + last).toLocaleUpperCase();
+  return upperDisplay(first + last);
 }
 
 export function firstName(name: string): string {
@@ -200,7 +201,7 @@ export function manageSubline(p: ProfileRow): string {
   const d = new Date(p.firstWorkoutAt);
   return t('profiles.manageCount', {
     count: p.workoutCount,
-    date: fmtMonthYear(d.toISOString()).toUpperCase(),
+    date: upperDisplay(fmtMonthYear(d.toISOString())),
   });
 }
 
@@ -261,10 +262,7 @@ export function switcherListScrolls(rows: number, windowHeight: number): boolean
 
 /** What the INITIALS field keeps: no spaces, uppercased, at most 2 characters (graphemes). */
 export function normalizeInitials(raw: string): string {
-  return graphemes(raw.replace(/\s+/g, ''))
-    .slice(0, 2)
-    .join('')
-    .toLocaleUpperCase();
+  return upperDisplay(graphemes(raw.replace(/\s+/g, '')).slice(0, 2).join(''));
 }
 
 /** The existing profile with this name (ignoring case and outer spaces), or null. */

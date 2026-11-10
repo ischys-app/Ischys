@@ -431,3 +431,91 @@ test('withRetryReason appends the review reason only for a flagged entry with a 
   // the note does not change what the translation answers
   assert.equal(core.needsTranslation('a', out.en, { a: flagged }, { retryFlagged: true }), true);
 });
+
+// ---- Greek and Spanish ----
+
+const readDeny = (code) => JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, `denylist.${code}.json`), 'utf8'));
+
+test('LANGS: el and es configuration', () => {
+  for (const [code, name] of [['el', 'Greek'], ['es', 'Spanish']]) {
+    const l = LANGS[code];
+    assert.equal(l.field, code);
+    assert.equal(l.promptLanguage, name);
+    assert.equal(l.lengthFactor, 1.35);
+    assert.equal(l.plural, 'one-other');
+    assert.equal(l.keepEdgeSpace, true);
+    assert.equal(l.files.plist, undefined);
+    assert.equal(l.files.state, `src/i18n/${code}.state.json`);
+    assert.equal(l.files.denylist, `scripts/i18n/denylist.${code}.json`);
+    assert.equal(l.files.glossary, `scripts/i18n/glossary.${code}.json`);
+  }
+  assert.ok(LANGS.el.scriptRegex.test('Άσκηση'));
+  assert.ok(LANGS.es.scriptRegex.test('Sentadilla'));
+});
+
+test('expandPlurals: el and es give _one and _other with the right English', () => {
+  for (const code of ['el', 'es']) {
+    const out = core.expandPlurals([pairItem, tagItem, item('ui:plain', 'Start')], LANGS[code]);
+    assert.deepEqual(out.map((i) => i.key), ['ui:home.sets_one', 'ui:home.sets_other', 'ui:rest.left_one', 'ui:rest.left_other', 'ui:plain']);
+    assert.deepEqual(out.map((i) => i.en), ['{count} set', '{count} sets', '{n} reps left', '{n} reps left', 'Start']);
+    assert.ok(out[0].note.startsWith('Count on the card.'));
+    assert.ok(out[0].note.includes('"one"') && out[0].note.includes('counts like 1'));
+    assert.ok(out[1].note.includes('"other"') && out[1].note.includes('0, 2, 5, 1.5'));
+    assert.equal(out[4].note, 'note');
+  }
+});
+
+test('expandPlurals: zh and ru unchanged by the one-other path', () => {
+  assert.equal(core.expandPlurals([pairItem], LANGS.ru).length, 4);
+  assert.deepEqual(core.expandPlurals([pairItem], LANGS['zh-Hans']), [pairItem]);
+});
+
+test('el checks: Latin-only rejected, Greek accepted', () => {
+  const el = LANGS.el;
+  assert.equal(core.checkOne(item('a', 'Bench Press'), 'Bench Press', ['RPE'], el), 'no Greek characters in output');
+  assert.equal(core.checkOne(item('a', 'Exercise'), 'Άσκηση', ['RPE'], el), null);
+});
+
+test('buildPrompt for el and es', () => {
+  const g = { terms: [{ en: 'set', el: 'σετ', es: 'serie' }], untranslated: ['RPE', 'Ischys'] };
+  const batch = [item('a', 'Start', 'Button.')];
+  const el = core.buildPrompt(batch, g, LANGS.el).system;
+  for (const w of ['Greek', 'εσύ', 'no tonos', 'ALL-CAPS', 'σετ', 'RPE', 'Ischys']) assert.ok(el.includes(w), w);
+  assert.ok(!el.includes('Chinese') && !el.includes('Russian'));
+  const es = core.buildPrompt(batch, g, LANGS.es).system;
+  for (const w of ['Spanish', 'tú', 'Latin America', 'serie', 'mandatory']) assert.ok(es.includes(w), w);
+  assert.ok(!es.includes('Greek'));
+  assert.ok(core.buildPrompt(batch, g, LANGS.es).user.includes('Button.'));
+});
+
+test('el all-caps normalisation drops the tonos when the English is all caps', () => {
+  const batch = [item('a', 'THIS WEEK'), item('b', 'This week'), item('c', '{count} SETS')];
+  const r = core.parseResponse(JSON.stringify({ a: 'ΑΥΤΉ ΤΗΝ ΕΒΔΟΜΆΔΑ', b: 'Αυτή την εβδομάδα', c: '{count} ΣΈΤ' }), batch, { lang: LANGS.el });
+  assert.deepEqual(r.ok, { a: 'ΑΥΤΗ ΤΗΝ ΕΒΔΟΜΑΔΑ', b: 'Αυτή την εβδομάδα', c: '{count} ΣΕΤ' });
+  assert.equal(core.normalizeOutput('THIS WEEK', 'αυτή την εβδομάδα', LANGS.el), 'ΑΥΤΗ ΤΗΝ ΕΒΔΟΜΑΔΑ');
+  assert.equal(core.normalizeOutput('THIS WEEK', 'This week', LANGS.es), 'This week');
+});
+
+test('es denyHits: Military Press as "press militar" is allowed', () => {
+  assert.deepEqual(core.denyHits('Press militar', 'Military Press', readDeny('es')), []);
+  assert.deepEqual(core.denyHits('Press militar', 'Overhead Press', readDeny('es')), []);
+  assert.deepEqual(core.denyHits('Bandera de España', 'Settings', readDeny('es')).sort(), ['bander', 'españ']);
+  assert.deepEqual(core.denyHits('Ελληνική σημαία', 'Settings', readDeny('el')).length > 0, true);
+  assert.deepEqual(core.denyHits('Στρατιωτικό πρες', 'Military Press', readDeny('el')), []);
+  assert.deepEqual(core.denyHits('Στρατιωτικό πρες', 'Shoulder Press', readDeny('el')), ['στρατιωτ']);
+});
+
+test('denyHits: Spanish and Greek reviewer fixes', () => {
+  const es = readDeny('es');
+  const el = readDeny('el');
+  assert.ok(core.denyHits('Coge la barra', 'Grab the bar', es).includes('coge'));
+  assert.deepEqual(core.denyHits('Recoge la barra', 'Grab the bar', es), []);
+  assert.deepEqual(core.denyHits('a tu elección', 'your choice', es), []);
+  assert.deepEqual(core.denyHits('Press de banca turquesa', 'Bench', es), []);
+  assert.deepEqual(core.denyHits('Movilización articular', 'Joint mobility', es), []);
+  assert.deepEqual(core.denyHits('Franco y francamente', 'Frank', es), []);
+  assert.ok(core.denyHits('Eres un maricón', 'Press', es).length > 0);
+  assert.deepEqual(core.denyHits('Πίεσε μαλακά', 'Press gently', el), []);
+  assert.deepEqual(core.denyHits('Σκοπός', 'Goal', el), []);
+  assert.deepEqual(core.denyHits('Σκόπια', 'Goal', el), ['σκοπια']);
+});

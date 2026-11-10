@@ -6,7 +6,7 @@
  *   and the prefix of the state's value hash (zh -> zhHash, ru -> ruHash).
  * scriptRegex: output must contain one of these characters when the English has words to translate.
  * lengthFactor: multiplies a note's "Max N characters" budget (rounded down).
- * plural: 'none' = one translated form per key; 'ru' = one/few/many/other per count key.
+ * plural: 'none' = one translated form per key; 'ru' = one/few/many/other per count key; 'one-other' = one/other (el, es).
  * catalogNotes: optional per-prefix note overrides for catalog items.
  * keepEdgeSpace: store the model's text with exactly the English source's leading and
  *   trailing whitespace (fragments like " into {name}"); otherwise the output is trimmed.
@@ -47,6 +47,46 @@ export const LANGS = {
     keepEdgeSpace: true,
     catalogNotes: {
       ex: 'Exercise name (gym exercise; keep equipment in parentheses translated, e.g. (штанга)). Use the common Russian gym name.',
+    },
+  },
+  el: {
+    code: 'el',
+    field: 'el',
+    files: {
+      ui: 'src/i18n/strings/el.json',
+      catalog: 'src/i18n/catalog/el.json',
+      state: 'src/i18n/el.state.json',
+      glossary: 'scripts/i18n/glossary.el.json',
+      review: '.i18n-review/el.review.json',
+      denylist: 'scripts/i18n/denylist.el.json',
+    },
+    promptLanguage: 'Greek',
+    scriptRegex: /[Ͱ-Ͽἀ-῿]/,
+    lengthFactor: 1.35,
+    plural: 'one-other',
+    keepEdgeSpace: true,
+    catalogNotes: {
+      ex: 'Exercise name (gym exercise; keep equipment in parentheses translated, e.g. (μπάρα)). Use the common Greek gym name.',
+    },
+  },
+  es: {
+    code: 'es',
+    field: 'es',
+    files: {
+      ui: 'src/i18n/strings/es.json',
+      catalog: 'src/i18n/catalog/es.json',
+      state: 'src/i18n/es.state.json',
+      glossary: 'scripts/i18n/glossary.es.json',
+      review: '.i18n-review/es.review.json',
+      denylist: 'scripts/i18n/denylist.es.json',
+    },
+    promptLanguage: 'Spanish',
+    scriptRegex: /[a-zA-ZáéíóúñüÁÉÍÓÚÑÜ¿¡]/,
+    lengthFactor: 1.35,
+    plural: 'one-other',
+    keepEdgeSpace: true,
+    catalogNotes: {
+      ex: 'Exercise name (gym exercise; keep equipment in parentheses translated, e.g. (barra)). Use the common Spanish gym name.',
     },
   },
 };

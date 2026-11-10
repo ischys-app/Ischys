@@ -39,9 +39,11 @@ import { registerPicker } from '../src/lib/exercisePicker';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { getLang } from '../src/i18n/current';
+import { allowsTwoLineNames } from '../src/i18n/scripts';
 import { equipmentLabel } from '../src/i18n/catalogNames';
-import { indexLetter } from '../src/data/labels';
+import { compareLabels, indexLetter } from '../src/data/labels';
 import { t } from '../src/i18n';
+import { upperDisplay } from '../src/i18n/upper';
 
 const ALL = 'All';
 const DEFAULT_REST_SECONDS = 120;
@@ -73,7 +75,7 @@ function groupByLetter(items: ExerciseOut[]): Group[] {
     byLetter.set(L, arr);
   }
   return [...byLetter.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => compareLabels(lang)(a, b))
     .map(([letter, items]) => ({ letter, items }));
 }
 
@@ -319,7 +321,7 @@ export default function ExerciseLibrary() {
         )}
         ItemSeparatorComponent={() => <View style={styles.rowGap} />}
         renderSectionHeader={({ section }) => (
-          <Text style={styles.groupLabel}>{section.title}</Text>
+          <Text style={styles.groupLabel}>{upperDisplay(section.title)}</Text>
         )}
         ListHeaderComponent={
           loading && exercises.length === 0 ? (
@@ -521,7 +523,7 @@ function ExerciseRow({
       />
       <View style={styles.rowText}>
         {/* Russian catalog names run much longer, so they get two lines. */}
-        <Text style={styles.rowName} numberOfLines={getLang() === 'ru' ? 2 : 1}>
+        <Text style={styles.rowName} numberOfLines={allowsTwoLineNames(getLang()) ? 2 : 1}>
           {exercise.name}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>
@@ -680,7 +682,6 @@ const styles = themed(() =>
       paddingTop: 12,
       paddingHorizontal: 6,
       paddingBottom: 8,
-      textTransform: 'uppercase',
     },
     rowGap: { height: 2 },
 

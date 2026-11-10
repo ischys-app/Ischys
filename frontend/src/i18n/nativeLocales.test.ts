@@ -12,10 +12,18 @@ import assert from 'node:assert/strict';
 
 import app from '../../app.json' with { type: 'json' };
 
-test('ru is not an iOS native localization', () => {
+for (const l of ['ru', 'el', 'es']) {
+  test(`${l} is not an iOS native localization`, () => {
+    const { expo } = app as any;
+    assert.ok(!expo.ios.infoPlist.CFBundleLocalizations.includes(l), 'CFBundleLocalizations');
+    assert.ok(!(l in expo.locales), 'expo.locales');
+    const loc = expo.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-localization');
+    assert.ok(!loc[1].supportedLocales.ios.includes(l), 'expo-localization supportedLocales.ios');
+  });
+}
+
+test('ru, el and es are Android supported locales', () => {
   const { expo } = app as any;
-  assert.ok(!expo.ios.infoPlist.CFBundleLocalizations.includes('ru'), 'CFBundleLocalizations');
-  assert.ok(!('ru' in expo.locales), 'expo.locales');
   const loc = expo.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-localization');
-  assert.ok(!loc[1].supportedLocales.ios.includes('ru'), 'expo-localization supportedLocales.ios');
+  for (const l of ['ru', 'el', 'es']) assert.ok(loc[1].supportedLocales.android.includes(l), l);
 });

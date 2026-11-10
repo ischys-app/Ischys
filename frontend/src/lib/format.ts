@@ -5,7 +5,10 @@ import type { Lang } from '../i18n/locale.ts';
 import { strings } from '../i18n/strings/en.ts';
 import zh from '../i18n/strings/zh-Hans.json' with { type: 'json' };
 import ru from '../i18n/strings/ru.json' with { type: 'json' };
+import el from '../i18n/strings/el.json' with { type: 'json' };
+import es from '../i18n/strings/es.json' with { type: 'json' };
 import { createTranslator } from '../i18n/translate.ts';
+import { upperDisplay } from '../i18n/upper.ts';
 
 const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const WEEKDAY_TITLE = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -23,7 +26,7 @@ function zhDay(d: Date, withYear: boolean): string {
 // translation review state. Months are genitive with a day ("8 ноября") and
 // nominative on their own ("Ноябрь 2026"). No "г." after the year.
 const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-const WEEKDAY_RU_UPPER = WEEKDAY_RU.map((w) => w.toUpperCase());
+const WEEKDAY_RU_UPPER = WEEKDAY_RU.map((w) => upperDisplay(w));
 const MONTH_RU_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const MONTH_RU_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 /** Genitive abbreviations for a day + month ("9 сент."); мая/июня/июля stay whole. */
@@ -34,11 +37,37 @@ const MONTH_RU_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Ию�
 function ruDay(d: Date, withYear: boolean): string {
   return `${d.getDate()} ${MONTH_RU_GEN[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ''}`;
 }
+// NOTE: the Greek and Spanish date literals are hand-written too, outside the
+// translation review state. Greek months are genitive with a day ("10 Νοεμβρίου")
+// and nominative on their own ("Νοέμβριος 2026"); Spanish months and weekdays are
+// lower case in running text and capitalised, with "de", in a month heading
+// ("Noviembre de 2026"). All-caps forms go through upperDisplay (no Greek tonos).
+const WEEKDAY_EL = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
+const WEEKDAY_EL_UPPER = WEEKDAY_EL.map((w) => upperDisplay(w));
+const MONTH_EL_GEN = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου', 'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου'];
+const MONTH_EL_NOM = ['Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος', 'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'];
+const MONTH_EL_SHORT = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+
+/** Greek day + genitive month, e.g. "10 Νοεμβρίου"; with year, "10 Νοεμβρίου 2026". */
+function elDay(d: Date, withYear: boolean): string {
+  return `${d.getDate()} ${MONTH_EL_GEN[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ''}`;
+}
+
+const WEEKDAY_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const WEEKDAY_ES_UPPER = WEEKDAY_ES.map((w) => upperDisplay(w));
+const MONTH_ES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const MONTH_ES_NOM = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const MONTH_ES_PICKER = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/** Spanish day + short month, e.g. "10 nov"; with year, "10 nov 2026". */
+function esDay(d: Date, withYear: boolean): string {
+  return `${d.getDate()} ${MONTH_ES_SHORT[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ''}`;
+}
 const MONTH_TITLE = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Translate in an explicit language, so callers (and tests) can pin it. */
 function tr(key: string, lang: Lang, vars?: Record<string, string | number>): string {
-  return createTranslator(lang, { 'zh-Hans': zh, ru }, strings)(key, vars);
+  return createTranslator(lang, { 'zh-Hans': zh, ru, el, es }, strings)(key, vars);
 }
 
 /** Parse an ISO string. Date-only (YYYY-MM-DD) is read in local time to avoid a UTC day-shift. */
@@ -62,7 +91,9 @@ function parse(iso: string): Date {
 export function fmtHeaderDate(iso: string, lang: Lang = getLang()): string {
   const d = parse(iso);
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} · ${zhDay(d, true)}`;
-  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} · ${ruDay(d, true).toUpperCase()}`;
+  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} · ${upperDisplay(ruDay(d, true))}`;
+  if (lang === 'el') return `${WEEKDAY_EL_UPPER[d.getDay()]} · ${upperDisplay(elDay(d, true))}`;
+  if (lang === 'es') return `${WEEKDAY_ES_UPPER[d.getDay()]} · ${upperDisplay(esDay(d, true))}`;
   return `${WEEKDAY_UPPER[d.getDay()]} · ${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -79,7 +110,9 @@ export function fmtVolumeShort(kg: number, unit: Unit, lang: Lang = getLang()): 
 /** e.g. "TUE 30 SEP" — the Routine View's last-performed line. Local time. */
 export function fmtShortDayUpper(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
-  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} ${ruDay(d, false).toUpperCase()}`;
+  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} ${upperDisplay(ruDay(d, false))}`;
+  if (lang === 'el') return `${WEEKDAY_EL_UPPER[d.getDay()]} ${upperDisplay(elDay(d, false))}`;
+  if (lang === 'es') return `${WEEKDAY_ES_UPPER[d.getDay()]} ${upperDisplay(esDay(d, false))}`;
   return `${WEEKDAY_UPPER[d.getDay()]} ${d.getDate()} ${MONTH_UPPER[d.getMonth()]}`;
 }
 
@@ -97,6 +130,8 @@ export function fmtWorkoutDate(iso: string, lang: Lang = getLang()): string {
   const mm = String(d.getMinutes()).padStart(2, '0');
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)} · ${hh}:${mm}`;
   if (lang === 'ru') return `${WEEKDAY_RU[d.getDay()]}, ${ruDay(d, false)} · ${hh}:${mm}`;
+  if (lang === 'el') return `${WEEKDAY_EL[d.getDay()]}, ${elDay(d, false)} · ${hh}:${mm}`;
+  if (lang === 'es') return `${WEEKDAY_ES[d.getDay()]}, ${esDay(d, false)} · ${hh}:${mm}`;
   return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} · ${hh}:${mm}`;
 }
 
@@ -105,6 +140,8 @@ export function fmtDateOnly(iso: string, lang: Lang = getLang()): string {
   const d = parse(iso);
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, true)}`;
   if (lang === 'ru') return `${WEEKDAY_RU[d.getDay()]}, ${ruDay(d, true)}`;
+  if (lang === 'el') return `${WEEKDAY_EL[d.getDay()]}, ${elDay(d, true)}`;
+  if (lang === 'es') return `${WEEKDAY_ES[d.getDay()]}, ${esDay(d, true)}`;
   return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -140,13 +177,19 @@ export function parseIso(iso: string): Date {
   return parse(iso);
 }
 
-/** e.g. "Jan 2024" — Profile subtitle "training since …". Returns '' for null/blank. */
+/**
+ * e.g. "Jan 2024" — for "since {date}" phrases (Profile subtitle, merge-duplicates, profile cards).
+ * Greek uses the accusative (after «από») and Spanish is lower case (after «desde»).
+ * Returns '' for null/blank.
+ */
 export function fmtMonthYear(iso?: string | null, lang: Lang = getLang()): string {
   if (!iso) return '';
   const d = parse(iso);
   if (Number.isNaN(d.getTime())) return '';
   if (lang === 'zh-Hans') return `${d.getFullYear()}年${d.getMonth() + 1}月`;
   if (lang === 'ru') return `${MONTH_RU_NOM[d.getMonth()]} ${d.getFullYear()}`;
+  if (lang === 'el') return `${MONTH_EL_NOM[d.getMonth()].replace(/ς$/, '')} ${d.getFullYear()}`;
+  if (lang === 'es') return `${MONTH_ES_NOM[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
   return `${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -213,6 +256,8 @@ export function fmtHistoryGroupTitle(workoutIso: string, now: Date = new Date(),
   if (w.getTime() >= lastMon.getTime()) return tr('history.lastWeek', lang);
   if (lang === 'zh-Hans') return `${w.getFullYear()}年${w.getMonth() + 1}月`;
   if (lang === 'ru') return `${MONTH_RU_NOM[w.getMonth()]} ${w.getFullYear()}`;
+  if (lang === 'el') return `${MONTH_EL_NOM[w.getMonth()]} ${w.getFullYear()}`;
+  if (lang === 'es') return `${MONTH_ES_NOM[w.getMonth()]} de ${w.getFullYear()}`;
   return `${MONTH_UPPER[w.getMonth()]} ${w.getFullYear()}`;
 }
 
@@ -226,6 +271,8 @@ export function fmtTimeOfDay(ms: number): string {
 export function fmtShortDay(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
   if (lang === 'ru') return `${WEEKDAY_RU[d.getDay()]} ${d.getDate()} ${MONTH_RU_GEN_SHORT[d.getMonth()]}`;
+  if (lang === 'el') return `${WEEKDAY_EL[d.getDay()]} ${d.getDate()} ${MONTH_EL_SHORT[d.getMonth()]}`;
+  if (lang === 'es') return `${WEEKDAY_ES[d.getDay()]} ${esDay(d, false)}`;
   return `${WEEKDAY_TITLE[d.getDay()]} ${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
 }
 
@@ -233,6 +280,8 @@ export function fmtShortDay(d: Date, lang: Lang = getLang()): string {
 export function fmtLongDay(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, true)}`;
   if (lang === 'ru') return `${WEEKDAY_RU[d.getDay()]}, ${ruDay(d, true)}`;
+  if (lang === 'el') return `${WEEKDAY_EL[d.getDay()]}, ${elDay(d, true)}`;
+  if (lang === 'es') return `${WEEKDAY_ES[d.getDay()]}, ${esDay(d, true)}`;
   return `${WEEKDAY_TITLE[d.getDay()]}, ${d.getDate()} ${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -240,13 +289,17 @@ export function fmtLongDay(d: Date, lang: Lang = getLang()): string {
 export function fmtDayMonthOf(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return zhDay(d, false);
   if (lang === 'ru') return ruDay(d, false);
+  if (lang === 'el') return elDay(d, false);
+  if (lang === 'es') return esDay(d, false);
   return `${d.getDate()} ${MONTH_TITLE[d.getMonth()]}`;
 }
 
 /** "7 JUL 2026" / "2026年7月7日" — the date on the share card. Local time. */
 export function fmtCardDay(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return zhDay(d, true);
-  if (lang === 'ru') return ruDay(d, true).toUpperCase();
+  if (lang === 'ru') return upperDisplay(ruDay(d, true));
+  if (lang === 'el') return upperDisplay(elDay(d, true));
+  if (lang === 'es') return upperDisplay(esDay(d, true));
   return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -263,6 +316,11 @@ export function fmtImportDay(d: Date, newest: Date, lang: Lang = getLang()): str
   const sameYear = d.getFullYear() === newest.getFullYear();
   if (lang === 'zh-Hans') return zhDay(d, !sameYear);
   if (lang === 'ru') return ruDay(d, !sameYear);
+  if (lang === 'el') return elDay(d, !sameYear);
+  if (lang === 'es') {
+    const day = upperDisplay(`${String(d.getDate()).padStart(2, '0')} ${MONTH_ES_SHORT[d.getMonth()]}`);
+    return sameYear ? day : `${day} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
+  }
   const day = `${String(d.getDate()).padStart(2, '0')} ${MONTH_UPPER[d.getMonth()]}`;
   return sameYear ? day : `${day} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
 }
@@ -270,5 +328,7 @@ export function fmtImportDay(d: Date, newest: Date, lang: Lang = getLang()): str
 /** Month labels for a picker wheel: Jan..Dec, or 1月..12月. */
 export function fmtMonthNames(lang: Lang = getLang()): readonly string[] {
   if (lang === 'ru') return MONTH_RU_SHORT;
+  if (lang === 'el') return MONTH_EL_SHORT;
+  if (lang === 'es') return MONTH_ES_PICKER;
   return lang === 'zh-Hans' ? MONTH_TITLE.map((_, i) => `${i + 1}月`) : MONTH_TITLE;
 }

@@ -37,6 +37,7 @@ import { useThemed } from '../../src/theme/ThemeProvider';
 import { t } from '../../src/i18n';
 import { getLang } from '../../src/i18n/current';
 import { equipmentLabel } from '../../src/i18n/catalogNames';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
 
@@ -173,7 +174,7 @@ export default function NewExercise() {
       >
         {/* NAME */}
         <View>
-          <Text style={styles.label}>{t('newExercise.name')}</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.name'))}</Text>
           <TextInput
             value={name}
             onChangeText={setName}
@@ -191,7 +192,7 @@ export default function NewExercise() {
 
         {/* CATEGORY */}
         <View>
-          <Text style={styles.label}>{t('newExercise.category')}</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.category'))}</Text>
           {categories.length === 0 ? (
             <Text style={styles.hint}>{t('common.loading')}</Text>
           ) : (
@@ -258,7 +259,7 @@ export default function NewExercise() {
 
         {/* EQUIPMENT */}
         <View>
-          <Text style={styles.label}>{t('newExercise.equipment')}</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.equipment'))}</Text>
           <View style={styles.chipsRow}>
             {equipmentOptions().map((opt) => {
               const active = equipment === opt.value;
@@ -286,7 +287,7 @@ export default function NewExercise() {
 
         {/* KIND */}
         <View>
-          <Text style={styles.label}>{t('newExercise.kind')}</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.kind'))}</Text>
           <View style={styles.segment}>
             {kindOptions().map((opt) => {
               const active = kind === opt.value;
@@ -317,7 +318,7 @@ export default function NewExercise() {
 
         {/* HOW TO */}
         <View>
-          <Text style={styles.label}>{t('newExercise.howTo')}</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.howTo'))}</Text>
           <TextInput
             value={howto}
             onChangeText={setHowto}
@@ -426,7 +427,6 @@ const styles = themed(() =>
       letterSpacing: 1.0,
       color: color.text3,
       marginBottom: 9,
-      textTransform: 'uppercase',
     },
     hint: {
       fontFamily: font.bodyRegular,

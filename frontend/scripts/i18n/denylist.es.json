@@ -1,5 +1,5 @@
 {
-  "_comment": "Deny-list for Spanish output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only. Words starting with an allow stem are never flagged. Matching is lowercase and ignores accents (tonos, acutes, final sigma), so write stems without accents. Flagged lines stay English unless the review sets \"denyCleared\": true. Slur and crude entries have no English counterpart and are always flagged. «militar» is allowed on purpose: «press militar» is the standard Spanish gym name for the military / overhead press, so it is an allow stem and never flagged. «arma» matches whole words only (armadura, armario are fine).",
+  "_comment": "Deny-list for Spanish output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only. Words starting with an allow stem are never flagged. Matching is lowercase and ignores accents (acutes, diaeresis), so write stems without accents. Flagged lines stay English unless the review sets \"denyCleared\": true. Slur and crude entries have no English counterpart and are always flagged. «militar» is allowed on purpose: «press militar» is the standard Spanish gym name for the military / overhead press, so it is an allow stem and never flagged. «arma» matches whole words only (armadura, armario are fine). «coger» is banned (stems coger, coge, cogid, cogiend): grab in Spain, vulgar in Mexico and Argentina. Ordinary words that share a stem (elección, partido, bomba, turquesa, franco, inglés as groins) are word-bound or listed as whole words. «elección» (choice) folds to the same word as the election sense, so only the plural elecciones is listed.",
   "allow": [
     {
       "stem": "militar",
@@ -97,13 +97,6 @@
       ]
     },
     {
-      "stem": "franc",
-      "en": [
-        "france",
-        "french"
-      ]
-    },
-    {
       "stem": "aleman",
       "en": [
         "german"
@@ -119,13 +112,6 @@
       "stem": "ital",
       "en": [
         "ital"
-      ]
-    },
-    {
-      "stem": "ingles",
-      "en": [
-        "england",
-        "english"
       ]
     },
     {
@@ -189,12 +175,6 @@
       "stem": "palestin",
       "en": [
         "palestin"
-      ]
-    },
-    {
-      "stem": "turqu",
-      "en": [
-        "turk"
       ]
     },
     {
@@ -265,12 +245,6 @@
       ]
     },
     {
-      "stem": "eleccion",
-      "en": [
-        "election"
-      ]
-    },
-    {
       "stem": "gobierno",
       "en": [
         "government"
@@ -280,12 +254,6 @@
       "stem": "president",
       "en": [
         "president"
-      ]
-    },
-    {
-      "stem": "partido",
-      "en": [
-        "party"
       ]
     },
     {
@@ -367,12 +335,6 @@
       ]
     },
     {
-      "stem": "bomba",
-      "en": [
-        "bomb"
-      ]
-    },
-    {
       "stem": "terroris",
       "en": [
         "terror"
@@ -399,10 +361,124 @@
       ]
     },
     {
-      "stem": "movilizacion",
+      "stem": "elecciones",
       "en": [
-        "mobiliz"
-      ]
+        "election"
+      ],
+      "word": true
+    },
+    {
+      "stem": "partido",
+      "en": [
+        "party"
+      ],
+      "word": true
+    },
+    {
+      "stem": "partidos",
+      "en": [
+        "party"
+      ],
+      "word": true
+    },
+    {
+      "stem": "bomba",
+      "en": [
+        "bomb"
+      ],
+      "word": true
+    },
+    {
+      "stem": "bombas",
+      "en": [
+        "bomb"
+      ],
+      "word": true
+    },
+    {
+      "stem": "turquia",
+      "en": [
+        "turk"
+      ],
+      "word": true
+    },
+    {
+      "stem": "turca",
+      "en": [
+        "turk"
+      ],
+      "word": true
+    },
+    {
+      "stem": "turcas",
+      "en": [
+        "turk"
+      ],
+      "word": true
+    },
+    {
+      "stem": "inglesa",
+      "en": [
+        "england",
+        "english"
+      ],
+      "word": true
+    },
+    {
+      "stem": "inglesas",
+      "en": [
+        "england",
+        "english"
+      ],
+      "word": true
+    },
+    {
+      "stem": "ingleses",
+      "en": [
+        "england",
+        "english"
+      ],
+      "word": true
+    },
+    {
+      "stem": "frances",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "francesa",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "francesas",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "franceses",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "francia",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
     },
     {
       "stem": "puta",
@@ -510,6 +586,50 @@
     },
     {
       "stem": "estupid",
+      "en": []
+    },
+    {
+      "stem": "coger",
+      "en": []
+    },
+    {
+      "stem": "coge",
+      "en": []
+    },
+    {
+      "stem": "cogid",
+      "en": []
+    },
+    {
+      "stem": "cogiend",
+      "en": []
+    },
+    {
+      "stem": "maricon",
+      "en": []
+    },
+    {
+      "stem": "capull",
+      "en": []
+    },
+    {
+      "stem": "joto",
+      "en": []
+    },
+    {
+      "stem": "boludo",
+      "en": []
+    },
+    {
+      "stem": "pelotud",
+      "en": []
+    },
+    {
+      "stem": "huevon",
+      "en": []
+    },
+    {
+      "stem": "carajo",
       "en": []
     },
     {

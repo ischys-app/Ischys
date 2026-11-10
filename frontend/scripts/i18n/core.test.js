@@ -504,3 +504,18 @@ test('es denyHits: Military Press as "press militar" is allowed', () => {
   assert.deepEqual(core.denyHits('Στρατιωτικό πρες', 'Military Press', readDeny('el')), []);
   assert.deepEqual(core.denyHits('Στρατιωτικό πρες', 'Shoulder Press', readDeny('el')), ['στρατιωτ']);
 });
+
+test('denyHits: Spanish and Greek reviewer fixes', () => {
+  const es = readDeny('es');
+  const el = readDeny('el');
+  assert.ok(core.denyHits('Coge la barra', 'Grab the bar', es).includes('coge'));
+  assert.deepEqual(core.denyHits('Recoge la barra', 'Grab the bar', es), []);
+  assert.deepEqual(core.denyHits('a tu elección', 'your choice', es), []);
+  assert.deepEqual(core.denyHits('Press de banca turquesa', 'Bench', es), []);
+  assert.deepEqual(core.denyHits('Movilización articular', 'Joint mobility', es), []);
+  assert.deepEqual(core.denyHits('Franco y francamente', 'Frank', es), []);
+  assert.ok(core.denyHits('Eres un maricón', 'Press', es).length > 0);
+  assert.deepEqual(core.denyHits('Πίεσε μαλακά', 'Press gently', el), []);
+  assert.deepEqual(core.denyHits('Σκοπός', 'Goal', el), []);
+  assert.deepEqual(core.denyHits('Σκόπια', 'Goal', el), ['σκοπια']);
+});

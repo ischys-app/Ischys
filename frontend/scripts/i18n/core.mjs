@@ -189,6 +189,7 @@ const ELES_REGISTER = {
   ],
   es: [
     '- Write neutral Spanish with «tú» (never «usted» or «vos»). Use vocabulary shared by Spain and Latin America and standard gym terms; avoid regional slang and words used in only one region.',
+    '- Never use «coger»; use «tomar» or «agarrar».',
   ],
 };
 

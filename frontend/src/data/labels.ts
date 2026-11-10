@@ -6,6 +6,7 @@
 import type { ExerciseOut } from '../api/types.ts';
 import type { Lang } from '../i18n/locale.ts';
 import { groupLabel, matchesSearch, muscleLabel } from '../i18n/catalogNames.ts';
+import { upperDisplay } from '../i18n/upper.ts';
 
 const collators = new Map<Lang, Intl.Collator>();
 
@@ -49,7 +50,7 @@ const HAN = /\p{Script=Han}/u;
 /** Section letter for an alphabetical index: pinyin initial for a Chinese label. */
 export function indexLetter(label: string, lang: Lang): string {
   const first = label[0] ?? '#';
-  if (lang !== 'zh-Hans' || !HAN.test(first)) return first.toUpperCase();
+  if (lang !== 'zh-Hans' || !HAN.test(first)) return upperDisplay(first);
   const cmp = compareLabels(lang);
   let letter = '#';
   for (let i = 0; i < PINYIN_BOUNDS.length; i++) {

@@ -8,6 +8,7 @@ import ru from '../i18n/strings/ru.json' with { type: 'json' };
 import el from '../i18n/strings/el.json' with { type: 'json' };
 import es from '../i18n/strings/es.json' with { type: 'json' };
 import { createTranslator } from '../i18n/translate.ts';
+import { upperDisplay } from '../i18n/upper.ts';
 
 const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const WEEKDAY_TITLE = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -25,7 +26,7 @@ function zhDay(d: Date, withYear: boolean): string {
 // translation review state. Months are genitive with a day ("8 ноября") and
 // nominative on their own ("Ноябрь 2026"). No "г." after the year.
 const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-const WEEKDAY_RU_UPPER = WEEKDAY_RU.map((w) => w.toUpperCase());
+const WEEKDAY_RU_UPPER = WEEKDAY_RU.map((w) => upperDisplay(w));
 const MONTH_RU_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const MONTH_RU_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 /** Genitive abbreviations for a day + month ("9 сент."); мая/июня/июля stay whole. */
@@ -64,7 +65,7 @@ function parse(iso: string): Date {
 export function fmtHeaderDate(iso: string, lang: Lang = getLang()): string {
   const d = parse(iso);
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} · ${zhDay(d, true)}`;
-  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} · ${ruDay(d, true).toUpperCase()}`;
+  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} · ${upperDisplay(ruDay(d, true))}`;
   return `${WEEKDAY_UPPER[d.getDay()]} · ${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -81,7 +82,7 @@ export function fmtVolumeShort(kg: number, unit: Unit, lang: Lang = getLang()): 
 /** e.g. "TUE 30 SEP" — the Routine View's last-performed line. Local time. */
 export function fmtShortDayUpper(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return `${WEEKDAY_ZH[d.getDay()]} ${zhDay(d, false)}`;
-  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} ${ruDay(d, false).toUpperCase()}`;
+  if (lang === 'ru') return `${WEEKDAY_RU_UPPER[d.getDay()]} ${upperDisplay(ruDay(d, false))}`;
   return `${WEEKDAY_UPPER[d.getDay()]} ${d.getDate()} ${MONTH_UPPER[d.getMonth()]}`;
 }
 
@@ -248,7 +249,7 @@ export function fmtDayMonthOf(d: Date, lang: Lang = getLang()): string {
 /** "7 JUL 2026" / "2026年7月7日" — the date on the share card. Local time. */
 export function fmtCardDay(d: Date, lang: Lang = getLang()): string {
   if (lang === 'zh-Hans') return zhDay(d, true);
-  if (lang === 'ru') return ruDay(d, true).toUpperCase();
+  if (lang === 'ru') return upperDisplay(ruDay(d, true));
   return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
 }
 

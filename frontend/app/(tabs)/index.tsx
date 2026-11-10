@@ -25,6 +25,7 @@ import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
 import { useThemed } from '../../src/theme/ThemeProvider';
+import { upperDisplay } from '../../src/i18n/upper';
 
 /** Home / dashboard — reads the local dashboard, laid out from Home.dc.html. */
 export default function Home() {
@@ -221,7 +222,7 @@ function Populated({
       {/* Weekly summary heading */}
       <View style={styles.summaryHead}>
         <View>
-          <Text maxFontSizeMultiplier={textScale.control} style={styles.dateLabel}>{fmtHeaderDate(data.date)}</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.dateLabel}>{upperDisplay(fmtHeaderDate(data.date))}</Text>
           <Text maxFontSizeMultiplier={textScale.display} style={styles.thisWeek}>{t('home.thisWeek')}</Text>
         </View>
         <StreakPill days={data.stats.streak_days} />
@@ -381,7 +382,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.4,
       color: color.text3,
-      textTransform: 'uppercase',
       fontVariant: ['tabular-nums'],
     },
     thisWeek: {

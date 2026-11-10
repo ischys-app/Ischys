@@ -42,6 +42,7 @@ import { getLang } from '../src/i18n/current';
 import { equipmentLabel } from '../src/i18n/catalogNames';
 import { indexLetter } from '../src/data/labels';
 import { t } from '../src/i18n';
+import { upperDisplay } from '../src/i18n/upper';
 
 const ALL = 'All';
 const DEFAULT_REST_SECONDS = 120;
@@ -319,7 +320,7 @@ export default function ExerciseLibrary() {
         )}
         ItemSeparatorComponent={() => <View style={styles.rowGap} />}
         renderSectionHeader={({ section }) => (
-          <Text style={styles.groupLabel}>{section.title}</Text>
+          <Text style={styles.groupLabel}>{upperDisplay(section.title)}</Text>
         )}
         ListHeaderComponent={
           loading && exercises.length === 0 ? (
@@ -680,7 +681,6 @@ const styles = themed(() =>
       paddingTop: 12,
       paddingHorizontal: 6,
       paddingBottom: 8,
-      textTransform: 'uppercase',
     },
     rowGap: { height: 2 },
 

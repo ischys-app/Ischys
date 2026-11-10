@@ -11,6 +11,7 @@ import { PrPill } from './PrPill';
 import { TagChip } from './TagChip';
 import { useThemed } from '../theme/ThemeProvider';
 import { workoutLabel } from '../i18n/defaultLabels';
+import { upperDisplay } from '../i18n/upper';
 
 /** A recent-workout summary card. */
 export function WorkoutCard({
@@ -71,7 +72,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   useThemed();
   return (
     <View style={styles.stat}>
-      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{label}</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{upperDisplay(label)}</Text>
       <Text maxFontSizeMultiplier={textScale.display} style={styles.statValue}>{value}</Text>
     </View>
   );
@@ -114,7 +115,6 @@ const styles = themed(() =>
       fontSize: 9.5,
       letterSpacing: 0.95,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     statValue: {
       fontFamily: font.monoSemi,

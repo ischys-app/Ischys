@@ -46,6 +46,7 @@ import { getLang } from '../src/i18n/current';
 import { fmtMonthYear } from '../src/lib/format';
 import { equipmentLabel, nameToStore } from '../src/i18n/catalogNames';
 import { t } from '../src/i18n';
+import { upperDisplay } from '../src/i18n/upper';
 
 // --- Local glyphs (icons.tsx is owned by another stream) ------------------
 
@@ -238,7 +239,7 @@ export default function MergeDuplicates() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: 100 + insets.top, paddingHorizontal: 16, paddingBottom: 120 + insets.bottom }}
         >
-          <Text style={styles.sectionLabel}>{t('mergeDup.keep')}</Text>
+          <Text style={styles.sectionLabel}>{upperDisplay(t('mergeDup.keep'))}</Text>
           <View style={{ gap: 8 }}>
             {active.members.map((m) => {
               const sel = m.id === survivorId;
@@ -267,7 +268,7 @@ export default function MergeDuplicates() {
           </View>
           {survivor.isCatalog ? <Text style={styles.reasonLine}>{active.survivorReason}</Text> : null}
 
-          <Text style={[styles.sectionLabel, { paddingTop: 22 }]}>{t('mergeDup.whatCombines')}</Text>
+          <Text style={[styles.sectionLabel, { paddingTop: 22 }]}>{upperDisplay(t('mergeDup.whatCombines'))}</Text>
           <View style={styles.combineCard}>
             <View style={styles.combineRow}>
               <Check size={15} color={color.success} strokeWidth={2.6} />
@@ -380,7 +381,7 @@ export default function MergeDuplicates() {
                 </Text>
               ) : (
                 <Text style={[styles.sectionLabel, { paddingTop: 26 }]}>
-                  {t('mergeDup.remaining', { n: groups.length })}
+                  {upperDisplay(t('mergeDup.remaining', { n: groups.length }))}
                 </Text>
               )}
               <View style={{ gap: 10 }}>
@@ -569,7 +570,6 @@ const styles = themed(() =>
       color: color.text3,
       paddingHorizontal: 2,
       paddingBottom: 10,
-      textTransform: 'uppercase',
     },
 
     // --- M2 group card ---

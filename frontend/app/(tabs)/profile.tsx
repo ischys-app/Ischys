@@ -29,6 +29,7 @@ import { getLang } from '../../src/i18n/current';
 import { muscleNameLabel } from '../../src/i18n/catalogNames';
 import { useThemed } from '../../src/theme/ThemeProvider';
 import { profileNameLabel } from '../../src/i18n/defaultLabels';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const BAR_MAX_HEIGHT = 56;
 const BAR_MIN_HEIGHT = 3;
@@ -142,7 +143,7 @@ export default function Profile() {
       : trainingSince
         ? t('profile.trainingSinceOnly', { date: trainingSince })
         : '';
-  const initial = (profile?.name ? (Array.from(profileNameLabel(profile.name.trim()))[0] ?? '—') : '—').toUpperCase();
+  const initial = upperDisplay(profile?.name ? (Array.from(profileNameLabel(profile.name.trim()))[0] ?? '—') : '—');
   const year = new Date().getFullYear();
 
   const displayStats: { label: string; value: string; unit: string }[] = [
@@ -222,7 +223,7 @@ export default function Profile() {
             {/* Weekly bars card */}
             <View style={styles.barsCard}>
               <View style={styles.barsHeader}>
-                <Text style={styles.barsLabel}>{t('profile.barsLabel', { year })}</Text>
+                <Text style={styles.barsLabel}>{upperDisplay(t('profile.barsLabel', { year }))}</Text>
                 <Text style={styles.barsAvg}>{t('profile.barsAvg', { value: localizeNumber(bars.avg.toFixed(1)) })}</Text>
               </View>
               <View style={styles.barsRow}>
@@ -265,7 +266,7 @@ export default function Profile() {
 
             {/* Measurements — the three most recent, as a way in. The full
                 list lives on its own screen; this is a status line. */}
-            <Text style={styles.recordsLabel}>{t('profile.measurements')}</Text>
+            <Text style={styles.recordsLabel}>{upperDisplay(t('profile.measurements'))}</Text>
             <Pressable style={styles.muscleCard} onPress={() => router.push('/measurements')}>
               <View style={styles.muscleText}>
                 <Text style={styles.muscleTitle}>
@@ -288,7 +289,7 @@ export default function Profile() {
                 two figures at this size read as decoration. */}
             {muscle && (
               <>
-                <Text style={styles.recordsLabel}>{t('profile.muscleMap')}</Text>
+                <Text style={styles.recordsLabel}>{upperDisplay(t('profile.muscleMap'))}</Text>
                 <Pressable style={styles.muscleCard} onPress={() => router.push('/muscle-map')}>
                   <BodyMap side="front" work={muscle.work} historyDays={muscle.historyDays} width={92} />
                   <View style={styles.muscleText}>
@@ -312,7 +313,7 @@ export default function Profile() {
             )}
 
             {/* Records */}
-            <Text style={styles.recordsLabel}>{t('profile.recentRecords')}</Text>
+            <Text style={styles.recordsLabel}>{upperDisplay(t('profile.recentRecords'))}</Text>
             <View style={styles.recordsList}>
               {records && records.length === 0 && (
                 <Text style={styles.emptyRecords}>{t('profile.noRecords')}</Text>
@@ -333,7 +334,7 @@ export default function Profile() {
             </View>
 
             {/* Tools — calculators that don't belong to any one workout. */}
-            <Text style={styles.recordsLabel}>{t('profile.tools')}</Text>
+            <Text style={styles.recordsLabel}>{upperDisplay(t('profile.tools'))}</Text>
             <View style={styles.toolsList}>
               {[
                 { label: t('profile.oneRmCalc'), sub: t('profile.oneRmSub'), to: '/one-rep-max' as const },
@@ -441,7 +442,7 @@ function StatCell({ label, value, unit }: { label: string; value: string; unit: 
   useThemed();
   return (
     <View style={styles.statCell}>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statLabel}>{upperDisplay(label)}</Text>
       {/* Two Texts on a shared baseline, not one nested in the other: Android
           measures a nested span with its own size against the parent's
           metrics and draws the unit over the last digit. */}
@@ -596,7 +597,6 @@ const styles = themed(() =>
       letterSpacing: 0.95,
       color: color.text3,
       marginBottom: 8,
-      textTransform: 'uppercase',
     },
     statValueRow: {
       flexDirection: 'row',
@@ -636,7 +636,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.2,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     barsAvg: {
       fontFamily: font.monoRegular,
@@ -684,7 +683,6 @@ const styles = themed(() =>
       fontSize: 11,
       letterSpacing: 1.54,
       color: color.text3,
-      textTransform: 'uppercase',
       paddingHorizontal: 2,
       paddingBottom: 12,
     },

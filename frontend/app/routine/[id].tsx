@@ -62,6 +62,7 @@ import { useThemed } from '../../src/theme/ThemeProvider';
 import { getLang } from '../../src/i18n/current';
 import { equipmentLabel } from '../../src/i18n/catalogNames';
 import { t } from '../../src/i18n';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const DEFAULT_REST_SECONDS = 120;
 
@@ -667,10 +668,10 @@ function ExerciseCardBuilder({
 
       {/* Column labels */}
       <View style={styles.colLabels}>
-        <Text style={[styles.colLabelText, styles.colSet]}>{t('exerciseCard.colSet')}</Text>
-        <Text style={[styles.colLabelText, styles.colType]}>{t('routineEdit.colType')}</Text>
-        <Text style={[styles.colLabelText, styles.colWeight]}>{wLabel}</Text>
-        <Text style={[styles.colLabelText, styles.colReps]}>{t('exerciseCard.colReps')}</Text>
+        <Text style={[styles.colLabelText, styles.colSet]}>{upperDisplay(t('exerciseCard.colSet'))}</Text>
+        <Text style={[styles.colLabelText, styles.colType]}>{upperDisplay(t('routineEdit.colType'))}</Text>
+        <Text style={[styles.colLabelText, styles.colWeight]}>{upperDisplay(wLabel)}</Text>
+        <Text style={[styles.colLabelText, styles.colReps]}>{upperDisplay(t('exerciseCard.colReps'))}</Text>
       </View>
 
       {/* Set rows */}
@@ -1007,7 +1008,6 @@ const styles = themed(() =>
       fontSize: 9.5,
       letterSpacing: 0.76,
       color: color.text3,
-      textTransform: 'uppercase',
       textAlign: 'center',
     },
 

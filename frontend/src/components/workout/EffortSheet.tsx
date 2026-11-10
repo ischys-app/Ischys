@@ -17,6 +17,7 @@ import { color, font, themed } from '../../theme/tokens';
 import { DraggableSheet } from '../DraggableSheet';
 import { EffortScale } from './EffortScale';
 import { useThemed } from '../../theme/ThemeProvider';
+import { upperDisplay } from '../../i18n/upper';
 
 type Props = {
   visible: boolean;
@@ -40,7 +41,7 @@ type Props = {
 };
 
 /** "Incline Bench Press (Dumbbell)" titles the sheet as "INCLINE BENCH PRESS". */
-const titleName = (name: string): string => name.replace(/\s*\([^)]*\)\s*$/, '').toUpperCase();
+const titleName = (name: string): string => upperDisplay(name.replace(/\s*\([^)]*\)\s*$/, ''));
 
 /** What the scale means before it is touched, as a sentence. */
 const unrated = (kind: EffortScaleKind): string =>

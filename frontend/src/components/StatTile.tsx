@@ -3,13 +3,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { color, font, themed } from '../theme/tokens';
 import { textScale } from '../theme/textScale';
 import { useThemed } from '../theme/ThemeProvider';
+import { upperDisplay } from '../i18n/upper';
 
 /** A single stat cell in the 2×2 weekly-summary grid. */
 export function StatTile({ label, value, unit }: { label: string; value: string; unit?: string }) {
   useThemed();
   return (
     <View style={styles.cell}>
-      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.label}>{label}</Text>
+      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.label}>{upperDisplay(label)}</Text>
       <Text maxFontSizeMultiplier={textScale.fixed} style={styles.value}>
         {value}
         {unit ? <Text maxFontSizeMultiplier={textScale.fixed} style={styles.unit}>{unit}</Text> : null}
@@ -26,7 +27,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.0,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     value: {
       fontFamily: font.monoSemi,

@@ -15,6 +15,7 @@ import { color, font, space, TAP_TARGET, themed, type } from '../theme/tokens';
 import { CheckIcon } from './icons';
 import { PressableScale } from './PressableScale';
 import { useThemed } from '../theme/ThemeProvider';
+import { upperChildren } from './upperChildren';
 
 export function Screen({
   children,
@@ -114,7 +115,7 @@ export function SelectCircle({ selected }: { selected: boolean }) {
 
 export function Label({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
   useThemed();
-  return <Text style={[styles.label, style]}>{children}</Text>;
+  return <Text style={[styles.label, style]}>{upperChildren(children)}</Text>;
 }
 
 const styles = themed(() =>
@@ -155,7 +156,6 @@ const styles = themed(() =>
     label: {
       ...type.label,
       color: color.text3,
-      textTransform: 'uppercase',
     },
   }),
 );

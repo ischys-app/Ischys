@@ -64,6 +64,7 @@ import { color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { t } from '../src/i18n';
 import { profileNameLabel } from '../src/i18n/defaultLabels';
+import { upperDisplay } from '../src/i18n/upper';
 
 // DECISION · HOW MUCH TO SAY ABOUT READS — Option A (recommended): intent switch
 // + data receipt. The switch is what Ischys ASKS for; the receipt is what
@@ -604,12 +605,12 @@ function Connected({
       {/* Stats block. */}
       <View style={styles.statsCard}>
         <View style={styles.statCell}>
-          <Text style={styles.statCellLabel}>{t('health.workoutsWritten')}</Text>
+          <Text style={styles.statCellLabel}>{upperDisplay(t('health.workoutsWritten'))}</Text>
           <Text style={styles.statCellValue}>{String(workoutsWritten)}</Text>
         </View>
         <View style={styles.statCellDivider} />
         <View style={styles.statCell}>
-          <Text style={styles.statCellLabel}>{t('health.lastSynced')}</Text>
+          <Text style={styles.statCellLabel}>{upperDisplay(t('health.lastSynced'))}</Text>
           {/* A stale timestamp is itself the evidence that writing stopped. */}
           <Text style={[styles.statCellValue, denied && { color: color.warning }]}>{lastAgo}</Text>
         </View>
@@ -1182,7 +1183,6 @@ const styles = themed(() =>
       fontSize: 9.5,
       letterSpacing: 0.95,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     statCellValue: {
       fontFamily: font.monoSemi,

@@ -48,6 +48,7 @@ import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { profileNameLabel, workoutLabel } from '../src/i18n/defaultLabels';
 import { t } from '../src/i18n';
+import { upperDisplay } from '../src/i18n/upper';
 
 type Step = 'file_pick' | 'preview' | 'progress' | 'success' | 'error';
 
@@ -639,7 +640,7 @@ function FilePickState({
       </View>
 
       {/* WHAT GETS IMPORTED checklist */}
-      <Text style={styles.checklistLabel}>{t('import.whatImported')}</Text>
+      <Text style={styles.checklistLabel}>{upperDisplay(t('import.whatImported'))}</Text>
       <View style={styles.checklistCard}>
         <ChecklistRow text={t('import.check1')} />
         <ChecklistRow text={t('import.check2')} />
@@ -705,7 +706,7 @@ function PreviewState({
   // a note above it that is easy to scroll past.
   const unitSuffix =
     parse && parse.supported && parse.kind === 'csv' && !parse.weightUnitKnown
-      ? t('import.asUnit', { unit: weightUnit.toUpperCase() })
+      ? t('import.asUnit', { unit: upperDisplay(weightUnit) })
       : '';
   // With 2+ profiles the button names the one the workouts go into (P11).
   const { profile, count } = useActiveProfile();
@@ -718,7 +719,7 @@ function PreviewState({
 
   return (
     <View style={styles.previewWrap}>
-      <Text style={styles.label}>{t('import.selectedFile')}</Text>
+      <Text style={styles.label}>{upperDisplay(t('import.selectedFile'))}</Text>
       <View style={styles.fileRow}>
         <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
           {file.name}
@@ -767,7 +768,7 @@ function PreviewState({
             {parse.kind === 'csv' && !parse.weightUnitKnown && (
               <>
                 <View style={styles.unitRow}>
-                  <Text style={styles.label}>{t('import.weightUnit')}</Text>
+                  <Text style={styles.label}>{upperDisplay(t('import.weightUnit'))}</Text>
                   <Segment
                     options={UNIT_OPTIONS}
                     value={weightUnit}
@@ -775,7 +776,7 @@ function PreviewState({
                   />
                 </View>
                 <Text style={styles.cardioSkip}>
-                  {t('import.unitUnknown', { unit: weightUnit.toUpperCase() })}
+                  {t('import.unitUnknown', { unit: upperDisplay(weightUnit) })}
                 </Text>
               </>
             )}
@@ -783,7 +784,7 @@ function PreviewState({
 
           {parse.firstWorkouts.length > 0 && (
             <>
-              <Text style={[styles.label, styles.firstLabel]}>{t('import.firstWorkouts')}</Text>
+              <Text style={[styles.label, styles.firstLabel]}>{upperDisplay(t('import.firstWorkouts'))}</Text>
               <View style={styles.previewList}>
                 {parse.firstWorkouts.map((w, i) => (
                   <View key={`${w.name}-${i}`} style={styles.previewRow}>
@@ -827,7 +828,7 @@ function StatCell({ label, value }: { label: string; value: number }) {
   useThemed();
   return (
     <View style={styles.statCell}>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statLabel}>{upperDisplay(label)}</Text>
       <Text style={styles.statValue}>{value}</Text>
     </View>
   );
@@ -1085,7 +1086,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.0,
       color: color.text3,
-      textTransform: 'uppercase',
       marginTop: 22,
       marginBottom: 8,
       alignSelf: 'flex-start',
@@ -1149,7 +1149,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.0,
       color: color.text3,
-      textTransform: 'uppercase',
       marginBottom: 8,
       paddingLeft: 2,
     },
@@ -1217,7 +1216,6 @@ const styles = themed(() =>
       fontSize: 10,
       letterSpacing: 1.0,
       color: color.text3,
-      textTransform: 'uppercase',
     },
     statValue: {
       fontFamily: font.monoSemi,

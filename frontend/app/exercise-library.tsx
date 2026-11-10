@@ -41,7 +41,7 @@ import { useThemed } from '../src/theme/ThemeProvider';
 import { getLang } from '../src/i18n/current';
 import { allowsTwoLineNames } from '../src/i18n/scripts';
 import { equipmentLabel } from '../src/i18n/catalogNames';
-import { indexLetter } from '../src/data/labels';
+import { compareLabels, indexLetter } from '../src/data/labels';
 import { t } from '../src/i18n';
 import { upperDisplay } from '../src/i18n/upper';
 
@@ -75,7 +75,7 @@ function groupByLetter(items: ExerciseOut[]): Group[] {
     byLetter.set(L, arr);
   }
   return [...byLetter.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => compareLabels(lang)(a, b))
     .map(([letter, items]) => ({ letter, items }));
 }
 

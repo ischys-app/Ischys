@@ -151,8 +151,8 @@
   },
   "ui:workoutCard.deleteHint": {
     "enHash": "378e60ca50be1cb2",
-    "status": "ok",
-    "esHash": "87e58b5c253c38f3"
+    "status": "manual",
+    "esHash": "1edf89a40dc5628a"
   },
   "ui:common.cancel": {
     "enHash": "19766ed6ccb2f4a3",
@@ -346,8 +346,8 @@
   },
   "ui:history.moreActionsHint": {
     "enHash": "2ac43cf6fdd44426",
-    "status": "ok",
-    "esHash": "f5912cedd5afc554"
+    "status": "manual",
+    "esHash": "01e3e01d306cc472"
   },
   "ui:history.editWorkout": {
     "enHash": "baf38c0e7e878155",

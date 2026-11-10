@@ -1,5 +1,6 @@
 /** One exercise: header, note, rest-timer row, set grid, + Add Set. */
 import { t } from '../../i18n';
+import { upperDisplay } from '../../i18n/upper';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { effortRowLine, type EffortScaleKind } from '../../domain/effort';
@@ -154,7 +155,7 @@ export function ExerciseCard({
                 animate={false}
               />
             ) : (
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.avatarText}>{exercise.initials}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.avatarText}>{upperDisplay(exercise.initials)}</Text>
             );
           })()}
         </Pressable>

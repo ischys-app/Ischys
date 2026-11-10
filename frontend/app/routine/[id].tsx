@@ -588,7 +588,7 @@ function ExerciseCardBuilder({
       {/* Header row */}
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{ex.initials}</Text>
+          <Text style={styles.avatarText}>{upperDisplay(ex.initials)}</Text>
         </View>
         <View style={styles.headerText}>
           <Text style={styles.exName} numberOfLines={1}>

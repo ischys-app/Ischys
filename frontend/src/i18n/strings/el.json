@@ -922,7 +922,7 @@
   "resume.button": "Συνέχεια",
   "routineCard.start": "Έναρξη",
   "workoutCard.deleteHint": "Πάτησε παρατεταμένα για διαγραφή.",
-  "home.thisWeek": "Αυτή την εβδ.",
+  "home.thisWeek": "Η εβδομάδα",
   "home.createFirstRoutine": "Δημιούργησε πρόγραμμα",
   "common.off": "Κλειστό",
   "workoutEdit.ssEndsWhenSaved": "· ΛΗΓΕΙ ΜΕ ΑΠΟΘΗΚΕΥΣΗ",
@@ -959,5 +959,7 @@
   "routineEdit.type.failure": "Αποτυχία",
   "routineView.colLast": "ΠΡΙΝ",
   "health.workoutsWritten": "ΠΡΟΠΟΝΗΣΕΙΣ",
-  "health.lastSynced": "ΣΥΓΧΡΟΝΙΣΜΟΣ"
+  "health.lastSynced": "ΣΥΓΧΡΟΝΙΣΜΟΣ",
+  "restBar.skip": "Παράλ.",
+  "measurements.sourceManual": "ΧΕΙΡ."
 }

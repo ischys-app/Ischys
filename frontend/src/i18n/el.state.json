@@ -181,8 +181,8 @@
   },
   "ui:home.thisWeek": {
     "enHash": "8c4eef5ab2532515",
-    "status": "ok",
-    "elHash": "6a373da128d97134"
+    "status": "manual",
+    "elHash": "1637dd06cfde98c3"
   },
   "ui:home.statWorkouts": {
     "enHash": "f6de4281c89a0ba2",
@@ -8618,5 +8618,15 @@
     "enHash": "7e86aeec84c6da78",
     "status": "manual",
     "elHash": "3511b302b22e7244"
+  },
+  "ui:restBar.skip": {
+    "enHash": "28d03596d24eeb4e",
+    "status": "manual",
+    "elHash": "13b24e8af343e4ea"
+  },
+  "ui:measurements.sourceManual": {
+    "enHash": "7c8107bd5c185722",
+    "status": "manual",
+    "elHash": "238f898428e0d81d"
   }
 }

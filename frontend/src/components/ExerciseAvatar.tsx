@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { exerciseArt } from '../lib/exerciseArt';
+import { upperDisplay } from '../i18n/upper';
 import { color, font, themed } from '../theme/tokens';
 import { ExerciseArt } from './ExerciseArt';
 import { useThemed } from '../theme/ThemeProvider';
@@ -77,7 +78,7 @@ export function ExerciseAvatar({
           accessibilityIgnoresInvertColors
         />
       ) : (
-        <Text style={[styles.initials, { fontSize: Math.max(11, size * 0.3) }]}>{initials}</Text>
+        <Text style={[styles.initials, { fontSize: Math.max(11, size * 0.3) }]}>{upperDisplay(initials)}</Text>
       )}
     </View>
   );

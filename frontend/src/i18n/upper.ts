@@ -12,9 +12,17 @@ const DEACCENT: Record<string, string> = {
   'ΐ': 'Ϊ', 'ΰ': 'Ϋ',
 };
 
-export function upperDisplay(text: string): string {
+// An accented vowel followed by ι / υ loses its tonos in capitals, so the pair would read as a
+// diphthong: the ι / υ takes a dialytika instead (Μάιος -> ΜΑΪΟΣ).
+const DIALYTIKA = /([άέόύΆΈΌΎ])([ιυ])/gu;
+
+export function upperDisplay(input: string): string {
+  const text = /[\u0300-\u036f]/.test(input) ? input.normalize('NFC') : input;
   if (!GREEK_ACCENTED.test(text)) return text.toUpperCase();
   // Swap accented letters first: the built-in uppercase would keep the tonos (ά -> Ά) and
   // split ΐ / ΰ into a letter plus combining marks.
-  return text.replace(GREEK_ACCENTED_G, (c) => DEACCENT[c]).toUpperCase();
+  return text
+    .replace(DIALYTIKA, (_m, v: string, n: string) => DEACCENT[v] + (n === 'ι' ? 'Ϊ' : 'Ϋ'))
+    .replace(GREEK_ACCENTED_G, (c) => DEACCENT[c])
+    .toUpperCase();
 }

@@ -426,7 +426,7 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
       {group.members.map((m, i) => (
         <View key={m.id} style={[styles.memberRow, i > 0 && styles.memberDivider]}>
           <View style={styles.tile}>
-            <Text style={styles.tileText}>{m.initials}</Text>
+            <Text style={styles.tileText}>{upperDisplay(m.initials)}</Text>
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>

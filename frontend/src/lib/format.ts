@@ -42,7 +42,7 @@ function ruDay(d: Date, withYear: boolean): string {
 // and nominative on their own ("Νοέμβριος 2026"); Spanish months and weekdays are
 // lower case in running text and capitalised, with "de", in a month heading
 // ("Noviembre de 2026"). All-caps forms go through upperDisplay (no Greek tonos).
-const WEEKDAY_EL = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
+const WEEKDAY_EL = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
 const WEEKDAY_EL_UPPER = WEEKDAY_EL.map((w) => upperDisplay(w));
 const MONTH_EL_GEN = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου', 'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου'];
 const MONTH_EL_NOM = ['Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος', 'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'];

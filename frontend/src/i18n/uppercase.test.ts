@@ -23,13 +23,11 @@ const files = [...walk(join(ROOT, 'src')), ...walk(join(ROOT, 'app'))].map((p) =
  */
 const ALLOWED: Record<string, string> = {
   'src/i18n/upper.ts: if (!GREEK_ACCENTED.test(text)) return text.toUpperCase();': 'the helper itself, non-Greek path',
-  'src/i18n/upper.ts: return text.replace(GREEK_ACCENTED_G, (c) => DEACCENT[c]).toUpperCase();': 'the helper itself, Greek path',
+  'src/i18n/upper.ts: .toUpperCase();': 'the helper itself, Greek path',
   "src/i18n/locale.ts: if (rest.some((p) => TRADITIONAL_REGIONS.has(p.toUpperCase()))) return 'en';": 'locale region subtag parsing',
   "src/components/workout/ExerciseCard.tsx: const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);": 'sentence-case of a first letter, not all caps',
   "app/exercise/new.tsx: const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);": 'sentence-case of a first letter, not all caps',
   'src/domain/routineView.ts: return s.length ? s[0].toUpperCase() + s.slice(1) : s;': 'sentence-case of a first letter, not all caps',
-  "src/data/exercisesRepo.ts: const letters = words.slice(0, 2).map((w) => w[0]).join('').toUpperCase();": 'stored exercise initials (data)',
-  'src/data/exercisesRepo.ts: return letters || name.slice(0, 2).toUpperCase();': 'stored exercise initials (data)',
   'src/domain/units.ts: return unit.toUpperCase();': 'unit key normalisation (kg/lb), not shown text',
 };
 

@@ -27,3 +27,16 @@ test('text without Greek equals toUpperCase', () => {
     assert.equal(upperDisplay(s), s.toUpperCase(), s);
   }
 });
+
+test('dialytika is added where the tonos fell off before ι / υ', () => {
+  assert.equal(upperDisplay('Μάιος'), 'ΜΑΪΟΣ');
+  assert.equal(upperDisplay('πλάι'), 'ΠΛΑΪ');
+  assert.equal(upperDisplay('ρολόι'), 'ΡΟΛΟΪ');
+  assert.equal(upperDisplay('τσάι'), 'ΤΣΑΪ');
+  assert.equal(upperDisplay('Ρουμανική'), 'ΡΟΥΜΑΝΙΚΗ');
+  assert.equal(upperDisplay('άυλος'), 'ΑΫΛΟΣ');
+});
+
+test('decomposed Greek is normalised first', () => {
+  assert.equal(upperDisplay('α\u0301λμα'), 'ΑΛΜΑ');
+});

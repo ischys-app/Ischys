@@ -20,7 +20,7 @@ import { color, font, themed, withAlpha } from '../../theme/tokens';
 import { warmupRounder } from '../../domain/loadRounding';
 import { defaultWarmupSets, warmupRamp, type RampRow } from '../../domain/warmupRamp';
 import { loadToKg, solvePlatesForKg, type BarSetup } from '../../domain/plateMath';
-import { unitLabel, weightLabel, type Unit } from '../../domain/units';
+import { roundedLabel, unitLabel, weightLabel, type Unit } from '../../domain/units';
 import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
@@ -41,7 +41,7 @@ type Props = {
 };
 
 const SET_CHOICES = [1, 2, 3, 4, 5];
-const fmt = (n: number): string => String(Math.round(n * 100) / 100);
+const fmt = (n: number): string => roundedLabel(n);
 
 export function WarmupSheet({
   visible,

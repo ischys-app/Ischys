@@ -15,6 +15,7 @@ import {
   unitLabel,
   volumeText,
   volumeToDisplay,
+  roundedLabel,
   weightLabel,
   weightText,
 } from './units.ts';
@@ -223,4 +224,14 @@ test('weightLabel / formatWeight: ru decimal comma; weightText stays canonical',
 test('a Russian-formatted weight parses back to the same kg', () => {
   const shown = weightLabel(82.5, 'kg', 'ru');
   assert.equal(inputToKg(shown, 'kg'), 82.5);
+});
+
+test('localizeNumber keeps signs and handles roundedLabel', () => {
+  assert.equal(localizeNumber('-1234.5', 'ru'), `-1${NB}234,5`);
+  assert.equal(localizeNumber('+2.5', 'ru'), '+2,5');
+  assert.equal(localizeNumber('-1234.5', 'en'), '-1234.5');
+  assert.equal(roundedLabel(1.25, 'ru'), '1,25');
+  assert.equal(roundedLabel(1.25, 'en'), '1.25');
+  assert.equal(roundedLabel(1.25, 'zh-Hans'), '1.25');
+  assert.equal(roundedLabel(100, 'ru'), '100');
 });

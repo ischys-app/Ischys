@@ -65,6 +65,11 @@ export function localizeNumber(text: string, lang: Lang = getLang()): string {
   });
 }
 
+/** A number rounded to 2 decimals (plate sizes, loads), for display: 2.5 -> "2,5" in Russian. */
+export function roundedLabel(n: number, lang: Lang = getLang()): string {
+  return localizeNumber(String(Math.round(n * 100) / 100), lang);
+}
+
 /** `weightText` for display (Russian comma); inputs, Watch and storage keep `weightText`. */
 export function weightLabel(
   weightKg: number | null | undefined,

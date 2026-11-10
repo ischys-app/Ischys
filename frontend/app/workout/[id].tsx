@@ -117,6 +117,7 @@ import {
   WEIGHT_STEPS,
   convertWeightText,
   inputToKg,
+  localizeNumber,
   volumeToDisplay,
   weightText,
   type Unit,
@@ -1887,7 +1888,7 @@ export default function ActiveWorkout() {
         name={workoutLabel(name)}
         status={`${statusText} · ${fmtClock(elapsed)}`}
         time={fmtClock(elapsed)}
-        volume={String(volume)}
+        volume={localizeNumber(String(volume))}
         unit={entryUnit}
         sets={String(doneSets)}
         onBack={() => {
@@ -2224,7 +2225,7 @@ export default function ActiveWorkout() {
           </View>
           <Text style={styles.doneTitle}>{t('workout.allDone')}</Text>
           <Text style={styles.doneStat}>
-            {t('workout.doneStat', { count: doneSets, volume, unit: entryUnit, clock: fmtClock(elapsed) })}
+            {t('workout.doneStat', { count: doneSets, volume: localizeNumber(String(volume)), unit: entryUnit, clock: fmtClock(elapsed) })}
           </Text>
           <PressableScale
             style={styles.doneFinish}

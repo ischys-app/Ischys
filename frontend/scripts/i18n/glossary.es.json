@@ -86,6 +86,35 @@
       "en": "estimated 1RM",
       "es": "1RM estimado",
       "extension": true
+    },
+    {
+      "en": "kettlebell",
+      "es": "kettlebell",
+      "note": "keep the English word; not pesa rusa",
+      "extension": true
+    },
+    {
+      "en": "handstand",
+      "es": "parada de manos",
+      "note": "not pino",
+      "extension": true
+    },
+    {
+      "en": "butt kick",
+      "es": "talones al glúteo",
+      "note": "running drill, heels to glutes",
+      "extension": true
+    },
+    {
+      "en": "ease off (reduce load)",
+      "es": "aflojar",
+      "extension": true
+    },
+    {
+      "en": "Bent Press",
+      "es": "Bent press",
+      "note": "keep the name",
+      "extension": true
     }
   ],
   "untranslated": [

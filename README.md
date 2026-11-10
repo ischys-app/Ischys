@@ -68,6 +68,13 @@ If Ischys is useful to you, you can leave an optional tip on
   it from Apple Health or Health Connect, snapshotted per workout so past sessions
   keep their numbers.
 - **Merge duplicate exercises** without losing history or PRs.
+- **English, Simplified Chinese (简体中文) and Russian (Русский)** on iPhone
+  (Android from its next release) — the app follows your phone's first
+  language; any other language shows English. Exercise, muscle and equipment
+  names are translated too; the Watch app, widgets, Live Activity and how-to
+  steps stay English, and your data and exports are unchanged.
+  Spot a clumsy translation? Say so in
+  [#136](https://github.com/ischys-app/Ischys/issues/136).
 - **736-exercise catalog** bundled in the app — names, muscles and instructions
   from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (public
   domain). Its exercise *photographs* are deliberately not used; see

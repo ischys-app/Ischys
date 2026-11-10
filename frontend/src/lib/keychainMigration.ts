@@ -37,6 +37,7 @@ export const DEVICE_KEYS: readonly string[] = [
   'ischys.restSession',
   'ischys.liveActivityDisabledHintShown',
   'ischys.themeId',
+  'ischys.lang',
   'ischys.chartRange',
   'ischys.exactAlarmAsked',
   'ischys.reviewWorkoutCount',

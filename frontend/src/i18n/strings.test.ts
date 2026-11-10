@@ -111,6 +111,7 @@ const NOT_A_COUNT: Record<string, string> = {
   "ago.hours": "abbreviated unit (h), no noun to agree",
   "ago.days": "abbreviated unit (d), no noun to agree",
   "tabs.profileWho": "name, label or text value, not a count",
+  "settings.languageFollowing": "device and language names, not a count",
   "routineCard.view": "name, label or text value, not a count",
   "routineCard.more": "name, label or text value, not a count",
   "routineMenu.deleteMessage": "name, label or text value, not a count",

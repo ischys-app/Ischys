@@ -9298,5 +9298,30 @@
     "enHash": "4f4b7ba055f7972c",
     "status": "manual",
     "ruHash": "e4bb037235b7b7b0"
+  },
+  "ui:settings.language": {
+    "enHash": "a4fe65264ef7dbb3",
+    "status": "ok",
+    "ruHash": "5bd57038dbadd651"
+  },
+  "ui:settings.languageFollowing": {
+    "enHash": "86fa81c2980fc13e",
+    "status": "manual",
+    "ruHash": "8ff8ead8979260f6"
+  },
+  "ui:common.ok": {
+    "enHash": "565339bc4d33d728",
+    "status": "ok",
+    "ruHash": "dc0de6b1dc5cf3af"
+  },
+  "ui:settings.languageFooterIos": {
+    "enHash": "2d1d0fc45d166045",
+    "status": "ok",
+    "ruHash": "0e02ac03ada7e557"
+  },
+  "ui:settings.languageFooterAndroid": {
+    "enHash": "7bcf5a6dd26afe06",
+    "status": "ok",
+    "ruHash": "88399ee2a26cc193"
   }
 }

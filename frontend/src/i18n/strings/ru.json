@@ -1081,5 +1081,10 @@
   "editWorkout.editing": "ПРАВКА",
   "share.prChip_few": "{count} PR",
   "share.prChip_many": "{count} PR",
-  "share.prChip_other": "{count} PR"
+  "share.prChip_other": "{count} PR",
+  "settings.language": "Язык",
+  "settings.languageFollowing": "Как в {device} · {language}",
+  "common.ok": "ОК",
+  "settings.languageFooterIos": "Запросы Apple Health и системные меню следуют языку iPhone.",
+  "settings.languageFooterAndroid": "Запросы Health Connect и системные меню следуют языку телефона."
 }

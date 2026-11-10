@@ -43,6 +43,7 @@ import {
 import { healthCopy } from '../src/lib/healthSyncPlatform';
 import {
   BellIcon,
+  CheckIcon,
   ChevronRightIcon,
   ClockRowIcon,
   CodeIcon,
@@ -63,7 +64,8 @@ import { setEffortMode } from '../src/lib/effortMode';
 import { setWeightUnit } from '../src/lib/weightUnit';
 import { accentA, color, font, themed } from '../src/theme/tokens';
 import { LIGHT_MODE_ENABLED, useTheme, useThemed } from '../src/theme/ThemeProvider';
-import { t } from '../src/i18n';
+import { APP_LANGS, getLang, NATIVE_LANG_NAME, t, type Lang, type LangPref } from '../src/i18n';
+import { fontPlatform, systemFontFor } from '../src/theme/fontForLang';
 import { profileNameLabel } from '../src/i18n/defaultLabels';
 
 /**
@@ -143,6 +145,17 @@ function PaletteIcon({ color: c }: { color: string }) {
       <Circle cx={7.5} cy={11} r={1} {...stroke} />
       <Circle cx={10.5} cy={7.5} r={1} {...stroke} />
       <Circle cx={15} cy={8} r={1} {...stroke} />
+    </Svg>
+  );
+}
+
+/** A globe: the Language row (#136). */
+function GlobeIcon({ color: c }: { color: string }) {
+  const stroke = { stroke: c, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' } as const;
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9} {...stroke} />
+      <Path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" {...stroke} />
     </Svg>
   );
 }
@@ -227,6 +240,7 @@ export default function Settings() {
   const [deloadOn, setDeloadOn] = useState(true);
   const theme = useTheme();
   const [themeOpen, setThemeOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   useEffect(() => {
     void getCountWarmups().then(setCountWarmupsState);
   }, []);
@@ -452,6 +466,10 @@ export default function Settings() {
       isLast={last}
     />
   );
+  const languageFollowing = t('settings.languageFollowing', {
+    device: Platform.OS === 'ios' ? t('settings.deviceIos') : t('settings.devicePhone'),
+    language: NATIVE_LANG_NAME[theme.systemLanguage],
+  });
   const appearanceRows = (
     <>
       {LIGHT_MODE_ENABLED && (
@@ -478,10 +496,10 @@ export default function Settings() {
         label={t('settings.theme')}
         value={theme.palette.name}
         onPress={() => setThemeOpen((o) => !o)}
-        isLast={!themeOpen}
+        isLast={false}
       />
       {themeOpen && (
-        <View style={styles.themeRow}>
+        <View style={[styles.themeRow, styles.rowDivider]}>
           {PALETTES.map((p) => {
             const on = p.id === theme.palette.id;
             return (
@@ -503,8 +521,24 @@ export default function Settings() {
           })}
         </View>
       )}
+      {/* Language (#136): opens in place like Theme. A phone setting, so it
+          sits with Appearance; it applies at once, no restart. */}
+      <LinkRow
+        icon={<GlobeIcon color={color.text2} />}
+        label={t('settings.language')}
+        sub={theme.language === 'system' ? languageFollowing : undefined}
+        value={theme.language === 'system' ? t('settings.system') : NATIVE_LANG_NAME[theme.language]}
+        onPress={() => setLangOpen((o) => !o)}
+        isLast={!langOpen}
+      />
+      {langOpen && (
+        <LanguageOptions value={theme.language} following={languageFollowing} onPick={theme.setLanguage} />
+      )}
     </>
   );
+  const languageFooter = langOpen
+    ? t(Platform.OS === 'ios' ? 'settings.languageFooterIos' : 'settings.languageFooterAndroid')
+    : undefined;
   const healthRow = (
     <LinkRow
       icon={<HeartFilledIcon size={20} color={color.text2} />}
@@ -592,7 +626,7 @@ export default function Settings() {
             <Section
               title={t('settings.sectionAppearance')}
               scope={DEVICE_SCOPE}
-              footer={t('settings.phoneFooter')}
+              footer={languageFooter ? joinSentences(languageFooter, t('settings.phoneFooter')) : t('settings.phoneFooter')}
             >
               {appearanceRows}
             </Section>
@@ -648,7 +682,9 @@ export default function Settings() {
             {/* APPEARANCE (7b). Two independent settings: the appearance swaps
                 surfaces, text and status colours; the theme swaps only the accent,
                 which marks one action per screen. Both apply at once. */}
-            <Section title={t('settings.sectionAppearance')}>{appearanceRows}</Section>
+            <Section title={t('settings.sectionAppearance')} footer={languageFooter}>
+              {appearanceRows}
+            </Section>
 
             {/* Health is the only thing in this section: Apple Health on iOS, and
                 Health Connect on an Android that has it or can install it. */}
@@ -1105,6 +1141,66 @@ function SegmentRow<T extends string>({
   );
 }
 
+/**
+ * The Language list (#136): System, then each language named in itself, so a
+ * reader stuck in a language they can't read can still find theirs. A name in
+ * a script Space Grotesk lacks draws in the system font, never a mix.
+ */
+function LanguageOptions({
+  value,
+  following,
+  onPick,
+}: {
+  value: LangPref;
+  following: string;
+  onPick: (next: LangPref) => void;
+}) {
+  useThemed();
+  const ids: LangPref[] = ['system', ...APP_LANGS];
+  return (
+    <View style={styles.langList} accessibilityRole="radiogroup" accessibilityLabel={t('settings.language')}>
+      {ids.map((id, i) => {
+        const on = id === value;
+        const name = id === 'system' ? t('settings.system') : NATIVE_LANG_NAME[id];
+        const ownFont = id !== 'system' && needsSystemFont(id) ? systemFontFor(on ? 'SpaceGrotesk_600SemiBold' : 'SpaceGrotesk_500Medium', fontPlatform()) : null;
+        return (
+          <Pressable
+            key={id}
+            onPress={() => onPick(id)}
+            style={({ pressed }) => [styles.langRow, i < ids.length - 1 && styles.rowDivider, pressed && styles.rowPressed]}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on, selected: on }}
+            accessibilityLabel={id === 'system' ? `${name}, ${following}` : name}
+            accessibilityLanguage={id === 'system' ? undefined : id}
+          >
+            <View style={styles.rowLabelCol}>
+              <Text
+                style={[styles.langName, on && styles.langNameOn, ownFont]}
+                numberOfLines={1}
+                accessibilityLanguage={id === 'system' ? undefined : id}
+              >
+                {name}
+              </Text>
+              {id === 'system' && <Text style={styles.rowSub}>{following}</Text>}
+            </View>
+            {on && <CheckIcon size={17} color={color.accent} strokeWidth={3} />}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Two sentences in one footer: Chinese runs them together, others take a space. */
+function joinSentences(a: string, b: string): string {
+  return getLang() === 'zh-Hans' ? `${a}${b}` : `${a} ${b}`;
+}
+
+/** Space Grotesk has Latin only: Cyrillic and CJK names take the system font. */
+function needsSystemFont(id: Lang): boolean {
+  return id !== 'en' && getLang() !== id;
+}
+
 function LinkRow({
   icon,
   label,
@@ -1370,6 +1466,10 @@ const styles = themed(() =>
     // Segment
     // Link right
     themeRow: { flexDirection: 'row', gap: 8, padding: 12 },
+    langList: { paddingLeft: 49 },
+    langRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13, paddingRight: 16 },
+    langName: { fontFamily: font.bodyMedium, fontSize: 14.5, fontWeight: '500', color: color.text2 },
+    langNameOn: { fontFamily: font.titleSemi, fontWeight: '600', color: color.text1 },
     themeSwatchWrap: {
       flex: 1,
       alignItems: 'center',

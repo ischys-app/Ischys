@@ -906,5 +906,9 @@
   "routineReorder.handleLabel": "重新排序{name}",
   "routineReorder.handleHint": "向上或向下拖动",
   "routineReorder.moveUp": "上移",
-  "routineReorder.moveDown": "下移"
+  "routineReorder.moveDown": "下移",
+  "settings.language": "语言",
+  "settings.languageFollowing": "跟随{device} · {language}",
+  "settings.languageFooterIos": "Apple Health 的提示和系统菜单跟随 iPhone 语言。",
+  "settings.languageFooterAndroid": "Health Connect 的提示和系统菜单跟随手机语言。"
 }

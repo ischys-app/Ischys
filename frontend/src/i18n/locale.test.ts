@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { resolveLang } from './locale.ts';
+import { APP_LANGS, effectiveLang, NATIVE_LANG_NAME, parseLangPref, resolveLang } from './locale.ts';
 
 test('Simplified Chinese tags resolve to zh-Hans', () => {
   for (const tag of ['zh-SG', 'zh-CN', 'zh-Hans-CN', 'zh', 'zh-Hans', 'zh_CN', 'ZH-cn']) {
@@ -39,4 +39,22 @@ test('Russian tags resolve to ru; other Cyrillic-script languages stay English',
     assert.equal(resolveLang([tag]), 'en', tag);
   }
   assert.equal(resolveLang(['uk-UA', 'ru-RU']), 'en');
+});
+
+test('parseLangPref: known languages pass, anything else is System', () => {
+  for (const l of ['en', 'zh-Hans', 'ru'] as const) assert.equal(parseLangPref(l), l);
+  for (const v of [null, undefined, '', 'system', 'uk', 'zh', 'RU', 'zh-hans']) assert.equal(parseLangPref(v), 'system', String(v));
+});
+
+test('effectiveLang: System applies the first-language rule; a choice overrides it', () => {
+  assert.equal(effectiveLang('system', ['uk-UA', 'ru-RU']), 'en');
+  assert.equal(effectiveLang('system', ['ru-RU']), 'ru');
+  assert.equal(effectiveLang('ru', ['uk-UA', 'ru-RU']), 'ru');
+  assert.equal(effectiveLang('en', ['zh-CN']), 'en');
+  assert.equal(effectiveLang('zh-Hans', []), 'zh-Hans');
+});
+
+test('every offered language has a native name', () => {
+  assert.deepEqual([...APP_LANGS], ['en', 'zh-Hans', 'ru']);
+  for (const l of APP_LANGS) assert.ok(NATIVE_LANG_NAME[l].length > 0, l);
 });

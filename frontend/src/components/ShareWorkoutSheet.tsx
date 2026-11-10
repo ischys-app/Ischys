@@ -27,7 +27,7 @@ import * as Sharing from 'expo-sharing';
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import type { WorkoutSummaryOut } from '../api/types';
-import { type Unit, volumeText, weightText } from '../domain/units';
+import { type Unit, volumeText, weightLabel } from '../domain/units';
 import { fmtCardDay, fmtDuration } from '../lib/format';
 import { parseServerDate } from '../lib/serverTime';
 import { useWeightUnit } from '../lib/weightUnit';
@@ -72,7 +72,7 @@ function bestLine(
     const bb = best.weight ?? -Infinity;
     if (bw > bb) best = s;
   }
-  const w = best.weight == null ? 'BW' : weightText(best.weight, unit);
+  const w = best.weight == null ? 'BW' : weightLabel(best.weight, unit);
   return `${w} × ${best.reps ?? 0}`;
 }
 

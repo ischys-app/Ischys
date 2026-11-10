@@ -230,3 +230,16 @@ test('ru relative phrases come from the string table', () => {
   const now = new Date('2026-07-11T12:00:00Z');
   assert.equal(fmtAgo('2026-07-11T11:00:00Z', now, 'ru'), '1 ч назад');
 });
+
+test('fmtVolumeShort / fmtVolumeLarge: Russian decimal comma, en and zh-Hans unchanged', () => {
+  assert.deepEqual(fmtVolumeShort(6800, 'kg', 'ru'), { value: '6,8', unit: 'k kg' });
+  assert.deepEqual(fmtVolumeShort(850, 'kg', 'ru'), { value: '850', unit: ' kg' });
+  assert.deepEqual(fmtVolumeLarge(1_840_000, 'kg', 'ru'), { value: '1,84', unit: 'M kg' });
+  assert.deepEqual(fmtVolumeLarge(12_500, 'kg', 'ru'), { value: '12,5', unit: 'k kg' });
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.deepEqual(fmtVolumeShort(6800, 'kg', lang), { value: '6.8', unit: 'k kg' });
+    assert.deepEqual(fmtVolumeShort(850, 'kg', lang), { value: '850', unit: ' kg' });
+    assert.deepEqual(fmtVolumeLarge(1_840_000, 'kg', lang), { value: '1.84', unit: 'M kg' });
+    assert.deepEqual(fmtVolumeLarge(12_500, 'kg', lang), { value: '12.5', unit: 'k kg' });
+  }
+});

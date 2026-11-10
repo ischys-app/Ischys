@@ -4,9 +4,12 @@
  * back in from something the user typed.
  *
  * Every surface that shows or accepts a lifting weight goes through this file,
- * so no screen prints a unit of its own. Pure — no imports, so `node --test`
- * can run it. The preference itself is read through lib/weightUnit.ts.
+ * so no screen prints a unit of its own. Pure (its only imports are the
+ * language getter and a type), so `node --test` can run it. The preference itself is read through lib/weightUnit.ts.
  */
+
+import { getLang } from '../i18n/current.ts';
+import type { Lang } from '../i18n/locale.ts';
 
 export type Unit = 'kg' | 'lb';
 
@@ -47,9 +50,33 @@ export function weightText(weightKg: number | null | undefined, unit: Unit): str
   return String(toDisplay(weightKg, unit));
 }
 
-/** A stored weight with its unit: "225 lb". */
-export function formatWeight(weightKg: number, unit: Unit): string {
-  return `${weightText(weightKg, unit)} ${unit}`;
+/**
+ * Display-only number localisation. Takes a dot-decimal, ungrouped number
+ * ("1199", "82.5") and, in Russian, groups thousands with a no-break space and
+ * uses a decimal comma ("1 199", "82,5"). Every other language is returned
+ * untouched. Never use it for stored, exported or parsed text — those stay in
+ * the canonical dot form. Manual: Hermes' Intl may omit the separators.
+ */
+export function localizeNumber(text: string, lang: Lang = getLang()): string {
+  if (lang !== 'ru') return text;
+  return text.replace(/(\d+)(?:\.(\d+))?/g, (_m, int: string, frac?: string) => {
+    const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+    return frac === undefined ? grouped : `${grouped},${frac}`;
+  });
+}
+
+/** `weightText` for display (Russian comma); inputs, Watch and storage keep `weightText`. */
+export function weightLabel(
+  weightKg: number | null | undefined,
+  unit: Unit,
+  lang: Lang = getLang(),
+): string {
+  return localizeNumber(weightText(weightKg, unit), lang);
+}
+
+/** A stored weight with its unit, for display: "225 lb". */
+export function formatWeight(weightKg: number, unit: Unit, lang: Lang = getLang()): string {
+  return `${weightLabel(weightKg, unit, lang)} ${unit}`;
 }
 
 /**
@@ -91,16 +118,15 @@ export function volumeToDisplay(volumeKg: number, unit: Unit): number {
  * style the unit separately. Manual grouping: Hermes' Intl may omit the
  * separator, so this doesn't rely on toLocaleString.
  */
-export function volumeText(volumeKg: number, unit: Unit): string {
-  return String(Math.round(volumeToDisplay(volumeKg, unit))).replace(
-    /\B(?=(\d{3})+(?!\d))/g,
-    ',',
-  );
+export function volumeText(volumeKg: number, unit: Unit, lang: Lang = getLang()): string {
+  const n = String(Math.round(volumeToDisplay(volumeKg, unit)));
+  if (lang === 'ru') return localizeNumber(n, lang);
+  return n.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 /** Thousands-separated volume with its unit, e.g. "9,177 kg". */
-export function formatVolume(volumeKg: number, unit: Unit): string {
-  return `${volumeText(volumeKg, unit)} ${unit}`;
+export function formatVolume(volumeKg: number, unit: Unit, lang: Lang = getLang()): string {
+  return `${volumeText(volumeKg, unit, lang)} ${unit}`;
 }
 
 /**

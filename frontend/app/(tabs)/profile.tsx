@@ -24,6 +24,7 @@ import { recordDisplay } from '../../src/domain/records';
 import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
+import { localizeNumber } from '../../src/domain/units';
 import { getLang } from '../../src/i18n/current';
 import { muscleNameLabel } from '../../src/i18n/catalogNames';
 import { useThemed } from '../../src/theme/ThemeProvider';
@@ -222,7 +223,7 @@ export default function Profile() {
             <View style={styles.barsCard}>
               <View style={styles.barsHeader}>
                 <Text style={styles.barsLabel}>{t('profile.barsLabel', { year })}</Text>
-                <Text style={styles.barsAvg}>{t('profile.barsAvg', { value: bars.avg.toFixed(1) })}</Text>
+                <Text style={styles.barsAvg}>{t('profile.barsAvg', { value: localizeNumber(bars.avg.toFixed(1)) })}</Text>
               </View>
               <View style={styles.barsRow}>
                 {bars.counts.map((count, i) => {

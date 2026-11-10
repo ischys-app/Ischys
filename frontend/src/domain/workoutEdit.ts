@@ -22,7 +22,7 @@ import { computeRecords, recordDisplay, type PRSession, type PRSet, type RecordV
 import { groupLabels, roundCount } from './supersets.ts';
 import { fmtDayMonthOf, fmtLongDay, fmtMonthNames, fmtShortDay } from '../lib/format.ts';
 import { t } from '../i18n/t.ts';
-import { parseWeight, toDisplay, toKg, weightText, type Unit } from './units.ts';
+import { parseWeight, toDisplay, toKg, weightLabel, weightText, type Unit } from './units.ts';
 
 export type EditSetType = 'normal' | 'warmup' | 'drop' | 'failure';
 
@@ -603,9 +603,9 @@ function setText(ex: { kind: 'weighted' | 'bodyweight' }, set: OriginalSet, unit
   const reps = set.reps == null ? '–' : String(set.reps);
   if (ex.kind === 'bodyweight') {
     if (set.weight == null || set.weight === 0) return `BW × ${reps}`;
-    return `${set.weight > 0 ? '+' : ''}${weightText(set.weight, unit)} × ${reps}`;
+    return `${set.weight > 0 ? '+' : ''}${weightLabel(set.weight, unit)} × ${reps}`;
   }
-  return `${set.weight == null ? '–' : weightText(set.weight, unit)} × ${reps}`;
+  return `${set.weight == null ? '–' : weightLabel(set.weight, unit)} × ${reps}`;
 }
 
 /**

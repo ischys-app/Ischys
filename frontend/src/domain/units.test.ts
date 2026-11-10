@@ -8,12 +8,14 @@ import {
   formatVolume,
   formatWeight,
   inputToKg,
+  localizeNumber,
   parseWeight,
   toDisplay,
   toKg,
   unitLabel,
   volumeText,
   volumeToDisplay,
+  weightLabel,
   weightText,
 } from './units.ts';
 
@@ -173,4 +175,52 @@ test('unitLabel upper-cases for column headers', () => {
 test('steps are whole plates in the unit, not a converted kg step', () => {
   assert.deepEqual(WEIGHT_STEPS.kg, { bar: 2.5, dumbbell: 2 });
   assert.deepEqual(WEIGHT_STEPS.lb, { bar: 5, dumbbell: 5 });
+});
+
+// --- Russian number formatting: display only, en/zh byte-identical ---
+
+const NB = ' ';
+
+test('localizeNumber: ru groups with a no-break space and uses a decimal comma', () => {
+  assert.equal(localizeNumber('1199', 'ru'), `1${NB}199`);
+  assert.equal(localizeNumber('1234567', 'ru'), `1${NB}234${NB}567`);
+  assert.equal(localizeNumber('999', 'ru'), '999');
+  assert.equal(localizeNumber('82.5', 'ru'), '82,5');
+  assert.equal(localizeNumber('1234.5', 'ru'), `1${NB}234,5`);
+});
+
+test('localizeNumber: en and zh-Hans return the text untouched', () => {
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.equal(localizeNumber('1199', lang), '1199');
+    assert.equal(localizeNumber('82.5', lang), '82.5');
+  }
+});
+
+test('volumeText / formatVolume: ru uses NBSP, en and zh-Hans keep the comma', () => {
+  assert.equal(volumeText(1199, 'kg', 'ru'), `1${NB}199`);
+  assert.equal(volumeText(1234567, 'kg', 'ru'), `1${NB}234${NB}567`);
+  assert.equal(volumeText(999, 'kg', 'ru'), '999');
+  assert.equal(formatVolume(1199, 'kg', 'ru'), `1${NB}199 kg`);
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.equal(volumeText(1199, 'kg', lang), '1,199');
+    assert.equal(volumeText(1234567, 'kg', lang), '1,234,567');
+    assert.equal(formatVolume(9177, 'kg', lang), '9,177 kg');
+    assert.equal(formatVolume(1000, 'lb', lang), '2,205 lb');
+  }
+});
+
+test('weightLabel / formatWeight: ru decimal comma; weightText stays canonical', () => {
+  assert.equal(weightLabel(82.5, 'kg', 'ru'), '82,5');
+  assert.equal(formatWeight(82.5, 'kg', 'ru'), '82,5 kg');
+  assert.equal(weightLabel(102.0583, 'lb', 'ru'), '225');
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.equal(weightLabel(82.5, 'kg', lang), '82.5');
+    assert.equal(formatWeight(82.5, 'kg', lang), '82.5 kg');
+  }
+  assert.equal(weightText(82.5, 'kg'), '82.5');
+});
+
+test('a Russian-formatted weight parses back to the same kg', () => {
+  const shown = weightLabel(82.5, 'kg', 'ru');
+  assert.equal(inputToKg(shown, 'kg'), 82.5);
 });

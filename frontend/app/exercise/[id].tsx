@@ -44,7 +44,7 @@ import {
 } from '../../src/domain/chartRange';
 import { getChartRange, setChartRange } from '../../src/lib/chartRangePref';
 import { recordDisplay } from '../../src/domain/records';
-import { type Unit, formatWeight, volumeToDisplay } from '../../src/domain/units';
+import { type Unit, formatWeight, localizeNumber, volumeToDisplay } from '../../src/domain/units';
 import { effortValue } from '../../src/domain/effort';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
@@ -541,7 +541,7 @@ function ChartsTab({
                   : Math.abs(trend) < 0.05
                     ? t('exerciseDetail.flat')
                     : t('exerciseDetail.perMonth', {
-                        delta: `${trend > 0 ? '↑' : '↓'} ${trend > 0 ? '+' : ''}${Math.round(trend * 10) / 10}`,
+                        delta: `${trend > 0 ? '↑' : '↓'} ${trend > 0 ? '+' : ''}${localizeNumber(String(Math.round(trend * 10) / 10))}`,
                         unit: chartUnit(metric, unit),
                       })}
               </Text>
@@ -615,7 +615,9 @@ function RecordCard({
 /** Trailing-zero-free number: 68.0 -> "68", 20.5 -> "20.5", 1740 -> "1,740". */
 function fmtChartValue(v: number): string {
   const rounded = Math.round(v * 10) / 10;
-  return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return getLang() === 'ru'
+    ? localizeNumber(String(rounded))
+    : String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 const TOOLTIP_W = 132;

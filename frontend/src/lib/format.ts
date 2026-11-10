@@ -1,5 +1,5 @@
 /** Presentation formatters for dashboard data. No external date libs. */
-import { type Unit, volumeToDisplay } from '../domain/units.ts';
+import { type Unit, localizeNumber, volumeToDisplay } from '../domain/units.ts';
 import { getLang } from '../i18n/current.ts';
 import type { Lang } from '../i18n/locale.ts';
 import { strings } from '../i18n/strings/en.ts';
@@ -70,9 +70,9 @@ export function fmtHeaderDate(iso: string, lang: Lang = getLang()): string {
  * value + unit pair for the compact VOLUME stat. Takes stored kilograms and
  * converts first, so the "k" threshold is judged on the number actually shown.
  */
-export function fmtVolumeShort(kg: number, unit: Unit): { value: string; unit: string } {
+export function fmtVolumeShort(kg: number, unit: Unit, lang: Lang = getLang()): { value: string; unit: string } {
   const v = volumeToDisplay(kg, unit);
-  if (v >= 1000) return { value: (v / 1000).toFixed(1), unit: `k ${unit}` };
+  if (v >= 1000) return { value: localizeNumber((v / 1000).toFixed(1), lang), unit: `k ${unit}` };
   return { value: String(Math.round(v)), unit: ` ${unit}` };
 }
 
@@ -158,10 +158,10 @@ export function fmtMonthYear(iso?: string | null, lang: Lang = getLang()): strin
  *   else        → "218"  / " kg"
  * Takes stored kilograms; the thresholds apply to the converted number.
  */
-export function fmtVolumeLarge(kg: number, unit: Unit): { value: string; unit: string } {
+export function fmtVolumeLarge(kg: number, unit: Unit, lang: Lang = getLang()): { value: string; unit: string } {
   const v = volumeToDisplay(kg, unit);
-  if (v >= 1_000_000) return { value: (v / 1_000_000).toFixed(2), unit: `M ${unit}` };
-  if (v >= 10_000) return { value: (v / 1000).toFixed(1), unit: `k ${unit}` };
+  if (v >= 1_000_000) return { value: localizeNumber((v / 1_000_000).toFixed(2), lang), unit: `M ${unit}` };
+  if (v >= 10_000) return { value: localizeNumber((v / 1000).toFixed(1), lang), unit: `k ${unit}` };
   return { value: String(Math.round(v)), unit: ` ${unit}` };
 }
 

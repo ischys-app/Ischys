@@ -20,7 +20,7 @@ import { color, font, themed, withAlpha } from '../../theme/tokens';
 import { warmupRounder } from '../../domain/loadRounding';
 import { defaultWarmupSets, warmupRamp, type RampRow } from '../../domain/warmupRamp';
 import { loadToKg, solvePlatesForKg, type BarSetup } from '../../domain/plateMath';
-import { unitLabel, weightText, type Unit } from '../../domain/units';
+import { unitLabel, weightLabel, type Unit } from '../../domain/units';
 import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
@@ -92,7 +92,7 @@ export function WarmupSheet({
         </Pressable>
       </View>
       <Text style={styles.sub}>
-        {t('warmup.sub', { weight: weightText(workingKg, unit), unit, reps: workingReps })}
+        {t('warmup.sub', { weight: weightLabel(workingKg, unit), unit, reps: workingReps })}
       </Text>
       <Text style={styles.subName} numberOfLines={1}>
         {exerciseName}
@@ -120,7 +120,7 @@ export function WarmupSheet({
               </View>
               <Text style={[styles.cell, styles.colPct]}>{r.pct == null ? t('warmup.bar') : `${r.pct}%`}</Text>
               <Text style={[styles.cell, styles.colWeight, styles.cellStrong]}>
-                {weightText(r.kg, unit)} × {r.reps}
+                {weightLabel(r.kg, unit)} × {r.reps}
               </Text>
               {equipment === 'barbell' && (
                 <Text style={[styles.cell, styles.colPlates]} numberOfLines={1}>

@@ -4,9 +4,13 @@ import { fold } from '../domain/fold.ts';
 import catalog from '../../assets/catalog/catalog.json' with { type: 'json' };
 import zh from './catalog/zh-Hans.json' with { type: 'json' };
 import ru from './catalog/ru.json' with { type: 'json' };
+import el from './catalog/el.json' with { type: 'json' };
+import es from './catalog/es.json' with { type: 'json' };
 import { strings } from './strings/en.ts';
 import uiZh from './strings/zh-Hans.json' with { type: 'json' };
 import uiRu from './strings/ru.json' with { type: 'json' };
+import uiEl from './strings/el.json' with { type: 'json' };
+import uiEs from './strings/es.json' with { type: 'json' };
 import { createTranslator } from './translate.ts';
 
 type Named = { id: string; name: string };
@@ -23,6 +27,8 @@ type Table = { exercises: Dict; muscles: Dict; categories: Dict; groups: Dict; e
 function tableFor(lang: Lang): Table | undefined {
   if (lang === 'zh-Hans') return zh as Table;
   if (lang === 'ru') return ru as Table;
+  if (lang === 'el') return el as Table;
+  if (lang === 'es') return es as Table;
   return undefined;
 }
 
@@ -85,7 +91,7 @@ export function muscleNameLabel(name: string, lang: Lang): string {
   const id = muscleIdByEnglish[name];
   if (id) return muscleLabel({ id, name }, lang);
   const key = REGION_KEYS[name];
-  return key ? createTranslator(lang, { 'zh-Hans': uiZh, ru: uiRu }, strings)(key) : name;
+  return key ? createTranslator(lang, { 'zh-Hans': uiZh, ru: uiRu, el: uiEl, es: uiEs }, strings)(key) : name;
 }
 
 /**

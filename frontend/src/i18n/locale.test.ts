@@ -17,7 +17,7 @@ test('Traditional Chinese tags resolve to English', () => {
 });
 
 test('other languages and lookalike region codes resolve to English', () => {
-  for (const tag of ['en', 'en-GR', 'en-US', 'el-GR', 'zhx', 'de']) {
+  for (const tag of ['en', 'en-GR', 'en-US', 'zhx', 'de']) {
     assert.equal(resolveLang([tag]), 'en', tag);
   }
 });
@@ -42,7 +42,7 @@ test('Russian tags resolve to ru; other Cyrillic-script languages stay English',
 });
 
 test('parseLangPref: known languages pass, anything else is System', () => {
-  for (const l of ['en', 'zh-Hans', 'ru'] as const) assert.equal(parseLangPref(l), l);
+  for (const l of ['en', 'zh-Hans', 'ru', 'el', 'es'] as const) assert.equal(parseLangPref(l), l);
   for (const v of [null, undefined, '', 'system', 'uk', 'zh', 'RU', 'zh-hans']) assert.equal(parseLangPref(v), 'system', String(v));
 });
 
@@ -55,6 +55,18 @@ test('effectiveLang: System applies the first-language rule; a choice overrides 
 });
 
 test('every offered language has a native name', () => {
-  assert.deepEqual([...APP_LANGS], ['en', 'zh-Hans', 'ru']);
+  assert.deepEqual([...APP_LANGS], ['en', 'es', 'el', 'ru', 'zh-Hans']);
   for (const l of APP_LANGS) assert.ok(NATIVE_LANG_NAME[l].length > 0, l);
+});
+
+test('Spanish and Greek tags resolve by primary subtag', () => {
+  for (const tag of ['es-ES', 'es-MX', 'es-AR', 'es-CO', 'es-419', 'es', 'es-US']) assert.equal(resolveLang([tag]), 'es', tag);
+  for (const tag of ['el-GR', 'el-CY', 'el']) assert.equal(resolveLang([tag]), 'el', tag);
+  for (const tag of ['ca-ES', 'gl-ES', 'eu-ES', 'pt-BR']) assert.equal(resolveLang([tag]), 'en', tag);
+  assert.equal(resolveLang(['en-US', 'es-ES']), 'en');
+});
+
+test('parseLangPref accepts el and es', () => {
+  assert.equal(parseLangPref('el'), 'el');
+  assert.equal(parseLangPref('es'), 'es');
 });

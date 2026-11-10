@@ -181,3 +181,8 @@ test('ru: lists sort alphabetically in Cyrillic, index letter is the uppercased 
   assert.equal(indexLetter('жим', 'ru'), 'Ж');
   assert.equal(indexLetter('bench', 'ru'), 'B');
 });
+
+test('es: Ñ sorts after N', () => {
+  const sorted = sortByName([{ name: 'Ñandú' }, { name: 'Oblicuos' }, { name: 'Nadar' }], 'es');
+  assert.deepEqual(sorted.map((x) => x.name), ['Nadar', 'Ñandú', 'Oblicuos']);
+});

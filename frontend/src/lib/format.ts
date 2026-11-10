@@ -5,6 +5,8 @@ import type { Lang } from '../i18n/locale.ts';
 import { strings } from '../i18n/strings/en.ts';
 import zh from '../i18n/strings/zh-Hans.json' with { type: 'json' };
 import ru from '../i18n/strings/ru.json' with { type: 'json' };
+import el from '../i18n/strings/el.json' with { type: 'json' };
+import es from '../i18n/strings/es.json' with { type: 'json' };
 import { createTranslator } from '../i18n/translate.ts';
 
 const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -38,7 +40,7 @@ const MONTH_TITLE = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 /** Translate in an explicit language, so callers (and tests) can pin it. */
 function tr(key: string, lang: Lang, vars?: Record<string, string | number>): string {
-  return createTranslator(lang, { 'zh-Hans': zh, ru }, strings)(key, vars);
+  return createTranslator(lang, { 'zh-Hans': zh, ru, el, es }, strings)(key, vars);
 }
 
 /** Parse an ISO string. Date-only (YYYY-MM-DD) is read in local time to avoid a UTC day-shift. */

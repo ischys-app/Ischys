@@ -86,7 +86,9 @@
             "android": [
               "en",
               "zh-CN",
-              "ru"
+              "ru",
+              "el",
+              "es"
             ]
           }
         }

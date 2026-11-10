@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import type { EffortRowLine } from '../../domain/effort';
-import type { Unit } from '../../domain/units';
+import { localizeNumber, type Unit } from '../../domain/units';
 import { color, font, themed } from '../../theme/tokens';
 import { textScale } from '../../theme/textScale';
 import { doneToggleLabel, repsFieldLabel, weightFieldLabel } from '../../lib/setRowLabels';
@@ -90,7 +90,7 @@ const PREV_TAP_SLOP = { top: 5, bottom: 5 };
 const GLYPH = { up: '\u2191', hold: '=', down: '\u2193' } as const;
 
 /** 102.5 stays, 100.0 becomes 100. */
-const fmtNum = (n: number): string => String(Math.round(n * 100) / 100);
+const fmtNum = (n: number): string => localizeNumber(String(Math.round(n * 100) / 100));
 
 export function SetRow({
   exercise,

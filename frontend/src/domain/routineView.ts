@@ -7,7 +7,7 @@
  * `node --test` covers it; the queries live in data/routinesRepo.ts.
  */
 import { groupLabels, roundCount } from './supersets.ts';
-import { type Unit, unitLabel, weightText } from './units.ts';
+import { type Unit, unitLabel, weightLabel } from './units.ts';
 import { getLang } from '../i18n/current.ts';
 import { t } from '../i18n/t.ts';
 import { equipmentLabel } from '../i18n/catalogNames.ts';
@@ -121,10 +121,10 @@ export function setText(
   let load: string;
   if (kind === 'bodyweight') {
     if (weightKg == null || weightKg === 0) load = t('record.bodyweightAbbr');
-    else if (weightKg > 0) load = `+${weightText(weightKg, unit)}`;
-    else load = `${MINUS}${weightText(-weightKg, unit)}`;
+    else if (weightKg > 0) load = `+${weightLabel(weightKg, unit)}`;
+    else load = `${MINUS}${weightLabel(-weightKg, unit)}`;
   } else {
-    load = weightKg == null ? DASH : weightText(weightKg, unit);
+    load = weightKg == null ? DASH : weightLabel(weightKg, unit);
   }
   return `${load} × ${repsText}`;
 }

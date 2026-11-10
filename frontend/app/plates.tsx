@@ -15,12 +15,13 @@ import { BackChevronIcon } from '../src/components/icons';
 import { SectionLabel } from '../src/components/SectionLabel';
 import { BAR_OPTIONS, defaultBarSetup, setupUnit, type BarSetup } from '../src/domain/plateMath';
 import { getPlateSetup, setPlateSetup } from '../src/lib/plateSetup';
+import { localizeNumber } from '../src/domain/units';
 import { useWeightUnit } from '../src/lib/weightUnit';
 import { color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
 import { t } from '../src/i18n';
 
-const fmt = (n: number): string => String(Math.round(n * 100) / 100);
+const fmt = (n: number): string => localizeNumber(String(Math.round(n * 100) / 100));
 
 export default function PlatesScreen() {
   useThemed();

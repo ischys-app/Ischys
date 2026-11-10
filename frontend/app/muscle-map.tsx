@@ -25,6 +25,7 @@ import {
 import { muscleWorkEntries } from '../src/data/muscleMapRepo';
 import { color, font, themed } from '../src/theme/tokens';
 import { useThemed } from '../src/theme/ThemeProvider';
+import { localizeNumber } from '../src/domain/units';
 import { getLang } from '../src/i18n/current';
 import { muscleNameLabel } from '../src/i18n/catalogNames';
 import { t } from '../src/i18n';
@@ -34,7 +35,7 @@ const WINDOWS = [
   { days: 28 as const, key: 'muscleMap.days28' },
 ];
 
-const fmtSets = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+const fmtSets = (n: number): string => (Number.isInteger(n) ? String(n) : localizeNumber(n.toFixed(1)));
 
 export default function MuscleMapScreen() {
   useThemed();

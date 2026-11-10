@@ -52,7 +52,7 @@ import { getSummary } from '../../src/lib/summaryCache';
 import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
 import { effortLabel, type EffortScaleKind } from '../../src/domain/effort';
 import { countWorkingSets } from '../../src/domain/stats';
-import { type Unit, volumeText, weightText } from '../../src/domain/units';
+import { type Unit, volumeText, weightLabel } from '../../src/domain/units';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
 import { color, font, themed, withAlpha } from '../../src/theme/tokens';
@@ -91,7 +91,7 @@ function bestSetLine(sets: WorkoutSetOut[], unit: Unit, effort: EffortScaleKind 
     const bbest = best.weight ?? -Infinity;
     if (bw > bbest) best = s;
   }
-  const w = best.weight == null ? 'BW' : `${weightText(best.weight, unit)}${unit}`;
+  const w = best.weight == null ? 'BW' : `${weightLabel(best.weight, unit)}${unit}`;
   const r = best.reps ?? 0;
   const rated = effort && best.rpe != null ? ` ${effortLabel(best.rpe, effort)}` : '';
   return t('summary.bestSet', { weight: w, reps: r, rated });

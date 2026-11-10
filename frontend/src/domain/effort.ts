@@ -13,7 +13,10 @@
  * lib/effortMode.ts.
  */
 
+import { getLang } from '../i18n/current.ts';
+import type { Lang } from '../i18n/locale.ts';
 import { t } from '../i18n/t.ts';
+import { localizeNumber } from './units.ts';
 
 /** The setting: hidden, or shown on one of the two scales. */
 export type EffortMode = 'off' | 'rpe' | 'rir';
@@ -135,8 +138,8 @@ export function effortValue(rpe: number, kind: EffortScaleKind): string {
 }
 
 /** A rating wherever a set is written out: "@8.5" / "2 RIR". */
-export function effortLabel(rpe: number, kind: EffortScaleKind): string {
-  return kind === 'rir' ? `${rirText(rpe)} RIR` : `@${rpe}`;
+export function effortLabel(rpe: number, kind: EffortScaleKind, lang: Lang = getLang()): string {
+  return kind === 'rir' ? `${rirText(rpe)} RIR` : `@${localizeNumber(String(rpe), lang)}`;
 }
 
 /** The done row's way in when the set is not rated yet. */

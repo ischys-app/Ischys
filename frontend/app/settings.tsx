@@ -19,7 +19,7 @@ import {
 import { DraggableSheet } from '../src/components/DraggableSheet';
 import { exportProfile, SharingUnavailable } from '../src/data/exportRepo';
 import { Segment, type SegmentOption } from '../src/components/ui';
-import { toDisplay, toKg } from '../src/domain/units';
+import { localizeNumber, toDisplay, toKg } from '../src/domain/units';
 import { getBodyweightKg, setBodyweightKg } from '../src/lib/bodyweight';
 import { readBodyweightFromHealth, syncBodyweightFromHealth } from '../src/lib/healthSync';
 import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
@@ -447,7 +447,7 @@ export default function Settings() {
       icon={<BodyweightIcon size={20} color={color.text2} />}
       label={t('settings.bodyweight')}
       sub={t('settings.bodyweightSub')}
-      value={bwDisplay != null ? `${bwDisplay} ${bwUnitLabel}` : t('settings.notSet')}
+      value={bwDisplay != null ? `${localizeNumber(String(bwDisplay))} ${bwUnitLabel}` : t('settings.notSet')}
       onPress={openBw}
       isLast={last}
     />

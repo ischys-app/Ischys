@@ -29,6 +29,7 @@ import {
   convertWeightText,
   parseWeight,
   toKg,
+  weightLabel,
   weightText,
 } from '../src/domain/units';
 import { getPlateSetup } from '../src/lib/plateSetup';
@@ -146,7 +147,7 @@ export default function OneRepMaxScreen() {
             {rows.map((r) => (
               <View key={r.pct} style={styles.row}>
                 <Text style={[styles.cell, styles.colPct]}>{r.pct}%</Text>
-                <Text style={[styles.cell, styles.colLoad, styles.cellStrong]}>{weightText(r.kg, unit)} {unit}</Text>
+                <Text style={[styles.cell, styles.colLoad, styles.cellStrong]}>{weightLabel(r.kg, unit)} {unit}</Text>
                 <Text style={[styles.cell, styles.colReps]}>{r.reps ?? ''}</Text>
               </View>
             ))}

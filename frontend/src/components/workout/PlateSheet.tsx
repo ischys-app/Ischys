@@ -25,7 +25,7 @@ import {
   type PlateLoad,
   type PlateStack,
 } from '../../domain/plateMath';
-import { toDisplay, type Unit } from '../../domain/units';
+import { localizeNumber, toDisplay, type Unit } from '../../domain/units';
 import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
@@ -45,7 +45,7 @@ type Props = {
 };
 
 /** Trim a weight for display: 102.5 stays, 100.0 becomes 100. */
-const fmt = (n: number): string => String(Math.round(n * 100) / 100);
+const fmt = (n: number): string => localizeNumber(String(Math.round(n * 100) / 100));
 
 /** "25 + 15 + 1.25" — the stack read out the way a lifter would say it. */
 const stackLabel = (plates: PlateStack): string =>

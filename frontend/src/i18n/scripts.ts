@@ -18,3 +18,8 @@ export function allowsTwoLineNames(lang: Lang): boolean {
 export function nameNeedsSystemFont(id: Lang, uiLang: Lang): boolean {
   return (id === 'el' || id === 'ru' || id === 'zh-Hans') && id !== uiLang;
 }
+
+/** Decimal comma and no-break-space thousands grouping, rather than the dot / comma of English. */
+export function usesCommaDecimal(lang: Lang): boolean {
+  return lang === 'ru' || lang === 'el' || lang === 'es';
+}

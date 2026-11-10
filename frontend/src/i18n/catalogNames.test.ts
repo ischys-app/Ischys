@@ -93,3 +93,12 @@ test('el: exerciseLabel returns the Greek name; custom keeps its stored name', (
     delete m.exercises[ex.id];
   }
 });
+
+test('search folds accents and final sigma for Spanish and Greek', () => {
+  assert.equal(matchesSearch('press banca', ['Press de banca']), false);
+  assert.equal(matchesSearch('press de banca', ['Press de Banca']), true);
+  assert.equal(matchesSearch('pesa', ['Pésa']), true);
+  assert.equal(matchesSearch('ασκηση', ['Άσκηση']), true);
+  assert.equal(matchesSearch('σ', ['ς']), true);
+  assert.equal(matchesSearch('ΣΩΜΑΤΟΣ', ['σώματος']), true);
+});

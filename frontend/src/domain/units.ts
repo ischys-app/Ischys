@@ -10,6 +10,7 @@
 
 import { getLang } from '../i18n/current.ts';
 import type { Lang } from '../i18n/locale.ts';
+import { usesCommaDecimal } from '../i18n/scripts.ts';
 
 export type Unit = 'kg' | 'lb';
 
@@ -52,13 +53,13 @@ export function weightText(weightKg: number | null | undefined, unit: Unit): str
 
 /**
  * Display-only number localisation. Takes a dot-decimal, ungrouped number
- * ("1199", "82.5") and, in Russian, groups thousands with a no-break space and
+ * ("1199", "82.5") and, in Russian, Greek and Spanish, groups thousands with a no-break space and
  * uses a decimal comma ("1 199", "82,5"). Every other language is returned
  * untouched. Never use it for stored, exported or parsed text — those stay in
  * the canonical dot form. Manual: Hermes' Intl may omit the separators.
  */
 export function localizeNumber(text: string, lang: Lang = getLang()): string {
-  if (lang !== 'ru') return text;
+  if (!usesCommaDecimal(lang)) return text;
   return text.replace(/(\d+)(?:\.(\d+))?/g, (_m, int: string, frac?: string) => {
     const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
     return frac === undefined ? grouped : `${grouped},${frac}`;
@@ -125,7 +126,7 @@ export function volumeToDisplay(volumeKg: number, unit: Unit): number {
  */
 export function volumeText(volumeKg: number, unit: Unit, lang: Lang = getLang()): string {
   const n = String(Math.round(volumeToDisplay(volumeKg, unit)));
-  if (lang === 'ru') return localizeNumber(n, lang);
+  if (usesCommaDecimal(lang)) return localizeNumber(n, lang);
   return n.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 

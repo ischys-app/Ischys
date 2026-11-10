@@ -235,3 +235,15 @@ test('localizeNumber keeps signs and handles roundedLabel', () => {
   assert.equal(roundedLabel(1.25, 'zh-Hans'), '1.25');
   assert.equal(roundedLabel(100, 'ru'), '100');
 });
+
+test('localizeNumber / volumeText: el and es share the ru comma-decimal rule', () => {
+  for (const lang of ['el', 'es'] as const) {
+    assert.equal(localizeNumber('1199', lang), `1${NB}199`);
+    assert.equal(localizeNumber('82.5', lang), '82,5');
+    assert.equal(volumeText(1234567, 'kg', lang), `1${NB}234${NB}567`);
+  }
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.equal(localizeNumber('82.5', lang), '82.5');
+    assert.equal(volumeText(1199, 'kg', lang), '1,199');
+  }
+});

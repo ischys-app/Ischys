@@ -259,14 +259,14 @@ test('el dates', () => {
   assert.equal(fmtMonthYear('2026-05-01', 'el'), 'Μάιος 2026');
   assert.equal(fmtMonthYear(null, 'el'), '');
   assert.equal(fmtShortDay(tue, 'el'), 'Τρι 10 Νοε');
-  assert.equal(fmtShortDay(fri, 'el'), 'Παρ 1 Μάι');
+  assert.equal(fmtShortDay(fri, 'el'), 'Παρ 1 Μαΐ');
   assert.equal(fmtLongDay(tue, 'el'), 'Τρι, 10 Νοεμβρίου 2026');
   assert.equal(fmtDayMonthOf(tue, 'el'), '10 Νοεμβρίου');
   assert.equal(fmtDayMonthOf(fri, 'el'), '1 Μαΐου');
   assert.equal(fmtCardDay(tue, 'el'), '10 ΝΟΕΜΒΡΙΟΥ 2026');
   assert.equal(fmtImportDay(new Date(2026, 5, 23), tue, 'el'), '23 Ιουνίου');
   assert.equal(fmtImportDay(new Date(2025, 7, 3), tue, 'el'), '3 Αυγούστου 2025');
-  assert.deepEqual(fmtMonthNames('el'), ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ']);
+  assert.deepEqual(fmtMonthNames('el'), ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ']);
   assert.equal(fmtHistoryGroupTitle('2026-05-02', new Date(2026, 6, 11), 'el'), 'Μάιος 2026');
   assert.equal(fmtHistoryGroupTitle('2025-11-02', new Date(2026, 6, 11), 'el'), 'Νοέμβριος 2025');
   // all-caps Greek carries no tonos
@@ -281,6 +281,9 @@ test('es dates', () => {
   assert.equal(fmtHeaderDate('2026-05-01', 'es'), 'VIE · 1 MAY 2026');
   assert.equal(fmtShortDayUpper(tue, 'es'), 'MAR 10 NOV');
   assert.equal(fmtShortDayUpper(new Date(2026, 10, 15), 'es'), 'DOM 15 NOV');
+  assert.equal(fmtShortDayUpper(new Date(2026, 10, 11), 'es'), 'MIÉ 11 NOV');
+  assert.equal(fmtShortDayUpper(new Date(2026, 10, 14), 'es'), 'SÁB 14 NOV');
+  assert.equal(fmtHeaderDate('2026-11-11', 'es'), 'MIÉ · 11 NOV 2026');
   assert.equal(fmtWorkoutDate('2026-11-10', 'es'), 'mar, 10 nov · 00:00');
   assert.equal(fmtWorkoutDate('2026-05-01', 'es'), 'vie, 1 may · 00:00');
   assert.equal(fmtDateOnly('2026-11-10', 'es'), 'mar, 10 nov 2026');

@@ -4096,8 +4096,8 @@
   },
   "ui:settings.autoRest": {
     "enHash": "28e352f7ae36bea6",
-    "status": "ok",
-    "esHash": "b1b20f2533fa3adc"
+    "status": "manual",
+    "esHash": "4be2a65fa68ac6c6"
   },
   "ui:settings.keepNotes": {
     "enHash": "af7f1f860cadda2d",
@@ -4111,8 +4111,8 @@
   },
   "ui:settings.restAlerts": {
     "enHash": "755827d72a081066",
-    "status": "ok",
-    "esHash": "6d9b61964fd47b1d"
+    "status": "manual",
+    "esHash": "c7934c37d8ccade1"
   },
   "ui:settings.haptics": {
     "enHash": "153d8baf1c5f3908",
@@ -8738,5 +8738,25 @@
     "enHash": "e4a0ba6701114c66",
     "status": "ok",
     "esHash": "d31b33d26570c1fa"
+  },
+  "ui:workout.supersetHeader": {
+    "enHash": "5abd117d81680daf",
+    "status": "manual",
+    "esHash": "e52ff1a58d092ac8"
+  },
+  "ui:warmup.insert_one": {
+    "enHash": "e868db5183144676",
+    "status": "manual",
+    "esHash": "df15dd9f9a1940e4"
+  },
+  "ui:warmup.insert_other": {
+    "enHash": "08ff19a2e6d96ee2",
+    "status": "manual",
+    "esHash": "3bce2f32f53bf84b"
+  },
+  "ui:measurements.log": {
+    "enHash": "21e49eb2b299c9f7",
+    "status": "manual",
+    "esHash": "1891d3ee0f7a8b1f"
   }
 }

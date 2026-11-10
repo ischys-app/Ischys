@@ -778,10 +778,10 @@
   "settings.effortHelpRpe": "Valora una serie mientras descansas. El RPE va de 6 a 10, donde 10 significa que no queda nada y 8 significa que quedan dos repeticiones.",
   "settings.effortHelpRir": "Valora una serie mientras descansas. El RIR cuenta las repeticiones que te quedaban, donde 0 significa que no queda nada.",
   "settings.effortFooter": "Si lo desactivas, las valoraciones se ocultan en todas partes pero se conservan guardadas. Al cambiar entre RPE y RIR se convierten las valoraciones existentes.",
-  "settings.autoRest": "Iniciar temporizador de descanso automáticamente",
+  "settings.autoRest": "Descanso automático",
   "settings.keepNotes": "Mantener notas de ejercicios",
   "settings.keepNotes.sub": "Lleva la nota de cada ejercicio a tus próximos entrenamientos hasta que la cambies o la borres",
-  "settings.restAlerts": "Alertas del temporizador de descanso",
+  "settings.restAlerts": "Avisos de descanso",
   "settings.haptics": "Respuesta háptica",
   "settings.warmups": "Contar calentamientos en el volumen",
   "settings.deload": "Consejos de descarga",
@@ -971,5 +971,9 @@
   "health.lastSynced": "ÚLTIMA SINCRONIZ.",
   "settings.exportWhose": "Exportar datos {whose}",
   "settings.inHistory": "EN EL HISTORIAL {whose}",
-  "import.changeFile": "Otro archivo"
+  "import.changeFile": "Otro archivo",
+  "workout.supersetHeader": "SUPERSERIE {letter} · RONDA {current} DE {rounds}",
+  "warmup.insert_one": "Añadir {count} calentamiento",
+  "warmup.insert_other": "Añadir {count} calentamientos",
+  "measurements.log": "Anotar"
 }

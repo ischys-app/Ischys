@@ -221,8 +221,8 @@
   },
   "ui:home.myRoutines": {
     "enHash": "f5d3b0af493d6b25",
-    "status": "ok",
-    "elHash": "80db72511c71bbed"
+    "status": "manual",
+    "elHash": "ff5b6b3deda5cfb7"
   },
   "ui:home.new": {
     "enHash": "18fdd549b2ed367a",
@@ -241,8 +241,8 @@
   },
   "ui:home.allHistory": {
     "enHash": "0b3db67d545cb7af",
-    "status": "flagged",
-    "reason": "Too long: 15 chars vs max 12 (text link); e.g. «Ιστορικό»"
+    "status": "manual",
+    "elHash": "14527179d05c7b67"
   },
   "ui:home.welcome": {
     "enHash": "4c6d143d285901e5",
@@ -461,8 +461,8 @@
   },
   "ui:profile.last7": {
     "enHash": "0603deca4fcb660f",
-    "status": "flagged",
-    "reason": "Too long: 19 chars vs max 16; e.g. «Τελευταίες 7 μέρες» or «Τελ. 7 ημέρες»"
+    "status": "manual",
+    "elHash": "eb64e960fea1bf65"
   },
   "ui:profile.allTrained": {
     "enHash": "72b1fdb4d479b7c0",
@@ -551,8 +551,8 @@
   },
   "ui:profile.healthOnChip": {
     "enHash": "914364040d390882",
-    "status": "ok",
-    "elHash": "116a2376648fe7ad"
+    "status": "manual",
+    "elHash": "5059ef2433fbf6e1"
   },
   "ui:profile.settingsLabel": {
     "enHash": "74a883a037bc227f",
@@ -1866,8 +1866,8 @@
   },
   "ui:summary.updateRoutine": {
     "enHash": "e44d4e760c206f60",
-    "status": "flagged",
-    "reason": "Too long: 22 chars vs max 18 on a fixed-width button; e.g. «Ενημέρωση»"
+    "status": "manual",
+    "elHash": "d8f6a8b4bae7fb72"
   },
   "ui:summary.keepAsIs": {
     "enHash": "9fc40891e01f78ae",
@@ -1901,8 +1901,8 @@
   },
   "ui:summary.saveAsRoutine": {
     "enHash": "18a0771b02927f77",
-    "status": "flagged",
-    "reason": "Too long: 23 chars vs max 20; e.g. «Αποθ. ως πρόγραμμα»"
+    "status": "manual",
+    "elHash": "582d0de32968234e"
   },
   "ui:summary.editLabel": {
     "enHash": "baf38c0e7e878155",
@@ -2081,8 +2081,8 @@
   },
   "ui:measurements.notLogged": {
     "enHash": "50585473b02b372d",
-    "status": "flagged",
-    "reason": "Too long: 15 chars vs max 12 on a fixed-width row; e.g. «Κενό» / «—»"
+    "status": "manual",
+    "elHash": "ce53883c842c8cc9"
   },
   "ui:measurements.logTitle": {
     "enHash": "fe4df4cdb4fa3fc8",
@@ -3156,8 +3156,8 @@
   },
   "ui:routineEdit.type.failure": {
     "enHash": "02e89ffa790d6580",
-    "status": "flagged",
-    "reason": "Wrong meaning: «Ως αποτυχία» reads as 'as a failure'; use «Ως την αποτυχία» shortened, e.g. «Μέχρι αποτ.» or «Αποτυχία»"
+    "status": "manual",
+    "elHash": "6e5f7599b4ee0a92"
   },
   "ui:routineView.exercises_one": {
     "enHash": "af14d3579b653cdf",
@@ -3971,8 +3971,8 @@
   },
   "ui:health.lastSynced": {
     "enHash": "1a30356126610404",
-    "status": "flagged",
-    "reason": "Too long: 23 chars vs max 18; e.g. «ΤΕΛ. ΣΥΓΧΡΟΝΙΣΜΟΣ»"
+    "status": "manual",
+    "elHash": "8cd650fe11162deb"
   },
   "ui:health.receiving": {
     "enHash": "6041f15c7bbf5841",
@@ -4026,8 +4026,8 @@
   },
   "ui:settings.autoRest": {
     "enHash": "28e352f7ae36bea6",
-    "status": "ok",
-    "elHash": "5ffab359af83dc51"
+    "status": "manual",
+    "elHash": "417e08908414c3bd"
   },
   "ui:settings.keepNotes": {
     "enHash": "af7f1f860cadda2d",
@@ -4041,8 +4041,8 @@
   },
   "ui:settings.restAlerts": {
     "enHash": "755827d72a081066",
-    "status": "ok",
-    "elHash": "c1bb4aa0c464a022"
+    "status": "manual",
+    "elHash": "b0f332187f7fb7be"
   },
   "ui:settings.haptics": {
     "enHash": "153d8baf1c5f3908",
@@ -8546,8 +8546,8 @@
   },
   "ui:health.workoutsWritten": {
     "enHash": "5aa402e965ac5679",
-    "status": "flagged",
-    "reason": "Too long: 21 chars vs max 18; e.g. «ΚΑΤΑΓΕΓΡΑΜΜΕΝΕΣ» or «ΑΠΟΘΗΚΕΥΜΕΝΕΣ»"
+    "status": "manual",
+    "elHash": "091dab2e602ee2ab"
   },
   "ex:17cc071f1d3b5e68a05bc3f0432a3f51": {
     "enHash": "a9eae60b0bcac352",
@@ -8588,5 +8588,35 @@
     "enHash": "d5028473b89c6ac7",
     "status": "ok",
     "elHash": "effd35c7340fddcf"
+  },
+  "ui:history.heatLabel": {
+    "enHash": "6e17b1fce5de894f",
+    "status": "manual",
+    "elHash": "fb8c054b32a7b973"
+  },
+  "ui:restBar.rest": {
+    "enHash": "fecd5681dc5dc6e2",
+    "status": "manual",
+    "elHash": "203ffd2556e51515"
+  },
+  "ui:restBar.timer": {
+    "enHash": "be80eb5e097599e7",
+    "status": "manual",
+    "elHash": "7677d88c23da7752"
+  },
+  "ui:summary.share": {
+    "enHash": "29887a5ff9846ccc",
+    "status": "manual",
+    "elHash": "ab3aad5fb42b8ba9"
+  },
+  "ui:measurements.log": {
+    "enHash": "21e49eb2b299c9f7",
+    "status": "manual",
+    "elHash": "37174fca8158b982"
+  },
+  "ui:routineView.colLast": {
+    "enHash": "7e86aeec84c6da78",
+    "status": "manual",
+    "elHash": "3511b302b22e7244"
   }
 }

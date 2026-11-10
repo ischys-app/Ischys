@@ -1,0 +1,99 @@
+{
+  "_comment": "Glossary for the es translation script. Rows without extension:true come from the design spec and are fixed. Rows with extension:true were added by the builder; reviewers may edit them.",
+  "terms": [
+    {
+      "en": "set",
+      "es": "serie"
+    },
+    {
+      "en": "rep / reps",
+      "es": "repetición / repeticiones",
+      "note": "short form: rep."
+    },
+    {
+      "en": "exercise",
+      "es": "ejercicio"
+    },
+    {
+      "en": "workout",
+      "es": "entrenamiento"
+    },
+    {
+      "en": "routine",
+      "es": "rutina"
+    },
+    {
+      "en": "warm-up set",
+      "es": "serie de calentamiento"
+    },
+    {
+      "en": "drop set",
+      "es": "drop set"
+    },
+    {
+      "en": "failure set",
+      "es": "serie al fallo"
+    },
+    {
+      "en": "superset",
+      "es": "superserie"
+    },
+    {
+      "en": "personal record",
+      "es": "récord personal",
+      "note": "the abbreviation PR stays PR"
+    },
+    {
+      "en": "rest timer",
+      "es": "temporizador de descanso"
+    },
+    {
+      "en": "rest",
+      "es": "descanso",
+      "extension": true
+    },
+    {
+      "en": "volume (total weight lifted)",
+      "es": "volumen",
+      "extension": true
+    },
+    {
+      "en": "bodyweight",
+      "es": "peso corporal",
+      "extension": true
+    },
+    {
+      "en": "muscle group",
+      "es": "grupo muscular",
+      "extension": true
+    },
+    {
+      "en": "plate calculator",
+      "es": "calculadora de discos",
+      "extension": true
+    },
+    {
+      "en": "history",
+      "es": "historial",
+      "extension": true
+    },
+    {
+      "en": "template",
+      "es": "plantilla",
+      "extension": true
+    },
+    {
+      "en": "estimated 1RM",
+      "es": "1RM estimado",
+      "extension": true
+    }
+  ],
+  "untranslated": [
+    "RPE",
+    "1RM",
+    "PR",
+    "kg",
+    "lb",
+    "Ischys"
+  ]
+}

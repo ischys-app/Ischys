@@ -28,7 +28,8 @@ const readJson = <T,>(rel: string): T => JSON.parse(readFileSync(join(ROOT, rel)
 function shipped(lang: Lang): Map<string, string> {
   const ui = readJson<Record<string, string>>(lang.files.ui);
   const catalog = readJson<Record<string, Record<string, string>>>(lang.files.catalog);
-  const plist = readJson<Record<string, string>>(lang.files.plist);
+  // el and es have no InfoPlist file.
+  const plist = lang.files.plist ? readJson<Record<string, string>>(lang.files.plist) : {};
   const out = new Map<string, string>();
   for (const [k, v] of Object.entries(ui)) out.set(`ui:${k}`, v);
   // locales/<lang>.json starts as a copy of the English text (the iOS fallback). Only a value that differs is translated.
@@ -43,13 +44,16 @@ function shipped(lang: Lang): Map<string, string> {
 
 const langs = Object.values(LANGS) as Lang[];
 
-test('LANGS covers zh-Hans and ru', () => {
-  assert.deepEqual(langs.map((l) => l.code).sort(), ['ru', 'zh-Hans']);
+test('LANGS covers zh-Hans, ru, el and es', () => {
+  assert.deepEqual(langs.map((l) => l.code).sort(), ['el', 'es', 'ru', 'zh-Hans']);
 });
 
 test('every LANGS entry points at existing ui, catalog, plist and state files', () => {
   for (const lang of langs) {
-    for (const f of ['ui', 'catalog', 'plist', 'state']) {
+    // el and es are JS-only on iOS: no plist file.
+    const required = lang.code === 'el' || lang.code === 'es' ? ['ui', 'catalog', 'state'] : ['ui', 'catalog', 'plist', 'state'];
+    assert.equal(Boolean(lang.files.plist), required.includes('plist'), `${lang.code}: plist presence`);
+    for (const f of required) {
       assert.ok(lang.files[f], `${lang.code}: files.${f} missing`);
       assert.ok(existsSync(join(ROOT, lang.files[f])), `${lang.code}: files.${f} = ${lang.files[f]} does not exist`);
     }
@@ -84,4 +88,17 @@ for (const lang of langs) {
       assert.equal(st[key]?.[hashField], hashEn(value), `${key}: edited after review; re-review it or mark it manual with a new ${hashField}`);
     }
   });
+
+  if (lang.code === 'el') {
+    test('no shipped el value has an all-caps word with a tonos', () => {
+      for (const [key, value] of shipped(lang)) {
+        // Words of two or more letters, entirely uppercase, containing an accented capital.
+        for (const word of value.split(/[^\p{L}]+/u)) {
+          if ([...word].length >= 2 && word === word.toUpperCase() && word !== word.toLowerCase() && /[ΆΈΉΊΌΎΏ]/.test(word)) {
+            assert.fail(`${key}: all-caps word with tonos: ${word}`);
+          }
+        }
+      }
+    });
+  }
 }

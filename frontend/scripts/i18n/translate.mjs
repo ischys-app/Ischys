@@ -2,16 +2,18 @@
 /**
  * Translate new/changed English strings with DeepSeek. Languages and their files: langs.mjs.
  *
- *   node scripts/i18n/translate.mjs --lang zh-Hans|ru [--dry-run] [--retry-flagged] [--batch 60]
- *   node scripts/i18n/translate.mjs --apply-review <file> --lang zh-Hans|ru
+ *   node scripts/i18n/translate.mjs --lang zh-Hans|ru|el|es [--dry-run] [--retry-flagged] [--batch 60]
+ *   node scripts/i18n/translate.mjs --apply-review <file> --lang zh-Hans|ru|el|es
  *
  * --dry-run: no network, no file writes; prints the counts and one sample prompt.
  * --retry-flagged: also re-asks flagged keys; a stored review reason is appended to the note.
- * ru (keepEdgeSpace) stores the English source's leading/trailing whitespace around the output.
+ * ru, el and es (keepEdgeSpace) store the English source's leading/trailing whitespace around the output.
  *
  * Plural keys: zh has no singular, so `x_one` is skipped when `x_other` exists
  * and only `_other` is translated. ru translates four forms per count key
- * (x_one/_few/_many/_other, see expandPlurals in core.mjs).
+ * (x_one/_few/_many/_other, see expandPlurals in core.mjs); el and es translate two (x_one/_other).
+ * el and es have no plist file, so plist items are not collected for them. el all-caps
+ * English is stored as upperDisplay of the output (no tonos).
  * ru review rows carry denyHits (deny-list words the English lacks); such a row is only
  * applied as ok when the reviewer adds "denyCleared": true.
  * The API key comes from DEEPSEEK_API_KEY only and is never printed.
@@ -56,7 +58,7 @@ const writeJson = (p, v) => {
 
 /** English sources for the selected language: catalog notes overridden, plural forms expanded. */
 async function collectSources() {
-  const items = (await collectSourcesFrom(ROOT)).map((it) => {
+  const items = (await collectSourcesFrom(ROOT)).filter((it) => P.plist || !it.key.startsWith('plist:')).map((it) => {
     const note = LANG.catalogNotes?.[it.key.slice(0, it.key.indexOf(':'))];
     return note ? { ...it, note } : it;
   });
@@ -68,7 +70,8 @@ function loadTargets() {
   const ui = readJson(P.ui, {});
   const catalog = readJson(P.catalog, {});
   for (const ns of Object.values(CATALOG_NS)) catalog[ns] ||= {};
-  const plist = readJson(P.plist, {});
+  // el / es have no plist file: nothing is read or written for plist keys.
+  const plist = P.plist ? readJson(P.plist, {}) : null;
   const locate = (key) => {
     const i = key.indexOf(':');
     const prefix = key.slice(0, i);
@@ -81,7 +84,7 @@ function loadTargets() {
     get: (key) => { const [o, n] = locate(key); return o[n]; },
     set: (key, v) => { const [o, n] = locate(key); o[n] = v; },
     del: (key) => { const [o, n] = locate(key); delete o[n]; },
-    save: () => { writeJson(P.ui, ui); writeJson(P.catalog, catalog); writeJson(P.plist, plist); },
+    save: () => { writeJson(P.ui, ui); writeJson(P.catalog, catalog); if (plist) writeJson(P.plist, plist); },
   };
 }
 
@@ -160,7 +163,7 @@ async function applyReview(file) {
 }
 
 async function main() {
-  const usage = 'usage: --lang zh-Hans|ru [--dry-run] [--retry-flagged] [--batch 60] | --apply-review <file> --lang zh-Hans|ru';
+  const usage = 'usage: --lang zh-Hans|ru|el|es [--dry-run] [--retry-flagged] [--batch 60] | --apply-review <file> --lang zh-Hans|ru|el|es';
   const reviewFile = arg('--apply-review');
   // Every mode needs an explicit --lang; nothing defaults to a language.
   const code = arg('--lang');

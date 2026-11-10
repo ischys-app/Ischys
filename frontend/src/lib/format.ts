@@ -177,15 +177,19 @@ export function parseIso(iso: string): Date {
   return parse(iso);
 }
 
-/** e.g. "Jan 2024" — Profile subtitle "training since …". Returns '' for null/blank. */
+/**
+ * e.g. "Jan 2024" — for "since {date}" phrases (Profile subtitle, merge-duplicates, profile cards).
+ * Greek uses the accusative (after «από») and Spanish is lower case (after «desde»).
+ * Returns '' for null/blank.
+ */
 export function fmtMonthYear(iso?: string | null, lang: Lang = getLang()): string {
   if (!iso) return '';
   const d = parse(iso);
   if (Number.isNaN(d.getTime())) return '';
   if (lang === 'zh-Hans') return `${d.getFullYear()}年${d.getMonth() + 1}月`;
   if (lang === 'ru') return `${MONTH_RU_NOM[d.getMonth()]} ${d.getFullYear()}`;
-  if (lang === 'el') return `${MONTH_EL_NOM[d.getMonth()]} ${d.getFullYear()}`;
-  if (lang === 'es') return `${MONTH_ES_NOM[d.getMonth()]} de ${d.getFullYear()}`;
+  if (lang === 'el') return `${MONTH_EL_NOM[d.getMonth()].replace(/ς$/, '')} ${d.getFullYear()}`;
+  if (lang === 'es') return `${MONTH_ES_NOM[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
   return `${MONTH_TITLE[d.getMonth()]} ${d.getFullYear()}`;
 }
 

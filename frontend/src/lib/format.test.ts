@@ -255,8 +255,9 @@ test('el dates', () => {
   assert.equal(fmtWorkoutDate('2026-11-10', 'el'), 'Τρι, 10 Νοεμβρίου · 00:00');
   assert.equal(fmtWorkoutDate('2026-05-01', 'el'), 'Παρ, 1 Μαΐου · 00:00');
   assert.equal(fmtDateOnly('2026-11-10', 'el'), 'Τρι, 10 Νοεμβρίου 2026');
-  assert.equal(fmtMonthYear('2026-11-10', 'el'), 'Νοέμβριος 2026');
-  assert.equal(fmtMonthYear('2026-05-01', 'el'), 'Μάιος 2026');
+  assert.equal(fmtMonthYear('2026-11-10', 'el'), 'Νοέμβριο 2026');
+  assert.equal(fmtMonthYear('2026-05-01', 'el'), 'Μάιο 2026');
+  assert.equal(fmtMonthYear('2025-07-04', 'el'), 'Ιούλιο 2025');
   assert.equal(fmtMonthYear(null, 'el'), '');
   assert.equal(fmtShortDay(tue, 'el'), 'Τρι 10 Νοε');
   assert.equal(fmtShortDay(fri, 'el'), 'Παρ 1 Μαΐ');
@@ -287,8 +288,9 @@ test('es dates', () => {
   assert.equal(fmtWorkoutDate('2026-11-10', 'es'), 'mar, 10 nov · 00:00');
   assert.equal(fmtWorkoutDate('2026-05-01', 'es'), 'vie, 1 may · 00:00');
   assert.equal(fmtDateOnly('2026-11-10', 'es'), 'mar, 10 nov 2026');
-  assert.equal(fmtMonthYear('2026-11-10', 'es'), 'Noviembre de 2026');
-  assert.equal(fmtMonthYear('2026-05-01', 'es'), 'Mayo de 2026');
+  assert.equal(fmtMonthYear('2026-11-10', 'es'), 'noviembre de 2026');
+  assert.equal(fmtMonthYear('2026-05-01', 'es'), 'mayo de 2026');
+  assert.equal(fmtMonthYear('2025-07-04', 'es'), 'julio de 2025');
   assert.equal(fmtMonthYear(null, 'es'), '');
   assert.equal(fmtShortDay(tue, 'es'), 'mar 10 nov');
   assert.equal(fmtShortDay(new Date(2026, 10, 11), 'es'), 'mié 11 nov');

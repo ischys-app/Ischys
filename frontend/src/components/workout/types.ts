@@ -132,6 +132,7 @@ export function setBadge(sets: readonly { type: SetType }[], index: number): str
   return String(working);
 }
 
+// Demo seed only (seedWorkout): never stored. Stored sets use newSetId() (#158).
 let _seq = 0;
 const uid = (p: string) => `${p}-${_seq++}`;
 

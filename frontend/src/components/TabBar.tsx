@@ -44,9 +44,9 @@ export function TabBar({ state, navigation }: TabBarProps) {
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 10 }]} pointerEvents="box-none">
-      {/* The outline is its own layer on top, not a border on the blur: a border
-          drawn on the BlurView sat over the blur's darker straight edges, so in
-          light mode it looked heavier along the sides than round the corners (#157). */}
+      {/* The outline is its own layer on top of the blur and tint. As a border on
+          the BlurView it looked heavier along the sides than round the corners in
+          light mode (#157); as an overlay it is even all the way round. */}
       <View style={[styles.bar, Platform.OS === 'android' && styles.barAndroid]}>
         <BlurView intensity={26} tint={scheme} style={StyleSheet.absoluteFill} />
         <View style={styles.tint} />
@@ -122,7 +122,8 @@ const styles = themed(() =>
       padding: 7,
       borderRadius: 22,
       overflow: 'hidden',
-      // drop shadow (iOS) + elevation (Android)
+      // Elevation on Android. The iOS shadow props draw nothing: the clip
+      // (overflow hidden) suppresses them, as it did before #157.
       shadowColor: '#000',
       shadowOpacity: 0.6,
       shadowRadius: 24,

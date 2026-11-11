@@ -11,3 +11,12 @@ test('set ids from two app launches never collide', async () => {
   assert.deepEqual(second.filter((id) => first.includes(id)), [], 'an id from an earlier launch was handed out again');
   assert.equal(new Set(first).size, first.length);
 });
+
+test('makeSet takes its id from newSetId, not a launch counter', async () => {
+  // types.ts cannot load under node (extensionless imports), so check its source.
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('./types.ts', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('export function makeSet'), src.indexOf('export function makeSet') + 300);
+  assert.match(body, /id: newSetId\(\)/);
+  assert.doesNotMatch(body, /uid\(/);
+});

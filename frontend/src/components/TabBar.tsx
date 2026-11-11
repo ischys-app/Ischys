@@ -44,7 +44,11 @@ export function TabBar({ state, navigation }: TabBarProps) {
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 10 }]} pointerEvents="box-none">
-      <BlurView intensity={26} tint={scheme} style={[styles.bar, Platform.OS === 'android' && styles.barAndroid]}>
+      {/* The outline is its own layer on top, not a border on the blur: a border
+          drawn on the BlurView sat over the blur's darker straight edges, so in
+          light mode it looked heavier along the sides than round the corners (#157). */}
+      <View style={[styles.bar, Platform.OS === 'android' && styles.barAndroid]}>
+        <BlurView intensity={26} tint={scheme} style={StyleSheet.absoluteFill} />
         <View style={styles.tint} />
         {state.routes.map((route, index) => {
           const meta = TABS[route.name];
@@ -98,7 +102,8 @@ export function TabBar({ state, navigation }: TabBarProps) {
             </Pressable>
           );
         })}
-      </BlurView>
+        <View pointerEvents="none" style={styles.outline} />
+      </View>
     </View>
   );
 }
@@ -113,11 +118,10 @@ const styles = themed(() =>
       flexDirection: 'row',
       alignItems: 'stretch',
       gap: 4,
-      padding: 6,
+      // 6 inside the 1pt outline, which no longer takes layout space.
+      padding: 7,
       borderRadius: 22,
       overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: color.chromeBorder,
       // drop shadow (iOS) + elevation (Android)
       shadowColor: '#000',
       shadowOpacity: 0.6,
@@ -126,6 +130,16 @@ const styles = themed(() =>
       elevation: 18,
     },
     tint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.chromeTint },
+    outline: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: color.chromeBorder,
+    },
     tab: {
       flex: 1,
       borderRadius: 16,

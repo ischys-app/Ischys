@@ -10,6 +10,7 @@ import { type Unit, unitLabel } from '../../domain/units';
 import { color, themed, withAlpha } from '../../theme/tokens';
 import { getLang } from '../../i18n/current';
 import { t } from '../../i18n/t.ts';
+import { newSetId } from './setId.ts';
 import { equipmentLabel } from '../../i18n/catalogNames';
 
 export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
@@ -131,6 +132,7 @@ export function setBadge(sets: readonly { type: SetType }[], index: number): str
   return String(working);
 }
 
+// Demo seed only (seedWorkout): never stored. Stored sets use newSetId() (#158).
 let _seq = 0;
 const uid = (p: string) => `${p}-${_seq++}`;
 
@@ -198,5 +200,5 @@ export function seedWorkout(): Exercise[] {
 
 /** Fresh normal set for + Add Set (copies prior set's prev refs). */
 export function makeSet(prevWeight?: string, prevReps?: string): WorkoutSet {
-  return { id: uid('set'), type: 'normal', weight: '', reps: '', prevWeight, prevReps, done: false };
+  return { id: newSetId(), type: 'normal', weight: '', reps: '', prevWeight, prevReps, done: false };
 }

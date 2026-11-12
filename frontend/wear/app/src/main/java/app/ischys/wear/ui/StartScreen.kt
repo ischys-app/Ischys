@@ -57,46 +57,51 @@ fun StartScreen(ui: UiState) {
   // routine list: opened on its own, nothing else would ever send it.
   LaunchedEffect(Unit) { WorkoutModel.startAppeared() }
 
-  ScalingLazyColumn(
-    modifier = Modifier.fillMaxSize(),
-    state = rememberScalingLazyListState(initialCenterItemIndex = 0),
-    // Starts under the clock rather than centred: the first row is a title.
-    autoCentering = null,
-    contentPadding = PaddingValues(start = 12.s(), end = 12.s(), top = 26.s(), bottom = 34.s()),
-    verticalArrangement = Arrangement.spacedBy(6.s()),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    item { TitleRow() }
-    // An unreachable phone is urgent, so the status moves up top as a warning.
-    if (!ui.phoneReachable) {
-      item { WarningChip("Phone not reachable") }
-    } else if (ui.phoneAppClosed) {
-      item { WarningChip("Open Ischys on phone") }
-    }
-    item { EmptyCard(ui.phoneReachable, handingOff) }
-    item {
-      Text(
-        "ROUTINES",
-        Modifier.fillMaxWidth().padding(start = 6.s(), top = 2.s()),
-        style = Ischys.mono(8.t(), Ischys.text3, 1.2.t()),
-      )
-    }
-    if (ui.routines.isEmpty()) {
-      item { NoRoutinesBox() }
-    } else {
-      items(ui.routines, key = { it.id }) { routine ->
-        val pending = ui.pendingRoutineId == routine.id
-        RoutineRow(
-          routine = routine,
-          pending = pending,
-          // Unreachable dims every row; a hand-off dims all but its own.
-          dimmed = (!ui.phoneReachable && !handingOff) || (handingOff && !pending),
-          enabled = !handingOff,
+  val list = rememberScalingLazyListState(initialCenterItemIndex = 0)
+  ListScaffold(list) {
+    ScalingLazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      state = list,
+      // Starts under the clock rather than centred: the first row is a title.
+      // The bottom keeps room so the last full-width row can rest clear of a
+      // round screen's curve (Wear quality: watch shapes).
+      autoCentering = null,
+      contentPadding = PaddingValues(start = 12.s(), end = 12.s(), top = 26.s(), bottom = 52.s()),
+      verticalArrangement = Arrangement.spacedBy(6.s()),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      item { TitleRow() }
+      // An unreachable phone is urgent, so the status moves up top as a warning.
+      if (!ui.phoneReachable) {
+        item { WarningChip("Phone not reachable") }
+      } else if (ui.phoneAppClosed) {
+        item { WarningChip("Open Ischys on phone") }
+      }
+      item { EmptyCard(ui.phoneReachable, handingOff) }
+      item {
+        Text(
+          "ROUTINES",
+          Modifier.fillMaxWidth().padding(start = 6.s(), top = 2.s()),
+          style = Ischys.mono(8.t(), Ischys.text3, 1.2.t()),
         )
       }
+      if (ui.routines.isEmpty()) {
+        item { NoRoutinesBox() }
+      } else {
+        items(ui.routines, key = { it.id }) { routine ->
+          val pending = ui.pendingRoutineId == routine.id
+          RoutineRow(
+            routine = routine,
+            pending = pending,
+            // Unreachable dims every row; a hand-off dims all but its own.
+            dimmed = (!ui.phoneReachable && !handingOff) || (handingOff && !pending),
+            enabled = !handingOff,
+          )
+        }
+      }
+      // The reassuring footer only earns its place when reachable and idle.
+      if (ui.phoneReachable && !ui.phoneAppClosed && !handingOff) item { SyncedChip() }
     }
-    // The reassuring footer only earns its place when reachable and idle.
-    if (ui.phoneReachable && !ui.phoneAppClosed && !handingOff) item { SyncedChip() }
   }
 }
 

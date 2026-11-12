@@ -60,19 +60,24 @@ fun SummaryScreen(ui: UiState) {
     }
   }
 
-  ScalingLazyColumn(
-    modifier = Modifier.fillMaxSize(),
-    state = rememberScalingLazyListState(initialCenterItemIndex = 0),
-    // Starts under the clock rather than centred: the first row is a title.
-    autoCentering = null,
-    contentPadding = PaddingValues(start = 12.s(), end = 12.s(), top = 24.s(), bottom = 34.s()),
-    verticalArrangement = Arrangement.spacedBy(5.s()),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    when {
-      summary != null -> recap(summary)
-      timedOut -> unavailable()
-      else -> saving()
+  val list = rememberScalingLazyListState(initialCenterItemIndex = 0)
+  ListScaffold(list) {
+    ScalingLazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      state = list,
+      // Starts under the clock rather than centred: the first row is a title.
+      // The bottom keeps room so the last full-width row can rest clear of a
+      // round screen's curve (Wear quality: watch shapes).
+      autoCentering = null,
+      contentPadding = PaddingValues(start = 12.s(), end = 12.s(), top = 24.s(), bottom = 52.s()),
+      verticalArrangement = Arrangement.spacedBy(5.s()),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      when {
+        summary != null -> recap(summary)
+        timedOut -> unavailable()
+        else -> saving()
+      }
     }
   }
 }

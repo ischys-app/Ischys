@@ -6,32 +6,23 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    groups:
-      # Expo/React Native move as a unit; separate PRs just conflict with each other.
-      expo:
-        patterns: ['expo', 'expo-*', '@expo/*', 'react-native', 'react-native-*']
-    # An Expo SDK upgrade (expo-* major, React Native minor, the React it pins)
-    # is a planned project with device testing, not a dependency bump. Patch
-    # updates within the current SDK still come through.
+    # The Expo SDK pins exact versions of expo-*, React, React Native and the
+    # native libraries around them (reanimated, worklets, screens, svg…), and
+    # Dependabot can't see those pins: its "patch" PRs moved native modules
+    # past what SDK 57 expects. That family is kept in step with
+    # `npx expo install --fix` during planned SDK maintenance instead.
     ignore:
       - dependency-name: 'expo'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'expo-*'
-        update-types: ['version-update:semver-major']
       - dependency-name: '@expo/*'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'babel-preset-expo'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'react-native'
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
-      - dependency-name: 'react-native-*'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'react'
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: 'react-dom'
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: '@types/react'
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: '@bacons/apple-targets'
 
   - package-ecosystem: github-actions
     directory: /

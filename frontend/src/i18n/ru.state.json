@@ -4784,11 +4784,6 @@
     "status": "ok",
     "ruHash": "e017a2b5a22668bb"
   },
-  "ui:import.check4": {
-    "enHash": "ae362a400ba12ecb",
-    "status": "ok",
-    "ruHash": "5588470b5643b0c3"
-  },
   "ui:import.supported": {
     "enHash": "c4237dc197e1a8a6",
     "status": "ok",
@@ -9323,5 +9318,10 @@
     "enHash": "7bcf5a6dd26afe06",
     "status": "ok",
     "ruHash": "88399ee2a26cc193"
+  },
+  "ui:import.check4": {
+    "enHash": "491bfa03ae5629b5",
+    "status": "ok",
+    "ruHash": "72960a6204bad87a"
   }
 }

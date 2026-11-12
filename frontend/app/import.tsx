@@ -146,7 +146,10 @@ function XGlyph({ color: strokeColor }: { color: string }) {
  */
 function summarizeCsvPreview(text: string, weightUnit: Unit): ParsePayload {
   const s = summarizeWorkoutCsv(text, { weightUnit });
-  if (s.unmapped || s.workouts === 0) return { supported: false };
+  if (s.unmapped) return { supported: false };
+  // A file that mapped but held only cardio rows still gets its skip line; the
+  // Import button stays off because there is nothing to write.
+  if (s.workouts === 0 && s.cardioSkipped === 0) return { supported: false };
   return {
     supported: true,
     kind: 'csv',
@@ -712,6 +715,7 @@ function PreviewState({
   const { profile, count } = useActiveProfile();
   const first = firstName(profileNameLabel(profile.name));
   const into = PROFILES_ENABLED && count >= 2 && first ? t('import.into', { name: first }) : '';
+  const importDisabled = !parse || !parse.supported || parse.workouts === 0;
   const importLabel =
     parse && parse.supported
       ? t('import.importCount', { count: workoutCount, into, unit: unitSuffix })
@@ -808,14 +812,14 @@ function PreviewState({
 
       <PressableScale
         onPress={onImport}
-        disabled={!parse || !parse.supported}
+        disabled={importDisabled}
         style={[
           styles.primaryBtn,
           styles.importBtn,
-          (!parse || !parse.supported) && styles.importBtnDisabled,
+          importDisabled && styles.importBtnDisabled,
         ]}
         accessibilityRole="button"
-        accessibilityState={{ disabled: !parse || !parse.supported }}
+        accessibilityState={{ disabled: importDisabled }}
         accessibilityLabel={importLabel}
       >
         <Text style={styles.importBtnText}>{importLabel}</Text>
@@ -932,6 +936,11 @@ function SuccessState({
       {result.rows_skipped > 0 && (
         <Text style={styles.successSkipped}>
           {t('import.rowsSkipped', { count: result.rows_skipped })}
+        </Text>
+      )}
+      {(result.cardio_skipped ?? 0) > 0 && (
+        <Text style={styles.successSkipped}>
+          {t('import.skipCardio', { count: result.cardio_skipped ?? 0 })}
         </Text>
       )}
       {result.warnings.map((w) => (

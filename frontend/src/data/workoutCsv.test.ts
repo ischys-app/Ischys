@@ -295,3 +295,53 @@ test('CSV export writes the stored English names under zh-Hans too (#136)', asyn
     setLang(before);
   }
 });
+
+const CARDIO_HEADER = 'title,start_time,exercise_title,set_type,weight_kg,reps,distance_km,duration_seconds';
+
+test('a file of only cardio rows maps fine and reports them skipped, with nothing to import', () => {
+  const csv = [CARDIO_HEADER, 'Run,"11 Jul 2026, 07:00",Running,normal,,,10,3000'].join('\n');
+  const s = summarizeWorkoutCsv(csv);
+  assert.equal(s.unmapped, false);
+  assert.equal(s.workouts, 0);
+  assert.equal(s.sets, 0);
+  assert.equal(s.cardioSkipped, 1);
+});
+
+test('a row with weight and no reps is kept', () => {
+  const csv = [CARDIO_HEADER, 'Gym,"10 Jul 2026, 09:00",Farmer Carry,normal,40,,,'].join('\n');
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 0);
+  assert.equal(parsed.workouts[0].exercises[0].sets.length, 1);
+  assert.equal(parsed.workouts[0].exercises[0].sets[0].weight, 40);
+});
+
+test('an explicit 0,0 row is dropped as cardio', () => {
+  const csv = [CARDIO_HEADER, 'Gym,"10 Jul 2026, 09:00",Bench,normal,0,0,,'].join('\n');
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 1);
+  assert.equal(parsed.workouts.length, 0);
+});
+
+test('a blank warm-up row is dropped', () => {
+  const csv = [
+    CARDIO_HEADER,
+    'Gym,"10 Jul 2026, 09:00",Bench,warmup,,,,',
+    'Gym,"10 Jul 2026, 09:00",Bench,normal,60,8,,',
+  ].join('\n');
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 1);
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets.map((s) => s.type), ['normal']);
+});
+
+test('an Ischys export with one blank set drops only that set and keeps the others\' RPE', () => {
+  const csv = toWorkoutCsv(
+    ratedWorkout([
+      { position: 0, type: 'normal', weight: 60, reps: 8, rpe: 8 },
+      { position: 1, type: 'normal', weight: null, reps: null, rpe: null },
+      { position: 2, type: 'normal', weight: 60, reps: 6, rpe: 9.5 },
+    ]),
+  );
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 1);
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets.map((s) => s.rpe), [8, 9.5]);
+});

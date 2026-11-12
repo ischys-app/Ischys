@@ -232,6 +232,10 @@ function resolveColumns(header: string[]) {
  * Parse a workout CSV into structured workouts, grouped by workout (title + start)
  * then by exercise. `weightUnit` is only consulted when the header does not state a
  * unit — an explicit `weight_kg` column is always already canonical.
+ *
+ * Rows with neither weight nor reps are dropped (counted in `cardioSkipped`), so an
+ * exercise or workout made only of blank rows does not re-import from CSV. The JSON
+ * backup is the loss-free format.
  */
 export function parseWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): ParsedWorkoutCsv {
   const rows = parseCsv(text);

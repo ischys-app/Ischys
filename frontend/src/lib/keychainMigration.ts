@@ -43,6 +43,8 @@ export const DEVICE_KEYS: readonly string[] = [
   'ischys.reviewWorkoutCount',
   'ischys.reviewLastWorkoutId',
   'ischys.reviewAskedAt',
+  'ischys.reviewAskedCount',
+  'ischys.reviewAskedVersion',
   'ischys.profile.name',
   'ischys.healthConnected',
   'ischys.healthLastSync',

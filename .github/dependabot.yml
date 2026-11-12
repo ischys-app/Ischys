@@ -10,6 +10,28 @@ updates:
       # Expo/React Native move as a unit; separate PRs just conflict with each other.
       expo:
         patterns: ['expo', 'expo-*', '@expo/*', 'react-native', 'react-native-*']
+    # An Expo SDK upgrade (expo-* major, React Native minor, the React it pins)
+    # is a planned project with device testing, not a dependency bump. Patch
+    # updates within the current SDK still come through.
+    ignore:
+      - dependency-name: 'expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'expo-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@expo/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'babel-preset-expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-native'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: 'react-native-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: 'react-dom'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: '@types/react'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
 
   - package-ecosystem: github-actions
     directory: /

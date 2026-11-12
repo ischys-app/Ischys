@@ -356,6 +356,7 @@ async function importWorkoutCsv(text: string, opts?: { weightUnit?: Unit }): Pro
     exercises_created: exercisesCreated,
     sets_imported: setsImported,
     rows_skipped: parsed.rowsSkipped,
+    cardio_skipped: parsed.cardioSkipped,
     warnings,
     imported_sessions: importedSessions,
   };

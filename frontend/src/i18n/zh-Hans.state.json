@@ -4139,11 +4139,6 @@
     "status": "ok",
     "zhHash": "55dac6e42833e37b"
   },
-  "ui:import.check4": {
-    "enHash": "ae362a400ba12ecb",
-    "status": "ok",
-    "zhHash": "e70a2c366589b815"
-  },
   "ui:import.supported": {
     "enHash": "c4237dc197e1a8a6",
     "status": "ok",
@@ -8458,5 +8453,10 @@
     "enHash": "7bcf5a6dd26afe06",
     "status": "manual",
     "zhHash": "d2ad58f8cae3cfe1"
+  },
+  "ui:import.check4": {
+    "enHash": "491bfa03ae5629b5",
+    "status": "ok",
+    "zhHash": "a67fb8609da6b70a"
   }
 }

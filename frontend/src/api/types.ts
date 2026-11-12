@@ -333,6 +333,8 @@ export type ImportResult = {
   exercises_created: number;
   sets_imported: number;
   rows_skipped: number;
+  /** CSV rows with neither weight nor reps, left out of the import. */
+  cardio_skipped?: number;
   warnings: string[];
   /**
    * The titled workouts this import created, in the order they were written.

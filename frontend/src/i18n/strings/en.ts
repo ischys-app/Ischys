@@ -3459,8 +3459,8 @@ export const strings: Record<string, StringDef> = {
     note: 'Checklist line: what the import brings in. Keep Ischys untranslated.',
   },
   'import.check4': {
-    en: 'Notes on workouts and exercises',
-    note: 'Checklist line: what the import brings in.',
+    en: 'Effort ratings (RPE), when the file has them',
+    note: 'Checklist line: what the import brings in. Keep RPE as is.',
   },
   'import.supported': {
     en: 'Supported: {json} (a full backup) and a {csv}. Cardio-only CSV rows (distance/duration without weight × reps) are skipped.',

@@ -911,7 +911,6 @@
   "import.check1": "Каждый подход с весом × повторениями",
   "import.check2": "Названия тренировок, даты и группировка упражнений",
   "import.check3": "Типы подходов (разминочный / дроп / до отказа), сопоставленные с Ischys",
-  "import.check4": "Заметки к тренировкам и упражнениям",
   "import.supported": "Поддерживается: {json} (полная резервная копия) и {csv}. Строки CSV только с кардио (дистанция/длительность без веса × повторений) пропускаются.",
   "import.supportedCsv": "CSV тренировок",
   "import.failed": "Не удалось импортировать",
@@ -1086,5 +1085,6 @@
   "settings.languageFollowing": "Как в {device} · {language}",
   "common.ok": "ОК",
   "settings.languageFooterIos": "Запросы Apple Health и системные меню следуют языку iPhone.",
-  "settings.languageFooterAndroid": "Запросы Health Connect и системные меню следуют языку телефона."
+  "settings.languageFooterAndroid": "Запросы Health Connect и системные меню следуют языку телефона.",
+  "import.check4": "Оценки усилия (RPE), если они есть в файле"
 }

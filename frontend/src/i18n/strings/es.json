@@ -841,7 +841,6 @@
   "import.check1": "Cada serie con peso × repeticiones",
   "import.check2": "Nombres de entrenamientos, fechas y agrupaciones de ejercicios",
   "import.check3": "Tipos de serie (calentamiento / drop / fallo) asignados a Ischys",
-  "import.check4": "Notas en entrenamientos y ejercicios",
   "import.supported": "Compatible: {json} (un respaldo completo) y un {csv}. Las filas CSV solo de cardio (distancia/duración sin peso × repeticiones) se omiten.",
   "import.supportedJson": "JSON de Ischys",
   "import.supportedCsv": "CSV de entrenamientos",
@@ -975,5 +974,6 @@
   "workout.supersetHeader": "SUPERSERIE {letter} · RONDA {current} DE {rounds}",
   "warmup.insert_one": "Añadir {count} calentamiento",
   "warmup.insert_other": "Añadir {count} calentamientos",
-  "measurements.log": "Anotar"
+  "measurements.log": "Anotar",
+  "import.check4": "Valoraciones de esfuerzo (RPE), cuando el archivo las incluye"
 }

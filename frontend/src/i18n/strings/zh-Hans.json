@@ -823,7 +823,6 @@
   "import.check1": "每一组包含重量 × 次数",
   "import.check2": "训练名称、日期和动作分组",
   "import.check3": "组类型（热身组 / 递减组 / 力竭组）映射到 Ischys",
-  "import.check4": "训练和动作的备注",
   "import.supported": "支持：{json}（完整备份）和{csv}。仅有有氧运动的 CSV 行（距离/时长，无重量 × 次数）会被跳过。",
   "import.supportedCsv": "训练 CSV",
   "import.failed": "导入失败",
@@ -910,5 +909,6 @@
   "settings.language": "语言",
   "settings.languageFollowing": "跟随{device} · {language}",
   "settings.languageFooterIos": "Apple Health 的提示和系统菜单跟随 iPhone 语言。",
-  "settings.languageFooterAndroid": "Health Connect 的提示和系统菜单跟随手机语言。"
+  "settings.languageFooterAndroid": "Health Connect 的提示和系统菜单跟随手机语言。",
+  "import.check4": "用力程度评分（RPE），如果文件中有的话"
 }

@@ -256,6 +256,32 @@ test('a workout with neither duration nor end time reports null, not zero', () =
   assert.equal(w.endedAt, null);
 });
 
+/** A lift, a run with only distance and time, and a second workout that is cardio alone. */
+const MIXED_CSV = [
+  'title,start_time,exercise_title,set_type,weight_kg,reps,distance_km,duration_seconds',
+  'Gym,"10 Jul 2026, 09:00",Bench,normal,60,8,,',
+  'Gym,"10 Jul 2026, 09:00",Treadmill,normal,,,5,1500',
+  'Gym,"10 Jul 2026, 09:00",Pull Up,normal,,10,,',
+  'Run,"11 Jul 2026, 07:00",Running,normal,,,10,3000',
+].join('\n');
+
+test('cardio-only rows are left out of the parse, not imported as empty sets', () => {
+  const parsed = parseWorkoutCsv(MIXED_CSV);
+  assert.equal(parsed.cardioSkipped, 2);
+  assert.deepEqual(parsed.workouts.map((w) => w.title), ['Gym']);
+  assert.deepEqual(parsed.workouts[0].exercises.map((e) => e.title), ['Bench', 'Pull Up']);
+  assert.deepEqual(parsed.workouts[0].exercises.map((e) => e.sets.length), [1, 1]);
+});
+
+test('the preview counts cardio rows as skipped and leaves them out of the totals', () => {
+  const s = summarizeWorkoutCsv(MIXED_CSV);
+  assert.equal(s.cardioSkipped, 2);
+  assert.equal(s.workouts, 1);
+  assert.equal(s.exercises, 2);
+  assert.equal(s.sets, 2);
+  assert.deepEqual(s.firstWorkouts, [{ name: 'Gym', count: 2 }]);
+});
+
 test('CSV export writes the stored English names under zh-Hans too (#136)', async () => {
   const { setLang, getLang } = await import('../i18n/current.ts');
   const before = getLang();
@@ -268,4 +294,54 @@ test('CSV export writes the stored English names under zh-Hans too (#136)', asyn
   } finally {
     setLang(before);
   }
+});
+
+const CARDIO_HEADER = 'title,start_time,exercise_title,set_type,weight_kg,reps,distance_km,duration_seconds';
+
+test('a file of only cardio rows maps fine and reports them skipped, with nothing to import', () => {
+  const csv = [CARDIO_HEADER, 'Run,"11 Jul 2026, 07:00",Running,normal,,,10,3000'].join('\n');
+  const s = summarizeWorkoutCsv(csv);
+  assert.equal(s.unmapped, false);
+  assert.equal(s.workouts, 0);
+  assert.equal(s.sets, 0);
+  assert.equal(s.cardioSkipped, 1);
+});
+
+test('a row with weight and no reps is kept', () => {
+  const csv = [CARDIO_HEADER, 'Gym,"10 Jul 2026, 09:00",Farmer Carry,normal,40,,,'].join('\n');
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 0);
+  assert.equal(parsed.workouts[0].exercises[0].sets.length, 1);
+  assert.equal(parsed.workouts[0].exercises[0].sets[0].weight, 40);
+});
+
+test('an explicit 0,0 row is dropped as cardio', () => {
+  const csv = [CARDIO_HEADER, 'Gym,"10 Jul 2026, 09:00",Bench,normal,0,0,,'].join('\n');
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 1);
+  assert.equal(parsed.workouts.length, 0);
+});
+
+test('a blank warm-up row is dropped', () => {
+  const csv = [
+    CARDIO_HEADER,
+    'Gym,"10 Jul 2026, 09:00",Bench,warmup,,,,',
+    'Gym,"10 Jul 2026, 09:00",Bench,normal,60,8,,',
+  ].join('\n');
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 1);
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets.map((s) => s.type), ['normal']);
+});
+
+test('an Ischys export with one blank set drops only that set and keeps the others\' RPE', () => {
+  const csv = toWorkoutCsv(
+    ratedWorkout([
+      { position: 0, type: 'normal', weight: 60, reps: 8, rpe: 8 },
+      { position: 1, type: 'normal', weight: null, reps: null, rpe: null },
+      { position: 2, type: 'normal', weight: 60, reps: 6, rpe: 9.5 },
+    ]),
+  );
+  const parsed = parseWorkoutCsv(csv);
+  assert.equal(parsed.cardioSkipped, 1);
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets.map((s) => s.rpe), [8, 9.5]);
 });

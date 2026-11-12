@@ -2,7 +2,7 @@
  * When to ask the store for its review prompt.
  *
  * The first ask comes after a few finished workouts. After that the app may ask
- * again, but rarely: only on a different version, and only once enough time and
+ * again, but rarely: only on a newer version, and only once enough time and
  * enough training have passed that the person has something new to rate. The
  * system shows the real prompt a handful of times a year at most and may show
  * nothing at all, so a single ask is easily wasted.
@@ -33,11 +33,25 @@ export type ReviewAskState = {
   now: number;
 };
 
+/** True when dotted version `a` is strictly newer than `b`; false if either is unparseable. */
+export function isNewerVersion(a: string, b: string): boolean {
+  const pa = a.split('.').map((p) => Number.parseInt(p, 10));
+  const pb = b.split('.').map((p) => Number.parseInt(p, 10));
+  if (pa.some(Number.isNaN) || pb.some(Number.isNaN)) return false;
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 export function shouldAskForReview(s: ReviewAskState): boolean {
   if (s.askedAt === null) return s.count >= FIRST_ASK_AT;
 
   // Without a version there is no telling a new release from the one already asked on.
-  if (!s.appVersion || s.appVersion === (s.askedVersion ?? '')) return false;
+  if (!s.appVersion) return false;
+  if (s.askedVersion && !isNewerVersion(s.appVersion, s.askedVersion)) return false;
   if (s.now - s.askedAt < REASK_MIN_DAYS * DAY_MS) return false;
   return s.count - (s.askedCount ?? FIRST_ASK_AT) >= REASK_MIN_WORKOUTS;
 }

@@ -33,7 +33,7 @@ const KEY_ASKED_COUNT = 'ischys.reviewAskedCount';
 /** App version we last asked on. */
 const KEY_ASKED_VERSION = 'ischys.reviewAskedVersion';
 
-const APP_VERSION = Constants.expoConfig?.version ?? '';
+const APP_VERSION = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '';
 
 /**
  * Call after a real workout finish (i.e. the Summary screen was reached with
@@ -62,8 +62,11 @@ export async function maybeRequestReviewAfterFinish(workoutId: string): Promise<
     const now = Date.now();
     const askedAtIso = await SecureStore.getItemAsync(KEY_ASKED_AT);
     const askedCount = await SecureStore.getItemAsync(KEY_ASKED_COUNT);
-    // An unreadable timestamp counts as "just asked" every time, so it blocks further asks.
     const askedAtMs = askedAtIso ? Date.parse(askedAtIso) : NaN;
+    // An unreadable timestamp is repaired to now, so the 90 days start counting.
+    if (askedAtIso && !Number.isFinite(askedAtMs)) {
+      await SecureStore.setItemAsync(KEY_ASKED_AT, new Date(now).toISOString());
+    }
     const ask = shouldAskForReview({
       count,
       askedAt: askedAtIso ? (Number.isFinite(askedAtMs) ? askedAtMs : now) : null,
@@ -80,9 +83,10 @@ export async function maybeRequestReviewAfterFinish(workoutId: string): Promise<
     if (!available) return;
 
     await StoreReview.requestReview();
-    await SecureStore.setItemAsync(KEY_ASKED_AT, new Date(now).toISOString());
+    // Timestamp last: a partial failure then leaves the ask blocked, not repeated.
     await SecureStore.setItemAsync(KEY_ASKED_COUNT, String(count));
     await SecureStore.setItemAsync(KEY_ASKED_VERSION, APP_VERSION);
+    await SecureStore.setItemAsync(KEY_ASKED_AT, new Date(now).toISOString());
   } catch {
     // Best-effort — a review nudge must never surface an error to the user.
   }

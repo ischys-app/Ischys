@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { shouldAskForReview, type ReviewAskState } from './reviewPolicy.ts';
+import { isNewerVersion, shouldAskForReview, type ReviewAskState } from './reviewPolicy.ts';
 
 const DAY = 86400000;
 const NOW = Date.UTC(2026, 9, 13, 12);
@@ -59,4 +59,26 @@ test('the first ask does not depend on knowing the app version', () => {
 
 test('a clock set back before the last ask only delays the next one', () => {
   assert.equal(shouldAskForReview(state({ now: NOW - 200 * DAY })), false);
+});
+
+test('newer version means numerically newer, not merely different', () => {
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.9', appVersion: '4.10' })), true);
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.10', appVersion: '4.9' })), false);
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.4.2', appVersion: '4.4.3' })), true);
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.0', appVersion: '4.4' })), true);
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.0.0', appVersion: '4.4' })), true);
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.4.0', appVersion: '4.4' })), false);
+  assert.equal(shouldAskForReview(state({ askedVersion: '4.8', appVersion: '4.7' })), false);
+  assert.equal(shouldAskForReview(state({ askedVersion: null })), true);
+  assert.equal(shouldAskForReview(state({ askedVersion: '' })), true);
+});
+
+test('isNewerVersion', () => {
+  assert.equal(isNewerVersion('4.10', '4.9'), true);
+  assert.equal(isNewerVersion('4.9', '4.10'), false);
+  assert.equal(isNewerVersion('4.4.3', '4.4.2'), true);
+  assert.equal(isNewerVersion('4.4', '4.4.0'), false);
+  assert.equal(isNewerVersion('4.4.1', '4.4'), true);
+  assert.equal(isNewerVersion('4.x', '4.1'), false);
+  assert.equal(isNewerVersion('5', 'abc'), false);
 });

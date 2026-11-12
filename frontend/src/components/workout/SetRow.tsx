@@ -1,4 +1,5 @@
 /** A single logged-set row — grid: [34 | 1fr | 74 | 56 | 40], height 50. Pixel-critical. */
+import { t } from '../../i18n';
 import { useState } from 'react';
 import {
   Platform,
@@ -10,8 +11,8 @@ import {
 } from 'react-native';
 
 import type { EffortRowLine } from '../../domain/effort';
-import type { Unit } from '../../domain/units';
-import { color, font } from '../../theme/tokens';
+import { localizeNumber, type Unit } from '../../domain/units';
+import { color, font, themed } from '../../theme/tokens';
 import { textScale } from '../../theme/textScale';
 import { doneToggleLabel, repsFieldLabel, weightFieldLabel } from '../../lib/setRowLabels';
 
@@ -26,6 +27,7 @@ const accessoryId = Platform.OS === 'ios' ? KEYBOARD_ACCESSORY_ID : undefined;
 import { CheckIcon, RemoveCircleIcon } from '../icons';
 import { SwipeToDelete } from './SwipeToDelete';
 import { prevLabel, typeMeta, type Exercise, type WorkoutSet } from './types';
+import { useThemed } from '../../theme/ThemeProvider';
 
 type Props = {
   exercise: Exercise;
@@ -88,7 +90,7 @@ const PREV_TAP_SLOP = { top: 5, bottom: 5 };
 const GLYPH = { up: '\u2191', hold: '=', down: '\u2193' } as const;
 
 /** 102.5 stays, 100.0 becomes 100. */
-const fmtNum = (n: number): string => String(Math.round(n * 100) / 100);
+const fmtNum = (n: number): string => localizeNumber(String(Math.round(n * 100) / 100));
 
 export function SetRow({
   exercise,
@@ -113,6 +115,7 @@ export function SetRow({
   carryReps,
   edit,
 }: Props) {
+  useThemed();
   const [weightFocused, setWeightFocused] = useState(false);
   const [repsFocused, setRepsFocused] = useState(false);
 
@@ -141,7 +144,7 @@ export function SetRow({
       onDelete={onDelete}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      accessibilityLabel={`Delete set ${badge}`}
+      accessibilityLabel={t('setRow.deleteLabel', { badge })}
       radius={10}
       rowStyle={[
         styles.row,
@@ -168,8 +171,8 @@ export function SetRow({
             style={[styles.badge, { backgroundColor: meta.tintBg }]}
             hitSlop={4}
             accessibilityRole="button"
-            accessibilityLabel={`Set ${badge}, ${set.type}`}
-            accessibilityHint="Tap to change set type."
+            accessibilityLabel={t('setRow.typeLabel', { badge, type: t(`setType.${set.type}`) })}
+            accessibilityHint={t('setRow.typeHint')}
           >
             <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.badgeText, { color: meta.color }]}>{badge}</Text>
           </Pressable>
@@ -189,8 +192,8 @@ export function SetRow({
               onPress={edit.onWasPress}
               hitSlop={PREV_TAP_SLOP}
               accessibilityRole="button"
-              accessibilityLabel={`Set ${badge}, ${edit.was}`}
-              accessibilityHint="Switches this set between done and not done"
+              accessibilityLabel={t('setRow.wasLabel', { badge, was: edit.was })}
+              accessibilityHint={t('setRow.wasHint')}
             >
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.wasText} numberOfLines={1}>
                 {edit.was}
@@ -213,9 +216,11 @@ export function SetRow({
             hitSlop={PREV_TAP_SLOP}
             accessibilityRole="button"
             accessibilityLabel={
-              effortTap.kind === 'add' ? 'Rate this set' : `Effort ${effortTap.text}`
+              effortTap.kind === 'add'
+                ? t('setRow.rateSet')
+                : t('setRow.effort', { value: effortTap.text })
             }
-            accessibilityHint="Opens the effort scale"
+            accessibilityHint={t('setRow.effortHint')}
           >
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.prevText} numberOfLines={1}>
               {prev}
@@ -238,8 +243,8 @@ export function SetRow({
                 onPress={onUseSuggestion}
                 hitSlop={{ top: 2, bottom: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Suggested ${fmtNum(suggestion.weight)} ${unit} by ${suggestion.reps}`}
-                accessibilityHint="Fills this set with the suggestion"
+                accessibilityLabel={t('setRow.suggested', { weight: fmtNum(suggestion.weight), unit, reps: suggestion.reps })}
+                accessibilityHint={t('setRow.suggestedHint')}
               >
                 <Text
                   maxFontSizeMultiplier={textScale.fixed}
@@ -270,9 +275,11 @@ export function SetRow({
                   hitSlop={{ top: 2, bottom: 12, left: 6, right: 6 }}
                   accessibilityRole="button"
                   accessibilityLabel={
-                    effortLine.kind === 'add' ? 'Rate this set' : `Effort ${effortLine.text}`
+                    effortLine.kind === 'add'
+                      ? t('setRow.rateSet')
+                      : t('setRow.effort', { value: effortLine.text })
                   }
-                  accessibilityHint="Opens the effort scale"
+                  accessibilityHint={t('setRow.effortHint')}
                 >
                   <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.effortText, effortStyles[effortLine.kind]]} numberOfLines={1}>
                     {effortLine.text}
@@ -332,7 +339,7 @@ export function SetRow({
             onPress={edit.onRemove}
             style={styles.removeCell}
             accessibilityRole="button"
-            accessibilityLabel={`Remove set ${badge}`}
+            accessibilityLabel={t('setRow.removeLabel', { badge })}
           >
             <RemoveCircleIcon size={20} color={color.text3} strokeWidth={2} />
           </Pressable>
@@ -359,107 +366,111 @@ export function SetRow({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 50,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  doneBar: {
-    position: 'absolute',
-    left: 0,
-    top: 9,
-    bottom: 9,
-    width: 3,
-    borderRadius: 3,
-    backgroundColor: color.accent,
-  },
-  /** Same bar, dimmed — marks the set you are about to do. */
-  activeBar: { opacity: 0.35 },
-  badgeCell: { width: 34, alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: color.hair,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12.5,
-  },
-  prevCell: { flex: 1, justifyContent: 'center', paddingHorizontal: 2, gap: 1 },
-  // Fills the row's inner height so the tap target is not just the text. The
-  // lines stay centred, so nothing moves.
-  prevCellTap: { alignSelf: 'stretch' },
-  prevText: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  // One step brighter than PREV (text3) and never accent or success — a
-  // proposal should not look like something that already happened.
-  suggestText: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  suggestTextEdited: { color: color.text3 },
-  // The effort line shares the suggestion's slot and size; weight and colour
-  // say which kind it is (see `effortStyles`).
-  effortText: { fontSize: 11, fontVariant: ['tabular-nums'] },
-  suggestTextDown: { color: color.warning },
-  input: {
-    height: 38,
-    textAlign: 'center',
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    borderRadius: 8,
-    color: color.text1,
-    fontFamily: font.monoMedium,
-    fontSize: 16,
-    fontVariant: ['tabular-nums'],
-    paddingVertical: 0,
-  },
-  weightInput: { width: 74 },
-  repsInput: { width: 56 },
-  inputFocused: { borderColor: color.accent, backgroundColor: color.surface3 },
-  checkCell: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  check: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Edit mode (13a). WAS sits flush in the cell, under its column label.
-  wasCell: { flex: 1, minWidth: 0, justifyContent: 'center' },
-  wasText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  // 40 wide like the tick column it replaces, and a full 44 tall: the row's
-  // own padding leaves 40, so it reaches 2pt into it on each side.
-  removeCell: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
-  checkDone: { backgroundColor: color.accent },
-  checkIdle: { backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    row: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: 50,
+      paddingVertical: 5,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+    },
+    doneBar: {
+      position: 'absolute',
+      left: 0,
+      top: 9,
+      bottom: 9,
+      width: 3,
+      borderRadius: 3,
+      backgroundColor: color.accent,
+    },
+    /** Same bar, dimmed — marks the set you are about to do. */
+    activeBar: { opacity: 0.35 },
+    badgeCell: { width: 34, alignItems: 'center', justifyContent: 'center' },
+    badge: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: color.hair,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12.5,
+    },
+    prevCell: { flex: 1, justifyContent: 'center', paddingHorizontal: 2, gap: 1 },
+    // Fills the row's inner height so the tap target is not just the text. The
+    // lines stay centred, so nothing moves.
+    prevCellTap: { alignSelf: 'stretch' },
+    prevText: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    // One step brighter than PREV (text3) and never accent or success — a
+    // proposal should not look like something that already happened.
+    suggestText: {
+      fontFamily: font.monoMedium,
+      fontSize: 11,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    suggestTextEdited: { color: color.text3 },
+    // The effort line shares the suggestion's slot and size; weight and colour
+    // say which kind it is (see `effortStyles`).
+    effortText: { fontSize: 11, fontVariant: ['tabular-nums'] },
+    suggestTextDown: { color: color.warning },
+    input: {
+      height: 38,
+      textAlign: 'center',
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+      borderRadius: 8,
+      color: color.text1,
+      fontFamily: font.monoMedium,
+      fontSize: 16,
+      fontVariant: ['tabular-nums'],
+      paddingVertical: 0,
+    },
+    weightInput: { width: 74 },
+    repsInput: { width: 56 },
+    inputFocused: { borderColor: color.accent, backgroundColor: color.surface3 },
+    checkCell: { width: 40, alignItems: 'center', justifyContent: 'center' },
+    check: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Edit mode (13a). WAS sits flush in the cell, under its column label.
+    wasCell: { flex: 1, minWidth: 0, justifyContent: 'center' },
+    wasText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    // 40 wide like the tick column it replaces, and a full 44 tall: the row's
+    // own padding leaves 40, so it reaches 2pt into it on each side.
+    removeCell: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
+    checkDone: { backgroundColor: color.accent },
+    checkIdle: { backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border },
+  }),
+);
 
 /** Last session's rating recedes; today's is one step brighter; `+ RPE` is a quiet way in. */
-const effortStyles = StyleSheet.create({
-  last: { fontFamily: font.monoRegular, color: color.text3 },
-  today: { fontFamily: font.monoMedium, color: color.text2 },
-  add: { fontFamily: font.monoMedium, color: color.text3 },
-});
+const effortStyles = themed(() =>
+  StyleSheet.create({
+    last: { fontFamily: font.monoRegular, color: color.text3 },
+    today: { fontFamily: font.monoMedium, color: color.text2 },
+    add: { fontFamily: font.monoMedium, color: color.text3 },
+  }),
+);

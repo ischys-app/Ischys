@@ -22,26 +22,47 @@ import {
 
 import type { MuscleOut } from '../api/types';
 import { listMuscles } from '../api/workouts';
-import { accentA, color, font } from '../theme/tokens';
+import { onProfileSwitch } from '../lib/activeProfile';
+import { accentA, color, font, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CheckIcon, SearchIcon } from './icons';
+import { useThemed } from '../theme/ThemeProvider';
+import { getLang, onLangChange } from '../i18n/current';
+import { groupLabel, matchesSearch } from '../i18n/catalogNames';
+import { t } from '../i18n';
+import { upperDisplay } from '../i18n/upper';
 
 /** Module-scope cache — shared across both mount lifetimes of the sheet. */
 let cachedMuscles: MuscleOut[] | null = null;
 let inflight: Promise<MuscleOut[]> | null = null;
 
+// Read from the profile's file (#117). The seeded muscles are the same in
+// every file today; dropping the copy keeps it that way if that ever changes.
+// A read in flight is the previous file's, so it is not kept either.
+let generation = 0;
+function dropMuscles(): void {
+  generation += 1;
+  cachedMuscles = null;
+  inflight = null;
+}
+onProfileSwitch(dropMuscles);
+// Muscle names are localized when read (#136).
+onLangChange(dropMuscles);
+
 /** Load muscles once; subsequent callers get the cached list. */
 async function fetchMuscles(): Promise<MuscleOut[]> {
   if (cachedMuscles) return cachedMuscles;
   if (!inflight) {
-    inflight = listMuscles()
+    const asked = generation;
+    const read = listMuscles()
       .then((m) => {
-        cachedMuscles = m;
+        if (asked === generation) cachedMuscles = m;
         return m;
       })
       .finally(() => {
-        inflight = null;
+        if (inflight === read) inflight = null;
       });
+    inflight = read;
   }
   return inflight;
 }
@@ -69,6 +90,7 @@ export function MusclePickerSheet({
   onToggleSecondary,
   onClose,
 }: Props) {
+  useThemed();
   const [muscles, setMuscles] = useState<MuscleOut[]>(cachedMuscles ?? []);
   const [loading, setLoading] = useState(!cachedMuscles);
   const [query, setQuery] = useState('');
@@ -103,8 +125,8 @@ export function MusclePickerSheet({
   }, [visible]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? muscles.filter((m) => m.name.toLowerCase().includes(q)) : muscles;
+    // Matches the shown label or the stored English name.
+    return muscles.filter((m) => matchesSearch(query, [m.name, m.englishName]));
   }, [muscles, query]);
 
   const grouped = useMemo(() => {
@@ -125,7 +147,7 @@ export function MusclePickerSheet({
     return orderedKeys.map((g) => ({ group: g, items: byGroup.get(g) ?? [] }));
   }, [filtered]);
 
-  const title = mode === 'primary' ? 'Primary muscle' : 'Secondary muscles';
+  const title = mode === 'primary' ? t('newExercise.primary') : t('newExercise.secondary');
 
   const isSelected = (m: MuscleOut): boolean => {
     if (mode === 'primary') return selectedPrimaryId === m.id;
@@ -153,9 +175,9 @@ export function MusclePickerSheet({
             onPress={onClose}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Done"
+            accessibilityLabel={t('common.done')}
           >
-            <Text style={styles.done}>Done</Text>
+            <Text style={styles.done}>{t('common.done')}</Text>
           </Pressable>
         </View>
       </View>
@@ -167,7 +189,7 @@ export function MusclePickerSheet({
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search muscles"
+          placeholder={t('musclePicker.search')}
           placeholderTextColor={color.text3}
           autoCorrect={false}
           autoCapitalize="none"
@@ -191,11 +213,11 @@ export function MusclePickerSheet({
             <ActivityIndicator color={color.text3} />
           </View>
         ) : filtered.length === 0 ? (
-          <Text style={styles.empty}>No muscles match "{query.trim()}"</Text>
+          <Text style={styles.empty}>{t('musclePicker.noMatch', { query: query.trim() })}</Text>
         ) : (
           grouped.map(({ group, items }) => (
             <View key={group} style={styles.group}>
-              <Text style={styles.groupLabel}>{group.toUpperCase()}</Text>
+              <Text style={styles.groupLabel}>{upperDisplay(groupLabel(group, getLang()))}</Text>
               {items.map((m) => {
                 const selected = isSelected(m);
                 return (
@@ -249,112 +271,114 @@ export function MusclePickerSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    height: '76%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -20 },
-    shadowOpacity: 0.8,
-    shadowRadius: 50,
-    elevation: 20,
-  },
-  grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
-  done: { fontFamily: font.titleSemi, fontSize: 15, color: color.accent },
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      height: '76%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -20 },
+      shadowOpacity: 0.8,
+      shadowRadius: 50,
+      elevation: 20,
+    },
+    grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+    grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+      paddingHorizontal: 18,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
+    done: { fontFamily: font.titleSemi, fontSize: 15, color: color.accent },
 
-  searchWrap: {
-    position: 'relative',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  searchIcon: { position: 'absolute', left: 29, zIndex: 1 },
-  searchInput: {
-    height: 44,
-    paddingLeft: 38,
-    paddingRight: 14,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 10,
-    color: color.text1,
-    fontFamily: font.bodyRegular,
-    fontSize: 14.5,
-  },
+    searchWrap: {
+      position: 'relative',
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    searchIcon: { position: 'absolute', left: 29, zIndex: 1 },
+    searchInput: {
+      height: 44,
+      paddingLeft: 38,
+      paddingRight: 14,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 10,
+      color: color.text1,
+      fontFamily: font.bodyRegular,
+      fontSize: 14.5,
+    },
 
-  list: { flex: 1 },
-  listContent: { paddingHorizontal: 8, paddingBottom: 24, paddingTop: 4 },
-  loading: { paddingVertical: 40, alignItems: 'center' },
-  empty: {
-    textAlign: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-    color: color.text3,
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-  },
+    list: { flex: 1 },
+    listContent: { paddingHorizontal: 8, paddingBottom: 24, paddingTop: 4 },
+    loading: { paddingVertical: 40, alignItems: 'center' },
+    empty: {
+      textAlign: 'center',
+      paddingVertical: 40,
+      paddingHorizontal: 20,
+      color: color.text3,
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+    },
 
-  group: { marginBottom: 8 },
-  groupLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: color.text3,
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 50,
-    height: 50,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 11,
-  },
-  rowSelected: {
-    backgroundColor: accentA(0.06),
-  },
-  rowName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  primaryMark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    group: { marginBottom: 8 },
+    groupLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.4,
+      color: color.text3,
+      paddingTop: 12,
+      paddingHorizontal: 12,
+      paddingBottom: 6,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 50,
+      height: 50,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 11,
+    },
+    rowSelected: {
+      backgroundColor: accentA(0.06),
+    },
+    rowName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    primaryMark: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 7,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  }),
+);

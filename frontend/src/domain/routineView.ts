@@ -6,8 +6,11 @@
  * most recent workout started from it into rows of plain text. Pure, so
  * `node --test` covers it; the queries live in data/routinesRepo.ts.
  */
-import { groupLabels } from './supersets.ts';
-import { type Unit, unitLabel, weightText } from './units.ts';
+import { groupLabels, roundCount } from './supersets.ts';
+import { type Unit, unitLabel, weightLabel } from './units.ts';
+import { getLang } from '../i18n/current.ts';
+import { t } from '../i18n/t.ts';
+import { equipmentLabel } from '../i18n/catalogNames.ts';
 
 type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
 type ExerciseKind = 'weighted' | 'bodyweight';
@@ -79,9 +82,9 @@ const FIVE_MINUTES = 300;
 
 /** "6 EXERCISES · 18 SETS". An empty routine has no sets to count. */
 export function routineCountsLabel(exerciseCount: number, setCount: number): string {
-  const exercises = `${exerciseCount} ${exerciseCount === 1 ? 'EXERCISE' : 'EXERCISES'}`;
+  const exercises = t('routineView.exercises', { count: exerciseCount });
   if (exerciseCount === 0) return exercises;
-  return `${exercises} · ${setCount} ${setCount === 1 ? 'SET' : 'SETS'}`;
+  return `${exercises} · ${t('routineView.sets', { count: setCount })}`;
 }
 
 /**
@@ -117,11 +120,11 @@ export function setText(
   const repsText = reps == null ? DASH : String(reps);
   let load: string;
   if (kind === 'bodyweight') {
-    if (weightKg == null || weightKg === 0) load = 'BW';
-    else if (weightKg > 0) load = `+${weightText(weightKg, unit)}`;
-    else load = `${MINUS}${weightText(-weightKg, unit)}`;
+    if (weightKg == null || weightKg === 0) load = t('record.bodyweightAbbr');
+    else if (weightKg > 0) load = `+${weightLabel(weightKg, unit)}`;
+    else load = `${MINUS}${weightLabel(-weightKg, unit)}`;
   } else {
-    load = weightKg == null ? DASH : weightText(weightKg, unit);
+    load = weightKg == null ? DASH : weightLabel(weightKg, unit);
   }
   return `${load} × ${repsText}`;
 }
@@ -203,7 +206,7 @@ export function buildRoutineView(
       exerciseId: ex.exerciseId,
       name: ex.name,
       initials: ex.initials,
-      equipment: titleCase(ex.equipment),
+      equipment: titleCase(equipmentLabel(ex.equipment, getLang())),
       rest,
       tag: letter ? `${letter}${place + 1}` : null,
       note: ex.note && ex.note.trim().length > 0 ? ex.note.trim() : null,
@@ -230,13 +233,13 @@ export function buildRoutineView(
     if (group != null && letter) {
       // Rounds count working sets, as they do during the workout.
       const rounds = Math.max(
-        ...partners.map((p) => p.sets.filter((s) => s.type === 'normal').length),
+        ...partners.map((p) => roundCount(p.sets)),
       );
       // Partners split apart by another exercise still share one label: it sits
       // on the first run, and the later ones keep only the rail and their tags.
       header = labelled.has(group)
-        ? { label: `SUPERSET ${letter}`, sub: '' }
-        : { label: `SUPERSET ${letter}`, sub: `· ${rounds} ${rounds === 1 ? 'ROUND' : 'ROUNDS'}` };
+        ? { label: t('workoutEdit.ssHeader', { letter }), sub: '' }
+        : { label: t('workoutEdit.ssHeader', { letter }), sub: t('workoutEdit.ssRounds', { count: rounds }) };
       labelled.add(group);
     }
     blocks.push({ key: ex.id, group: header, cards: [card] });

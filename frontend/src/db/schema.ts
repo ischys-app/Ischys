@@ -191,6 +191,12 @@ export const settings = sqliteTable('settings', {
   hapticFeedback: integer('haptic_feedback').notNull().default(1),
   // 'off' | 'rpe' | 'rir' (#84). Off hides every rating but deletes none.
   effortMode: text('effort_mode').notNull().default('off'),
+  // 'dark' | 'light' | 'system' (light mode, 7b). New installs follow the
+  // phone; migration 0007 pins rows that predate it to 'dark'.
+  appearance: text('appearance').notNull().default('system'),
+  // Off: a note shows once more as a placeholder, never saved (#137). On: it
+  // is copied into the next session as a real value, so it carries until changed.
+  keepExerciseNotes: integer('keep_exercise_notes').notNull().default(0),
   // The version of the one-time PR flag pass (#91) that last completed on this
   // database. Kept with the data it describes, so a restored file is re-walked.
   prBackfillVersion: integer('pr_backfill_version').notNull().default(0),
@@ -200,4 +206,21 @@ export const settings = sqliteTable('settings', {
   serverUrl: text('server_url'),
   lastSyncedAt: integer('last_synced_at'),
   ...sync,
+});
+
+// --- Profiles registry (#117) ---
+// Every profile file has this table (one schema, one migration set), but only
+// the owner's `ischys.db` uses it: it lists the profiles on the device. The
+// stats columns are a cache, written when a profile's workouts change, so the
+// list can render without opening every profile's file.
+export const profiles = sqliteTable('profiles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  initials: text('initials').notNull(),
+  sort: integer('sort').notNull(),
+  isOwner: integer('is_owner').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  workoutCount: integer('workout_count').notNull().default(0),
+  firstWorkoutAt: integer('first_workout_at'),
+  lastWorkoutAt: integer('last_workout_at'),
 });

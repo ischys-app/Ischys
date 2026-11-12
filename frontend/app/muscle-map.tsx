@@ -23,16 +23,22 @@ import {
   type MuscleWorkEntry,
 } from '../src/domain/muscleMap';
 import { muscleWorkEntries } from '../src/data/muscleMapRepo';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
+import { localizeNumber } from '../src/domain/units';
+import { getLang } from '../src/i18n/current';
+import { muscleNameLabel } from '../src/i18n/catalogNames';
+import { t } from '../src/i18n';
 
 const WINDOWS = [
-  { days: 7 as const, label: '7 DAYS' },
-  { days: 28 as const, label: '28 DAYS' },
+  { days: 7 as const, key: 'muscleMap.days7' },
+  { days: 28 as const, key: 'muscleMap.days28' },
 ];
 
-const fmtSets = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+const fmtSets = (n: number): string => (Number.isInteger(n) ? String(n) : localizeNumber(n.toFixed(1)));
 
 export default function MuscleMapScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [windowDays, setWindowDays] = useState<7 | 28>(7);
@@ -74,7 +80,7 @@ export default function MuscleMapScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back} accessibilityRole="button">
           <BackChevronIcon color={color.text1} />
         </Pressable>
-        <Text style={styles.title}>Muscle map</Text>
+        <Text style={styles.title}>{t('muscleMap.title')}</Text>
         <View style={styles.back} />
       </View>
 
@@ -90,40 +96,40 @@ export default function MuscleMapScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
               >
-                <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{w.label}</Text>
+                <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{t(w.key)}</Text>
               </Pressable>
             );
           })}
         </View>
         <Text style={styles.scaleNote}>
-          {windowDays === 28 ? 'Sets per week, averaged over 28 days' : 'Sets in the last 7 days'}
+          {windowDays === 28 ? t('muscleMap.scale28') : t('muscleMap.scale7')}
         </Text>
 
         <View style={styles.figures}>
           <View style={styles.figure}>
             <BodyMap side="front" work={work} historyDays={historyDays} onPressRegion={setSelected} width={150} />
-            <Text style={styles.figureLabel}>FRONT</Text>
+            <Text style={styles.figureLabel}>{t('muscleMap.front')}</Text>
           </View>
           <View style={styles.figure}>
             <BodyMap side="back" work={work} historyDays={historyDays} onPressRegion={setSelected} width={150} />
-            <Text style={styles.figureLabel}>BACK</Text>
+            <Text style={styles.figureLabel}>{t('muscleMap.back')}</Text>
           </View>
         </View>
 
         <View style={styles.legend}>
-          {(['none', 'low', 'medium', 'high'] as const).map((t) => (
-            <View key={t} style={styles.legendItem}>
+          {(['none', 'low', 'medium', 'high'] as const).map((tier) => (
+            <View key={tier} style={styles.legendItem}>
               <View
                 style={[
                   styles.legendSwatch,
                   {
                     backgroundColor:
-                      t === 'none' ? color.surface3 : t === 'low' ? color.text3 : t === 'medium' ? color.text2 : color.text1,
+                      tier === 'none' ? color.surface3 : tier === 'low' ? color.text3 : tier === 'medium' ? color.text2 : color.text1,
                   },
                 ]}
               />
               <Text style={styles.legendText}>
-                {t === 'none' ? '0' : t === 'low' ? '<5' : t === 'medium' ? '5–9' : '10+'}
+                {tier === 'none' ? '0' : tier === 'low' ? '<5' : tier === 'medium' ? '5–9' : '10+'}
               </Text>
             </View>
           ))}
@@ -131,9 +137,11 @@ export default function MuscleMapScreen() {
 
         {neglected.length > 0 && (
           <>
-            <SectionLabel style={styles.sectionLabel}>NOT TRAINED</SectionLabel>
+            <SectionLabel style={styles.sectionLabel}>{t('muscleMap.notTrained')}</SectionLabel>
             <View style={styles.card}>
-              <Text style={styles.neglectedText}>{neglected.join(' · ')}</Text>
+              <Text style={styles.neglectedText}>
+                {neglected.map((r) => muscleNameLabel(r, getLang())).join(' · ')}
+              </Text>
             </View>
           </>
         )}
@@ -143,71 +151,73 @@ export default function MuscleMapScreen() {
         <View style={styles.grabberWrap}>
           <View style={styles.grabber} />
         </View>
-        <Text style={styles.sheetTitle}>{selected}</Text>
+        <Text style={styles.sheetTitle}>{selected ? muscleNameLabel(selected, getLang()) : ''}</Text>
         <Text style={styles.sheetValue}>
-          {`${fmtSets(selectedSets)} ${windowDays === 28 ? 'sets / week' : 'sets'}`}
+          {t(windowDays === 28 ? 'muscleMap.setsPerWeek' : 'muscleMap.sets', { n: fmtSets(selectedSets) })}
         </Text>
         <Text style={styles.sheetNote}>
           {selectedSets === 0
             ? historyDays >= 14
-              ? 'Nothing logged for this muscle in the window.'
-              : 'Not enough history yet to call this neglected.'
-            : `Counts direct work in full and indirect work at half. Currently ${tintFor(selectedSets)}.`}
+              ? t('muscleMap.noneLogged')
+              : t('muscleMap.notEnough')
+            : t('muscleMap.counts', { tint: t(`muscleMap.tint.${tintFor(selectedSets)}`) })}
         </Text>
       </DraggableSheet>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
 
-  segment: { flexDirection: 'row', backgroundColor: color.surface2, borderRadius: 9, padding: 3, gap: 3 },
-  segmentItem: { flex: 1, height: 34, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  segmentItemOn: { backgroundColor: color.surface3 },
-  segmentText: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text2 },
-  segmentTextOn: { color: color.text1 },
-  scaleNote: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3, marginTop: 8 },
+    segment: { flexDirection: 'row', backgroundColor: color.surface2, borderRadius: 9, padding: 3, gap: 3 },
+    segmentItem: { flex: 1, height: 34, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+    segmentItemOn: { backgroundColor: color.surface3 },
+    segmentText: { fontFamily: font.monoMedium, fontSize: 11, letterSpacing: 0.5, color: color.text2 },
+    segmentTextOn: { color: color.text1 },
+    scaleNote: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3, marginTop: 8 },
 
-  figures: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 16 },
-  figure: { alignItems: 'center', gap: 8 },
-  figureLabel: { fontFamily: font.monoMedium, fontSize: 10, letterSpacing: 1.2, color: color.text3 },
+    figures: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 16 },
+    figure: { alignItems: 'center', gap: 8 },
+    figureLabel: { fontFamily: font.monoMedium, fontSize: 10, letterSpacing: 1.2, color: color.text3 },
 
-  legend: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 20 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendSwatch: { width: 10, height: 10, borderRadius: 3 },
-  legendText: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
+    legend: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 20 },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    legendSwatch: { width: 10, height: 10, borderRadius: 3 },
+    legendText: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
 
-  sectionLabel: { marginTop: 24, marginBottom: 8 },
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 14,
-  },
-  neglectedText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21, color: color.warning },
+    sectionLabel: { marginTop: 24, marginBottom: 8 },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 14,
+    },
+    neglectedText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21, color: color.warning },
 
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 28,
-  },
-  grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 10 },
-  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
-  sheetTitle: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  sheetValue: { fontFamily: font.monoSemi, fontSize: 28, color: color.text1, marginTop: 6 },
-  sheetNote: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text3, marginTop: 8 },
-});
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingHorizontal: 16,
+      paddingBottom: 28,
+    },
+    grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 10 },
+    grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    sheetTitle: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    sheetValue: { fontFamily: font.monoSemi, fontSize: 28, color: color.text1, marginTop: 6 },
+    sheetNote: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text3, marginTop: 8 },
+  }),
+);

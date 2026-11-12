@@ -1,10 +1,12 @@
 /** One exercise: header, note, rest-timer row, set grid, + Add Set. */
+import { t } from '../../i18n';
+import { upperDisplay } from '../../i18n/upper';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { effortRowLine, type EffortScaleKind } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
 import { exerciseArt } from '../../lib/exerciseArt';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed, withAlpha } from '../../theme/tokens';
 import { textScale } from '../../theme/textScale';
 import { ExerciseArt } from '../ExerciseArt';
 import { PressableScale } from '../PressableScale';
@@ -13,6 +15,10 @@ import { ExerciseMenu } from './ExerciseMenu';
 import { carryFor } from './setCarry';
 import { SetRow } from './SetRow';
 import { exerciseMeta, restLabel, weightColumnLabel, type Exercise, type SetType } from './types';
+import { useThemed } from '../../theme/ThemeProvider';
+import { getLang } from '../../i18n/current';
+import { allowsTwoLineNames } from '../../i18n/scripts';
+import { equipmentLabel } from '../../i18n/catalogNames';
 
 type Props = {
   exercise: Exercise;
@@ -119,6 +125,7 @@ export function ExerciseCard({
   onOpenDetail,
   edit,
 }: Props) {
+  useThemed();
   const hasDone = exercise.sets.some((s) => s.done);
   const firstUndone = exercise.sets.findIndex((s) => !s.done);
   let working = 0;
@@ -132,7 +139,7 @@ export function ExerciseCard({
           onPress={onOpenDetail}
           disabled={!onOpenDetail}
           accessibilityRole="button"
-          accessibilityLabel={`About ${exercise.name}`}
+          accessibilityLabel={t('exerciseCard.about', { name: exercise.name })}
         >
           {(() => {
             // Line art when we have it for this movement, initials otherwise.
@@ -148,13 +155,14 @@ export function ExerciseCard({
                 animate={false}
               />
             ) : (
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.avatarText}>{exercise.initials}</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.avatarText}>{upperDisplay(exercise.initials)}</Text>
             );
           })()}
         </Pressable>
         <Pressable style={styles.headerText} onPress={onOpenDetail} disabled={!onOpenDetail}>
-          {/* A long name wraps to two lines while editing (E7); live keeps one. */}
-          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : 1}>
+          {/* A long name wraps to two lines while editing (E7); live keeps one,
+              except in Russian, whose catalog names run much longer (two lines). */}
+          <Text maxFontSizeMultiplier={textScale.display} style={[styles.name, edit && styles.nameEdit]} numberOfLines={edit ? undefined : allowsTwoLineNames(getLang()) ? 2 : 1}>
             {exercise.name}
           </Text>
           <View style={styles.metaRow}>
@@ -166,7 +174,7 @@ export function ExerciseCard({
               </View>
             ) : null}
             <Text maxFontSizeMultiplier={textScale.control} style={styles.meta} numberOfLines={1}>
-              {edit ? titleCase(exercise.equipment) : exerciseMeta(exercise)}
+              {edit ? titleCase(equipmentLabel(exercise.equipment, getLang())) : exerciseMeta(exercise)}
             </Text>
           </View>
         </Pressable>
@@ -176,7 +184,7 @@ export function ExerciseCard({
             style={styles.menuButton}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={`More options for ${exercise.name}`}
+            accessibilityLabel={t('exerciseCard.more', { name: exercise.name })}
           >
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.menuGlyph}>{'⋯'}</Text>
           </Pressable>
@@ -209,9 +217,9 @@ export function ExerciseCard({
           <TextInput
             value={exercise.note}
             onChangeText={onNoteChange}
-            placeholder={exercise.notePlaceholder ?? 'Add notes here…'}
+            placeholder={exercise.notePlaceholder ?? t('exerciseCard.notesPlaceholder')}
             placeholderTextColor={color.text3}
-            accessibilityLabel={`Notes for ${exercise.name}`}
+            accessibilityLabel={t('exerciseCard.notesLabel', { name: exercise.name })}
             multiline
             style={[styles.note, exercise.note.length > 0 && styles.noteFilled]}
           />
@@ -219,7 +227,7 @@ export function ExerciseCard({
           {/* Rest timer row */}
           <Pressable onPress={onOpenRest} style={styles.restRow}>
             <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.restLabel}>Rest Timer</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.restLabel}>{t('restBar.timer')}</Text>
             <View style={styles.restRight}>
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.restValue}>
                 {restOverrideLabel ?? restLabel(exercise.rest)}
@@ -232,10 +240,10 @@ export function ExerciseCard({
 
       {/* Column labels */}
       <View style={[styles.colHeader, edit && styles.colHeaderEdit]}>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colSet]}>SET</Text>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colPrev]}>{edit ? 'WAS' : 'PREV'}</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colSet]}>{t('exerciseCard.colSet')}</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colPrev]}>{edit ? t('exerciseCard.colWas') : t('exerciseCard.colPrev')}</Text>
         <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colWeight]}>{weightColumnLabel(exercise, unit)}</Text>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colReps]}>REPS</Text>
+        <Text maxFontSizeMultiplier={textScale.fixed} style={[styles.colLabel, styles.colReps]}>{t('exerciseCard.colReps')}</Text>
         <View style={styles.colCheck} />
       </View>
 
@@ -257,8 +265,8 @@ export function ExerciseCard({
                 badge={badgeFor(s.type, working)}
                 onCycleType={() => onCycleType(s.id)}
                 onUsePrev={() => onUsePrev(s.id)}
-                onWeightChange={(t) => onWeightChange(s.id, t)}
-                onRepsChange={(t) => onRepsChange(s.id, t)}
+                onWeightChange={(text) => onWeightChange(s.id, text)}
+                onRepsChange={(text) => onRepsChange(s.id, text)}
                 onToggleDone={() => onToggleDone(s.id)}
                 onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
                 onDelete={onDeleteSet ? () => onDeleteSet(s.id) : undefined}
@@ -285,8 +293,8 @@ export function ExerciseCard({
               badge={badgeFor(s.type, working)}
               onCycleType={() => onCycleType(s.id)}
               onUsePrev={() => onUsePrev(s.id)}
-              onWeightChange={(t) => onWeightChange(s.id, t)}
-              onRepsChange={(t) => onRepsChange(s.id, t)}
+              onWeightChange={(text) => onWeightChange(s.id, text)}
+              onRepsChange={(text) => onRepsChange(s.id, text)}
               onToggleDone={() => onToggleDone(s.id)}
               onFieldFocus={(field) => onFieldFocus?.(s.id, field)}
               suggestion={suggestion}
@@ -321,18 +329,18 @@ export function ExerciseCard({
           isn't there, rather than sitting disabled. */}
       <View style={styles.footerRow}>
         <PressableScale onPress={onAddSet} style={[styles.addSet, styles.footerHalf]}>
-          <Text maxFontSizeMultiplier={textScale.control} style={styles.addSetText}>+ Add Set</Text>
+          <Text maxFontSizeMultiplier={textScale.control} style={styles.addSetText}>{t('exerciseCard.addSet')}</Text>
         </PressableScale>
         {onWarmup && (
           <PressableScale
             onPress={onWarmup}
             style={[styles.addSet, styles.footerHalf]}
             accessibilityRole="button"
-            accessibilityLabel="Add warm-up sets"
+            accessibilityLabel={t('exerciseCard.warmupLabel')}
           >
             {/* Warning is the warm-up set-type colour, so the button matches the
                 W badges it creates. */}
-            <Text maxFontSizeMultiplier={textScale.control} style={[styles.addSetText, styles.warmupText]}>Warm-up</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={[styles.addSetText, styles.warmupText]}>{t('warmup.title')}</Text>
           </PressableScale>
         )}
       </View>
@@ -342,164 +350,166 @@ export function ExerciseCard({
 
 const GRID_GAP = 8;
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingTop: 14,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Edit mode (13a): the name may wrap, so the avatar and ⋯ sit at the top.
-  headerEdit: { alignItems: 'flex-start' },
-  nameEdit: { lineHeight: 19 },
-  recordLine: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 7,
-    marginTop: 12,
-    marginHorizontal: 2,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: color.surface2,
-  },
-  recordStar: { marginTop: 1 },
-  recordText: {
-    flex: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    lineHeight: 16.5,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  colHeaderEdit: { paddingTop: 12 },
-  // The WAS cell's own type, for a card with no row to carry a WAS cell.
-  emptyHint: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    lineHeight: 17,
-    color: color.text3,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-  },
-  avatarText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
-  headerText: { flex: 1, minWidth: 0 },
-  name: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    lineHeight: 18,
-    color: color.accent,
-  },
-  meta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 1 },
-  menuAnchor: { position: 'relative' },
-  menuButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuGlyph: { fontSize: 19, lineHeight: 19, color: color.text3 },
+const styles = themed(() =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingTop: 14,
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+    },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Edit mode (13a): the name may wrap, so the avatar and ⋯ sit at the top.
+    headerEdit: { alignItems: 'flex-start' },
+    nameEdit: { lineHeight: 19 },
+    recordLine: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 7,
+      marginTop: 12,
+      marginHorizontal: 2,
+      paddingVertical: 9,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: color.surface2,
+    },
+    recordStar: { marginTop: 1 },
+    recordText: {
+      flex: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      lineHeight: 16.5,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    colHeaderEdit: { paddingTop: 12 },
+    // The WAS cell's own type, for a card with no row to carry a WAS cell.
+    emptyHint: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      lineHeight: 17,
+      color: color.text3,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+    },
+    avatarText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
+    headerText: { flex: 1, minWidth: 0 },
+    name: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      lineHeight: 18,
+      color: color.accent,
+    },
+    meta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 1 },
+    menuAnchor: { position: 'relative' },
+    menuButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    menuGlyph: { fontSize: 19, lineHeight: 19, color: color.text3 },
 
-  note: {
-    marginTop: 10,
-    marginBottom: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 10,
-    color: color.warning,
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 20,
-    minHeight: 38,
-    textAlignVertical: 'top',
-  },
-  noteFilled: {
-    backgroundColor: 'rgba(255,194,75,0.07)',
-    borderColor: 'rgba(255,194,75,0.22)',
-  },
+    note: {
+      marginTop: 10,
+      marginBottom: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 10,
+      color: color.warning,
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 20,
+      minHeight: 38,
+      textAlignVertical: 'top',
+    },
+    noteFilled: {
+      backgroundColor: withAlpha(color.warning, 0.07),
+      borderColor: withAlpha(color.warning, 0.22),
+    },
 
-  restRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 40,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  restLabel: { fontFamily: font.bodyMedium, fontSize: 13, color: color.text2 },
-  restRight: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
-  restValue: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
+    restRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: 40,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+    },
+    restLabel: { fontFamily: font.bodyMedium, fontSize: 13, color: color.text2 },
+    restRight: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
+    restValue: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
 
-  colHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: GRID_GAP,
-    paddingTop: 8,
-    paddingHorizontal: 10,
-    paddingBottom: 6,
-  },
-  colLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 9.5,
-    letterSpacing: 0.76,
-    color: color.text3,
-  },
-  colSet: { width: 34, textAlign: 'center' },
-  colPrev: { flex: 1 },
-  colWeight: { width: 74, textAlign: 'center' },
-  colReps: { width: 56, textAlign: 'center' },
-  colCheck: { width: 40 },
+    colHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: GRID_GAP,
+      paddingTop: 8,
+      paddingHorizontal: 10,
+      paddingBottom: 6,
+    },
+    colLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 9.5,
+      letterSpacing: 0.76,
+      color: color.text3,
+    },
+    colSet: { width: 34, textAlign: 'center' },
+    colPrev: { flex: 1 },
+    colWeight: { width: 74, textAlign: 'center' },
+    colReps: { width: 56, textAlign: 'center' },
+    colCheck: { width: 40 },
 
-  sets: { flexDirection: 'column', gap: 2 },
+    sets: { flexDirection: 'column', gap: 2 },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ssTag: {
-    backgroundColor: color.surface3,
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  ssTagText: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 0.5,
-    color: color.text2,
-  },
-  footerRow: { flexDirection: 'row', gap: 8 },
-  footerHalf: { flex: 1 },
-  warmupText: { color: color.warning },
-  addSet: {
-    marginTop: 8,
-    width: '100%',
-    height: 38,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addSetText: { fontFamily: font.titleSemi, fontSize: 12.5, color: color.text2 },
-});
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    ssTag: {
+      backgroundColor: color.surface3,
+      borderRadius: 4,
+      paddingHorizontal: 5,
+      paddingVertical: 1,
+    },
+    ssTagText: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 0.5,
+      color: color.text2,
+    },
+    footerRow: { flexDirection: 'row', gap: 8 },
+    footerHalf: { flex: 1 },
+    warmupText: { color: color.warning },
+    addSet: {
+      marginTop: 8,
+      width: '100%',
+      height: 38,
+      borderRadius: 9,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addSetText: { fontFamily: font.titleSemi, fontSize: 12.5, color: color.text2 },
+  }),
+);

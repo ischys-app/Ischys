@@ -17,7 +17,7 @@
  * never break the Summary screen it's fired from.
  */
 import Constants from 'expo-constants';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 import * as StoreReview from 'expo-store-review';
 
 import { shouldAskForReview } from '../domain/reviewPolicy';

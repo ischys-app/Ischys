@@ -28,6 +28,7 @@ fun IschysApp() {
           WatchScreen.START -> StartScreen(ui)
           WatchScreen.SESSION -> SessionScreen(ui)
           WatchScreen.SUMMARY -> SummaryScreen(ui)
+          WatchScreen.OFF -> OffScreen(ui)
         }
         TimeText()
       }

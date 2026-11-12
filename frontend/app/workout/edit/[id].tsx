@@ -15,6 +15,8 @@
  * a save that changed the workout's time: an entry Ischys wrote is moved to
  * match (#90), best-effort, and never as part of the save itself.
  */
+import { t } from '../../../src/i18n';
+import { workoutLabel } from '../../../src/i18n/defaultLabels';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -101,7 +103,8 @@ import { haptics } from '../../../src/lib/haptics';
 import { loadHealthEditState, syncEditedWorkout } from '../../../src/lib/healthSync';
 import { takePendingSelection } from '../../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../../src/lib/weightUnit';
-import { color, font } from '../../../src/theme/tokens';
+import { color, font, themed } from '../../../src/theme/tokens';
+import { useThemed } from '../../../src/theme/ThemeProvider';
 
 // The board's 56pt header inset is the status bar plus this.
 const HEADER_TOP = 8;
@@ -112,6 +115,7 @@ const CONTENT_GAP = 10;
 
 /** The page background fading out under the header, as on the board. */
 function HeaderFade() {
+  useThemed();
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
       <Defs>
@@ -149,6 +153,7 @@ const COLLAPSE = LayoutAnimation.create(
 );
 
 export default function EditWorkout() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; from?: string }>();
@@ -285,7 +290,7 @@ export default function EditWorkout() {
       setSaving(false);
       setConfirmSave(false);
       haptics.error();
-      Alert.alert('Couldn’t save', 'Nothing was changed. Try again.');
+      Alert.alert(t('editWorkout.saveFailed'), t('common.nothingChanged'));
       return;
     }
     // The edit is committed. If it moved the workout in time, the Health
@@ -505,9 +510,9 @@ export default function EditWorkout() {
 
           {missing && (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Nothing to edit</Text>
+              <Text style={styles.emptyTitle}>{t('editWorkout.missingTitle')}</Text>
               <Text style={styles.emptyBody}>
-                This workout isn{'’'}t in your history any more.
+                {t('editWorkout.missingBody')}
               </Text>
             </View>
           )}
@@ -517,21 +522,21 @@ export default function EditWorkout() {
               {/* DATE · START · DURATION */}
               <View style={styles.whenRow}>
                 <WhenCell
-                  label="DATE"
+                  label={t('editWorkout.whenDate')}
                   value={fmtCellDate(session.startedAt)}
-                  was={dateMoved ? `was ${fmtCellDate(stored.startedAt)}` : null}
+                  was={dateMoved ? t('editWorkout.was', { value: fmtCellDate(stored.startedAt) }) : null}
                   onPress={() => setWhenField('date')}
                 />
                 <WhenCell
-                  label="START"
+                  label={t('editWorkout.whenStart')}
                   value={fmtClock(session.startedAt)}
-                  was={startMoved ? `was ${fmtClock(stored.startedAt)}` : null}
+                  was={startMoved ? t('editWorkout.was', { value: fmtClock(stored.startedAt) }) : null}
                   onPress={() => setWhenField('start')}
                 />
                 <WhenCell
-                  label="DURATION"
+                  label={t('editWorkout.whenDuration')}
                   value={fmtHoursMinutes(session.durationSeconds)}
-                  was={durationMoved ? `was ${fmtHoursMinutes(stored.durationSeconds)}` : null}
+                  was={durationMoved ? t('editWorkout.was', { value: fmtHoursMinutes(stored.durationSeconds) }) : null}
                   onPress={() => setWhenField('duration')}
                 />
               </View>
@@ -613,8 +618,8 @@ export default function EditWorkout() {
                               haptics.select();
                               edit((s) => cycleSetType(s, ex.id, setId));
                             }}
-                            onWeightChange={(setId, t) => edit((s) => editSetWeight(s, ex.id, setId, t))}
-                            onRepsChange={(setId, t) => edit((s) => editSetReps(s, ex.id, setId, t))}
+                            onWeightChange={(setId, text) => edit((s) => editSetWeight(s, ex.id, setId, text))}
+                            onRepsChange={(setId, text) => edit((s) => editSetReps(s, ex.id, setId, text))}
                             onDeleteSet={(setId) => {
                               setOpenSetId(null);
                               edit((s) => removeSet(s, ex.id, setId));
@@ -659,11 +664,10 @@ export default function EditWorkout() {
                 {noSets && (
                   <View style={styles.emptyCard}>
                     <Text style={styles.emptyTitle}>
-                      {cards.length === 0 ? 'No exercises' : 'No sets'}
+                      {cards.length === 0 ? t('editWorkout.noExercises') : t('editWorkout.noSets')}
                     </Text>
                     <Text style={styles.emptyBody}>
-                      A workout needs at least one set to save. To remove the whole workout,
-                      delete it from History.
+                      {t('editWorkout.needSet')}
                     </Text>
                   </View>
                 )}
@@ -674,7 +678,7 @@ export default function EditWorkout() {
                   accessibilityRole="button"
                 >
                   <PlusIcon size={15} color={color.text1} strokeWidth={2.4} />
-                  <Text style={styles.addExerciseText}>Add Exercise</Text>
+                  <Text style={styles.addExerciseText}>{t('editWorkout.addExercise')}</Text>
                 </PressableScale>
               </View>
             </>
@@ -688,9 +692,9 @@ export default function EditWorkout() {
             onPress={() => Keyboard.dismiss()}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Hide keyboard"
+            accessibilityLabel={t('workout.hideKeyboard')}
           >
-            <Text style={styles.kbdAccessoryDone}>Done</Text>
+            <Text style={styles.kbdAccessoryDone}>{t('workout.keyboardDone')}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -706,12 +710,12 @@ export default function EditWorkout() {
           accessibilityRole="button"
           accessibilityState={{ disabled: saving || deciding }}
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </Pressable>
         <View style={styles.headerMid}>
-          <Text style={styles.editing}>EDITING</Text>
+          <Text style={styles.editing}>{t('editWorkout.editing')}</Text>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {stored?.name ?? ''}
+            {stored ? workoutLabel(stored.name) : ''}
           </Text>
         </View>
         {/* Inert until something changes, then the screen's one accent. */}
@@ -723,7 +727,7 @@ export default function EditWorkout() {
           accessibilityRole="button"
           accessibilityState={{ disabled: !savable || saving || deciding }}
         >
-          <Text style={[styles.saveText, savable && styles.saveTextOn]}>Save</Text>
+          <Text style={[styles.saveText, savable && styles.saveTextOn]}>{t('common.save')}</Text>
         </Pressable>
       </View>
 
@@ -799,13 +803,14 @@ function WhenCell({
   was: string | null;
   onPress: () => void;
 }) {
+  useThemed();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.whenCell, pressed && styles.whenCellPressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${label.toLowerCase()}, ${value}`}
-      accessibilityHint="Opens the date and time picker"
+      accessibilityLabel={t('editWorkout.cellLabel', { label: label.toLowerCase(), value })}
+      accessibilityHint={t('editWorkout.cellHint')}
     >
       <View style={styles.whenLabelRow}>
         <Text style={styles.whenLabel}>{label}</Text>
@@ -833,177 +838,179 @@ function WhenCell({
 
 const tabular: ['tabular-nums'] = ['tabular-nums'];
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
-  content: { paddingHorizontal: 16 },
-  loading: { paddingVertical: 48, alignItems: 'center' },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
+    content: { paddingHorizontal: 16 },
+    loading: { paddingVertical: 48, alignItems: 'center' },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: HEADER_BOTTOM,
-  },
-  cancel: {
-    height: HEADER_ROW,
-    paddingHorizontal: 14,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    justifyContent: 'center',
-  },
-  cancelText: { fontFamily: font.titleSemi, fontSize: 13, color: color.text2 },
-  headerMid: { flex: 1, minWidth: 0, alignItems: 'center', gap: 1 },
-  editing: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 1.33,
-    color: color.text3,
-  },
-  headerTitle: {
-    maxWidth: '100%',
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    letterSpacing: -0.145,
-    color: color.text1,
-  },
-  save: {
-    height: HEADER_ROW,
-    paddingHorizontal: 16,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    justifyContent: 'center',
-  },
-  saveOn: { backgroundColor: color.accent },
-  saveText: { fontFamily: font.displayBold, fontSize: 13, color: color.text3 },
-  saveTextOn: { color: color.accentFg },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingBottom: HEADER_BOTTOM,
+    },
+    cancel: {
+      height: HEADER_ROW,
+      paddingHorizontal: 14,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      justifyContent: 'center',
+    },
+    cancelText: { fontFamily: font.titleSemi, fontSize: 13, color: color.text2 },
+    headerMid: { flex: 1, minWidth: 0, alignItems: 'center', gap: 1 },
+    editing: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 1.33,
+      color: color.text3,
+    },
+    headerTitle: {
+      maxWidth: '100%',
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      letterSpacing: -0.145,
+      color: color.text1,
+    },
+    save: {
+      height: HEADER_ROW,
+      paddingHorizontal: 16,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      justifyContent: 'center',
+    },
+    saveOn: { backgroundColor: color.accent },
+    saveText: { fontFamily: font.displayBold, fontSize: 13, color: color.text3 },
+    saveTextOn: { color: color.accentFg },
 
-  // Date · start · duration -------------------------------------------
-  whenRow: { flexDirection: 'row', gap: 8 },
-  whenCell: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 66,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    gap: 5,
-  },
-  whenCellPressed: { backgroundColor: color.surface2 },
-  whenLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  whenLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9,
-    letterSpacing: 0.9,
-    color: color.text3,
-  },
-  whenValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 15,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  whenWas: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    color: color.text3,
-    fontVariant: tabular,
-  },
+    // Date · start · duration -------------------------------------------
+    whenRow: { flexDirection: 'row', gap: 8 },
+    whenCell: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 66,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+      gap: 5,
+    },
+    whenCellPressed: { backgroundColor: color.surface2 },
+    whenLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    whenLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9,
+      letterSpacing: 0.9,
+      color: color.text3,
+    },
+    whenValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 15,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    whenWas: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      color: color.text3,
+      fontVariant: tabular,
+    },
 
-  // Cards --------------------------------------------------------------
-  list: { gap: LIST_GAP, marginTop: 14 },
-  // Supersets keep their rail and tags (11a), drawn as board 13b's E11 has
-  // them: the label over the group, the rail in the page margin.
-  ssMember: { position: 'relative' },
-  ssHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: SS_HEADER_HEIGHT,
-    marginBottom: SS_HEADER_GAP,
-    paddingHorizontal: 2,
-  },
-  ssLabel: {
-    flexShrink: 0,
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text2,
-  },
-  ssNote: {
-    flexShrink: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-  },
-  ssRail: {
-    position: 'absolute',
-    left: -9,
-    width: 2,
-    borderRadius: 2,
-    backgroundColor: color.text3,
-  },
-  emptyCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  emptyTitle: { fontFamily: font.titleSemi, fontSize: 16, color: color.text1, textAlign: 'center' },
-  emptyBody: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    lineHeight: 20.25,
-    color: color.text2,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  addExercise: {
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  addExerciseText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
+    // Cards --------------------------------------------------------------
+    list: { gap: LIST_GAP, marginTop: 14 },
+    // Supersets keep their rail and tags (11a), drawn as board 13b's E11 has
+    // them: the label over the group, the rail in the page margin.
+    ssMember: { position: 'relative' },
+    ssHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: SS_HEADER_HEIGHT,
+      marginBottom: SS_HEADER_GAP,
+      paddingHorizontal: 2,
+    },
+    ssLabel: {
+      flexShrink: 0,
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text2,
+    },
+    ssNote: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    ssRail: {
+      position: 'absolute',
+      left: -9,
+      width: 2,
+      borderRadius: 2,
+      backgroundColor: color.text3,
+    },
+    emptyCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingVertical: 24,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+    },
+    emptyTitle: { fontFamily: font.titleSemi, fontSize: 16, color: color.text1, textAlign: 'center' },
+    emptyBody: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      lineHeight: 20.25,
+      color: color.text2,
+      marginTop: 6,
+      textAlign: 'center',
+    },
+    addExercise: {
+      height: 46,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    addExerciseText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
 
-  // The live workout's Done bar, with nothing on its left.
-  kbdAccessory: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 44,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: color.surface2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-  },
-  // text1, where the live bar is accent: Save is this screen's one accent.
-  kbdAccessoryDone: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    color: color.text1,
-    paddingHorizontal: 6,
-  },
-});
+    // The live workout's Done bar, with nothing on its left.
+    kbdAccessory: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      height: 44,
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: color.surface2,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border,
+    },
+    // text1, where the live bar is accent: Save is this screen's one accent.
+    kbdAccessoryDone: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      color: color.text1,
+      paddingHorizontal: 6,
+    },
+  }),
+);

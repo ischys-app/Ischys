@@ -1,0 +1,153 @@
+{
+  "_comment": "Glossary for the el translation script. Rows without extension:true come from the design spec and are fixed. Rows with extension:true were added by the builder; reviewers may edit them.",
+  "terms": [
+    {
+      "en": "set",
+      "el": "σετ"
+    },
+    {
+      "en": "rep / reps",
+      "el": "επανάληψη / επαναλήψεις",
+      "note": "short form: επαν."
+    },
+    {
+      "en": "exercise",
+      "el": "άσκηση"
+    },
+    {
+      "en": "workout",
+      "el": "προπόνηση"
+    },
+    {
+      "en": "routine",
+      "el": "πρόγραμμα"
+    },
+    {
+      "en": "warm-up set",
+      "el": "σετ προθέρμανσης"
+    },
+    {
+      "en": "drop set",
+      "el": "drop set"
+    },
+    {
+      "en": "failure set",
+      "el": "σετ μέχρι αποτυχίας"
+    },
+    {
+      "en": "superset",
+      "el": "superset"
+    },
+    {
+      "en": "personal record",
+      "el": "ατομικό ρεκόρ",
+      "note": "the abbreviation PR stays PR"
+    },
+    {
+      "en": "rest timer",
+      "el": "χρονόμετρο ξεκούρασης"
+    },
+    {
+      "en": "rest",
+      "el": "ξεκούραση",
+      "extension": true
+    },
+    {
+      "en": "volume (total weight lifted)",
+      "el": "όγκος",
+      "extension": true
+    },
+    {
+      "en": "bodyweight",
+      "el": "σωματικό βάρος",
+      "extension": true
+    },
+    {
+      "en": "muscle group",
+      "el": "μυϊκή ομάδα",
+      "extension": true
+    },
+    {
+      "en": "plate calculator",
+      "el": "αριθμομηχανή δίσκων",
+      "extension": true
+    },
+    {
+      "en": "history",
+      "el": "ιστορικό",
+      "extension": true
+    },
+    {
+      "en": "template",
+      "el": "πρότυπο",
+      "extension": true
+    },
+    {
+      "en": "estimated 1RM",
+      "el": "εκτιμώμενο 1RM",
+      "extension": true
+    },
+    {
+      "en": "crunch / sit-up",
+      "el": "κοιλιακοί",
+      "note": "never ροκάνισμα",
+      "extension": true
+    },
+    {
+      "en": "kneeling",
+      "el": "γονατιστό / γονατιστή",
+      "note": "never καθιστό (that is seated)",
+      "extension": true
+    },
+    {
+      "en": "medicine ball",
+      "el": "μπάλα ιατρικής",
+      "extension": true
+    },
+    {
+      "en": "reverse (exercise variant)",
+      "el": "ανάποδο / ανάποδη",
+      "extension": true
+    },
+    {
+      "en": "fly / flye",
+      "el": "ανοίγματα",
+      "note": "a chest/rear-delt fly; not εκτάσεις",
+      "extension": true
+    },
+    {
+      "en": "rear delt",
+      "el": "οπίσθιοι δελτοειδείς",
+      "extension": true
+    },
+    {
+      "en": "pushdown",
+      "el": "έκταση τρικεφάλων στην τροχαλία",
+      "note": "triceps; not κάμψη",
+      "extension": true
+    },
+    {
+      "en": "snatch",
+      "el": "αρασέ",
+      "extension": true
+    },
+    {
+      "en": "jerk",
+      "el": "ζετέ",
+      "extension": true
+    },
+    {
+      "en": "clean (lift)",
+      "el": "επιβολή",
+      "extension": true
+    }
+  ],
+  "untranslated": [
+    "RPE",
+    "1RM",
+    "PR",
+    "kg",
+    "lb",
+    "Ischys"
+  ]
+}

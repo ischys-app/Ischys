@@ -2,7 +2,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildFinishedWatchState, buildWatchState, watchRestEndsAt } from './watchState.ts';
+import {
+  buildFinishedWatchState,
+  buildOffWatchState,
+  buildWatchState,
+  watchRestEndsAt,
+} from './watchState.ts';
 
 const set = (id: string, weight: string, reps: string, done = false, type = 'normal') => ({
   id,
@@ -284,4 +289,35 @@ test('the next exercise becomes current once one is fully done', () => {
 test('null once every set is done', () => {
   const s = buildWatchState(legPress(set('a', '1', '1', true)), 'R', rest, resolve);
   assert.equal(s, null);
+});
+
+test('the off state carries the first name only', () => {
+  assert.deepEqual(buildOffWatchState('Maria Papadaki'), { screen: 'off', profileName: 'Maria' });
+});
+
+test('a superset logged as failure sets sends the Watch to the partner after a set', () => {
+  // Reproduced on a paired simulator: logging the first partner's first
+  // failure set from the Watch offered that partner's next set.
+  const st = buildWatchState(
+    [
+      {
+        id: 'we-a', name: 'Incline Dumbbell Press', equipment: 'dumbbell', rest: 120, supersetGroup: 1,
+        sets: [
+          set('aw', '80', '6', true, 'warmup'),
+          set('a1', '150', '8', true, 'failure'),
+          set('a2', '150', '7', false, 'failure'),
+        ],
+      },
+      {
+        id: 'we-b', name: 'Dips', equipment: 'other', rest: 120, supersetGroup: 1,
+        sets: [set('b1', '0', '10', false, 'failure'), set('b2', '0', '10', false, 'failure')],
+      },
+    ],
+    'Push',
+    rest,
+    resolve,
+  );
+  assert.equal(st?.exerciseName, 'Dips');
+  assert.equal(st?.currentSetId, 'b1');
+  assert.equal(st?.supersetLabel, 'SUPERSET A · 2 OF 2');
 });

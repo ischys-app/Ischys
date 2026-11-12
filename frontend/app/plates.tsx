@@ -15,12 +15,16 @@ import { BackChevronIcon } from '../src/components/icons';
 import { SectionLabel } from '../src/components/SectionLabel';
 import { BAR_OPTIONS, defaultBarSetup, setupUnit, type BarSetup } from '../src/domain/plateMath';
 import { getPlateSetup, setPlateSetup } from '../src/lib/plateSetup';
+import { localizeNumber } from '../src/domain/units';
 import { useWeightUnit } from '../src/lib/weightUnit';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
+import { t } from '../src/i18n';
 
-const fmt = (n: number): string => String(Math.round(n * 100) / 100);
+const fmt = (n: number): string => localizeNumber(String(Math.round(n * 100) / 100));
 
 export default function PlatesScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Each unit has its own rack: a pound user edits pound plates here, and the
@@ -65,16 +69,16 @@ export default function PlatesScreen() {
           hitSlop={10}
           style={styles.back}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
         >
           <BackChevronIcon color={color.text1} />
         </Pressable>
-        <Text style={styles.title}>Bar &amp; plates</Text>
+        <Text style={styles.title}>{t('plates.title')}</Text>
         <View style={styles.back} />
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
-        <SectionLabel>BAR</SectionLabel>
+        <SectionLabel>{t('plates.bar')}</SectionLabel>
         <View style={styles.card}>
           <View style={styles.segment}>
             {BAR_OPTIONS[unit].map((kg) => {
@@ -94,7 +98,7 @@ export default function PlatesScreen() {
           </View>
         </View>
 
-        <SectionLabel>PLATES · PAIRS</SectionLabel>
+        <SectionLabel>{t('plates.platesPairs')}</SectionLabel>
         <View style={styles.card}>
           {setup.pairs.map((p, i) => (
             <View
@@ -108,7 +112,7 @@ export default function PlatesScreen() {
                   hitSlop={8}
                   style={styles.stepBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`One fewer pair of ${fmt(p.kg)} ${unit} plates`}
+                  accessibilityLabel={t('plates.fewer', { plate: `${fmt(p.kg)} ${unit}` })}
                 >
                   <Text style={styles.stepGlyph}>−</Text>
                 </Pressable>
@@ -120,7 +124,7 @@ export default function PlatesScreen() {
                   hitSlop={8}
                   style={styles.stepBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`One more pair of ${fmt(p.kg)} ${unit} plates`}
+                  accessibilityLabel={t('plates.more', { plate: `${fmt(p.kg)} ${unit}` })}
                 >
                   <Text style={styles.stepGlyph}>+</Text>
                 </Pressable>
@@ -128,7 +132,7 @@ export default function PlatesScreen() {
             </View>
           ))}
         </View>
-        <Text style={styles.hint}>Set a plate to 0 if your gym doesn&apos;t have it.</Text>
+        <Text style={styles.hint}>{t('plates.hint')}</Text>
 
         {loaded && (
           <Pressable
@@ -136,7 +140,7 @@ export default function PlatesScreen() {
             style={styles.reset}
             accessibilityRole="button"
           >
-            <Text style={styles.resetText}>Reset to a standard set</Text>
+            <Text style={styles.resetText}>{t('plates.reset')}</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -144,75 +148,77 @@ export default function PlatesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
 
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
 
-  segment: { flexDirection: 'row', padding: 6, gap: 6 },
-  segmentItem: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Selected uses surface3, matching the shipped Units segment — the accent on
-  // this screen would compete with nothing and mean nothing.
-  segmentItemOn: { backgroundColor: color.surface3 },
-  segmentText: { fontFamily: font.monoMedium, fontSize: 14, color: color.text2 },
-  segmentTextOn: { color: color.text1 },
+    segment: { flexDirection: 'row', padding: 6, gap: 6 },
+    segmentItem: {
+      flex: 1,
+      height: 40,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Selected uses surface3, matching the shipped Units segment — the accent on
+    // this screen would compete with nothing and mean nothing.
+    segmentItemOn: { backgroundColor: color.surface3 },
+    segmentText: { fontFamily: font.monoMedium, fontSize: 14, color: color.text2 },
+    segmentTextOn: { color: color.text1 },
 
-  plateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    height: 52,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: color.hair,
-  },
-  plateRowLast: { borderBottomWidth: 0 },
-  plateKg: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
+    plateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 52,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: color.hair,
+    },
+    plateRowLast: { borderBottomWidth: 0 },
+    plateKg: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
 
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  stepBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface2,
-  },
-  stepGlyph: { fontFamily: font.titleSemi, fontSize: 18, color: color.text1, lineHeight: 22 },
-  stepCount: {
-    fontFamily: font.monoSemi,
-    fontSize: 16,
-    color: color.text1,
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  stepCountOff: { color: color.text3 },
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    stepBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.surface2,
+    },
+    stepGlyph: { fontFamily: font.titleSemi, fontSize: 18, color: color.text1, lineHeight: 22 },
+    stepCount: {
+      fontFamily: font.monoSemi,
+      fontSize: 16,
+      color: color.text1,
+      minWidth: 30,
+      textAlign: 'center',
+    },
+    stepCountOff: { color: color.text3 },
 
-  hint: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginTop: -8 },
+    hint: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginTop: -8 },
 
-  reset: { marginTop: 28, alignItems: 'center', paddingVertical: 12 },
-  resetText: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text2 },
-});
+    reset: { marginTop: 28, alignItems: 'center', paddingVertical: 12 },
+    resetText: { fontFamily: font.bodyMedium, fontSize: 14, color: color.text2 },
+  }),
+);

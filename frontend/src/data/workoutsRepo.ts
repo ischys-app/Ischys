@@ -5,7 +5,7 @@
  * DB (drizzle/expo) — never node-tested. No FK cascades in the schema, so child
  * rows are deleted explicitly.
  */
-import { and, asc, count, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt, max, min } from 'drizzle-orm';
 
 import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
@@ -22,6 +22,7 @@ import type {
 import { activityMap } from '../domain/activityMap';
 import { uniqueRoutineName } from '../domain/importedRoutines';
 import { normalizeRpe } from '../domain/effort';
+import { previousNoteHint, startingNote } from '../domain/keepNotes';
 import { latestBefore } from '../domain/previous';
 import { detectPrs, headlinePr } from '../domain/records';
 import { countWorkingSets, workoutVolume, type SetLike } from '../domain/stats';
@@ -32,12 +33,15 @@ import { toWorkoutListItem, toWorkoutSetOut, type WorkoutRow, type WorkoutSetRow
 import {
   completedSessionsFor,
   loadWorkout,
-  muscleLabel,
+  muscleTagFor,
   muscleTagsByWorkout,
 } from './queries';
 import { currentValues, prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
+import { getSettings } from './settingsRepo';
 import { getBodyweightKg } from '../lib/bodyweight';
 import { getCountWarmups } from '../lib/warmupVolume';
+import { getLang } from '../i18n/current';
+import { exerciseLabel } from '../i18n/catalogNames';
 
 const asSetLike = (s: WorkoutSetRow, kind?: 'weighted' | 'bodyweight'): SetLike => ({
   type: s.type as SetType,
@@ -71,6 +75,26 @@ export async function listWorkouts(
     .offset(params.offset ?? 0);
   const tags = await muscleTagsByWorkout(rows.map((w) => w.id));
   return rows.map((w) => toWorkoutListItem(w as WorkoutRow, tags.get(w.id) ?? []));
+}
+
+/**
+ * The current file's completed workouts: how many, and when the first and the
+ * latest began. Cached in the profiles registry for the switcher (#117).
+ */
+export async function completedWorkoutStats(): Promise<{
+  workoutCount: number;
+  firstWorkoutAt: number | null;
+  lastWorkoutAt: number | null;
+}> {
+  const [row] = await db
+    .select({
+      n: count(),
+      first: min(schema.workouts.startedAt),
+      last: max(schema.workouts.startedAt),
+    })
+    .from(schema.workouts)
+    .where(eq(schema.workouts.status, 'completed'));
+  return { workoutCount: row?.n ?? 0, firstWorkoutAt: row?.first ?? null, lastWorkoutAt: row?.last ?? null };
 }
 
 /** How many workouts there are, of one status or of any. */
@@ -135,7 +159,8 @@ async function previousNote(exerciseId: string, beforeMs: number): Promise<strin
         lt(schema.workouts.startedAt, beforeMs),
       ),
     )
-    .orderBy(desc(schema.workouts.startedAt))
+    // The same exercise twice in that session: the first one, not an arbitrary one.
+    .orderBy(desc(schema.workouts.startedAt), asc(schema.workoutExercises.position))
     .limit(1))[0];
   const n = row?.note?.trim();
   return n && n.length > 0 ? n : null;
@@ -145,12 +170,16 @@ async function previousNote(exerciseId: string, beforeMs: number): Promise<strin
  * Placeholder note for a workout-exercise: your last session's note, else the
  * routine's own note for this exercise (a deliberately-authored template hint).
  * It is only ever a hint — never a saved value — so it can't get stuck.
+ *
+ * With "Keep exercise notes" on, the last note is already the saved value, so
+ * it is not also offered as a hint: clearing it would bring it back greyed out.
  */
 export async function getPreviousNote(weId: string): Promise<string | null> {
   const we = (await db.select().from(schema.workoutExercises).where(eq(schema.workoutExercises.id, weId)))[0];
   if (!we) return null;
   const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, we.workoutId)))[0];
-  const prev = await previousNote(we.exerciseId, w ? w.startedAt : nowMs());
+  const keepNotes = (await getSettings()).keep_exercise_notes;
+  const prev = previousNoteHint(keepNotes, await previousNote(we.exerciseId, w ? w.startedAt : nowMs()));
   if (prev) return prev;
   if (w?.routineId) {
     const re = (await db
@@ -197,6 +226,7 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
     : undefined;
   if (body.routine_id && !routine) throw new Error('routine not found');
   if (routine) name = body.name || routine.name;
+  const keepNotes = routine ? (await getSettings()).keep_exercise_notes : false;
 
   // One unit: a start cut short would leave a live workout holding only some
   // of its routine, with nothing to say the rest is missing.
@@ -232,7 +262,13 @@ export async function startWorkout(body: { routine_id?: string; name?: string })
           // placeholder — not frozen onto the session as a value. Freezing it meant a
           // routine's note (e.g. inherited from an imported sample) reappeared every
           // workout and edits never stuck, since they never wrote back to the routine.
-          note: null,
+          // With "Keep exercise notes" on, the last session's note is copied in
+          // instead, so it carries until changed or cleared (#137).
+          note: startingNote({
+            keep: keepNotes,
+            status: 'active',
+            previous: keepNotes ? await previousNote(re.exerciseId, startedAt) : null,
+          }),
           updatedAt: nowMs(),
         });
         const rsets = await db
@@ -461,6 +497,19 @@ async function setsForAddedExercise(workoutId: string, body: AddExerciseBody): P
     : [{ type: 'normal' as SetType, done: false }];
 }
 
+/**
+ * The body with the note a newly added exercise starts with: with "Keep
+ * exercise notes" on, its last session's note, as a routine start gives (#137).
+ * Reads only; called before the transaction.
+ */
+async function withStartingNote(workoutId: string, body: AddExerciseBody, keep: boolean): Promise<AddExerciseBody> {
+  if (!keep || body.note != null) return body;
+  const w = (await db.select().from(schema.workouts).where(eq(schema.workouts.id, workoutId)))[0];
+  const previous = w ? await previousNote(body.exercise_id, w.startedAt) : null;
+  const note = startingNote({ keep, status: w?.status, previous });
+  return note === null ? body : { ...body, note };
+}
+
 /** Appends one exercise and its sets. Statements only: runs inside the caller's transaction. */
 async function insertWorkoutExercise(
   tx: Executor,
@@ -497,9 +546,10 @@ async function insertWorkoutExercise(
 
 export async function addWorkoutExercise(
   workoutId: string,
-  body: AddExerciseBody,
+  input: AddExerciseBody,
 ): Promise<WorkoutExerciseOut> {
   const weId = newId();
+  const body = await withStartingNote(workoutId, input, (await getSettings()).keep_exercise_notes);
   const sets = await setsForAddedExercise(workoutId, body);
   // Position read + inserts atomic: two rapid adds must not read the same
   // position and collide, and the exercise's sets must land as one unit.
@@ -523,7 +573,9 @@ export async function addWorkoutExercises(
   opts: { asSuperset?: boolean } = {},
 ): Promise<WorkoutExerciseOut[]> {
   const planned: { weId: string; body: AddExerciseBody; sets: AddExerciseSets }[] = [];
-  for (const body of bodies) {
+  const keepNotes = (await getSettings()).keep_exercise_notes;
+  for (const input of bodies) {
+    const body = await withStartingNote(workoutId, input, keepNotes);
     planned.push({ weId: newId(), body, sets: await setsForAddedExercise(workoutId, body) });
   }
   if (planned.length === 0) return [];
@@ -576,11 +628,24 @@ export async function uploadHeartRate(
   workoutId: string,
   body: { avg_hr: number; max_hr: number },
 ): Promise<WorkoutOut> {
-  await db
+  await writeHeartRate(workoutId, body);
+  return getWorkout(workoutId);
+}
+
+/**
+ * Stores a workout's heart rate through `ex`, and reads nothing back.
+ * healthSync stores the owner's through `deviceDb` (#117): a finish sync can
+ * outlive a switch, after which `db`, and `getWorkout`, are someone else's.
+ */
+export async function writeHeartRate(
+  workoutId: string,
+  body: { avg_hr: number; max_hr: number },
+  ex: Executor = db,
+): Promise<void> {
+  await ex
     .update(schema.workouts)
     .set({ avgHr: body.avg_hr, maxHr: body.max_hr, updatedAt: nowMs() })
     .where(eq(schema.workouts.id, workoutId));
-  return getWorkout(workoutId);
 }
 
 // --- Finish (aggregates + PR detection + summary) ---
@@ -683,7 +748,8 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   const exRows = exerciseIds.length
     ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, exerciseIds))
     : [];
-  const exNameById = new Map(exRows.map((e) => [e.id, e.name]));
+  const lang = getLang();
+  const exNameById = new Map(exRows.map((e) => [e.id, exerciseLabel(e, lang)]));
   const muscleRows = await db.select().from(schema.muscles);
   const muscleById = new Map(muscleRows.map((m) => [m.id, m]));
   const setsByWe = new Map<string, WorkoutSetRow[]>();
@@ -695,7 +761,7 @@ export async function finishWorkout(wid: string): Promise<WorkoutSummaryOut> {
   const exPrimaryById = new Map(exRows.map((e) => [e.id, e.primaryMuscleId ? muscleById.get(e.primaryMuscleId) ?? null : null]));
   const volume_by_muscle = volumeByMuscle(
     wes.map((we) => ({
-      muscleLabel: muscleLabel(exPrimaryById.get(we.exerciseId) ?? null),
+      muscleLabel: muscleTagFor(exPrimaryById.get(we.exerciseId) ?? null),
       sets: (setsByWe.get(we.id) ?? []).map((s) => asSetLike(s, kindByWeId.get(we.id))),
     })),
   );

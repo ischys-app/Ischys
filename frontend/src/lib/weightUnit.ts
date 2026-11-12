@@ -17,6 +17,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { getSettings } from '../data/settingsRepo';
 import type { Unit } from '../domain/units';
+import { onProfileSwitch } from './activeProfile';
 
 let current: Unit = 'kg';
 const listeners = new Set<() => void>();
@@ -59,6 +60,13 @@ export async function loadWeightUnit(): Promise<Unit> {
 
 /** Set once a read of the settings row has succeeded; see `useWeightUnit`. */
 let primed = false;
+
+// The unit is the profile's (#117): back to the default until the new
+// profile's settings row is read (switchProfile primes it before the remount).
+onProfileSwitch(() => {
+  primed = false;
+  setWeightUnit('kg');
+});
 
 /**
  * The user's weight unit, live.

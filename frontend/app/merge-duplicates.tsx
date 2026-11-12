@@ -40,12 +40,19 @@ import { reconcilePrs, prMetricLabel, type MergeReason } from '../src/lib/mergeD
 import { haptics } from '../src/lib/haptics';
 import { recordDisplay } from '../src/domain/records';
 import { useWeightUnit } from '../src/lib/weightUnit';
-import { accentA, color, font } from '../src/theme/tokens';
+import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
+import { getLang } from '../src/i18n/current';
+import { fmtMonthYear } from '../src/lib/format';
+import { equipmentLabel, nameToStore } from '../src/i18n/catalogNames';
+import { t } from '../src/i18n';
+import { upperDisplay } from '../src/i18n/upper';
 
 // --- Local glyphs (icons.tsx is owned by another stream) ------------------
 
 /** Merge glyph: two overlapping circles (board M1/M2/M6). */
 function MergeGlyph({ size = 24, color: stroke, strokeWidth = 2 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Circle cx={8} cy={8} r={5} stroke={stroke} strokeWidth={strokeWidth} fill="none" />
@@ -55,6 +62,7 @@ function MergeGlyph({ size = 24, color: stroke, strokeWidth = 2 }: { size?: numb
 }
 
 function ChevronRight({ size = 15, color: stroke, strokeWidth = 2.2 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M9 6l6 6-6 6" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -63,6 +71,7 @@ function ChevronRight({ size = 15, color: stroke, strokeWidth = 2.2 }: { size?: 
 }
 
 function BackChevron({ color: stroke }: { color: string }) {
+  useThemed();
   return (
     <Svg width={9} height={15} viewBox="0 0 9 15">
       <Path d="M7 2L2 7.5 7 13" stroke={stroke} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -71,6 +80,7 @@ function BackChevron({ color: stroke }: { color: string }) {
 }
 
 function Check({ size = 12, color: stroke, strokeWidth = 3.6 }: { size?: number; color: string; strokeWidth?: number }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M20 6L9 17l-5-5" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -79,6 +89,7 @@ function Check({ size = 12, color: stroke, strokeWidth = 3.6 }: { size?: number;
 }
 
 function PencilGlyph({ size = 14, color: stroke }: { size?: number; color: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -95,24 +106,24 @@ function PencilGlyph({ size = 14, color: stroke }: { size?: number; color: strin
 
 // --- Reason tag -----------------------------------------------------------
 
-const REASON_META: Record<MergeReason, { label: string; fg: string; bg: string }> = {
-  same_name: { label: 'SAME NAME', fg: color.text3, bg: color.surface3 },
+const REASON_META: Record<MergeReason, { label: string; fg: string; bg: string }> = themed(() => ({
+  same_name: { label: 'mergeDup.sameName', fg: color.text3, bg: color.surface3 },
   // tokens.ts names the #4C8DFF "water" accent `drop`.
-  same_import: { label: 'SAME IMPORT', fg: color.drop, bg: 'rgba(76,141,255,0.1)' },
-  similar_name: { label: 'SIMILAR NAME', fg: color.warning, bg: 'rgba(255,194,75,0.1)' },
-};
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  same_import: { label: 'mergeDup.sameImport', fg: color.drop, bg: withAlpha(color.drop, 0.1) },
+  similar_name: { label: 'mergeDup.similarName', fg: color.warning, bg: withAlpha(color.warning, 0.1) },
+}));
 
 function sinceLabel(ms: number | null): string {
-  if (ms === null) return 'no history yet';
+  if (ms === null) return t('mergeDup.noHistory');
   const d = new Date(ms);
-  return `since ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  if (Number.isNaN(d.getTime())) return t('mergeDup.noHistory');
+  return t('mergeDup.since', { date: fmtMonthYear(d.toISOString()) });
 }
 
 type Step = 'loading' | 'list' | 'detail' | 'success';
 
 export default function MergeDuplicates() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const unit = useWeightUnit();
@@ -146,7 +157,7 @@ export default function MergeDuplicates() {
       setTotalScanned(total);
       setStep('list');
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Could not scan the library');
+      setLoadError(e instanceof Error ? e.message : t('mergeDup.scanFailed'));
       setStep('list');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,25 +188,29 @@ export default function MergeDuplicates() {
     } catch (e) {
       setSheetOpen(false);
       if (e instanceof ActiveSessionError) {
-        Alert.alert('Can’t merge right now', e.message);
+        Alert.alert(t('mergeDup.cantMerge'), e.message);
       } else {
-        Alert.alert('Merge failed', e instanceof Error ? e.message : 'Something went wrong.');
+        Alert.alert(t('mergeDup.mergeFailed'), e instanceof Error ? e.message : t('mergeDup.somethingWrong'));
       }
     } finally {
       setMerging(false);
     }
   };
 
-  const rename = (id: string, currentName: string) => {
+  const rename = (id: string, current: { name: string; englishName: string }) => {
     const commit = (name?: string) => {
-      const trimmed = (name ?? '').trim();
-      if (!trimmed || trimmed === currentName) return;
+      // The field is pre-filled with the display label; leaving it as is must
+      // not write that label over the stored (English) name.
+      const trimmed = nameToStore(name ?? '', current);
+      if (!trimmed) return;
       patchExercise(id, { name: trimmed })
-        .then(() => setResult((r) => (r ? { ...r, survivorName: trimmed } : r)))
-        .catch(() => Alert.alert('Rename failed', 'Could not rename the exercise.'));
+        .then(() =>
+          setResult((r) => (r ? { ...r, survivorName: trimmed, survivorEnglishName: trimmed } : r)),
+        )
+        .catch(() => Alert.alert(t('mergeDup.renameFailed'), t('mergeDup.renameFailedBody')));
     };
     if (Platform.OS === 'ios' && typeof Alert.prompt === 'function') {
-      Alert.prompt('Rename exercise', undefined, commit, 'plain-text', currentName);
+      Alert.prompt(t('mergeDup.rename'), undefined, commit, 'plain-text', current.name);
     } else {
       router.push(`/exercise/${id}`);
     }
@@ -207,6 +222,7 @@ export default function MergeDuplicates() {
   const combinedSets = active?.members.reduce((s, m) => s + m.setCount, 0) ?? 0;
   const combinedWorkouts = active?.members.reduce((s, m) => s + m.workoutCount, 0) ?? 0;
   const routinesRepoint = losers.reduce((s, m) => s + m.routineCount, 0);
+  const confirmParts = t('mergeDup.confirm', { sets: combinedSets, count: routinesRepoint, name: '\u0000' }).split('\u0000');
   const prRows =
     survivor != null ? reconcilePrs(survivor.prs, losers.map((l) => l.prs)) : [];
 
@@ -223,7 +239,7 @@ export default function MergeDuplicates() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: 100 + insets.top, paddingHorizontal: 16, paddingBottom: 120 + insets.bottom }}
         >
-          <Text style={styles.sectionLabel}>KEEP</Text>
+          <Text style={styles.sectionLabel}>{upperDisplay(t('mergeDup.keep'))}</Text>
           <View style={{ gap: 8 }}>
             {active.members.map((m) => {
               const sel = m.id === survivorId;
@@ -243,7 +259,7 @@ export default function MergeDuplicates() {
                       {m.name}
                     </Text>
                     <Text style={[styles.keepMeta, sel && { color: color.text2 }]}>
-                      {`${m.setCount} sets · ${m.workoutCount} workouts · ${sinceLabel(m.firstWorkoutMs)}`}
+                      {t('mergeDup.keepMeta', { sets: m.setCount, workouts: m.workoutCount, since: sinceLabel(m.firstWorkoutMs) })}
                     </Text>
                   </View>
                 </Pressable>
@@ -252,24 +268,24 @@ export default function MergeDuplicates() {
           </View>
           {survivor.isCatalog ? <Text style={styles.reasonLine}>{active.survivorReason}</Text> : null}
 
-          <Text style={[styles.sectionLabel, { paddingTop: 22 }]}>WHAT COMBINES</Text>
+          <Text style={[styles.sectionLabel, { paddingTop: 22 }]}>{upperDisplay(t('mergeDup.whatCombines'))}</Text>
           <View style={styles.combineCard}>
             <View style={styles.combineRow}>
               <Check size={15} color={color.success} strokeWidth={2.6} />
-              <Text style={styles.combineText}>{`${combinedSets} sets across ${combinedWorkouts} workouts`}</Text>
+              <Text style={styles.combineText}>{t('mergeDup.combined', { sets: combinedSets, workouts: combinedWorkouts })}</Text>
             </View>
             {routinesRepoint > 0 ? (
               <View style={styles.combineRow}>
                 <Check size={15} color={color.success} strokeWidth={2.6} />
                 <Text style={styles.combineText}>
-                  {`${routinesRepoint} ${routinesRepoint === 1 ? 'routine re-points' : 'routines re-point'} automatically`}
+                  {t('mergeDup.repoint', { count: routinesRepoint })}
                 </Text>
               </View>
             ) : null}
 
             {prRows.length > 0 ? (
               <View style={styles.prBlock}>
-                <Text style={styles.prHeader}>PERSONAL RECORDS · BEST OF EACH KEPT</Text>
+                <Text style={styles.prHeader}>{t('mergeDup.prHeader')}</Text>
                 <View style={{ gap: 7 }}>
                   {prRows.map((r) => (
                     <View key={r.metric} style={styles.prRow}>
@@ -278,7 +294,7 @@ export default function MergeDuplicates() {
                         {recordDisplay(r.metric, r.value, r.display, unit)}
                       </Text>
                       <Text style={[styles.prTag, r.fromDup && { color: color.success }]}>
-                        {r.fromDup ? 'from dup' : 'kept'}
+                        {r.fromDup ? t('mergeDup.fromDup') : t('mergeDup.kept')}
                       </Text>
                     </View>
                   ))}
@@ -288,23 +304,23 @@ export default function MergeDuplicates() {
           </View>
 
           <Text style={styles.finePrint}>
-            Nothing is deleted except the duplicate’s empty entry. Merging can’t be undone.
+            {t('mergeDup.finePrint')}
           </Text>
         </ScrollView>
 
         {/* Header: Cancel / title / spacer (M3) */}
         <View style={[styles.detailHeader, { paddingTop: headerPadTop }]}>
           <Pressable onPress={() => (manualIds ? router.back() : setStep('list'))} hitSlop={8}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={styles.cancel} numberOfLines={1}>{t('common.cancel')}</Text>
           </Pressable>
-          <Text style={styles.detailTitle}>{`Merge ${active.members.length} exercises`}</Text>
+          <Text style={styles.detailTitle}>{t('mergeDup.mergeCount', { count: active.members.length })}</Text>
           <View style={{ width: 52 }} />
         </View>
 
         {/* Footer CTA */}
         <View style={[styles.footer, { paddingBottom: 34 + insets.bottom }]}>
           <PressableScale style={styles.primaryCta} onPress={() => setSheetOpen(true)}>
-            <Text style={styles.primaryCtaText} numberOfLines={1}>{`Merge into ${survivor.name}`}</Text>
+            <Text style={styles.primaryCtaText} numberOfLines={1}>{t('mergeDup.mergeInto', { name: survivor.name })}</Text>
           </PressableScale>
         </View>
 
@@ -314,19 +330,19 @@ export default function MergeDuplicates() {
             <View style={styles.grabber} />
           </View>
           <View style={styles.sheetBody}>
-            <Text style={styles.sheetTitle}>Merge these exercises?</Text>
+            <Text style={styles.sheetTitle}>{t('mergeDup.confirmTitle')}</Text>
             <Text style={styles.sheetText}>
-              {`${combinedSets} sets and ${routinesRepoint} ${routinesRepoint === 1 ? 'routine' : 'routines'} will point to `}
+              {confirmParts[0]}
               <Text style={styles.sheetStrong}>{survivor.name}</Text>
-              {'. Your history and personal records are kept — only the duplicate’s empty entry is removed.'}
+              {confirmParts[1]}
             </Text>
-            <Text style={styles.sheetWarn}>This can’t be undone.</Text>
+            <Text style={styles.sheetWarn}>{t('mergeDup.cantUndo')}</Text>
             <View style={{ gap: 10, marginTop: 20 }}>
               <PressableScale style={styles.primaryCta} onPress={doMerge} disabled={merging}>
-                {merging ? <ActivityIndicator color={color.accentFg} /> : <Text style={styles.primaryCtaText}>Merge</Text>}
+                {merging ? <ActivityIndicator color={color.accentFg} /> : <Text style={styles.primaryCtaText}>{t('mergeDup.merge')}</Text>}
               </PressableScale>
               <Pressable style={styles.cancelBtn} onPress={() => setSheetOpen(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
               </Pressable>
             </View>
           </View>
@@ -351,7 +367,9 @@ export default function MergeDuplicates() {
         ) : null}
 
         {step === 'success' && result ? (
-          <MergedReceipt result={result} onRename={() => rename(result.survivorId, result.survivorName)} />
+          <MergedReceipt result={result} onRename={() =>
+              rename(result.survivorId, { name: result.survivorName, englishName: result.survivorEnglishName })
+            } />
         ) : null}
 
         {step !== 'loading' && (step === 'list' || step === 'success') ? (
@@ -359,11 +377,11 @@ export default function MergeDuplicates() {
             <>
               {step === 'list' ? (
                 <Text style={styles.intro}>
-                  These look like the same lift saved twice. Merging keeps every set and PR.
+                  {t('mergeDup.intro')}
                 </Text>
               ) : (
                 <Text style={[styles.sectionLabel, { paddingTop: 26 }]}>
-                  {`${groups.length} REMAINING`}
+                  {upperDisplay(t('mergeDup.remaining', { n: groups.length }))}
                 </Text>
               )}
               <View style={{ gap: 10 }}>
@@ -382,10 +400,10 @@ export default function MergeDuplicates() {
 
       {/* Header (M2/M5/M6) */}
       <View style={[styles.header, { paddingTop: headerPadTop }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8} accessibilityLabel="Back" accessibilityRole="button">
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8} accessibilityLabel={t('common.back')} accessibilityRole="button">
           <BackChevron color={color.text2} />
         </Pressable>
-        <Text style={styles.title}>Merge duplicates</Text>
+        <Text style={styles.title}>{t('mergeDup.title')}</Text>
       </View>
     </View>
   );
@@ -394,12 +412,13 @@ export default function MergeDuplicates() {
 // --- Group card (M2) ------------------------------------------------------
 
 function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?: boolean; onPress: () => void }) {
+  useThemed();
   const meta = REASON_META[group.reason];
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, dimmed && { opacity: 0.65 }, pressed && { opacity: 0.85 }]}>
       <View style={styles.cardHeader}>
         <View style={[styles.reasonTag, { backgroundColor: meta.bg }]}>
-          <Text style={[styles.reasonText, { color: meta.fg }]}>{meta.label}</Text>
+          <Text style={[styles.reasonText, { color: meta.fg }]}>{t(meta.label)}</Text>
         </View>
         <View style={{ flex: 1 }} />
         <ChevronRight color={color.text3} />
@@ -407,11 +426,11 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
       {group.members.map((m, i) => (
         <View key={m.id} style={[styles.memberRow, i > 0 && styles.memberDivider]}>
           <View style={styles.tile}>
-            <Text style={styles.tileText}>{m.initials}</Text>
+            <Text style={styles.tileText}>{upperDisplay(m.initials)}</Text>
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
-            <Text style={styles.memberMeta} numberOfLines={1}>{`${m.equipment} · ${m.setCount} sets`}</Text>
+            <Text style={styles.memberMeta} numberOfLines={1}>{t('mergeDup.memberMeta', { equipment: equipmentLabel(m.equipment, getLang()), sets: m.setCount })}</Text>
           </View>
         </View>
       ))}
@@ -422,6 +441,7 @@ function GroupCard({ group, dimmed, onPress }: { group: MergeGroupView; dimmed?:
 // --- Merged receipt (M5) --------------------------------------------------
 
 function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: () => void }) {
+  useThemed();
   const unit = useWeightUnit();
   const gained = result.gainedPr;
   return (
@@ -431,30 +451,31 @@ function MergedReceipt({ result, onRename }: { result: MergeResult; onRename: ()
           <Check size={16} color={color.success} strokeWidth={3.2} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.receiptTitle}>Merged</Text>
-          <Text style={styles.receiptSub} numberOfLines={1}>{`${result.survivorName} · ${result.totalSets} sets`}</Text>
+          <Text style={styles.receiptTitle}>{t('mergeDup.merged')}</Text>
+          <Text style={styles.receiptSub} numberOfLines={1}>{t('mergeDup.receiptSub', { name: result.survivorName, sets: result.totalSets })}</Text>
         </View>
       </View>
       <View style={styles.receiptRows}>
-        <ReceiptRow label="Sets moved" value={String(result.setsMoved)} />
-        <ReceiptRow label="Routines updated" value={String(result.routinesUpdated)} />
+        <ReceiptRow label={t('mergeDup.setsMoved')} value={String(result.setsMoved)} />
+        <ReceiptRow label={t('mergeDup.routinesUpdated')} value={String(result.routinesUpdated)} />
         {gained ? (
           <ReceiptRow
-            label="New PR gained"
-            value={`${prMetricLabel(gained.metric)} · ${recordDisplay(gained.metric, gained.value, gained.display, unit)}`}
+            label={t('mergeDup.newPr')}
+            value={t('mergeDup.prLine', { metric: prMetricLabel(gained.metric), value: recordDisplay(gained.metric, gained.value, gained.display, unit) })}
             success
           />
         ) : null}
       </View>
       <Pressable style={styles.renameBtn} onPress={onRename} accessibilityRole="button">
         <PencilGlyph color={color.text1} />
-        <Text style={styles.renameText}>Rename exercise</Text>
+        <Text style={styles.renameText}>{t('mergeDup.rename')}</Text>
       </Pressable>
     </View>
   );
 }
 
 function ReceiptRow({ label, value, success }: { label: string; value: string; success?: boolean }) {
+  useThemed();
   return (
     <View style={styles.receiptRow}>
       <Text style={styles.receiptRowLabel}>{label}</Text>
@@ -466,20 +487,21 @@ function ReceiptRow({ label, value, success }: { label: string; value: string; s
 // --- Empty state (M6) -----------------------------------------------------
 
 function EmptyState({ total }: { total: number }) {
+  useThemed();
   const scope =
     total > 0
-      ? `Ischys compares names, equipment and import source across all ${total} exercises.`
-      : 'Ischys compares names, equipment and import source across your whole library.';
+      ? t('mergeDup.scopeAll', { total })
+      : t('mergeDup.scopeWhole');
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
         <MergeGlyph size={28} color={color.text3} />
       </View>
-      <Text style={styles.emptyTitle}>No duplicates found</Text>
-      <Text style={styles.emptyBody}>{`Your library is clean. ${scope}`}</Text>
+      <Text style={styles.emptyTitle}>{t('mergeDup.emptyTitle')}</Text>
+      <Text style={styles.emptyBody}>{t('mergeDup.emptyBody', { scope })}</Text>
       <View style={styles.emptyCard}>
-        <Text style={styles.emptyCardLabel}>IF YOU SPOT ONE ANYWAY</Text>
-        <Text style={styles.emptyCardText}>Select both in the exercise library and choose Merge.</Text>
+        <Text style={styles.emptyCardLabel}>{t('mergeDup.spotOne')}</Text>
+        <Text style={styles.emptyCardText}>{t('mergeDup.spotOneBody')}</Text>
       </View>
     </View>
   );
@@ -487,157 +509,159 @@ function EmptyState({ total }: { total: number }) {
 
 // --- Styles ---------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  loading: { paddingTop: 40, alignItems: 'center' },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    loading: { paddingTop: 40, alignItems: 'center' },
 
-  // Header (M2/M5/M6)
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.94)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
+    // Header (M2/M5/M6)
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    backBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 17, letterSpacing: -0.17, color: color.text1 },
 
-  // Detail header (M3): Cancel / title / spacer
-  detailHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.94)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cancel: { fontFamily: font.titleSemi, fontSize: 15, color: color.text2, width: 52 },
-  detailTitle: { fontFamily: font.titleSemi, fontSize: 16, letterSpacing: -0.16, color: color.text1 },
+    // Detail header (M3): Cancel / title / spacer
+    detailHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    // minWidth, not width: «Отмена» is wider than 52 and must not wrap; Cancel/取消 still get 52.
+    cancel: { fontFamily: font.titleSemi, fontSize: 15, color: color.text2, minWidth: 52 },
+    detailTitle: { fontFamily: font.titleSemi, fontSize: 16, letterSpacing: -0.16, color: color.text1 },
 
-  intro: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, paddingHorizontal: 2, paddingBottom: 16 },
-  errorLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.error, marginTop: 12 },
+    intro: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, paddingHorizontal: 2, paddingBottom: 16 },
+    errorLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.error, marginTop: 12 },
 
-  sectionLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    paddingHorizontal: 2,
-    paddingBottom: 10,
-    textTransform: 'uppercase',
-  },
+    sectionLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingHorizontal: 2,
+      paddingBottom: 10,
+    },
 
-  // --- M2 group card ---
-  card: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, padding: 14 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  reasonTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
-  reasonText: { fontFamily: font.monoRegular, fontSize: 9.5, letterSpacing: 1.52 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  memberDivider: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: color.hair },
-  tile: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
-  memberName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
-  memberMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
+    // --- M2 group card ---
+    card: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, padding: 14 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    reasonTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+    reasonText: { fontFamily: font.monoRegular, fontSize: 9.5, letterSpacing: 1.52 },
+    memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    memberDivider: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: color.hair },
+    tile: {
+      width: 40,
+      height: 40,
+      borderRadius: 11,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tileText: { fontFamily: font.monoSemi, fontSize: 13, color: color.accent },
+    memberName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
+    memberMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
 
-  // --- M3 keep rows ---
-  keepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderWidth: 1 },
-  keepRowSel: { backgroundColor: accentA(0.07), borderColor: color.accent },
-  keepRowUnsel: { backgroundColor: color.surface1, borderColor: color.border },
-  radio: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  radioSel: { backgroundColor: color.accent },
-  radioUnsel: { borderWidth: 1.5, borderColor: color.border },
-  keepName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
-  keepMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
-  reasonLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, paddingHorizontal: 2, paddingTop: 8 },
+    // --- M3 keep rows ---
+    keepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderWidth: 1 },
+    keepRowSel: { backgroundColor: accentA(0.07), borderColor: color.accent },
+    keepRowUnsel: { backgroundColor: color.surface1, borderColor: color.border },
+    radio: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+    radioSel: { backgroundColor: color.accent },
+    radioUnsel: { borderWidth: 1.5, borderColor: color.border },
+    keepName: { fontFamily: font.titleSemi, fontSize: 14.5, letterSpacing: -0.145, color: color.text1 },
+    keepMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, marginTop: 2 },
+    reasonLine: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3, paddingHorizontal: 2, paddingTop: 8 },
 
-  // --- M3 what combines ---
-  combineCard: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16, gap: 11 },
-  combineRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  combineText: { flex: 1, fontFamily: font.bodyRegular, fontSize: 13.5, color: color.text1 },
-  prBlock: { borderTopWidth: 1, borderTopColor: color.hair, paddingTop: 11 },
-  prHeader: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3, marginBottom: 9 },
-  prRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  prMetric: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
-  prValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1, fontVariant: ['tabular-nums'] },
-  prTag: { fontFamily: font.monoRegular, fontSize: 10, color: color.text3, width: 62, textAlign: 'right' },
-  finePrint: { fontFamily: font.bodyRegular, fontSize: 12.5, lineHeight: 18.75, color: color.text3, paddingHorizontal: 2, paddingTop: 12 },
+    // --- M3 what combines ---
+    combineCard: { backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16, gap: 11 },
+    combineRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    combineText: { flex: 1, fontFamily: font.bodyRegular, fontSize: 13.5, color: color.text1 },
+    prBlock: { borderTopWidth: 1, borderTopColor: color.hair, paddingTop: 11 },
+    prHeader: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3, marginBottom: 9 },
+    prRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    prMetric: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
+    prValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1, fontVariant: ['tabular-nums'] },
+    prTag: { fontFamily: font.monoRegular, fontSize: 10, color: color.text3, width: 62, textAlign: 'right' },
+    finePrint: { fontFamily: font.bodyRegular, fontSize: 12.5, lineHeight: 18.75, color: color.text3, paddingHorizontal: 2, paddingTop: 12 },
 
-  // Footer CTA (M3)
-  footer: { position: 'absolute', left: 16, right: 16, bottom: 0 },
-  primaryCta: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: { shadowColor: color.accent, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 14 } },
-      android: { elevation: 12 },
-      default: {},
-    }),
-  },
-  primaryCtaText: { fontFamily: font.displayBold, fontSize: 15, letterSpacing: -0.15, color: color.accentFg, paddingHorizontal: 16 },
+    // Footer CTA (M3)
+    footer: { position: 'absolute', left: 16, right: 16, bottom: 0 },
+    primaryCta: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Platform.select({
+        ios: { shadowColor: color.accent, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 14 } },
+        android: { elevation: 12 },
+        default: {},
+      }),
+    },
+    primaryCtaText: { fontFamily: font.displayBold, fontSize: 15, letterSpacing: -0.15, color: color.accentFg, paddingHorizontal: 16 },
 
-  // --- M4 sheet ---
-  sheet: { backgroundColor: color.surface1, borderTopWidth: 1, borderTopColor: color.border, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 26 },
-  grabberWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  sheetBody: { paddingHorizontal: 20, paddingTop: 14 },
-  sheetTitle: { fontFamily: font.displayBold, fontSize: 19, letterSpacing: -0.38, color: color.text1 },
-  sheetText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21.7, color: color.text2, marginTop: 10 },
-  sheetStrong: { fontFamily: font.titleSemi, color: color.text1 },
-  sheetWarn: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.warning, marginTop: 12 },
-  cancelBtn: { height: 48, borderRadius: 13, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
-  cancelBtnText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+    // --- M4 sheet ---
+    sheet: { backgroundColor: color.surface1, borderTopWidth: 1, borderTopColor: color.border, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 26 },
+    grabberWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
+    grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    sheetBody: { paddingHorizontal: 20, paddingTop: 14 },
+    sheetTitle: { fontFamily: font.displayBold, fontSize: 19, letterSpacing: -0.38, color: color.text1 },
+    sheetText: { fontFamily: font.bodyRegular, fontSize: 14, lineHeight: 21.7, color: color.text2, marginTop: 10 },
+    sheetStrong: { fontFamily: font.titleSemi, color: color.text1 },
+    sheetWarn: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.warning, marginTop: 12 },
+    cancelBtn: { height: 48, borderRadius: 13, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
+    cancelBtnText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
 
-  // --- M5 receipt ---
-  receipt: { backgroundColor: 'rgba(45,216,129,0.07)', borderWidth: 1, borderColor: 'rgba(45,216,129,0.26)', borderRadius: 16, padding: 16 },
-  receiptTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  receiptDisc: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(45,216,129,0.16)', alignItems: 'center', justifyContent: 'center' },
-  receiptTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
-  receiptSub: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3, marginTop: 2 },
-  receiptRows: { gap: 7, marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: 'rgba(45,216,129,0.18)' },
-  receiptRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  receiptRowLabel: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
-  receiptRowValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1 },
-  renameBtn: { height: 44, borderRadius: 12, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16 },
-  renameText: { fontFamily: font.titleSemi, fontSize: 13.5, color: color.text1 },
+    // --- M5 receipt ---
+    receipt: { backgroundColor: withAlpha(color.success, 0.07), borderWidth: 1, borderColor: withAlpha(color.success, 0.26), borderRadius: 16, padding: 16 },
+    receiptTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    receiptDisc: { width: 30, height: 30, borderRadius: 15, backgroundColor: withAlpha(color.success, 0.16), alignItems: 'center', justifyContent: 'center' },
+    receiptTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+    receiptSub: { fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3, marginTop: 2 },
+    receiptRows: { gap: 7, marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: withAlpha(color.success, 0.18) },
+    receiptRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    receiptRowLabel: { flex: 1, fontFamily: font.monoRegular, fontSize: 11.5, color: color.text3 },
+    receiptRowValue: { fontFamily: font.monoSemi, fontSize: 12.5, color: color.text1 },
+    renameBtn: { height: 44, borderRadius: 12, backgroundColor: color.surface2, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16 },
+    renameText: { fontFamily: font.titleSemi, fontSize: 13.5, color: color.text1 },
 
-  // --- M6 empty ---
-  empty: { alignItems: 'center', paddingTop: 50, paddingHorizontal: 12 },
-  emptyIcon: { width: 62, height: 62, borderRadius: 17, backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { fontFamily: font.displayBold, fontSize: 20, letterSpacing: -0.4, color: color.text1, marginTop: 16, textAlign: 'center' },
-  emptyBody: { fontFamily: font.bodyRegular, fontSize: 13.5, lineHeight: 21, color: color.text2, marginTop: 9, textAlign: 'center' },
-  emptyCard: { width: '100%', backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 14, padding: 14, marginTop: 26 },
-  emptyCardLabel: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3 },
-  emptyCardText: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, marginTop: 8 },
-});
+    // --- M6 empty ---
+    empty: { alignItems: 'center', paddingTop: 50, paddingHorizontal: 12 },
+    emptyIcon: { width: 62, height: 62, borderRadius: 17, backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, alignItems: 'center', justifyContent: 'center' },
+    emptyTitle: { fontFamily: font.displayBold, fontSize: 20, letterSpacing: -0.4, color: color.text1, marginTop: 16, textAlign: 'center' },
+    emptyBody: { fontFamily: font.bodyRegular, fontSize: 13.5, lineHeight: 21, color: color.text2, marginTop: 9, textAlign: 'center' },
+    emptyCard: { width: '100%', backgroundColor: color.surface1, borderWidth: 1, borderColor: color.border, borderRadius: 14, padding: 14, marginTop: 26 },
+    emptyCardLabel: { fontFamily: font.monoRegular, fontSize: 10, letterSpacing: 1.4, color: color.text3 },
+    emptyCardText: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19.5, color: color.text2, marginTop: 8 },
+  }),
+);

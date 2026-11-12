@@ -233,3 +233,11 @@ test('no prompt with the feature off, the timer off, or mid-superset', () => {
   assert.equal(shouldPromptEffort('rpe', { startRest: true, seconds: 0 }), false);
   assert.equal(shouldPromptEffort('rpe', { startRest: false, seconds: 0 }), false);
 });
+
+test('effortLabel: ru decimal comma on RPE; en, zh-Hans and RIR unchanged', () => {
+  assert.equal(effortLabel(8.5, 'rpe', 'ru'), '@8,5');
+  assert.equal(effortLabel(8.5, 'rpe', 'en'), '@8.5');
+  assert.equal(effortLabel(8.5, 'rpe', 'zh-Hans'), '@8.5');
+  assert.equal(effortLabel(8, 'rpe', 'ru'), '@8');
+  assert.equal(effortLabel(8, 'rir', 'ru'), '2 RIR');
+});

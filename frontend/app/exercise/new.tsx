@@ -32,25 +32,36 @@ import {
 import { ChevronRightIcon } from '../../src/components/icons';
 import { MusclePickerSheet } from '../../src/components/MusclePickerSheet';
 import { PressableScale } from '../../src/components/PressableScale';
-import { accentA, color, font } from '../../src/theme/tokens';
+import { accentA, color, font, themed } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
+import { t } from '../../src/i18n';
+import { getLang } from '../../src/i18n/current';
+import { equipmentLabel } from '../../src/i18n/catalogNames';
+import { upperDisplay } from '../../src/i18n/upper';
 
-const EQUIPMENT_OPTIONS: { label: string; value: ExerciseEquipment }[] = [
-  { label: 'Barbell', value: 'barbell' },
-  { label: 'Dumbbell', value: 'dumbbell' },
-  { label: 'Machine', value: 'machine' },
-  { label: 'Cable', value: 'cable' },
-  { label: 'Bodyweight', value: 'bodyweight' },
-  { label: 'Kettlebell', value: 'kettlebell' },
-  { label: 'Band', value: 'band' },
-  { label: 'Other', value: 'other' },
+const titleCase = (s: string): string => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
+
+/** Stored equipment values; the label is the display name of each. */
+const EQUIPMENT_VALUES: ExerciseEquipment[] = [
+  'barbell',
+  'dumbbell',
+  'machine',
+  'cable',
+  'bodyweight',
+  'kettlebell',
+  'band',
+  'other',
 ];
+const equipmentOptions = (): { label: string; value: ExerciseEquipment }[] =>
+  EQUIPMENT_VALUES.map((value) => ({ label: titleCase(equipmentLabel(value, getLang())), value }));
 
-const KIND_OPTIONS: { label: string; value: ExerciseKind }[] = [
-  { label: 'Weighted', value: 'weighted' },
-  { label: 'Bodyweight', value: 'bodyweight' },
+const kindOptions = (): { label: string; value: ExerciseKind }[] => [
+  { label: t('newExercise.kindWeighted'), value: 'weighted' },
+  { label: t('newExercise.kindBodyweight'), value: 'bodyweight' },
 ];
 
 export default function NewExercise() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -125,17 +136,17 @@ export default function NewExercise() {
       });
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to create exercise';
+      const msg = e instanceof Error ? e.message : t('newExercise.failed');
       setError(msg);
-      if (Platform.OS !== 'web') Alert.alert('Could not save', msg);
+      if (Platform.OS !== 'web') Alert.alert(t('newExercise.couldNotSave'), msg);
       setSaving(false);
     }
   };
 
   const secondaryText =
     secondaryIds.length === 0
-      ? 'None'
-      : `${secondaryIds.length} selected`;
+      ? t('newExercise.none')
+      : t('newExercise.selected', { n: secondaryIds.length });
 
   const headerBottom = 100; // reserved space for the absolute header
 
@@ -163,13 +174,13 @@ export default function NewExercise() {
       >
         {/* NAME */}
         <View>
-          <Text style={styles.label}>NAME</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.name'))}</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             onFocus={() => setNameFocused(true)}
             onBlur={() => setNameFocused(false)}
-            placeholder="e.g. Incline Bench Press"
+            placeholder={t('newExercise.namePlaceholder')}
             placeholderTextColor={color.text3}
             autoCorrect={false}
             style={[
@@ -181,9 +192,9 @@ export default function NewExercise() {
 
         {/* CATEGORY */}
         <View>
-          <Text style={styles.label}>CATEGORY</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.category'))}</Text>
           {categories.length === 0 ? (
-            <Text style={styles.hint}>Loading…</Text>
+            <Text style={styles.hint}>{t('common.loading')}</Text>
           ) : (
             <View style={styles.chipsRow}>
               {categories.map((c) => {
@@ -219,12 +230,12 @@ export default function NewExercise() {
               onPress={() => setSheet('primary')}
               accessibilityRole="button"
             >
-              <Text style={styles.linkLabel}>Primary muscle</Text>
+              <Text style={styles.linkLabel}>{t('newExercise.primary')}</Text>
               <Text
                 style={styles.linkValue}
                 numberOfLines={1}
               >
-                {primaryMuscle ? primaryMuscle.name : 'None'}
+                {primaryMuscle ? primaryMuscle.name : t('newExercise.none')}
               </Text>
               <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.2} />
             </Pressable>
@@ -234,7 +245,7 @@ export default function NewExercise() {
               onPress={() => setSheet('secondary')}
               accessibilityRole="button"
             >
-              <Text style={styles.linkLabel}>Secondary muscles</Text>
+              <Text style={styles.linkLabel}>{t('newExercise.secondary')}</Text>
               <Text
                 style={styles.linkValue}
                 numberOfLines={1}
@@ -248,9 +259,9 @@ export default function NewExercise() {
 
         {/* EQUIPMENT */}
         <View>
-          <Text style={styles.label}>EQUIPMENT</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.equipment'))}</Text>
           <View style={styles.chipsRow}>
-            {EQUIPMENT_OPTIONS.map((opt) => {
+            {equipmentOptions().map((opt) => {
               const active = equipment === opt.value;
               return (
                 <Pressable
@@ -276,9 +287,9 @@ export default function NewExercise() {
 
         {/* KIND */}
         <View>
-          <Text style={styles.label}>KIND</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.kind'))}</Text>
           <View style={styles.segment}>
-            {KIND_OPTIONS.map((opt) => {
+            {kindOptions().map((opt) => {
               const active = kind === opt.value;
               return (
                 <Pressable
@@ -307,7 +318,7 @@ export default function NewExercise() {
 
         {/* HOW TO */}
         <View>
-          <Text style={styles.label}>HOW TO</Text>
+          <Text style={styles.label}>{upperDisplay(t('newExercise.howTo'))}</Text>
           <TextInput
             value={howto}
             onChangeText={setHowto}
@@ -315,7 +326,7 @@ export default function NewExercise() {
             onBlur={() => setHowtoFocused(false)}
             multiline
             textAlignVertical="top"
-            placeholder={'One instruction per line'}
+            placeholder={t('newExercise.howToPlaceholder')}
             placeholderTextColor={color.text3}
             style={[
               styles.howto,
@@ -330,9 +341,9 @@ export default function NewExercise() {
       {/* HEADER (absolute) */}
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={styles.cancel}>{t('common.cancel')}</Text>
         </Pressable>
-        <Text style={styles.title}>New Exercise</Text>
+        <Text style={styles.title}>{t('newExercise.title')}</Text>
         <PressableScale
           onPress={onSave}
           disabled={!canSave}
@@ -342,7 +353,7 @@ export default function NewExercise() {
           {saving ? (
             <ActivityIndicator color={color.accentFg} size="small" />
           ) : (
-            <Text style={styles.saveText}>Save</Text>
+            <Text style={styles.saveText}>{t('common.save')}</Text>
           )}
         </PressableScale>
       </View>
@@ -361,186 +372,187 @@ export default function NewExercise() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  scroll: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    scroll: { flex: 1 },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cancel: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text2,
-  },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    letterSpacing: -0.16,
-    color: color.text1,
-  },
-  saveBtn: {
-    height: 32,
-    paddingHorizontal: 16,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 60,
-  },
-  saveBtnDisabled: { opacity: 0.4 },
-  saveText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.accentFg,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    cancel: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text2,
+    },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      letterSpacing: -0.16,
+      color: color.text1,
+    },
+    saveBtn: {
+      height: 32,
+      paddingHorizontal: 16,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 60,
+    },
+    saveBtnDisabled: { opacity: 0.4 },
+    saveText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.accentFg,
+    },
 
-  // Form --------------------------------------------------------------
-  label: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    marginBottom: 9,
-    textTransform: 'uppercase',
-  },
-  hint: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-  },
+    // Form --------------------------------------------------------------
+    label: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      marginBottom: 9,
+    },
+    hint: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+    },
 
-  nameInput: {
-    height: 54,
-    paddingHorizontal: 14,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 12,
-    color: color.text1,
-    fontFamily: font.monoMedium,
-    fontSize: 15,
-    fontVariant: ['tabular-nums'],
-  },
+    nameInput: {
+      height: 54,
+      paddingHorizontal: 14,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 12,
+      color: color.text1,
+      fontFamily: font.monoMedium,
+      fontSize: 15,
+      fontVariant: ['tabular-nums'],
+    },
 
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: {
-    backgroundColor: accentA(0.12),
-    borderColor: color.accent,
-  },
-  chipInactive: {
-    backgroundColor: color.surface1,
-    borderColor: color.border,
-  },
-  chipText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13.5,
-    fontWeight: '600',
-  },
-  chipTextActive: { color: color.accent },
-  chipTextInactive: { color: color.text2 },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    chip: {
+      height: 38,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipActive: {
+      backgroundColor: accentA(0.12),
+      borderColor: color.accent,
+    },
+    chipInactive: {
+      backgroundColor: color.surface1,
+      borderColor: color.border,
+    },
+    chipText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13.5,
+      fontWeight: '600',
+    },
+    chipTextActive: { color: color.accent },
+    chipTextInactive: { color: color.text2 },
 
-  // Muscles card (single surface-1 card wrapping the two rows)
-  musclesCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  muscleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    height: 56,
-    paddingHorizontal: 14,
-  },
-  muscleDivider: {
-    height: 1,
-    backgroundColor: color.hair,
-  },
-  linkLabel: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
-  linkValue: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text3,
-    maxWidth: 160,
-    fontVariant: ['tabular-nums'],
-  },
+    // Muscles card (single surface-1 card wrapping the two rows)
+    musclesCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    muscleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      height: 56,
+      paddingHorizontal: 14,
+    },
+    muscleDivider: {
+      height: 1,
+      backgroundColor: color.hair,
+    },
+    linkLabel: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
+    linkValue: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text3,
+      maxWidth: 160,
+      fontVariant: ['tabular-nums'],
+    },
 
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: color.surface2,
-    borderRadius: 11,
-    padding: 4,
-    gap: 4,
-  },
-  segmentOption: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentOptionActive: {
-    backgroundColor: color.surface3,
-  },
-  segmentText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+    segment: {
+      flexDirection: 'row',
+      backgroundColor: color.surface2,
+      borderRadius: 11,
+      padding: 4,
+      gap: 4,
+    },
+    segmentOption: {
+      flex: 1,
+      height: 40,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    segmentOptionActive: {
+      backgroundColor: color.surface3,
+    },
+    segmentText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      fontWeight: '600',
+    },
 
-  howto: {
-    minHeight: 120,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: color.border,
-    borderRadius: 12,
-    color: color.text1,
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 22,
-  },
+    howto: {
+      minHeight: 120,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 12,
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: color.border,
+      borderRadius: 12,
+      color: color.text1,
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 22,
+    },
 
-  errorLine: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.error,
-  },
-});
+    errorLine: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.error,
+    },
+  }),
+);

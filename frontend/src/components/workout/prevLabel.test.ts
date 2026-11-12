@@ -25,3 +25,11 @@ test('nothing to refer to reads as nothing', () => {
   assert.equal(prevLabel({ kind: 'weighted' }, {}), '');
   assert.equal(prevLabel({ kind: 'weighted' }, { prevWeight: '60' }), '60 × ');
 });
+
+test('prevLabel: ru shows a decimal comma; en and zh-Hans unchanged', () => {
+  const s = { prevWeight: '82.5', prevReps: '8' };
+  assert.equal(prevLabel({ kind: 'weighted' }, s, 'ru'), '82,5 × 8');
+  assert.equal(prevLabel({ kind: 'weighted' }, s, 'en'), '82.5 × 8');
+  assert.equal(prevLabel({ kind: 'weighted' }, s, 'zh-Hans'), '82.5 × 8');
+  assert.equal(prevLabel({ kind: 'bodyweight' }, { prevReps: '11' }, 'ru'), '× 11');
+});

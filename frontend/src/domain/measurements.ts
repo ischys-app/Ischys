@@ -6,7 +6,9 @@
  * for percents. Nothing here converts on the way into the database; display
  * converts on the way out, the same split units.ts already draws for weight.
  */
-import { type Unit, toDisplay as weightToDisplay, toKg as weightToKg } from './units.ts';
+import { getLang } from '../i18n/current.ts';
+import type { Lang } from '../i18n/locale.ts';
+import { type Unit, localizeNumber, toDisplay as weightToDisplay, toKg as weightToKg } from './units.ts';
 
 export type MetricId =
   | 'waist'
@@ -132,9 +134,14 @@ export function toCanonical(input: string, metric: MetricId, prefs: UnitPrefs): 
   }
 }
 
-export function formatMeasurement(canonical: number, metric: MetricId, prefs: UnitPrefs): string {
+export function formatMeasurement(
+  canonical: number,
+  metric: MetricId,
+  prefs: UnitPrefs,
+  lang: Lang = getLang(),
+): string {
   const dp = _PRECISION[dimensionOf(metric)];
-  return `${_convertOut(canonical, metric, prefs).toFixed(dp)} ${unitFor(metric, prefs)}`;
+  return `${localizeNumber(_convertOut(canonical, metric, prefs).toFixed(dp), lang)} ${unitFor(metric, prefs)}`;
 }
 
 /**
@@ -150,9 +157,10 @@ export function deltaBetween(
   to: number,
   metric: MetricId,
   prefs: UnitPrefs,
+  lang: Lang = getLang(),
 ): string {
   const dp = _PRECISION[dimensionOf(metric)];
   const diff = _round(_convertOut(to, metric, prefs) - _convertOut(from, metric, prefs), dp);
   const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-  return `${sign}${Math.abs(diff).toFixed(dp)} ${unitFor(metric, prefs)}`;
+  return `${sign}${localizeNumber(Math.abs(diff).toFixed(dp), lang)} ${unitFor(metric, prefs)}`;
 }

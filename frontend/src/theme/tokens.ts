@@ -4,23 +4,18 @@
  * ischys-design-handoff skill for the source-of-truth mapping.
  */
 import type { TextStyle } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../lib/secureStore';
 
 import { accentAlpha, paletteById } from './palettes';
+import { activePalette, activeScheme, applyTheme, color } from './live';
+
+export { byScheme, color, themed, type Scheme, type Tokens } from './live';
 
 /**
- * The chosen accent, resolved SYNCHRONOUSLY at module load (#72).
- *
- * It has to be synchronous. Every screen builds its styles with
- * `StyleSheet.create` at import time, which captures colour values once — so an
- * accent that arrived later would reach none of them, and the 164 existing
- * `color.accent` sites would each need rewriting to read a context instead.
- * Reading the preference before the first stylesheet exists themes all of them
- * without touching one.
- *
- * The cost is that switching theme applies from the next launch rather than
- * instantly. The design already accepts that shape for the Live Activity, whose
- * accent is fixed for the life of an activity.
+ * The stored accent, applied SYNCHRONOUSLY at module load (#72) so the first
+ * frame already has it. Colours are live now (live.ts), so ThemeProvider can
+ * change palette and appearance later without a relaunch; this only spares the
+ * first frame a flash of the default accent.
  */
 function storedPalette() {
   try {
@@ -31,31 +26,7 @@ function storedPalette() {
   }
 }
 
-const palette = storedPalette();
-
-export const color = {
-  bg: '#0A0A0B', // base
-  surface1: '#111113',
-  surface2: '#17171A',
-  surface3: '#212127',
-  /** Set-row backgrounds (Active Workout): completed, and the next set up. */
-  setRowDone: '#191920',
-  setRowActive: '#151519',
-  border: '#26262C',
-  hair: '#1D1D22', // subtle divider
-  text1: '#F4F4F5', // primary
-  text2: '#97979E', // secondary
-  text3: '#5B5B63', // tertiary
-  accent: palette.accent, // THE action color (complete a set) — reserve it
-  accentFg: palette.accentFg, // text/icon on accent
-  success: '#2DD881', // PR, target hit
-  warning: '#FFC24B', // deload, missed
-  error: '#FF4D4D', // failed lift, delete
-  // set-type accents
-  warmup: '#FFC24B',
-  drop: '#4C8DFF',
-  failure: '#FF4D4D',
-} as const;
+applyTheme(activeScheme(), storedPalette());
 
 /** 4px base grid. */
 export const space = {
@@ -78,6 +49,10 @@ export const radius = {
 /**
  * Space Grotesk = interface; JetBrains Mono = ALL data (weights, reps, timers,
  * dates) with tabular figures so digits never shift.
+ *
+ * Space Grotesk has no Cyrillic: in Russian, `themed()` swaps the four
+ * interface families for the system font at the same weight (fontForLang.ts).
+ * Use them only inside a `themed()` style so that swap reaches them.
  */
 export const font = {
   // interface (Space Grotesk)
@@ -112,5 +87,16 @@ export const TAP_TARGET = 44;
  * pill would stay orange under any other palette.
  */
 export function accentA(alpha: number): string {
-  return accentAlpha(palette.accent, alpha);
+  return accentAlpha(color.accent, alpha);
 }
+
+/**
+ * Any token at an opacity, for the status tints (`withAlpha(color.success,
+ * 0.1)`) that were hardcoded to the dark values.
+ */
+export function withAlpha(hex: string, alpha: number): string {
+  return accentAlpha(hex, alpha);
+}
+
+/** For code outside React that needs to know which palette is showing. */
+export { activePalette, activeScheme };

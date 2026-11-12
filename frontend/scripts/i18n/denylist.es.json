@@ -1,0 +1,652 @@
+{
+  "_comment": "Deny-list for Spanish output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only. Words starting with an allow stem are never flagged. Matching is lowercase and ignores accents (acutes, diaeresis), so write stems without accents. Flagged lines stay English unless the review sets \"denyCleared\": true. Slur and crude entries have no English counterpart and are always flagged. «militar» is allowed on purpose: «press militar» is the standard Spanish gym name for the military / overhead press, so it is an allow stem and never flagged. «arma» matches whole words only (armadura, armario are fine). «coger» is banned (stems coger, coge, cogid, cogiend): grab in Spain, vulgar in Mexico and Argentina. Ordinary words that share a stem (elección, partido, bomba, turquesa, franco, inglés as groins) are word-bound or listed as whole words. «elección» (choice) folds to the same word as the election sense, so only the plural elecciones is listed.",
+  "allow": [
+    {
+      "stem": "militar",
+      "why": "«press militar» is the standard Spanish gym name for the military / overhead press"
+    },
+    {
+      "stem": "ejercic",
+      "why": "ejercicio (exercise), not ejército (army)"
+    }
+  ],
+  "deny": [
+    {
+      "stem": "españ",
+      "en": [
+        "spain",
+        "spanish"
+      ]
+    },
+    {
+      "stem": "mexic",
+      "en": [
+        "mexic"
+      ]
+    },
+    {
+      "stem": "argentin",
+      "en": [
+        "argentin"
+      ]
+    },
+    {
+      "stem": "colombi",
+      "en": [
+        "colombi"
+      ]
+    },
+    {
+      "stem": "chile",
+      "en": [
+        "chile"
+      ]
+    },
+    {
+      "stem": "peru",
+      "en": [
+        "peru"
+      ]
+    },
+    {
+      "stem": "venezol",
+      "en": [
+        "venezuel"
+      ]
+    },
+    {
+      "stem": "cuba",
+      "en": [
+        "cuba"
+      ]
+    },
+    {
+      "stem": "boliv",
+      "en": [
+        "bolivia"
+      ]
+    },
+    {
+      "stem": "ecuador",
+      "en": [
+        "ecuador"
+      ]
+    },
+    {
+      "stem": "urugua",
+      "en": [
+        "uruguay"
+      ]
+    },
+    {
+      "stem": "paragua",
+      "en": [
+        "paraguay"
+      ]
+    },
+    {
+      "stem": "eeuu",
+      "en": [
+        "usa"
+      ]
+    },
+    {
+      "stem": "americ",
+      "en": [
+        "america"
+      ]
+    },
+    {
+      "stem": "aleman",
+      "en": [
+        "german"
+      ]
+    },
+    {
+      "stem": "alemani",
+      "en": [
+        "german"
+      ]
+    },
+    {
+      "stem": "ital",
+      "en": [
+        "ital"
+      ]
+    },
+    {
+      "stem": "inglat",
+      "en": [
+        "england",
+        "english"
+      ]
+    },
+    {
+      "stem": "britan",
+      "en": [
+        "britain",
+        "british"
+      ]
+    },
+    {
+      "stem": "rusi",
+      "en": [
+        "russia"
+      ]
+    },
+    {
+      "stem": "ruso",
+      "en": [
+        "russia"
+      ]
+    },
+    {
+      "stem": "ucrani",
+      "en": [
+        "ukrain"
+      ]
+    },
+    {
+      "stem": "china",
+      "en": [
+        "china"
+      ]
+    },
+    {
+      "stem": "chino",
+      "en": [
+        "china",
+        "chinese"
+      ]
+    },
+    {
+      "stem": "japon",
+      "en": [
+        "japan"
+      ]
+    },
+    {
+      "stem": "israel",
+      "en": [
+        "israel"
+      ]
+    },
+    {
+      "stem": "palestin",
+      "en": [
+        "palestin"
+      ]
+    },
+    {
+      "stem": "turco",
+      "en": [
+        "turk"
+      ]
+    },
+    {
+      "stem": "catalu",
+      "en": [
+        "catalo",
+        "catalan"
+      ]
+    },
+    {
+      "stem": "portugu",
+      "en": [
+        "portug"
+      ]
+    },
+    {
+      "stem": "brasil",
+      "en": [
+        "brazil"
+      ]
+    },
+    {
+      "stem": "marruec",
+      "en": [
+        "morocco"
+      ]
+    },
+    {
+      "stem": "europ",
+      "en": [
+        "europe"
+      ]
+    },
+    {
+      "stem": "judio",
+      "en": [
+        "jew"
+      ]
+    },
+    {
+      "stem": "musulman",
+      "en": [
+        "muslim"
+      ]
+    },
+    {
+      "stem": "cristian",
+      "en": [
+        "christian"
+      ]
+    },
+    {
+      "stem": "religio",
+      "en": [
+        "religio"
+      ]
+    },
+    {
+      "stem": "politic",
+      "en": [
+        "politic"
+      ]
+    },
+    {
+      "stem": "gobierno",
+      "en": [
+        "government"
+      ]
+    },
+    {
+      "stem": "president",
+      "en": [
+        "president"
+      ]
+    },
+    {
+      "stem": "democra",
+      "en": [
+        "democra"
+      ]
+    },
+    {
+      "stem": "fascis",
+      "en": [
+        "fascis"
+      ]
+    },
+    {
+      "stem": "nazi",
+      "en": [
+        "nazi"
+      ]
+    },
+    {
+      "stem": "comunis",
+      "en": [
+        "communis"
+      ]
+    },
+    {
+      "stem": "socialis",
+      "en": [
+        "socialis"
+      ]
+    },
+    {
+      "stem": "bander",
+      "en": [
+        "flag"
+      ]
+    },
+    {
+      "stem": "himno",
+      "en": [
+        "anthem"
+      ]
+    },
+    {
+      "stem": "patria",
+      "en": [
+        "homeland"
+      ]
+    },
+    {
+      "stem": "nacional",
+      "en": [
+        "national"
+      ]
+    },
+    {
+      "stem": "guerra",
+      "en": [
+        "war"
+      ]
+    },
+    {
+      "stem": "ejercito",
+      "en": [
+        "army"
+      ]
+    },
+    {
+      "stem": "soldado",
+      "en": [
+        "soldier"
+      ]
+    },
+    {
+      "stem": "misil",
+      "en": [
+        "missile"
+      ]
+    },
+    {
+      "stem": "terroris",
+      "en": [
+        "terror"
+      ]
+    },
+    {
+      "stem": "invasi",
+      "en": [
+        "invasion",
+        "invade"
+      ]
+    },
+    {
+      "stem": "refugiad",
+      "en": [
+        "refugee"
+      ]
+    },
+    {
+      "stem": "inmigra",
+      "en": [
+        "immigra",
+        "migra"
+      ]
+    },
+    {
+      "stem": "elecciones",
+      "en": [
+        "election"
+      ],
+      "word": true
+    },
+    {
+      "stem": "partido",
+      "en": [
+        "party"
+      ],
+      "word": true
+    },
+    {
+      "stem": "partidos",
+      "en": [
+        "party"
+      ],
+      "word": true
+    },
+    {
+      "stem": "bomba",
+      "en": [
+        "bomb"
+      ],
+      "word": true
+    },
+    {
+      "stem": "bombas",
+      "en": [
+        "bomb"
+      ],
+      "word": true
+    },
+    {
+      "stem": "turquia",
+      "en": [
+        "turk"
+      ],
+      "word": true
+    },
+    {
+      "stem": "turca",
+      "en": [
+        "turk"
+      ],
+      "word": true
+    },
+    {
+      "stem": "turcas",
+      "en": [
+        "turk"
+      ],
+      "word": true
+    },
+    {
+      "stem": "inglesa",
+      "en": [
+        "england",
+        "english"
+      ],
+      "word": true
+    },
+    {
+      "stem": "inglesas",
+      "en": [
+        "england",
+        "english"
+      ],
+      "word": true
+    },
+    {
+      "stem": "ingleses",
+      "en": [
+        "england",
+        "english"
+      ],
+      "word": true
+    },
+    {
+      "stem": "frances",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "francesa",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "francesas",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "franceses",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "francia",
+      "en": [
+        "france",
+        "french"
+      ],
+      "word": true
+    },
+    {
+      "stem": "puta",
+      "en": []
+    },
+    {
+      "stem": "puto",
+      "en": []
+    },
+    {
+      "stem": "mierda",
+      "en": []
+    },
+    {
+      "stem": "joder",
+      "en": []
+    },
+    {
+      "stem": "coño",
+      "en": []
+    },
+    {
+      "stem": "cabron",
+      "en": []
+    },
+    {
+      "stem": "pendej",
+      "en": []
+    },
+    {
+      "stem": "gilipoll",
+      "en": []
+    },
+    {
+      "stem": "verga",
+      "en": []
+    },
+    {
+      "stem": "chinga",
+      "en": []
+    },
+    {
+      "stem": "pinche",
+      "en": []
+    },
+    {
+      "stem": "cojon",
+      "en": []
+    },
+    {
+      "stem": "culo",
+      "en": []
+    },
+    {
+      "stem": "polla",
+      "en": []
+    },
+    {
+      "stem": "pija",
+      "en": []
+    },
+    {
+      "stem": "follar",
+      "en": []
+    },
+    {
+      "stem": "folla",
+      "en": []
+    },
+    {
+      "stem": "sexo",
+      "en": []
+    },
+    {
+      "stem": "sexual",
+      "en": []
+    },
+    {
+      "stem": "porn",
+      "en": []
+    },
+    {
+      "stem": "mamada",
+      "en": []
+    },
+    {
+      "stem": "marica",
+      "en": []
+    },
+    {
+      "stem": "sudaca",
+      "en": []
+    },
+    {
+      "stem": "gitano",
+      "en": []
+    },
+    {
+      "stem": "idiota",
+      "en": []
+    },
+    {
+      "stem": "imbecil",
+      "en": []
+    },
+    {
+      "stem": "estupid",
+      "en": []
+    },
+    {
+      "stem": "coger",
+      "en": []
+    },
+    {
+      "stem": "coge",
+      "en": []
+    },
+    {
+      "stem": "cogid",
+      "en": []
+    },
+    {
+      "stem": "cogiend",
+      "en": []
+    },
+    {
+      "stem": "maricon",
+      "en": []
+    },
+    {
+      "stem": "capull",
+      "en": []
+    },
+    {
+      "stem": "joto",
+      "en": []
+    },
+    {
+      "stem": "boludo",
+      "en": []
+    },
+    {
+      "stem": "pelotud",
+      "en": []
+    },
+    {
+      "stem": "huevon",
+      "en": []
+    },
+    {
+      "stem": "carajo",
+      "en": []
+    },
+    {
+      "stem": "arma",
+      "en": [
+        "weapon",
+        "arm"
+      ],
+      "word": true
+    },
+    {
+      "stem": "armas",
+      "en": [
+        "weapon",
+        "arms"
+      ],
+      "word": true
+    }
+  ]
+}

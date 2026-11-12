@@ -3,22 +3,26 @@
     "name": "Ischys",
     "slug": "ischys",
     "scheme": "ischys",
-    "version": "4.2",
+    "version": "4.7.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#0A0A0B",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.ischys.mobile",
       "appleTeamId": "L3T79ZQ685",
-      "buildNumber": "15",
+      "buildNumber": "28",
       "infoPlist": {
         "NSSupportsLiveActivities": true,
         "ITSAppUsesNonExemptEncryption": false,
         "NSHealthShareUsageDescription": "Ischys reads your heart rate during a workout when an Apple Watch is recording it, and your bodyweight when you choose to fill it in from Health.",
-        "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness."
+        "NSHealthUpdateUsageDescription": "Ischys saves your finished workouts to Apple Health so they appear in Fitness.",
+        "CFBundleLocalizations": [
+          "en",
+          "zh-Hans"
+        ]
       },
       "entitlements": {
         "com.apple.security.application-groups": [
@@ -30,7 +34,7 @@
     },
     "android": {
       "package": "app.ischys.mobile",
-      "versionCode": 7,
+      "versionCode": 14,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_AUDIO",
@@ -70,10 +74,32 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": [
+              "en",
+              "zh-Hans"
+            ],
+            "android": [
+              "en",
+              "zh-CN",
+              "ru",
+              "el",
+              "es"
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "en": "./locales/en.json",
+      "zh-Hans": "./locales/zh-Hans.json"
     }
   }
 }

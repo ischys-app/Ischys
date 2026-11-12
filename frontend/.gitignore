@@ -50,3 +50,4 @@ modules/*/android/build/
 wear/**/build/
 wear/.gradle/
 wear/local.properties
+.i18n-review/

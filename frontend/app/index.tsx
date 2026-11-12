@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 
 import { recallActiveWorkout } from '../src/lib/activeWorkout';
+import { useThemed } from '../src/theme/ThemeProvider';
 
 /**
  * Entry gate. In the pure on-device build there is no account or server, so we
@@ -9,6 +10,7 @@ import { recallActiveWorkout } from '../src/lib/activeWorkout';
  * in Phase 1c.)
  */
 export default function Index() {
+  useThemed();
   const resume = recallActiveWorkout();
   return <Redirect href={resume ? `/workout/${resume}` : '/(tabs)'} />;
 }

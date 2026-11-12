@@ -1,3 +1,5 @@
+import { t } from '../../src/i18n';
+import { workoutLabel } from '../../src/i18n/defaultLabels';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
@@ -23,7 +25,9 @@ import {
   HISTORY_PAGE_SIZE,
   refreshLimit,
 } from '../../src/lib/historyPaging';
-import { accentA, color, font } from '../../src/theme/tokens';
+import { accentA, color, font, themed } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const HEAT_WEEKS = 12;
 const HEAT_DAYS = HEAT_WEEKS * 7; // 84
@@ -81,6 +85,7 @@ function buildHeatColumns(days: ActivityDay[]): number[][] {
 
 /** History tab — completed workouts + 12-week activity heatmap. */
 export default function History() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Header is an absolute overlay of variable height (safe-area inset + content).
@@ -165,12 +170,12 @@ export default function History() {
   /** Delete, from a card's menu. Destroys logged sets, so it confirms first. */
   const confirmDelete = (w: WorkoutListItem) => {
     Alert.alert(
-      'Delete workout?',
-      `"${w.name}" and its ${w.total_sets} logged sets will be permanently removed. Personal records are recomputed.`,
+      t('history.deleteTitle'),
+      t('history.deleteMessage', { name: workoutLabel(w.name), count: w.total_sets }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             // Optimistic: the card disappears immediately, then we resync.
@@ -215,7 +220,7 @@ export default function History() {
         ListHeaderComponent={
           <>
             {error && <Text style={styles.error}>{error}</Text>}
-            {!loaded && !error && <Text style={styles.loading}>Loading…</Text>}
+            {!loaded && !error && <Text style={styles.loading}>{t('common.loading')}</Text>}
 
             {loaded && totalCount === 0 && (
               <EmptyState
@@ -234,8 +239,8 @@ export default function History() {
               // Activity heatmap
               <View style={styles.heatCard}>
                 <View style={styles.heatHeader}>
-                  <Text style={styles.heatLabel}>LAST 12 WEEKS</Text>
-                  <Text style={styles.heatSessions}>{`${activity?.sessions ?? 0} sessions`}</Text>
+                  <Text style={styles.heatLabel}>{upperDisplay(t('history.heatLabel'))}</Text>
+                  <Text style={styles.heatSessions}>{t('history.sessions', { count: activity?.sessions ?? 0 })}</Text>
                 </View>
                 <View style={styles.heatGrid}>
                   {heatColumns.map((cells, colIdx) => (
@@ -253,7 +258,7 @@ export default function History() {
             )}
           </>
         }
-        renderSectionHeader={({ section }) => <Text style={styles.groupTitle}>{section.title}</Text>}
+        renderSectionHeader={({ section }) => <Text style={styles.groupTitle}>{upperDisplay(section.title)}</Text>}
         // The space under a group's last card, before the next group's title.
         renderSectionFooter={() => <View style={styles.groupEnd} />}
         ItemSeparatorComponent={ItemGap}
@@ -270,17 +275,17 @@ export default function History() {
             <View>
               <Link href={`/summary/${w.id}`} asChild>
                 <Link.Trigger>
-                  <WorkoutCard workout={w} accessibilityHint="Long-press for more actions." />
+                  <WorkoutCard workout={w} accessibilityHint={t('history.moreActionsHint')} />
                 </Link.Trigger>
                 <Link.Menu>
                   <Link.MenuAction
                     icon="pencil"
                     onPress={() => router.push(`/workout/edit/${w.id}?from=history`)}
                   >
-                    Edit workout
+                    {t('history.editWorkout')}
                   </Link.MenuAction>
                   <Link.MenuAction icon="trash" destructive onPress={() => confirmDelete(w)}>
-                    Delete workout
+                    {t('history.deleteWorkout')}
                   </Link.MenuAction>
                 </Link.Menu>
               </Link>
@@ -305,9 +310,9 @@ export default function History() {
         style={[styles.header, { paddingTop: insets.top + 12 }]}
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
-        <Text style={styles.title}>History</Text>
+        <Text style={styles.title}>{t('tabs.history')}</Text>
         {loaded && (
-          <Text style={styles.count}>{`${totalCount} workouts`}</Text>
+          <Text style={styles.count}>{t('history.count', { count: totalCount })}</Text>
         )}
       </View>
     </View>
@@ -316,158 +321,160 @@ export default function History() {
 
 /** The gap between two cards of a group. */
 function ItemGap() {
+  useThemed();
   return <View style={styles.itemGap} />;
 }
 
 function EmptyState({ onStart }: { onStart: () => void }) {
+  useThemed();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
         <ClockCenteredIcon size={30} color={color.accent} strokeWidth={2} />
       </View>
-      <Text style={styles.emptyTitle}>No workouts yet</Text>
+      <Text style={styles.emptyTitle}>{t('history.emptyTitle')}</Text>
       <Text style={styles.emptySub}>
-        Every session you finish lands here — with volume, PRs, and a 12-week activity map.
+        {t('history.emptySub')}
       </Text>
       <Pressable
         onPress={onStart}
         style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
       >
         <PlayIcon size={16} color={color.accentFg} strokeWidth={2.6} />
-        <Text style={styles.ctaLabel}>Start your first workout</Text>
+        <Text style={styles.ctaLabel}>{t('history.emptyCta')}</Text>
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
-  loading: { fontFamily: font.bodyRegular, fontSize: 14, color: color.text3, textAlign: 'center' },
-  error: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.error,
-    marginTop: 12,
-    textAlign: 'center',
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
+    loading: { fontFamily: font.bodyRegular, fontSize: 14, color: color.text3, textAlign: 'center' },
+    error: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.error,
+      marginTop: 12,
+      textAlign: 'center',
+    },
 
-  // Fixed header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: color.bg,
-  },
-  title: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-  },
-  count: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
+    // Fixed header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      backgroundColor: color.bg,
+    },
+    title: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+    },
+    count: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Heatmap card
-  heatCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  heatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  heatLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  heatSessions: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    fontVariant: ['tabular-nums'],
-  },
-  heatGrid: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
-  heatCol: { flex: 1, flexDirection: 'column', gap: 4 },
-  heatCell: { aspectRatio: 1, borderRadius: 3 },
+    // Heatmap card
+    heatCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+    },
+    heatHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    heatLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+    },
+    heatSessions: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      fontVariant: ['tabular-nums'],
+    },
+    heatGrid: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+    heatCol: { flex: 1, flexDirection: 'column', gap: 4 },
+    heatCell: { aspectRatio: 1, borderRadius: 3 },
 
-  // Groups
-  groupEnd: { height: 22 },
-  groupTitle: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    textTransform: 'uppercase',
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  itemGap: { height: 10 },
+    // Groups
+    groupEnd: { height: 22 },
+    groupTitle: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    itemGap: { height: 10 },
 
-  // Empty state
-  empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 80, paddingHorizontal: 16 },
-  emptyIcon: {
-    width: 66,
-    height: 66,
-    borderRadius: 18,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 22,
-  },
-  emptyTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 22,
-    letterSpacing: -0.44,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14.5,
-    color: color.text2,
-    lineHeight: 22,
-    maxWidth: 260,
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 26,
-    height: 48,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: color.accent,
-  },
-  ctaPressed: { opacity: 0.9 },
-  ctaLabel: {
-    fontFamily: font.displayBold,
-    fontSize: 14.5,
-    color: color.accentFg,
-  },
-});
+    // Empty state
+    empty: { flexDirection: 'column', alignItems: 'center', paddingTop: 80, paddingHorizontal: 16 },
+    emptyIcon: {
+      width: 66,
+      height: 66,
+      borderRadius: 18,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 22,
+    },
+    emptyTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 22,
+      letterSpacing: -0.44,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14.5,
+      color: color.text2,
+      lineHeight: 22,
+      maxWidth: 260,
+      marginTop: 10,
+      textAlign: 'center',
+    },
+    cta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 26,
+      height: 48,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      backgroundColor: color.accent,
+    },
+    ctaPressed: { opacity: 0.9 },
+    ctaLabel: {
+      fontFamily: font.displayBold,
+      fontSize: 14.5,
+      color: color.accentFg,
+    },
+  }),
+);

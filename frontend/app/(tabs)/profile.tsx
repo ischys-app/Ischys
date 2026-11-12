@@ -1,12 +1,17 @@
+import { t } from '../../src/i18n';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../../src/lib/secureStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ProfileOut, RecordOut, WorkoutListItem } from '../../src/api/types';
 import { getProfile, listRecentRecords, listWorkouts } from '../../src/api/workouts';
-import { ChevronRightIcon, DeviceIcon, HeartFilledIcon, SettingsIcon, StarIcon } from '../../src/components/icons';
+import { ChevronDownIcon, ChevronRightIcon, DeviceIcon, HeartFilledIcon, SettingsIcon, StarIcon } from '../../src/components/icons';
+import { ProfileAvatar } from '../../src/components/ProfileAvatar';
+import { firstName } from '../../src/domain/profiles';
+import { PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { openProfileSwitcher } from '../../src/lib/profileSwitcherStore';
 import { fmtMonthYear, fmtVolumeLarge, metricLabel } from '../../src/lib/format';
 import { buildWeeklyBars, WEEK_BARS, type WeeklyBars } from '../../src/lib/weeklyBars';
 import { DEFAULT_NAME, setProfileName } from '../../src/lib/profileName';
@@ -18,13 +23,20 @@ import { formatMeasurement, type MetricId } from '../../src/domain/measurements'
 import { recordDisplay } from '../../src/domain/records';
 import { healthCopy } from '../../src/lib/healthSyncPlatform';
 import { useWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
+import { localizeNumber } from '../../src/domain/units';
+import { getLang } from '../../src/i18n/current';
+import { muscleNameLabel } from '../../src/i18n/catalogNames';
+import { useThemed } from '../../src/theme/ThemeProvider';
+import { profileNameLabel } from '../../src/i18n/defaultLabels';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const BAR_MAX_HEIGHT = 56;
 const BAR_MIN_HEIGHT = 3;
 
 /** Profile tab — identity, aggregate stats, weekly bars, PRs, sync status. */
 export default function Profile() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Header is an absolute overlay of variable height (safe-area inset + content).
@@ -32,6 +44,10 @@ export default function Profile() {
   // trusting a hardcoded padding that only happened to fit one inset.
   const [headerH, setHeaderH] = useState(0);
   const unit = useWeightUnit();
+  // With 2+ profiles the header names whose profile this is and opens the
+  // switcher (P3). With one, everything here is as it was.
+  const { profile: active, count } = useActiveProfile();
+  const multi = PROFILES_ENABLED && count > 1;
 
   const [profile, setProfile] = useState<ProfileOut | null>(null);
   const [records, setRecords] = useState<RecordOut[] | null>(null);
@@ -121,20 +137,20 @@ export default function Profile() {
   const trainingSince = fmtMonthYear(profile?.training_since);
   const location = profile?.location ?? '';
   const subtitle = location && trainingSince
-    ? `${location} · training since ${trainingSince}`
+    ? t('profile.trainingSince', { place: location, date: trainingSince })
     : location
       ? location
       : trainingSince
-        ? `training since ${trainingSince}`
+        ? t('profile.trainingSinceOnly', { date: trainingSince })
         : '';
-  const initial = (profile?.name?.trim()?.[0] ?? '—').toUpperCase();
+  const initial = upperDisplay(profile?.name ? (Array.from(profileNameLabel(profile.name.trim()))[0] ?? '—') : '—');
   const year = new Date().getFullYear();
 
   const displayStats: { label: string; value: string; unit: string }[] = [
-    { label: 'WORKOUTS', value: stats ? String(stats.workouts) : '—', unit: '' },
-    { label: 'THIS YEAR', value: stats ? String(stats.this_year) : '—', unit: '' },
-    { label: 'VOLUME LIFTED', value: vol.value, unit: vol.unit },
-    { label: 'CURRENT STREAK', value: stats ? String(stats.current_streak) : '—', unit: ' wk' },
+    { label: t('profile.statWorkouts'), value: stats ? String(stats.workouts) : '—', unit: '' },
+    { label: t('profile.statThisYear'), value: stats ? String(stats.this_year) : '—', unit: '' },
+    { label: t('profile.statVolume'), value: vol.value, unit: vol.unit },
+    { label: t('profile.statStreak'), value: stats ? String(stats.current_streak) : '—', unit: ` ${t('profile.weeksUnit')}` },
   ];
 
   return (
@@ -143,15 +159,21 @@ export default function Profile() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, headerH ? { paddingTop: headerH } : null]}
       >
-        {loading && <Text style={styles.loading}>Loading…</Text>}
+        {loading && <Text style={styles.loading}>{t('common.loading')}</Text>}
 
         {!loading && (
           <View>
             {/* Identity row */}
             <View style={styles.identity}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initial}</Text>
-              </View>
+              {multi ? (
+                <ProfileAvatar profile={active} size={62} tint={color.accent} />
+              ) : (
+                // One profile: today's avatar, exactly (Dynamic Type and
+                // VoiceOver included). The one-profile screen doesn't change.
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </View>
+              )}
               <View style={styles.identityText}>
                 {draft !== null ? (
                   <TextInput
@@ -159,7 +181,7 @@ export default function Profile() {
                     onChangeText={setDraft}
                     onSubmitEditing={commitName}
                     onBlur={commitName}
-                    placeholder={DEFAULT_NAME}
+                    placeholder={profileNameLabel(DEFAULT_NAME)}
                     placeholderTextColor={color.text3}
                     autoFocus
                     autoCapitalize="words"
@@ -167,7 +189,7 @@ export default function Profile() {
                     maxLength={40}
                     selectionColor={color.accent}
                     style={[styles.name, styles.nameInput]}
-                    accessibilityLabel="Your name"
+                    accessibilityLabel={t('profile.nameLabel')}
                   />
                 ) : (
                   <Text
@@ -175,9 +197,9 @@ export default function Profile() {
                     numberOfLines={1}
                     onPress={beginEditName}
                     accessibilityRole="button"
-                    accessibilityLabel="Edit your name"
+                    accessibilityLabel={t('profile.editName')}
                   >
-                    {profile?.name ?? '—'}
+                    {profile ? profileNameLabel(profile.name) : '—'}
                   </Text>
                 )}
                 {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -201,8 +223,8 @@ export default function Profile() {
             {/* Weekly bars card */}
             <View style={styles.barsCard}>
               <View style={styles.barsHeader}>
-                <Text style={styles.barsLabel}>{`WORKOUTS / WEEK · ${year}`}</Text>
-                <Text style={styles.barsAvg}>{`avg ${bars.avg.toFixed(1)}`}</Text>
+                <Text style={styles.barsLabel}>{upperDisplay(t('profile.barsLabel', { year }))}</Text>
+                <Text style={styles.barsAvg}>{t('profile.barsAvg', { value: localizeNumber(bars.avg.toFixed(1)) })}</Text>
               </View>
               <View style={styles.barsRow}>
                 {bars.counts.map((count, i) => {
@@ -228,7 +250,7 @@ export default function Profile() {
                   the 26 weeks read against the calendar rather than floating. */}
               <View style={styles.axisRow} pointerEvents="none">
                 {bars.counts.map((_, i) => {
-                  const tick = bars.ticks.find((t) => t.index === i);
+                  const tick = bars.ticks.find((tk) => tk.index === i);
                   return (
                     <View key={i} style={styles.axisCell}>
                       {tick && (
@@ -244,15 +266,15 @@ export default function Profile() {
 
             {/* Measurements — the three most recent, as a way in. The full
                 list lives on its own screen; this is a status line. */}
-            <Text style={styles.recordsLabel}>MEASUREMENTS</Text>
+            <Text style={styles.recordsLabel}>{upperDisplay(t('profile.measurements'))}</Text>
             <Pressable style={styles.muscleCard} onPress={() => router.push('/measurements')}>
               <View style={styles.muscleText}>
                 <Text style={styles.muscleTitle}>
-                  {measurements.size === 0 ? 'Nothing logged yet' : 'Latest'}
+                  {measurements.size === 0 ? t('profile.measurementsNone') : t('profile.measurementsLatest')}
                 </Text>
                 <Text style={styles.muscleSub}>
                   {measurements.size === 0
-                    ? 'Waist, arms, body fat and more'
+                    ? t('profile.measurementsHint')
                     : [...measurements.entries()]
                         .slice(0, 3)
                         .map(([m, r]) => formatMeasurement(r.value, m, { weightUnit: unit }))
@@ -267,18 +289,21 @@ export default function Profile() {
                 two figures at this size read as decoration. */}
             {muscle && (
               <>
-                <Text style={styles.recordsLabel}>MUSCLE MAP</Text>
+                <Text style={styles.recordsLabel}>{upperDisplay(t('profile.muscleMap'))}</Text>
                 <Pressable style={styles.muscleCard} onPress={() => router.push('/muscle-map')}>
                   <BodyMap side="front" work={muscle.work} historyDays={muscle.historyDays} width={92} />
                   <View style={styles.muscleText}>
-                    <Text style={styles.muscleTitle}>Last 7 days</Text>
+                    <Text style={styles.muscleTitle}>{t('profile.last7')}</Text>
                     <Text style={styles.muscleSub}>
                       {(() => {
                         const missed = [...muscle.work.entries()].filter(([, n]) =>
                           isNeglected(n, muscle.historyDays, false),
                         );
-                        if (missed.length === 0) return 'Everything has had work';
-                        return `${missed.length} not trained · ${missed.slice(0, 3).map(([r]) => r).join(', ')}`;
+                        if (missed.length === 0) return t('profile.allTrained');
+                        return t('profile.notTrained', {
+                          count: missed.length,
+                          names: missed.slice(0, 3).map(([r]) => muscleNameLabel(r, getLang())).join(', '),
+                        });
                       })()}
                     </Text>
                   </View>
@@ -288,10 +313,10 @@ export default function Profile() {
             )}
 
             {/* Records */}
-            <Text style={styles.recordsLabel}>RECENT RECORDS</Text>
+            <Text style={styles.recordsLabel}>{upperDisplay(t('profile.recentRecords'))}</Text>
             <View style={styles.recordsList}>
               {records && records.length === 0 && (
-                <Text style={styles.emptyRecords}>No records yet — finish a workout to log your first PR.</Text>
+                <Text style={styles.emptyRecords}>{t('profile.noRecords')}</Text>
               )}
               {records?.map((r, i) => (
                 // Name the lift when the local record carries it; fall back to
@@ -309,21 +334,21 @@ export default function Profile() {
             </View>
 
             {/* Tools — calculators that don't belong to any one workout. */}
-            <Text style={styles.recordsLabel}>TOOLS</Text>
+            <Text style={styles.recordsLabel}>{upperDisplay(t('profile.tools'))}</Text>
             <View style={styles.toolsList}>
               {[
-                { label: '1RM calculator', sub: 'Estimate from a set', to: '/one-rep-max' as const },
-                { label: 'Plate calculator', sub: 'Bar and plates', to: '/plates' as const },
-              ].map((t, i) => (
+                { label: t('profile.oneRmCalc'), sub: t('profile.oneRmSub'), to: '/one-rep-max' as const },
+                { label: t('profile.plateCalc'), sub: t('profile.plateSub'), to: '/plates' as const },
+              ].map((tool, i) => (
                 <Pressable
-                  key={t.to}
-                  onPress={() => router.push(t.to)}
+                  key={tool.to}
+                  onPress={() => router.push(tool.to)}
                   style={[styles.toolRow, i === 0 && styles.toolRowFirst]}
                   accessibilityRole="button"
                 >
                   <View style={styles.toolText}>
-                    <Text style={styles.toolLabel}>{t.label}</Text>
-                    <Text style={styles.toolSub}>{t.sub}</Text>
+                    <Text style={styles.toolLabel}>{tool.label}</Text>
+                    <Text style={styles.toolSub}>{tool.sub}</Text>
                   </View>
                   <ChevronRightIcon size={15} color={color.text3} strokeWidth={2.2} />
                 </Pressable>
@@ -338,9 +363,9 @@ export default function Profile() {
                 <DeviceIcon size={19} color={color.text2} strokeWidth={2} />
               </View>
               <View style={styles.statusText}>
-                <Text style={styles.statusTitle}>On this device · not synced</Text>
+                <Text style={styles.statusTitle}>{t('profile.onDevice')}</Text>
                 <Text style={styles.statusSub}>
-                  {Platform.OS === 'ios' ? 'Backs up with iCloud' : 'Backs up with your Google account'}
+                  {Platform.OS === 'ios' ? t('profile.backupIos') : t('profile.backupAndroid')}
                 </Text>
               </View>
               <Text style={styles.statusBadge}>SQLite</Text>
@@ -354,25 +379,55 @@ export default function Profile() {
         style={[styles.header, { paddingTop: insets.top + 12 }]}
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
-        <Text style={styles.title}>Profile</Text>
+        {multi ? (
+          <Pressable
+            onPress={openProfileSwitcher}
+            style={({ pressed }) => [styles.whoButton, pressed && styles.whoButtonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.switchCurrent', { name: profileNameLabel(active.name) })}
+          >
+            <Text style={[styles.title, styles.whoName]} numberOfLines={1}>
+              {firstName(profileNameLabel(active.name)) || profileNameLabel(active.name)}
+            </Text>
+            <View style={styles.whoChevron}>
+              <ChevronDownIcon size={16} color={color.text2} strokeWidth={2.6} />
+            </View>
+          </Pressable>
+        ) : (
+          <Text style={styles.title}>{t('tabs.profile')}</Text>
+        )}
         <View style={styles.headerRight}>
-          {healthConnected && (
+          {multi && !active.isOwner && (
+            // Health and the Watch are the owner's (#117): a neutral pill for
+            // everyone else, to the screen that says so.
+            <Pressable
+              onPress={() => router.push('/health')}
+              hitSlop={6}
+              style={({ pressed }) => [styles.healthChip, styles.healthChipOff, pressed && styles.healthChipPressed]}
+              accessibilityLabel={t('profile.healthOffLabel', { name: healthCopy(Platform.OS).name })}
+              accessibilityRole="button"
+            >
+              <HeartFilledIcon size={12} color={color.text3} />
+              <Text style={[styles.healthChipText, styles.healthChipTextOff]}>{t('profile.healthOffChip')}</Text>
+            </Pressable>
+          )}
+          {healthConnected && !(multi && !active.isOwner) && (
             <Pressable
               onPress={() => router.push('/health')}
               hitSlop={6}
               style={({ pressed }) => [styles.healthChip, pressed && styles.healthChipPressed]}
-              accessibilityLabel={`${healthCopy(Platform.OS).name} connected`}
+              accessibilityLabel={t('profile.healthOnLabel', { name: healthCopy(Platform.OS).name })}
               accessibilityRole="button"
             >
               <HeartFilledIcon size={12} color={color.success} />
-              <Text style={styles.healthChipText}>Health · connected</Text>
+              <Text style={styles.healthChipText}>{t('profile.healthOnChip')}</Text>
             </Pressable>
           )}
           <Pressable
             onPress={() => router.push('/settings')}
             hitSlop={6}
             style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsButtonPressed]}
-            accessibilityLabel="Settings"
+            accessibilityLabel={t('profile.settingsLabel')}
             accessibilityRole="button"
           >
             <SettingsIcon size={18} color={color.text2} strokeWidth={2} />
@@ -384,9 +439,10 @@ export default function Profile() {
 }
 
 function StatCell({ label, value, unit }: { label: string; value: string; unit: string }) {
+  useThemed();
   return (
     <View style={styles.statCell}>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statLabel}>{upperDisplay(label)}</Text>
       {/* Two Texts on a shared baseline, not one nested in the other: Android
           measures a nested span with its own size against the parent's
           metrics and draws the unit over the last digit. */}
@@ -398,329 +454,345 @@ function StatCell({ label, value, unit }: { label: string; value: string; unit: 
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
-  loading: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text3,
-    textAlign: 'center',
-    marginTop: 24,
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    content: { paddingTop: 108, paddingBottom: 108, paddingHorizontal: 16 },
+    loading: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text3,
+      textAlign: 'center',
+      marginTop: 24,
+    },
 
-  // Fixed header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: color.bg,
-  },
-  title: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  healthChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    height: 30,
-    paddingHorizontal: 11,
-    borderRadius: 999,
-    backgroundColor: 'rgba(45,216,129,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(45,216,129,0.24)',
-  },
-  healthChipPressed: { opacity: 0.75 },
-  healthChipText: {
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    fontWeight: '600',
-    color: color.success,
-  },
-  settingsButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsButtonPressed: { borderColor: color.text3 },
+    // Fixed header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      backgroundColor: color.bg,
+    },
+    title: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 0,
+      gap: 10,
+    },
+    healthChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      height: 30,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      backgroundColor: withAlpha(color.success, 0.10),
+      borderWidth: 1,
+      borderColor: withAlpha(color.success, 0.24),
+    },
+    healthChipPressed: { opacity: 0.75 },
+    healthChipOff: { backgroundColor: color.surface2, borderColor: color.border },
+    healthChipTextOff: { color: color.text2 },
+    whoButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 44,
+      minWidth: 0,
+      flexShrink: 1,
+      paddingRight: 6,
+      borderRadius: 10,
+    },
+    whoButtonPressed: { opacity: 0.6 },
+    whoName: { flexShrink: 1 },
+    whoChevron: { flexShrink: 0, marginTop: 3 },
+    healthChipText: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      fontWeight: '600',
+      color: color.success,
+    },
+    settingsButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingsButtonPressed: { borderColor: color.text3 },
 
-  // Identity row
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    marginBottom: 22,
-    paddingHorizontal: 2,
-  },
-  avatar: {
-    width: 62,
-    height: 62,
-    borderRadius: 18,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarText: {
-    fontFamily: font.monoBold,
-    fontSize: 22,
-    color: color.accent,
-  },
-  identityText: { flex: 1, minWidth: 0 },
-  name: {
-    fontFamily: font.displayBold,
-    fontSize: 20,
-    letterSpacing: -0.4,
-    color: color.text1,
-  },
-  nameInput: {
-    padding: 0,
-    marginVertical: -2, // keep the row height stable when swapping Text -> TextInput
-  },
-  subtitle: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 3,
-  },
+    // Identity row
+    identity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 15,
+      marginBottom: 22,
+      paddingHorizontal: 2,
+    },
+    avatar: {
+      width: 62,
+      height: 62,
+      borderRadius: 18,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    avatarText: {
+      fontFamily: font.monoBold,
+      fontSize: 22,
+      color: color.accent,
+    },
+    identityText: { flex: 1, minWidth: 0 },
+    name: {
+      fontFamily: font.displayBold,
+      fontSize: 20,
+      letterSpacing: -0.4,
+      color: color.text1,
+    },
+    nameInput: {
+      padding: 0,
+      marginVertical: -2, // keep the row height stable when swapping Text -> TextInput
+    },
+    subtitle: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 3,
+    },
 
-  // Stats grid
-  grid: { flexDirection: 'column', gap: 10, marginBottom: 12 },
-  gridRow: { flexDirection: 'row', gap: 10 },
-  statCell: {
-    flex: 1,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 15,
-    padding: 15,
-  },
-  statLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9.5,
-    letterSpacing: 0.95,
-    color: color.text3,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  statValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 13,
-    color: color.text3,
-    letterSpacing: 0,
-  },
+    // Stats grid
+    grid: { flexDirection: 'column', gap: 10, marginBottom: 12 },
+    gridRow: { flexDirection: 'row', gap: 10 },
+    statCell: {
+      flex: 1,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 15,
+      padding: 15,
+    },
+    statLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9.5,
+      letterSpacing: 0.95,
+      color: color.text3,
+      marginBottom: 8,
+    },
+    statValueRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 13,
+      color: color.text3,
+      letterSpacing: 0,
+    },
 
-  // Weekly bars card
-  barsCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  barsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  barsLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  barsAvg: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.success,
-    fontVariant: ['tabular-nums'],
-  },
-  barsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 3,
-    height: 60,
-  },
-  bar: {
-    flex: 1,
-    borderRadius: 2,
-    minHeight: BAR_MIN_HEIGHT,
-  },
-  axisRow: {
-    flexDirection: 'row',
-    gap: 3,
-    marginTop: 7,
-  },
-  axisCell: {
-    flex: 1,
-    alignItems: 'center',
-    // Let a month label spill past its thin bar cell rather than clip.
-    overflow: 'visible',
-  },
-  axisLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 9,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-    // Wider than the cell on purpose: without a width of its own Android
-    // wraps the label to the bar's few pixels, one letter per line.
-    width: 28,
-    textAlign: 'center',
-  },
+    // Weekly bars card
+    barsCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+    },
+    barsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    barsLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+    },
+    barsAvg: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.success,
+      fontVariant: ['tabular-nums'],
+    },
+    barsRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 3,
+      height: 60,
+    },
+    bar: {
+      flex: 1,
+      borderRadius: 2,
+      minHeight: BAR_MIN_HEIGHT,
+    },
+    axisRow: {
+      flexDirection: 'row',
+      gap: 3,
+      marginTop: 7,
+    },
+    axisCell: {
+      flex: 1,
+      alignItems: 'center',
+      // Let a month label spill past its thin bar cell rather than clip.
+      overflow: 'visible',
+    },
+    axisLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 9,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+      // Wider than the cell on purpose: without a width of its own Android
+      // wraps the label to the bar's few pixels, one letter per line.
+      width: 28,
+      textAlign: 'center',
+    },
 
-  // Records
-  recordsLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    textTransform: 'uppercase',
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  recordsList: { flexDirection: 'column', gap: 8, marginBottom: 24 },
-  recordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 13,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  recordName: {
-    flex: 1,
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    color: color.text1,
-  },
-  recordValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 13.5,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  emptyRecords: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-    textAlign: 'center',
-    paddingVertical: 12,
-  },
+    // Records
+    recordsLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    recordsList: { flexDirection: 'column', gap: 8, marginBottom: 24 },
+    recordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 13,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    recordName: {
+      flex: 1,
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      color: color.text1,
+    },
+    recordValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 13.5,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    emptyRecords: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+      textAlign: 'center',
+      paddingVertical: 12,
+    },
 
-  // On-device status (neutral)
-  muscleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-  muscleText: { flex: 1, gap: 2 },
-  muscleTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
-  muscleSub: { fontFamily: font.bodyRegular, fontSize: 12, lineHeight: 17, color: color.text3 },
-  toolsList: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  toolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    height: 56,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hair,
-  },
-  toolRowFirst: { borderTopWidth: 0 },
-  toolText: { gap: 1 },
-  toolLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
-  toolSub: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3 },
-  statusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  statusTile: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statusText: { flex: 1, minWidth: 0 },
-  statusTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 13.5,
-    color: color.text1,
-  },
-  statusSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    marginTop: 2,
-  },
-  statusBadge: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    flexShrink: 0,
-  },
-});
+    // On-device status (neutral)
+    muscleCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 16,
+    },
+    muscleText: { flex: 1, gap: 2 },
+    muscleTitle: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+    muscleSub: { fontFamily: font.bodyRegular, fontSize: 12, lineHeight: 17, color: color.text3 },
+    toolsList: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 16,
+    },
+    toolRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 56,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.hair,
+    },
+    toolRowFirst: { borderTopWidth: 0 },
+    toolText: { gap: 1 },
+    toolLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
+    toolSub: { fontFamily: font.bodyRegular, fontSize: 12, color: color.text3 },
+    statusCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    statusTile: {
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    statusText: { flex: 1, minWidth: 0 },
+    statusTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 13.5,
+      color: color.text1,
+    },
+    statusSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      marginTop: 2,
+    },
+    statusBadge: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      flexShrink: 0,
+    },
+  }),
+);

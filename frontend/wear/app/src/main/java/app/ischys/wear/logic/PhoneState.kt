@@ -6,6 +6,8 @@ enum class WatchScreen {
   START,   // pick a routine / empty
   SESSION, // the paged workout
   SUMMARY,
+  /** Another profile is active on the phone; the Watch does nothing. */
+  OFF,
 }
 
 enum class SetDot { DONE, ACTIVE, PENDING }
@@ -78,6 +80,8 @@ data class PhoneState(
   val themeId: String? = null,
   /** When the phone sent this, on the phone's clock. null when it did not say. */
   val sentAt: Long? = null,
+  /** First name of the profile active on the phone, on the off screen. May be blank. */
+  val profileName: String = "",
 ) {
   companion object {
     fun from(d: JSONObject): PhoneState {
@@ -87,8 +91,10 @@ data class PhoneState(
         screen = when (d.optString("screen", "")) {
           "session" -> WatchScreen.SESSION
           "summary" -> WatchScreen.SUMMARY
+          "off" -> WatchScreen.OFF
           else -> WatchScreen.START
         },
+        profileName = d.optString("profileName", ""),
         routines = d.optJSONArray("routines")?.let { rs ->
           (0 until rs.length()).mapNotNull { rs.optJSONObject(it) }.map {
             RoutineItem(

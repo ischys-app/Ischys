@@ -241,3 +241,17 @@ test('a group of one is not a superset', () => {
 test('an empty routine has no blocks', () => {
   assert.deepEqual(buildRoutineView([], null, 'kg'), []);
 });
+
+test('setText follows the app language: ru comma, en and zh-Hans unchanged', async () => {
+  const { setLang } = await import('../i18n/current.ts');
+  try {
+    setLang('ru');
+    assert.equal(setText('weighted', 82.5, 8, 'kg'), '82,5 × 8');
+    for (const lang of ['en', 'zh-Hans'] as const) {
+      setLang(lang);
+      assert.equal(setText('weighted', 82.5, 8, 'kg'), '82.5 × 8');
+    }
+  } finally {
+    setLang('en');
+  }
+});

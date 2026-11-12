@@ -17,7 +17,7 @@
  * Apple Watch). It lives here so the screen and the sync layer share one shape
  * and one set of keys rather than drifting apart.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 // readBody covers waist + body fat, the only body measurements HealthKit has
 // types for. It returns here with #65, which gives the values somewhere to go.

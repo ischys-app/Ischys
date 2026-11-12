@@ -9,9 +9,14 @@
  *
  * Everything the screens say about a rating comes from here, so the row, the
  * rest bar, the sheet, the summary and the history cannot disagree. Pure — no
- * imports, so `node --test` can run it. The setting itself is read through
+ * native imports, so `node --test` can run it. The setting itself is read through
  * lib/effortMode.ts.
  */
+
+import { getLang } from '../i18n/current.ts';
+import type { Lang } from '../i18n/locale.ts';
+import { t } from '../i18n/t.ts';
+import { localizeNumber } from './units.ts';
 
 /** The setting: hidden, or shown on one of the two scales. */
 export type EffortMode = 'off' | 'rpe' | 'rir';
@@ -133,8 +138,8 @@ export function effortValue(rpe: number, kind: EffortScaleKind): string {
 }
 
 /** A rating wherever a set is written out: "@8.5" / "2 RIR". */
-export function effortLabel(rpe: number, kind: EffortScaleKind): string {
-  return kind === 'rir' ? `${rirText(rpe)} RIR` : `@${rpe}`;
+export function effortLabel(rpe: number, kind: EffortScaleKind, lang: Lang = getLang()): string {
+  return kind === 'rir' ? `${rirText(rpe)} RIR` : `@${localizeNumber(String(rpe), lang)}`;
 }
 
 /** The done row's way in when the set is not rated yet. */
@@ -144,31 +149,31 @@ export function effortAddLabel(kind: EffortScaleKind): string {
 
 /** Last session's rating, under PREV before the set is done. */
 export function effortLastLabel(rpe: number, kind: EffortScaleKind): string {
-  return `last ${effortLabel(rpe, kind)}`;
+  return t('effort.last', { value: effortLabel(rpe, kind) });
 }
 
 /** What the rest bar folds to after a tap. */
 export function effortSavedLabel(rpe: number, kind: EffortScaleKind): string {
-  return `${effortLabel(rpe, kind)} saved`;
+  return t('effort.saved', { value: effortLabel(rpe, kind) });
 }
 
 /** The rest bar's question about the set just ticked. */
 export function effortAsk(badge: string, kind: EffortScaleKind): string {
-  return `SET ${badge} · ${kind === 'rir' ? 'REPS LEFT?' : 'HOW HARD?'}`;
+  return t(kind === 'rir' ? 'effort.askRir' : 'effort.askRpe', { badge });
 }
 
 /** The one anchor that teaches the scale before it is touched. */
 export function effortHint(kind: EffortScaleKind): string {
-  return kind === 'rir' ? '0 = NOTHING LEFT' : '8 = 2 REPS LEFT';
+  return t(kind === 'rir' ? 'effort.hintRir' : 'effort.hintRpe');
 }
 
 /** "1 REP LEFT", "1–2 REPS LEFT", "NOTHING LEFT", "5+ REPS LEFT". */
 function repsLeft(rpe: number): string {
   const rir = 10 - rpe;
-  if (rir <= 0) return 'NOTHING LEFT';
-  if (rir >= 5) return '5+ REPS LEFT';
-  if (!Number.isInteger(rir)) return `${Math.floor(rir)}–${Math.ceil(rir)} REPS LEFT`;
-  return rir === 1 ? '1 REP LEFT' : `${rir} REPS LEFT`;
+  if (rir <= 0) return t('effort.nothingLeft');
+  if (rir >= 5) return t('effort.fivePlus');
+  if (!Number.isInteger(rir)) return t('effort.range', { from: Math.floor(rir), to: Math.ceil(rir) });
+  return rir === 1 ? t('effort.oneRep') : t('effort.nReps', { n: rir });
 }
 
 /**
@@ -176,21 +181,22 @@ function repsLeft(rpe: number): string {
  * already is the meaning, so it is not said twice.
  */
 export function effortMeaning(rpe: number, kind: EffortScaleKind): string {
-  return kind === 'rir' ? repsLeft(rpe) : `@${rpe} · ${repsLeft(rpe)}`;
+  return kind === 'rir' ? repsLeft(rpe) : t('effort.meaning', { rpe, text: repsLeft(rpe) });
 }
 
-const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five'];
+/** The number spelled out, 0 to 5. */
+const word = (n: number): string => t(`effort.word.${n}`);
 
 /** The same meaning as a sentence, for the sheet. */
 export function effortSentence(rpe: number, kind: EffortScaleKind): string {
   const rir = 10 - rpe;
   let tank: string;
-  if (rir <= 0) tank = 'nothing left';
-  else if (rir >= 5) tank = 'five or more reps left';
-  else if (rir === 0.5) tank = 'maybe one rep left';
-  else if (!Number.isInteger(rir)) tank = `about ${WORDS[Math.floor(rir)]} to ${WORDS[Math.ceil(rir)]} reps left`;
-  else tank = `about ${WORDS[rir]} ${rir === 1 ? 'rep' : 'reps'} left`;
-  return `${effortLabel(rpe, kind)} · ${tank} in the tank.`;
+  if (rir <= 0) tank = t('effort.tank.none');
+  else if (rir >= 5) tank = t('effort.tank.fivePlus');
+  else if (rir === 0.5) tank = t('effort.tank.half');
+  else if (!Number.isInteger(rir)) tank = t('effort.tank.range', { from: word(Math.floor(rir)), to: word(Math.ceil(rir)) });
+  else tank = rir === 1 ? t('effort.tank.one') : t('effort.tank.many', { n: word(rir) });
+  return t('effort.sentence', { label: effortLabel(rpe, kind), tank });
 }
 
 // --- The set row's second line ----------------------------------------

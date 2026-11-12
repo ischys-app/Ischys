@@ -5,7 +5,7 @@
  * keyed by the exercise id. This keeps the UI populated across launches and lets
  * us fall through gracefully if the row write is rejected.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 const PREFIX = 'ischys.exerciseDemo.';
 

@@ -1,4 +1,5 @@
 /** Bottom-sheet menu for the ⋯ on a routine card — Edit / Rename / Duplicate / Reorder / Delete. */
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -11,9 +12,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { color, font, TAP_TARGET } from '../theme/tokens';
+import { color, font, TAP_TARGET, themed } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { CopyIcon, DumbbellIcon, EditIcon, ReorderIcon, TrashIcon } from './icons';
+import { useThemed } from '../theme/ThemeProvider';
 
 type Props = {
   visible: boolean;
@@ -41,6 +43,7 @@ export function RoutineMenuSheet({
   onDelete,
   onClose,
 }: Props) {
+  useThemed();
   const insets = useSafeAreaInsets();
   const [renameOpen, setRenameOpen] = useState(false);
   const [draftName, setDraftName] = useState(routineName);
@@ -78,12 +81,12 @@ export function RoutineMenuSheet({
 
   const handleDeleteTap = () => {
     Alert.alert(
-      'Delete routine',
-      `Delete "${routineName}"? This cannot be undone.`,
+      t('routineMenu.deleteTitle'),
+      t('routineMenu.deleteMessage', { name: routineName }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             onClose();
@@ -136,32 +139,32 @@ export function RoutineMenuSheet({
           {onEdit && (
             <MenuRow
               icon={<DumbbellIcon size={20} color={color.text2} strokeWidth={2} />}
-              label="Edit exercises"
+              label={t('routineMenu.edit')}
               onPress={handleEditTap}
               showDivider={false}
             />
           )}
           <MenuRow
             icon={<EditIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Rename"
+            label={t('routineMenu.rename')}
             onPress={handleRenameTap}
             showDivider={false}
           />
           <MenuRow
             icon={<CopyIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Duplicate"
+            label={t('routineMenu.duplicate')}
             onPress={handleDuplicateTap}
             showDivider={false}
           />
           <MenuRow
             icon={<ReorderIcon size={20} color={color.text2} strokeWidth={2} />}
-            label="Reorder routines"
+            label={t('routineMenu.reorder')}
             onPress={handleReorderTap}
             showDivider
           />
           <MenuRow
             icon={<TrashIcon size={20} color={color.error} strokeWidth={2} />}
-            label="Delete"
+            label={t('common.delete')}
             labelColor={color.error}
             onPress={handleDeleteTap}
             showDivider={false}
@@ -178,13 +181,13 @@ export function RoutineMenuSheet({
       >
         <Pressable style={styles.renameBackdrop} onPress={handleRenameCancel}>
           <Pressable style={styles.renameCard} onPress={() => {}}>
-            <Text style={styles.renameTitle}>Rename routine</Text>
+            <Text style={styles.renameTitle}>{t('routineMenu.renameTitle')}</Text>
             <TextInput
               value={draftName}
               onChangeText={setDraftName}
               autoFocus
               selectTextOnFocus
-              placeholder="Routine name"
+              placeholder={t('routineMenu.namePlaceholder')}
               placeholderTextColor={color.text3}
               style={styles.renameInput}
               maxLength={80}
@@ -200,7 +203,7 @@ export function RoutineMenuSheet({
                   pressed && styles.renameCancelPressed,
                 ]}
               >
-                <Text style={styles.renameCancelLabel}>Cancel</Text>
+                <Text style={styles.renameCancelLabel}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleRenameSave}
@@ -210,7 +213,7 @@ export function RoutineMenuSheet({
                   pressed && styles.renameSavePressed,
                 ]}
               >
-                <Text style={styles.renameSaveLabel}>Save</Text>
+                <Text style={styles.renameSaveLabel}>{t('common.save')}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -233,6 +236,7 @@ function MenuRow({
   onPress: () => void;
   showDivider: boolean;
 }) {
+  useThemed();
   return (
     <>
       <Pressable
@@ -247,147 +251,149 @@ function MenuRow({
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -20 },
-    shadowOpacity: 0.8,
-    shadowRadius: 50,
-    elevation: 20,
-  },
-  grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  identityStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontFamily: font.monoBold,
-    fontSize: 13,
-    fontWeight: '700',
-    color: color.accent,
-  },
-  identityCol: { flex: 1, minWidth: 0 },
-  identityName: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    fontWeight: '600',
-    color: color.text1,
-  },
-  identitySub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 2,
-    fontVariant: ['tabular-nums'],
-  },
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -20 },
+      shadowOpacity: 0.8,
+      shadowRadius: 50,
+      elevation: 20,
+    },
+    grabberWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+    grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    identityStrip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarInitials: {
+      fontFamily: font.monoBold,
+      fontSize: 13,
+      fontWeight: '700',
+      color: color.accent,
+    },
+    identityCol: { flex: 1, minWidth: 0 },
+    identityName: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      fontWeight: '600',
+      color: color.text1,
+    },
+    identitySub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 2,
+      fontVariant: ['tabular-nums'],
+    },
 
-  rows: { paddingVertical: 4 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    height: 56,
-    minHeight: TAP_TARGET,
-    paddingHorizontal: 18,
-  },
-  rowPressed: { backgroundColor: color.surface2 },
-  rowIcon: { width: 20, alignItems: 'center', justifyContent: 'center' },
-  rowLabel: {
-    fontFamily: font.bodyMedium,
-    fontSize: 15,
-    color: color.text1,
-    letterSpacing: -0.15,
-  },
-  divider: { height: 1, backgroundColor: color.hair, marginHorizontal: 14 },
+    rows: { paddingVertical: 4 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 13,
+      height: 56,
+      minHeight: TAP_TARGET,
+      paddingHorizontal: 18,
+    },
+    rowPressed: { backgroundColor: color.surface2 },
+    rowIcon: { width: 20, alignItems: 'center', justifyContent: 'center' },
+    rowLabel: {
+      fontFamily: font.bodyMedium,
+      fontSize: 15,
+      color: color.text1,
+      letterSpacing: -0.15,
+    },
+    divider: { height: 1, backgroundColor: color.hair, marginHorizontal: 14 },
 
-  // Inline rename modal
-  renameBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  renameCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: color.surface1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: color.border,
-    paddingTop: 20,
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-  },
-  renameTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    letterSpacing: -0.17,
-    color: color.text1,
-    marginBottom: 12,
-  },
-  renameInput: {
-    height: 48,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    paddingHorizontal: 14,
-    color: color.text1,
-    fontFamily: font.bodyMedium,
-    fontSize: 15,
-  },
-  renameActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  renameBtn: {
-    flex: 1,
-    height: 46,
-    minHeight: TAP_TARGET,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  renameCancel: {
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-  },
-  renameCancelPressed: { borderColor: color.text3 },
-  renameCancelLabel: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  renameSave: {
-    backgroundColor: color.accent,
-  },
-  renameSavePressed: { opacity: 0.9 },
-  renameSaveLabel: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-});
+    // Inline rename modal
+    renameBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+    },
+    renameCard: {
+      width: '100%',
+      maxWidth: 360,
+      backgroundColor: color.surface1,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: color.border,
+      paddingTop: 20,
+      paddingHorizontal: 18,
+      paddingBottom: 14,
+    },
+    renameTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      letterSpacing: -0.17,
+      color: color.text1,
+      marginBottom: 12,
+    },
+    renameInput: {
+      height: 48,
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      paddingHorizontal: 14,
+      color: color.text1,
+      fontFamily: font.bodyMedium,
+      fontSize: 15,
+    },
+    renameActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 14,
+    },
+    renameBtn: {
+      flex: 1,
+      height: 46,
+      minHeight: TAP_TARGET,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    renameCancel: {
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+    },
+    renameCancelPressed: { borderColor: color.text3 },
+    renameCancelLabel: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    renameSave: {
+      backgroundColor: color.accent,
+    },
+    renameSavePressed: { opacity: 0.9 },
+    renameSaveLabel: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+  }),
+);

@@ -110,10 +110,18 @@ enum LiveActivityMutator {
     await mutate { state in
       guard state.setId == setId else { return }
 
-      let now = Date()
-      state.mode = "rest"
-      state.restStartedAt = now
-      state.restEndsAt = now.addingTimeInterval(TimeInterval(state.restSeconds))
+      // No rest seconds: a superset partner's set (or the timer is off), which
+      // goes straight on to the next set, as the in-app ✓ does.
+      if state.restSeconds > 0 {
+        let now = Date()
+        state.mode = "rest"
+        state.restStartedAt = now
+        state.restEndsAt = now.addingTimeInterval(TimeInterval(state.restSeconds))
+      } else {
+        state.mode = "logging"
+        state.restStartedAt = nil
+        state.restEndsAt = nil
+      }
 
       // `next` is nil when JS has not yet pushed since the last completion. Rest
       // still starts — otherwise this tap, and the Skip after it, look dead —

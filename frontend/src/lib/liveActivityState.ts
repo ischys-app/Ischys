@@ -17,6 +17,7 @@
  */
 import type { Unit } from '../domain/units.ts';
 import { exerciseArtSlug } from './exerciseArt.ts';
+import { restAfterSet } from '../domain/supersets.ts';
 import { locateNextSet } from './nextSet.ts';
 
 export type LiveActivityMode = 'logging' | 'rest';
@@ -52,10 +53,12 @@ export type LiveActivitySnapshot = {
   next?: NextSet;
 };
 
-type SetLike = { id: string; weight: string; reps: string; done: boolean };
+type SetLike = { id: string; weight: string; reps: string; done: boolean; type?: string };
 type ExerciseLike = {
   name: string;
   rest: number;
+  /** Shared by paired exercises; absent or null when solo. */
+  supersetGroup?: number | null;
   sets: readonly SetLike[];
   /** Optional: only used to look up artwork, and coverage is partial anyway. */
   exerciseCatalogId?: string;
@@ -84,6 +87,24 @@ const repsLabelFor = (reps: string): string =>
   reps.trim() === '' ? '—' : `${reps.trim()} reps`;
 
 type Located = { exercise: ExerciseLike; setIndex: number };
+
+/**
+ * The rest completing this set starts, by the in-app ✓'s rule: none between
+ * superset partners (0, which the card takes as "go straight to the next").
+ */
+function restFor(exercises: readonly ExerciseLike[], exerciseIndex: number, setId: string): number {
+  const decision = restAfterSet(
+    exercises.map((e, i) => ({
+      id: String(i),
+      supersetGroup: e.supersetGroup ?? null,
+      rest: e.rest,
+      sets: e.sets.map((s) => ({ id: s.id, type: s.type ?? 'normal', done: s.done })),
+    })),
+    String(exerciseIndex),
+    setId,
+  );
+  return decision.startRest ? decision.seconds : 0;
+}
 
 function describe(at: Located, resolve: Resolve, unit: Unit): NextSet {
   const { exercise, setIndex } = at;
@@ -134,7 +155,7 @@ export function buildLiveActivityState(
     weightLabel,
     repsLabel,
     setId: set.id,
-    restSeconds: ex.rest,
+    restSeconds: restFor(exercises, current.exerciseIndex, set.id),
     next: after ? describe(after, resolve, unit) : undefined,
   };
 }

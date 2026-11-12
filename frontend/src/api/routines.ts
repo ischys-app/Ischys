@@ -11,8 +11,10 @@ export {
   createRoutine,
   updateRoutine,
   deleteRoutine,
+  listRoutinesInOrder,
+  reorderRoutines,
 } from '../data/routinesRepo';
-export type { RoutineHistory } from '../data/routinesRepo';
+export type { RoutineHistory, RoutineOrderRow } from '../data/routinesRepo';
 
 /**
  * Duplicate a routine: load the source, strip ids, then create a copy named
@@ -23,6 +25,7 @@ export async function duplicateRoutine(id: string): Promise<RoutineOut> {
   const exercises: RoutineExerciseIn[] = existing.exercises.map((ex) => ({
     exercise_id: ex.exercise.id,
     rest_seconds: ex.rest_seconds,
+    superset_group: ex.superset_group ?? null,
     note: ex.note ?? null,
     sets: ex.sets.map((s) => ({
       type: s.type,

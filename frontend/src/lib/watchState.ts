@@ -5,10 +5,11 @@
  * pushed from the iPhone"). This builds the snapshot the Watch's `PhoneState`
  * decodes — the current set, the set-progress dots, and the session totals.
  *
- * Pure — the only imports are the shared look-ahead and the unit maths, so
- * `node --test` can run it. The carry-forward rule is injected as `resolve`
+ * Pure — the only imports are the shared look-ahead, the unit maths and the
+ * profile name helpers, so `node --test` can run it. The carry-forward rule is injected as `resolve`
  * (see setCarry.ts), keeping this self-contained.
  */
+import { firstName } from '../domain/profiles.ts';
 import { type Unit, inputToKg, volumeToDisplay } from '../domain/units.ts';
 import { locateNextSet } from './nextSet.ts';
 
@@ -306,4 +307,15 @@ export function buildWatchState(
     currentExerciseId: ex.id,
     currentSetId: set.id,
   };
+}
+
+/**
+ * What the Watch shows while a profile other than the phone owner's is active
+ * (#117): Health and the Watch are the owner's only, so the wrist offers no
+ * routines and can't start a workout, and says whose profile has the phone.
+ *
+ * A blank name yields `profileName: ''`; Task 8's native screen needs a fallback.
+ */
+export function buildOffWatchState(name: string): { screen: 'off'; profileName: string } {
+  return { screen: 'off', profileName: firstName(name) };
 }

@@ -5,7 +5,7 @@
  * like bodyweight and the warmup flag, and adding a column would mean a
  * migration for something that never syncs.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 
 import * as LiveActivity from '../../modules/live-activity';
 

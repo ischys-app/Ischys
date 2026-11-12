@@ -1,7 +1,8 @@
 /**
  * Profile, Home dashboard, and recent-records — local equivalents of /profile,
- * /dashboard, /records/recent. Single on-device user; name defaults to "Athlete"
- * and "training since" is derived from the first workout (no account exists).
+ * /dashboard, /records/recent, for the active profile. The name is the active
+ * profile's (registry, #117; "Athlete" until set) and "training since" is
+ * derived from the first workout (no account exists).
  */
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 
@@ -20,9 +21,12 @@ import { getProfileName } from '../lib/profileName';
 import { LOCAL_USER_ID } from './ids';
 import { toWorkoutListItem, type WorkoutRow } from './map';
 import { muscleTagsByWorkout } from './queries';
+import { ROUTINE_ORDER } from './routinesRepo';
 import { getWeeklyTarget } from '../lib/weeklyTarget';
+import { getLang } from '../i18n/current';
+import { fmtWeekInitials } from '../lib/format';
+import { exerciseLabel } from '../i18n/catalogNames';
 
-const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const isoMonday = (d: Date) => {
   const diff = (d.getDay() + 6) % 7;
@@ -44,7 +48,7 @@ export async function getProfile(): Promise<ProfileOut> {
   const first = completed.reduce<number | null>((min, w) => (min === null || w.startedAt < min ? w.startedAt : min), null);
   return {
     id: LOCAL_USER_ID,
-    name: await getProfileName(),
+    name: getProfileName(),
     email: null,
     location: null,
     training_since: first === null ? null : ymd(new Date(first)),
@@ -76,13 +80,13 @@ export async function getDashboard(): Promise<Dashboard> {
     sets += w.totalSets;
     timeS += w.durationSeconds;
   }
-  const week: WeekBar[] = WEEK_LABELS.map((label, i) => ({
+  const week: WeekBar[] = fmtWeekInitials().map((label, i) => ({
     label,
     volume: weekVol[i],
     today: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i).getTime() === today.getTime(),
   }));
 
-  const routineRows = await db.select().from(schema.routines).orderBy(schema.routines.position);
+  const routineRows = await db.select().from(schema.routines).orderBy(...ROUTINE_ORDER);
   const routines = await Promise.all(
     routineRows.map(async (r) => {
       const res = await db.select().from(schema.routineExercises).where(eq(schema.routineExercises.routineId, r.id));
@@ -93,7 +97,7 @@ export async function getDashboard(): Promise<Dashboard> {
       const exRows = res.length
         ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, res.map((re) => re.exerciseId)))
         : [];
-      const nameById = new Map(exRows.map((e) => [e.id, e.name]));
+      const nameById = new Map(exRows.map((e) => [e.id, exerciseLabel(e, getLang())]));
       const names = res.map((re) => nameById.get(re.exerciseId) ?? '');
       const detail = names.slice(0, 6).join(', ') + (names.length > 6 ? ` +${names.length - 6}` : '');
       return {
@@ -146,7 +150,7 @@ export async function listRecentRecords(limit = 10): Promise<RecordOut[]> {
   const exRows = picked.length
     ? await db.select().from(schema.exercises).where(inArray(schema.exercises.id, picked.map((r) => r.exerciseId)))
     : [];
-  const nameById = new Map(exRows.map((e) => [e.id, e.name]));
+  const nameById = new Map(exRows.map((e) => [e.id, exerciseLabel(e, getLang())]));
   return picked.map((r) => ({
     metric: r.metric as RecordMetric,
     value: r.value,

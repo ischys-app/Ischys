@@ -4,21 +4,26 @@
  * Lists the workout's other exercises. One accent — Make superset — because
  * that is the only action here that changes anything.
  */
+import { t } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DraggableSheet } from '../DraggableSheet';
 import { PressableScale } from '../PressableScale';
 import { CheckIcon } from '../icons';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import { exerciseMeta, type Exercise } from './types';
+import { useThemed } from '../../theme/ThemeProvider';
+
+/** What the sheet shows of an exercise: a workout's, or a routine's. */
+export type SupersetCandidate = Pick<Exercise, 'id' | 'name' | 'equipment' | 'rest' | 'supersetGroup'>;
 
 type Props = {
   visible: boolean;
   /** The exercise the menu was opened on. Always part of the group. */
-  anchorExercise: Exercise | null;
-  /** Everything else in the workout, in screen order. */
-  candidates: Exercise[];
+  anchorExercise: SupersetCandidate | null;
+  /** Everything else in the workout or routine, in screen order. */
+  candidates: SupersetCandidate[];
   onConfirm: (partnerIds: string[]) => void;
   onClose: () => void;
 };
@@ -30,6 +35,7 @@ export function SupersetSheet({
   onConfirm,
   onClose,
 }: Props) {
+  useThemed();
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
   // A fresh open starts empty rather than remembering the last pairing, which
@@ -53,21 +59,21 @@ export function SupersetSheet({
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Superset with…</Text>
+        <Text style={styles.title}>{t('exerciseMenu.supersetWith')}</Text>
         <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={styles.cancel}>{t('common.cancel')}</Text>
         </Pressable>
       </View>
       {anchorExercise ? (
         <Text style={styles.sub} numberOfLines={1}>
-          Pairs with {anchorExercise.name}
+          {t('supersetSheet.pairs', { name: anchorExercise.name })}
         </Text>
       ) : null}
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {candidates.length === 0 ? (
           <Text style={styles.empty}>
-            Add another exercise to this workout first — a superset needs a partner.
+            {t('supersetSheet.needPartner')}
           </Text>
         ) : (
           candidates.map((ex) => {
@@ -94,7 +100,7 @@ export function SupersetSheet({
                   </Text>
                   <Text style={styles.rowMeta} numberOfLines={1}>
                     {exerciseMeta(ex)}
-                    {ex.supersetGroup != null ? ' · already in a superset' : ''}
+                    {ex.supersetGroup != null ? t('supersetSheet.already') : ''}
                   </Text>
                 </View>
               </Pressable>
@@ -109,63 +115,65 @@ export function SupersetSheet({
         accessibilityRole="button"
       >
         <Text style={styles.ctaText}>
-          {picked.size === 0 ? 'Pick a partner' : 'Make superset'}
+          {picked.size === 0 ? t('supersetSheet.pick') : t('supersetSheet.make')}
         </Text>
       </PressableScale>
     </DraggableSheet>
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingBottom: 16,
-  },
-  grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
-  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  cancel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text2 },
-  sub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-    paddingHorizontal: 16,
-    marginTop: 2,
-  },
-  list: { maxHeight: 320, marginTop: 12 },
-  listContent: { paddingHorizontal: 16, gap: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  circle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: color.text3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: { flex: 1, minWidth: 0 },
-  rowName: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
-  rowMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
-  empty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, paddingVertical: 12 },
-  cta: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaOff: { backgroundColor: color.surface3 },
-  ctaText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingBottom: 16,
+    },
+    grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
+    grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    cancel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text2 },
+    sub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+      paddingHorizontal: 16,
+      marginTop: 2,
+    },
+    list: { maxHeight: 320, marginTop: 12 },
+    listContent: { paddingHorizontal: 16, gap: 2 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+    circle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      borderColor: color.text3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowText: { flex: 1, minWidth: 0 },
+    rowName: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
+    rowMeta: { fontFamily: font.monoRegular, fontSize: 11, color: color.text3 },
+    empty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, paddingVertical: 12 },
+    cta: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ctaOff: { backgroundColor: color.surface3 },
+    ctaText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
+  }),
+);

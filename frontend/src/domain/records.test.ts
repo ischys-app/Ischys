@@ -517,3 +517,17 @@ test('a long history is walked in one pass, not once per session', () => {
   assert.equal(steps.length, 8000);
   assert.ok(elapsed < 250, `walk took ${elapsed.toFixed(0)} ms`);
 });
+
+test('recordDisplay / recordDeltaDisplay: ru comma and NBSP, en and zh-Hans unchanged', () => {
+  const NB = ' ';
+  assert.equal(recordDisplay('best_set', 82.5, '82.5 × 5', 'kg', 'ru'), '82,5 × 5');
+  assert.equal(recordDisplay('best_volume', 1300, '1,300 kg', 'kg', 'ru'), `1${NB}300 kg`);
+  assert.equal(recordDisplay('est_1rm', 1234, '1234 kg', 'kg', 'ru'), `1${NB}234 kg`);
+  assert.equal(recordDeltaDisplay('best_set', 2.5, 'kg', 'ru'), '▲ 2,5 kg');
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.equal(recordDisplay('best_set', 82.5, '82.5 × 5', 'kg', lang), '82.5 × 5');
+    assert.equal(recordDisplay('best_volume', 1300, '1,300 kg', 'kg', lang), '1,300 kg');
+    assert.equal(recordDisplay('est_1rm', 1234, '1234 kg', 'kg', lang), '1234 kg');
+    assert.equal(recordDeltaDisplay('best_set', 2.5, 'kg', lang), '▲ 2.5 kg');
+  }
+});

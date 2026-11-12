@@ -6,6 +6,8 @@ import kotlin.math.max
 /** Everything the screens render. Replaced whole on every change. */
 data class UiState(
   val screen: WatchScreen = WatchScreen.START,
+  /** The profile active on the phone, shown on the off screen. */
+  val profileName: String = "",
 
   // Start
   val routines: List<RoutineItem> = emptyList(),
@@ -84,7 +86,17 @@ data class UiState(
  *
  * Not thread-safe: every call is made on the main thread. `now` is epoch ms.
  */
-class WorkoutCore(private val host: Host, themeId: String? = null) {
+class WorkoutCore(
+  private val host: Host,
+  themeId: String? = null,
+  /**
+   * The profile the phone last said the Watch is off for, as `persistOff`
+   * saved it; null when it last said on (or never said). A relaunch with the
+   * phone out of reach must not open on a Start screen another profile's
+   * workout could be recorded from.
+   */
+  offFor: String? = null,
+) {
   /** What the state machine needs done for it. */
   interface Host {
     /** A session of this Watch's own is recording. */
@@ -104,9 +116,15 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     fun queueEnd()
     fun requestState()
     fun persistTheme(id: String)
+    /** Remember whom the Watch is off for across launches; null when it is on. */
+    fun persistOff(profileName: String?)
   }
 
-  var ui = UiState(themeId = themeId)
+  var ui = UiState(
+    themeId = themeId,
+    screen = if (offFor != null) WatchScreen.OFF else WatchScreen.START,
+    profileName = offFor ?: "",
+  )
     private set(value) {
       if (field == value) return
       field = value
@@ -157,10 +175,23 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
   /** Whether an alert from the phone arriving now would repeat our own buzz. */
   fun ownsRestBuzz(now: Long): Boolean = restAlarm.owns(now)
 
+  /**
+   * Whether a recording session may start now. Not while another profile is
+   * active on the phone: Health and the Watch are the owner's alone.
+   */
+  val sessionStartAllowed: Boolean get() = ui.screen != WatchScreen.OFF
+
   // Session lifecycle
 
   /** This Watch's session started recording. */
   fun sessionStarted(sessionStart: Long, now: Long) {
+    // The phone said off while this session was starting, too late for the
+    // start gate and too early for the off push to see a session to end. Not
+    // the owner's workout: thrown away, and the off screen stays.
+    if (ui.screen == WatchScreen.OFF) {
+      host.endSession(discard = true)
+      return
+    }
     // Only a seed: a `startedAt` already pushed by the phone is the better
     // origin and must not be thrown away by the session starting afterwards.
     if (elapsedOrigin == null) elapsedOrigin = sessionStart
@@ -177,8 +208,16 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     stopTicking()
     finishSettled()
     // Leave the workout so the Watch cannot stay on the session screen if the
-    // phone never pushes the next state.
-    update { it.copy(screen = WatchScreen.START, paused = false, heartRate = 0, activeCal = 0) }
+    // phone never pushes the next state. Not for Start when the phone has said
+    // off: that is why the session ended.
+    update {
+      it.copy(
+        screen = if (it.screen == WatchScreen.OFF) WatchScreen.OFF else WatchScreen.START,
+        paused = false,
+        heartRate = 0,
+        activeCal = 0,
+      )
+    }
   }
 
   private fun stopTicking() {
@@ -261,6 +300,13 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     update { it.copy(pendingRoutineId = null) }
     host.requestState()
   }
+
+  /**
+   * The off screen came up. It waits on the phone to say the owner is back,
+   * so it asks rather than waiting for a push that may never come: after a
+   * relaunch onto it, say, with the phone app since closed and reopened.
+   */
+  fun offAppeared() = host.requestState()
 
   fun routineTapped(id: String) = update { it.copy(pendingRoutineId = id) }
 
@@ -399,8 +445,10 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     // ends the session too, so this is not that: it is the routine list
     // answering a request made before the phone began the workout we asked
     // for, or a phone that never heard of it. Leaving for Start would hide a
-    // session that is still running, with no control left to end it.
-    if (s.screen == WatchScreen.START && host.sessionRunning) {
+    // session that is still running, with no control left to end it. Only the
+    // session screen is held: anywhere else (the off screen above all) there
+    // are no session controls to keep, and the phone's Start must land.
+    if (s.screen == WatchScreen.START && host.sessionRunning && ui.screen == WatchScreen.SESSION) {
       update {
         it.copy(
           routines = s.routines ?: it.routines,
@@ -437,6 +485,7 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
     update {
       it.copy(
         screen = s.screen,
+        profileName = if (s.screen == WatchScreen.OFF) s.profileName else "",
         // Once the phone has moved us off Start, any pending hand-off is resolved.
         pendingRoutineId = if (s.screen != WatchScreen.START) null else it.pendingRoutineId,
         // A "couldn't finish" belongs to the workout it was about.
@@ -468,6 +517,16 @@ class WorkoutCore(private val host: Host, themeId: String? = null) {
         phoneAppClosed = false,
       )
     }
+
+    val wasOff = before.screen == WatchScreen.OFF
+    val isOff = s.screen == WatchScreen.OFF
+    if (wasOff != isOff || isOff && before.profileName != s.profileName) {
+      host.persistOff(if (isOff) s.profileName else null)
+    }
+    // A session recording when the phone says off — started from a Watch that
+    // did not know yet — is not the owner's workout and has no control left
+    // on the off screen to end it. Thrown away: nothing of it is kept or sent.
+    if (isOff && host.sessionRunning) host.endSession(discard = true)
 
     // Every push goes through the alarm, which is what makes a repeated push
     // harmless, a skip silent, and an adjusted rest buzz at its new end.

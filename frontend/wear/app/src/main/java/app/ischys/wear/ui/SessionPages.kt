@@ -42,66 +42,71 @@ import app.ischys.wear.logic.UiState
  */
 @Composable
 fun MetricsPage(ui: UiState) {
-  ScalingLazyColumn(
-    modifier = Modifier.fillMaxSize(),
-    state = rememberScalingLazyListState(initialCenterItemIndex = 0),
-    // Starts under the clock rather than centred, so the elapsed time and the
-    // first row of tiles are on screen without scrolling.
-    autoCentering = null,
-    // Room to scroll the tiles clear of the rest banner while it is up.
-    contentPadding = PaddingValues(
-      start = 10.s(), end = 10.s(), top = 22.s(), bottom = if (ui.resting) 104.s() else 30.s(),
-    ),
-    verticalArrangement = Arrangement.spacedBy(3.s()),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    item {
-      Text(
-        ui.routineName.ifEmpty { "Workout" },
-        style = Ischys.mono(10.t(), Ischys.text2),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-    }
-    item {
-      Column(horizontalAlignment = Alignment.CenterHorizontally) {
+  val list = rememberScalingLazyListState(initialCenterItemIndex = 0)
+  ListScaffold(list) {
+    ScalingLazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      state = list,
+      // Starts under the clock rather than centred, so the elapsed time and the
+      // first row of tiles are on screen without scrolling.
+      autoCentering = null,
+      // Room to scroll the tiles clear of the rest banner while it is up, and
+    // otherwise clear of a round screen's curve, sides and bottom (Wear
+    // quality: watch shapes).
+      contentPadding = PaddingValues(
+        start = 16.s(), end = 16.s(), top = 22.s(), bottom = if (ui.resting) 104.s() else 50.s(),
+      ),
+      verticalArrangement = Arrangement.spacedBy(3.s()),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      item {
         Text(
-          if (ui.paused) "PAUSED" else "ELAPSED",
-          style = Ischys.mono(8.t(), if (ui.paused) Ischys.warning else Ischys.text3, 1.5.t()),
+          ui.routineName.ifEmpty { "Workout" },
+          style = Ischys.mono(10.t(), Ischys.text2),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
         )
-        Text(Format.clock(ui.elapsedSec), style = Ischys.mono(32.t(), LocalAccent.current))
       }
-    }
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(5.s())) {
-        StatCard("HEART RATE") {
+      item {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
           Text(
-            if (ui.heartRate > 0) "${ui.heartRate}" else "--",
-            modifier = Modifier.alignByBaseline(),
-            style = Ischys.mono(17.t(), Ischys.error),
+            if (ui.paused) "PAUSED" else "ELAPSED",
+            style = Ischys.mono(8.t(), if (ui.paused) Ischys.warning else Ischys.text3, 1.5.t()),
           )
-          Spacer(Modifier.width(2.s()))
-          Text("bpm", modifier = Modifier.alignByBaseline(), style = Ischys.ui(8.5.t(), color = Ischys.text2))
-        }
-        StatCard("CALORIES") {
-          Text("${ui.activeCal}", style = Ischys.mono(17.t(), Ischys.warning))
+          Text(Format.clock(ui.elapsedSec), style = Ischys.mono(32.t(), LocalAccent.current))
         }
       }
-    }
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(5.s())) {
-        StatCard("VOLUME") {
-          Text(
-            Format.volume(ui.volume),
-            modifier = Modifier.alignByBaseline(),
-            style = Ischys.mono(17.t()),
-            maxLines = 1,
-          )
-          Spacer(Modifier.width(2.s()))
-          Text(ui.unit, modifier = Modifier.alignByBaseline(), style = Ischys.ui(8.5.t(), color = Ischys.text2))
+      item {
+        Row(horizontalArrangement = Arrangement.spacedBy(5.s())) {
+          StatCard("HEART RATE") {
+            Text(
+              if (ui.heartRate > 0) "${ui.heartRate}" else "--",
+              modifier = Modifier.alignByBaseline(),
+              style = Ischys.mono(17.t(), Ischys.error),
+            )
+            Spacer(Modifier.width(2.s()))
+            Text("bpm", modifier = Modifier.alignByBaseline(), style = Ischys.ui(8.5.t(), color = Ischys.text2))
+          }
+          StatCard("CALORIES") {
+            Text("${ui.activeCal}", style = Ischys.mono(17.t(), Ischys.warning))
+          }
         }
-        StatCard("SETS") {
-          Text("${ui.setsDone} / ${ui.setsTotal}", style = Ischys.mono(17.t(), Ischys.success), maxLines = 1)
+      }
+      item {
+        Row(horizontalArrangement = Arrangement.spacedBy(5.s())) {
+          StatCard("VOLUME") {
+            Text(
+              Format.volume(ui.volume),
+              modifier = Modifier.alignByBaseline(),
+              style = Ischys.mono(17.t()),
+              maxLines = 1,
+            )
+            Spacer(Modifier.width(2.s()))
+            Text(ui.unit, modifier = Modifier.alignByBaseline(), style = Ischys.ui(8.5.t(), color = Ischys.text2))
+          }
+          StatCard("SETS") {
+            Text("${ui.setsDone} / ${ui.setsTotal}", style = Ischys.mono(17.t(), Ischys.success), maxLines = 1)
+          }
         }
       }
     }

@@ -6,6 +6,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.material3.HorizontalPagerScaffold
+import androidx.wear.compose.material3.ScreenScaffold
 import app.ischys.wear.logic.UiState
 
 /**
@@ -25,6 +28,9 @@ import app.ischys.wear.logic.UiState
  * Rest is a non-blocking banner pinned over the pager — chrome, not a page —
  * so all three pages stay swipeable while resting. The finish cover goes over
  * everything while a finish is in flight or has just failed.
+ *
+ * HorizontalPagerScaffold keeps the clock steady while paging; the page dots
+ * stay our own, so its indicator is off.
  */
 @Composable
 fun SessionScreen(ui: UiState) {
@@ -32,36 +38,40 @@ fun SessionScreen(ui: UiState) {
   // While the finish cover is up, nothing under it takes input.
   val covered = ui.finishing || ui.finishFailed
 
-  Box(Modifier.fillMaxSize()) {
-    HorizontalPager(
-      state = pager,
-      modifier = Modifier
-        .fillMaxSize()
-        .then(if (covered) Modifier.clearAndSetSemantics {} else Modifier),
-      userScrollEnabled = !covered,
-    ) { page ->
-      when (page) {
-        0 -> ActiveSetPage(ui, active = pager.currentPage == 0 && !covered)
-        1 -> MetricsPage(ui)
-        else -> ControlsPage(ui)
+  HorizontalPagerScaffold(pagerState = pager, pageIndicator = null) {
+    Box(Modifier.fillMaxSize()) {
+      HorizontalPager(
+        state = pager,
+        modifier = Modifier
+          .fillMaxSize()
+          .then(if (covered) Modifier.clearAndSetSemantics {} else Modifier),
+        userScrollEnabled = !covered,
+      ) { page ->
+        when (page) {
+          0 -> ScreenScaffold(contentPadding = PaddingValues()) { _ ->
+            ActiveSetPage(ui, active = pager.currentPage == 0 && !covered)
+          }
+          1 -> MetricsPage(ui)
+          else -> ScreenScaffold(contentPadding = PaddingValues()) { _ -> ControlsPage(ui) }
+        }
       }
-    }
 
-    AnimatedVisibility(
-      visible = ui.resting && !covered,
-      modifier = Modifier.align(Alignment.BottomCenter),
-      enter = slideInVertically { it },
-      exit = slideOutVertically { it },
-    ) {
-      RestBanner(ui)
-    }
+      AnimatedVisibility(
+        visible = ui.resting && !covered,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = slideInVertically { it },
+        exit = slideOutVertically { it },
+      ) {
+        RestBanner(ui)
+      }
 
-    // Hidden under the banner, which takes the bottom of the screen.
-    if (!ui.resting && !covered) {
-      PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).padding(bottom = 3.s()))
-    }
+      // Hidden under the banner, which takes the bottom of the screen.
+      if (!ui.resting && !covered) {
+        PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).padding(bottom = 3.s()))
+      }
 
-    if (covered) FinishCover(ui)
+      if (covered) FinishCover(ui)
+    }
   }
 }
 

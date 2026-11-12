@@ -3,11 +3,11 @@
  * Loads/persists to the local store when given a real workout id; falls back
  * to a local-only demo seed for id === 'demo' (or if the load fails).
  */
+import { t } from '../../src/i18n';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   Keyboard,
   KeyboardAvoidingView,
@@ -53,7 +53,7 @@ import {
 } from '../../src/api/workouts';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { replaceOrder, swapExercise } from '../../src/lib/replaceExercise';
-import { elapsedSeconds, restRemainingSeconds } from '../../src/lib/clocks';
+import { elapsedSeconds, restRanOut, restRemainingSeconds } from '../../src/lib/clocks';
 import { locateNextSet } from '../../src/lib/nextSet';
 import {
   forgetLiveActivityHint,
@@ -68,7 +68,13 @@ import {
   rememberActiveWorkout,
 } from '../../src/lib/activeWorkout';
 import { saveRest, loadRest, clearRest } from '../../src/lib/restSession';
-import { onRestAction, onWorkoutChanged, type RestAction } from '../../src/lib/liveActivityBridge';
+import { alertWhenActive, whenActive } from '../../src/lib/whenActive';
+import {
+  liveActivityProfile,
+  onRestAction,
+  onWorkoutChanged,
+  type RestAction,
+} from '../../src/lib/liveActivityBridge';
 import type { ExerciseOut } from '../../src/api/types';
 import { saveSummary } from '../../src/lib/summaryCache';
 import {
@@ -82,6 +88,9 @@ import {
   syncBodyweightFromHealth,
   syncFinishedWorkout,
 } from '../../src/lib/healthSync';
+import { isOwnerActive, PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { firstName, profileInitialsLabel } from '../../src/domain/profiles';
+import { fmtTimeOfDay } from '../../src/lib/format';
 import { buildFinishedWatchState, buildWatchState } from '../../src/lib/watchState';
 import {
   claimWatchFinish,
@@ -108,6 +117,7 @@ import {
   WEIGHT_STEPS,
   convertWeightText,
   inputToKg,
+  localizeNumber,
   volumeToDisplay,
   weightText,
   type Unit,
@@ -117,11 +127,11 @@ import { shouldPromptEffort } from '../../src/domain/effort';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { EffortSheet } from '../../src/components/workout/EffortSheet';
 import { deloadActiveFor, getDeloadState, type DeloadState } from '../../src/lib/deloadState';
-import { groupLabels, restAfterSet, roundOfSet } from '../../src/domain/supersets';
+import { groupLabels, restAfterSet, roundCount, roundOfSet, supersetRoundsDone } from '../../src/domain/supersets';
 import { getBodyweightKg } from '../../src/lib/bodyweight';
 import { getCountWarmups } from '../../src/lib/warmupVolume';
 import type { WatchAction } from '../../modules/health';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
 import { CheckIcon } from '../../src/components/icons';
 import { EmptyWorkout } from '../../src/components/workout/EmptyWorkout';
@@ -149,6 +159,8 @@ import {
   TYPE_CYCLE,
   type Exercise,
 } from '../../src/components/workout/types';
+import { useThemed } from '../../src/theme/ThemeProvider';
+import { profileNameLabel, workoutLabel } from '../../src/i18n/defaultLabels';
 
 const START_ELAPSED = 12 * 60 + 47; // seeded "12:47"
 const DEFAULT_REST = 120;
@@ -198,6 +210,8 @@ function mapExercise(
 }
 
 export default function ActiveWorkout() {
+  useThemed();
+  const { profile: activeProfileRow, count: profileCount } = useActiveProfile();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -590,9 +604,11 @@ export default function ActiveWorkout() {
   }, []);
 
   // Rest that runs out on its own leaves the bounds behind; drop them so the
-  // card falls back to logging rather than showing an expired countdown.
+  // card falls back to logging rather than showing an expired countdown. Only
+  // if it is still the rest under way: one started or moved since this render
+  // has already set `restEndsRef` (see restRanOut).
   useEffect(() => {
-    if (restRemaining === 0 && restEndsAt != null) {
+    if (restRanOut(restRemaining, restEndsAt, restEndsRef.current)) {
       setRestStartedAt(null);
       setRestEndsAt(null);
       setRestExId(null);
@@ -660,7 +676,7 @@ export default function ActiveWorkout() {
     // Attributes are fixed for the Activity's life, so the origin is pinned once
     // here — from the stored started_at, the same source the elapsed clock uses.
     if (startedAtRef.current == null) return;
-    activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+    activityRunning.current = LiveActivity.start(startedAtRef.current, state, liveActivityProfile()) != null;
     // `startedAt` arrives with the loaded workout, after the first run — without
     // it in the deps the card would never start.
   }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt, startedAt]);
@@ -688,12 +704,13 @@ export default function ActiveWorkout() {
     }
     if (liveActivityHintShown()) return;
     rememberLiveActivityHint();
-    Alert.alert(
-      'Live Activities are off',
-      'Turn on Live Activities for Ischys in Settings to see your rest timer on the Lock Screen.',
+    // This screen can open in the background (a Watch start): wait for the user.
+    alertWhenActive(
+      t('workout.liveOffTitle'),
+      t('workout.liveOffMessage'),
       [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => void Linking.openSettings().catch(() => {}) },
+        { text: t('common.notNow'), style: 'cancel' },
+        { text: t('workout.openSettings'), onPress: () => void Linking.openSettings().catch(() => {}) },
       ],
     );
   }, [liveActivity]);
@@ -720,7 +737,7 @@ export default function ActiveWorkout() {
         restStartedAt: restStartedAt ?? undefined,
         restEndsAt: restEndsAt ?? undefined,
       };
-      activityRunning.current = LiveActivity.start(startedAtRef.current, state) != null;
+      activityRunning.current = LiveActivity.start(startedAtRef.current, state, liveActivityProfile()) != null;
     });
     return () => sub.remove();
   }, [liveActivity, setsDone, setsTotal, restStartedAt, restEndsAt]);
@@ -753,8 +770,10 @@ export default function ActiveWorkout() {
     const offChange = onWorkoutChanged(async (rest) => {
       await refreshRef.current();
       // The refetch has landed, so the completed set is already `done` — the
-      // plain look-ahead is enough here.
-      startRest(rest.seconds, upcomingExerciseName(), rest.exerciseId);
+      // plain look-ahead is enough here. No seconds: a superset partner's set,
+      // which hands over to the next partner rather than resting.
+      if (rest.seconds > 0) startRest(rest.seconds, upcomingExerciseName(), rest.exerciseId);
+      else applyRestAction.current({ type: 'skip' }); // this render's endRest, not the mount's
     });
 
     // The event can land while this screen is unmounted (a background launch),
@@ -815,15 +834,21 @@ export default function ActiveWorkout() {
   // passes unnoticed. Dismissible — adding another exercise is still valid — and
   // it re-arms only after there is something left to log again, so dismissing it
   // doesn't make it reappear on every re-render.
+  //
+  // Not while the app is in the background. The last set is often logged from
+  // the Watch with the phone locked, and this sheet is a native modal: presented
+  // then, it went up behind the lock screen with nobody to see it, and a failed
+  // finish's alert stacked on top. It waits for the user to open the app, and
+  // still opens then only if every set is still done.
   const [donePromptOpen, setDonePromptOpen] = useState(false);
   const donePromptArmed = useRef(true);
   useEffect(() => {
     if (allSetsDone && donePromptArmed.current) {
       donePromptArmed.current = false;
-      setDonePromptOpen(true);
-    } else if (!allSetsDone) {
-      donePromptArmed.current = true;
+      // Dropped if a set is undone, or the screen goes, before then.
+      return whenActive(() => setDonePromptOpen(true));
     }
+    if (!allSetsDone) donePromptArmed.current = true;
   }, [allSetsDone]);
 
   // --- set mutations ---
@@ -876,6 +901,14 @@ export default function ActiveWorkout() {
    */
   const upcomingExerciseName = (justCompleted?: string): string | null =>
     locateNextSet(exercisesRef.current, justCompleted)?.exercise.name ?? null;
+
+  const supersetView = (list: Exercise[]) =>
+    list.map((e) => ({
+      id: e.id,
+      supersetGroup: e.supersetGroup ?? null,
+      rest: e.rest,
+      sets: e.sets.map((x) => ({ id: x.id, type: x.type, done: x.done })),
+    }));
 
   const startRest = (
     seconds: number,
@@ -971,16 +1004,7 @@ export default function ActiveWorkout() {
       // Inside a superset the rest waits for the round to finish: completing the
       // first partner sends you to the second rather than starting a timer,
       // which is the entire point of pairing them. A solo exercise is unchanged.
-      const decision = restAfterSet(
-        exercises.map((e) => ({
-          id: e.id,
-          supersetGroup: e.supersetGroup ?? null,
-          rest: e.rest,
-          sets: e.sets.map((x) => ({ id: x.id, type: x.type, done: x.done })),
-        })),
-        exId,
-        setId,
-      );
+      const decision = restAfterSet(supersetView(exercises), exId, setId);
       if (decision.startRest) {
         startRest(decision.seconds, upcomingExerciseName(setId), ex.id);
         // Ask about this set in the rest that just started. Not when no rest
@@ -1299,7 +1323,9 @@ export default function ActiveWorkout() {
           const push = withFinishVerdict(watchStateRef.current, 'failed', watch.finishId);
           if (push) pushWatchState(push);
         }
-        Alert.alert('Couldn’t finish workout', 'Nothing was changed. Try again.');
+        // A finish from the Watch runs with the phone in the background, often
+        // locked: the alert waits until the user opens the app.
+        alertWhenActive(t('workout.finishFailedTitle'), t('common.nothingChanged'));
         return;
       }
     }
@@ -1352,7 +1378,7 @@ export default function ActiveWorkout() {
     () =>
       buildWatchState(
         exercises,
-        name || 'Workout',
+        workoutLabel(name),
         {
           resting: restRemaining > 0,
           remaining: restRemaining,
@@ -1373,7 +1399,7 @@ export default function ActiveWorkout() {
       // stale mid-workout state (#45 on the watch side).
       buildFinishedWatchState(
         exercises,
-        name || 'Workout',
+        workoutLabel(name),
         startedAt,
         bwKg ?? 0,
         countWarmups,
@@ -1432,7 +1458,13 @@ export default function ActiveWorkout() {
             }),
           );
         }
-        if (ex) startRest(ex.rest, upcomingExerciseName(st.currentSetId), ex.id);
+        // The same rest the in-app ✓ starts: none between superset partners,
+        // which moves the Watch on to the partner instead.
+        if (ex) {
+          const decision = restAfterSet(supersetView(exercisesRef.current), ex.id, st.currentSetId);
+          if (decision.startRest) startRest(decision.seconds, upcomingExerciseName(st.currentSetId), ex.id);
+          else endRest();
+        }
         break;
       }
       case 'adjustRest':
@@ -1739,23 +1771,24 @@ export default function ActiveWorkout() {
     const i = partners.findIndex((e) => e.id === exId);
     if (i === partners.length - 1) return null;
     const letter = ssLabels.get(me.supersetGroup);
-    return `None · then ${letter}${i + 2}`;
+    return t('workout.supersetNone', { tag: `${letter}${i + 2}` });
   };
 
-  /** Round label for the group header, from the first partner's progress. */
+  /**
+   * Round label for the group header: the longest partner sets the total, and
+   * a round counts as done once every partner that has it has logged it, so
+   * the label keeps advancing after a shorter partner runs out.
+   */
   const supersetHeaderFor = (exId: string): string | null => {
     const me = exercises.find((e) => e.id === exId);
     if (!me || me.supersetGroup == null) return null;
     const partners = exercises.filter((e) => e.supersetGroup === me.supersetGroup);
     if (partners.length < 2 || partners[0].id !== exId) return null; // header once per group
     const letter = ssLabels.get(me.supersetGroup);
-    const rounds = Math.max(
-      ...partners.map((p) => p.sets.filter((x) => x.type === 'normal').length),
-    );
-    const lead = partners[0];
-    const doneRounds = lead.sets.filter((x) => x.type === 'normal' && x.done).length;
+    const rounds = Math.max(...partners.map((p) => roundCount(p.sets)));
+    const doneRounds = supersetRoundsDone(partners);
     const current = Math.min(rounds, doneRounds + 1);
-    return `SUPERSET ${letter} · ROUND ${current} OF ${rounds}`;
+    return t('workout.supersetHeader', { letter: letter ?? '', current, rounds });
   };
 
   // --- effort per set (#84) -------------------------------------------
@@ -1845,17 +1878,17 @@ export default function ActiveWorkout() {
   // setting Off.
   const restEffortClearance = restRemaining > 0 && restBarEffort ? restEffortHeight : 0;
 
-  const statusText = status === 'active' ? 'In progress' : status;
+  const statusText = status === 'active' ? t('workout.statusActive') : status;
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
 
   return (
     <View style={styles.root}>
       <WorkoutHeader
         topInset={insets.top}
-        name={name || 'Workout'}
+        name={workoutLabel(name)}
         status={`${statusText} · ${fmtClock(elapsed)}`}
         time={fmtClock(elapsed)}
-        volume={String(volume)}
+        volume={localizeNumber(String(volume))}
         unit={entryUnit}
         sets={String(doneSets)}
         onBack={() => {
@@ -1865,8 +1898,22 @@ export default function ActiveWorkout() {
         }}
         onFinish={onFinish}
         onDiscard={onDiscard}
-        heartRate={heartRate}
-        activeCal={activeCal}
+        // Health and the Watch are the phone owner's only (#117): no HR/CAL
+        // strip for anyone else. A switch is refused while a workout runs,
+        // so this can't change under the screen.
+        heartRate={isOwnerActive() ? heartRate : null}
+        activeCal={isOwnerActive() ? activeCal : null}
+        // With 2+ profiles, whose workout this is (P5). The tab bar that
+        // names them elsewhere is hidden here.
+        who={
+          PROFILES_ENABLED && profileCount > 1 && startedAt != null
+            ? {
+                initials: profileInitialsLabel(activeProfileRow),
+                firstName: firstName(profileNameLabel(activeProfileRow.name)) || profileNameLabel(activeProfileRow.name),
+                started: fmtTimeOfDay(startedAt),
+              }
+            : null
+        }
       />
 
       <KeyboardAvoidingView
@@ -1980,7 +2027,7 @@ export default function ActiveWorkout() {
             }}
           >
             <Text maxFontSizeMultiplier={textScale.control} style={styles.addExercisePlus}>+</Text>
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.addExerciseText}>Add Exercise</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.addExerciseText}>{t('editWorkout.addExercise')}</Text>
           </PressableScale>
 
           <View
@@ -2008,9 +2055,9 @@ export default function ActiveWorkout() {
               onPress={() => setKeypadEffortSetId(null)}
               style={styles.kbdEffortKey}
               accessibilityRole="button"
-              accessibilityLabel="Back to the keypad bar"
+              accessibilityLabel={t('workout.keypadBackLabel')}
             >
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Back</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.keypadBack')}</Text>
             </Pressable>
             {/* Nothing to clear on an unrated set, so the key isn't there. */}
             {keypadEffort.rpe != null ? (
@@ -2018,9 +2065,9 @@ export default function ActiveWorkout() {
                 onPress={() => keypadEffort.rate(null)}
                 style={styles.kbdEffortKey}
                 accessibilityRole="button"
-                accessibilityLabel="Clear rating"
+                accessibilityLabel={t('workout.clearRating')}
               >
-                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Clear rating</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.clearRating')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -2040,16 +2087,16 @@ export default function ActiveWorkout() {
                   onPress={() => setPlateSheetOpen(true)}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Plate calculator"
+                  accessibilityLabel={t('workout.plateCalcLabel')}
                 >
-                  <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Plates</Text>
+                  <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.plates')}</Text>
                 </Pressable>
               ) : null}
               <Pressable
                 onPress={() => setKeypadEffortSetId(effortKeySet.setId)}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Rate this set"
+                accessibilityLabel={t('workout.rateSetLabel')}
               >
                 <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{effortKind === 'rir' ? 'RIR' : 'RPE'}</Text>
               </Pressable>
@@ -2059,9 +2106,9 @@ export default function ActiveWorkout() {
               onPress={() => setPlateSheetOpen(true)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Plate calculator"
+              accessibilityLabel={t('workout.plateCalcLabel')}
             >
-              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>Plates</Text>
+              <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryAction}>{t('workout.plates')}</Text>
             </Pressable>
           ) : (
             <View />
@@ -2070,9 +2117,9 @@ export default function ActiveWorkout() {
             onPress={() => Keyboard.dismiss()}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Hide keyboard"
+            accessibilityLabel={t('workout.hideKeyboard')}
           >
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryDone}>Done</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.kbdAccessoryDone}>{t('workout.keyboardDone')}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -2176,9 +2223,9 @@ export default function ActiveWorkout() {
           <View style={styles.doneCheck}>
             <CheckIcon size={20} color={color.success} strokeWidth={3} />
           </View>
-          <Text style={styles.doneTitle}>All sets done</Text>
+          <Text style={styles.doneTitle}>{t('workout.allDone')}</Text>
           <Text style={styles.doneStat}>
-            {`${doneSets} ${doneSets === 1 ? 'set' : 'sets'} · ${volume} ${entryUnit} · ${fmtClock(elapsed)}`}
+            {t('workout.doneStat', { count: doneSets, volume: localizeNumber(String(volume)), unit: entryUnit, clock: fmtClock(elapsed) })}
           </Text>
           <PressableScale
             style={styles.doneFinish}
@@ -2187,7 +2234,7 @@ export default function ActiveWorkout() {
               onFinish();
             }}
           >
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneFinishText}>Finish Workout</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneFinishText}>{t('workout.finishButton')}</Text>
           </PressableScale>
           <Pressable
             onPress={() => {
@@ -2198,7 +2245,7 @@ export default function ActiveWorkout() {
             style={({ pressed }) => [styles.doneAdd, pressed && styles.doneAddPressed]}
             accessibilityRole="button"
           >
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneAddText}>Add another exercise</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneAddText}>{t('workout.addAnother')}</Text>
           </Pressable>
         </View>
       </DraggableSheet>
@@ -2217,165 +2264,167 @@ export default function ActiveWorkout() {
 /** Room under the list for the rest bar's plain card. */
 const SPACER_HEIGHT = 90;
 
-const styles = StyleSheet.create({
-  loading: { paddingVertical: 48, alignItems: 'center' },
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
-  scrollContent: {
-    paddingTop: 14,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    gap: 12,
-  },
-  addExercise: {
-    marginTop: 6,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  addExercisePlus: { fontFamily: font.titleSemi, fontSize: 20, lineHeight: 20, color: color.accent },
-  addExerciseText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    loading: { paddingVertical: 48, alignItems: 'center' },
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
+    scrollContent: {
+      paddingTop: 14,
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+      gap: 12,
+    },
+    addExercise: {
+      marginTop: 6,
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      padding: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    addExercisePlus: { fontFamily: font.titleSemi, fontSize: 20, lineHeight: 20, color: color.accent },
+    addExerciseText: { fontFamily: font.titleSemi, fontSize: 15, color: color.text1 },
 
-  // End-of-workout prompt (#45)
-  doneSheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-  },
-  doneGrabberWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  doneGrabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
-  doneBody: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
-  doneCheck: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(45,216,129,0.15)',
-  },
-  doneTitle: {
-    marginTop: 12,
-    fontFamily: font.titleSemi,
-    fontSize: 18,
-    letterSpacing: -0.18,
-    color: color.text1,
-  },
-  doneStat: {
-    marginTop: 5,
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  doneFinish: {
-    marginTop: 18,
-    width: '100%',
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.accent,
-  },
-  doneFinishText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  doneAdd: {
-    marginTop: 10,
-    width: '100%',
-    height: 50,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  doneAddPressed: { borderColor: color.text3 },
-  doneAddText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
-  spacer: { height: SPACER_HEIGHT },
-  kbdAccessory: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    // `bottom` is set inline to the live keyboard height so the bar floats just
-    // above the keyboard.
-    height: 44,
-    flexDirection: 'row',
-    // Plates sits left, Done right. With no Plates an empty View holds the slot
-    // so Done stays where the thumb already expects it.
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: color.surface2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-  },
-  kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  // The bar while it is rating a set: the rest card's effort section (board
-  // 14a, F2) on the card's own surface, over a row of keys the bar's height.
-  kbdEffort: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    backgroundColor: color.surface3,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.border,
-  },
-  kbdEffortKeys: {
-    height: 44,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  kbdEffortKey: { height: 44, justifyContent: 'center' },
-  // Partners sit 4pt apart and share a rail in the screen margin.
-  ssMember: { position: 'relative', marginBottom: 4 },
-  ssHeader: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-    paddingTop: 10,
-    paddingBottom: 6,
-    paddingLeft: 7,
-  },
-  ssRail: {
-    position: 'absolute',
-    left: 7,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    borderRadius: 1,
-    backgroundColor: color.text3,
-  },
-  kbdAccessoryAction: {
-    fontFamily: font.bodyMedium,
-    fontSize: 16,
-    color: color.text1,
-    paddingHorizontal: 6,
-  },
-  kbdAccessoryDone: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    color: color.accent,
-    paddingHorizontal: 6,
-  },
-});
+    // End-of-workout prompt (#45)
+    doneSheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+    },
+    doneGrabberWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    doneGrabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
+    doneBody: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
+    doneCheck: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: withAlpha(color.success, 0.15),
+    },
+    doneTitle: {
+      marginTop: 12,
+      fontFamily: font.titleSemi,
+      fontSize: 18,
+      letterSpacing: -0.18,
+      color: color.text1,
+    },
+    doneStat: {
+      marginTop: 5,
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    doneFinish: {
+      marginTop: 18,
+      width: '100%',
+      height: 52,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.accent,
+    },
+    doneFinishText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    doneAdd: {
+      marginTop: 10,
+      width: '100%',
+      height: 50,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: color.border,
+    },
+    doneAddPressed: { borderColor: color.text3 },
+    doneAddText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text1 },
+    spacer: { height: SPACER_HEIGHT },
+    kbdAccessory: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      // `bottom` is set inline to the live keyboard height so the bar floats just
+      // above the keyboard.
+      height: 44,
+      flexDirection: 'row',
+      // Plates sits left, Done right. With no Plates an empty View holds the slot
+      // so Done stays where the thumb already expects it.
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: color.surface2,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border,
+    },
+    kbdAccessoryKeys: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    // The bar while it is rating a set: the rest card's effort section (board
+    // 14a, F2) on the card's own surface, over a row of keys the bar's height.
+    kbdEffort: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      backgroundColor: color.surface3,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.border,
+    },
+    kbdEffortKeys: {
+      height: 44,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    kbdEffortKey: { height: 44, justifyContent: 'center' },
+    // Partners sit 4pt apart and share a rail in the screen margin.
+    ssMember: { position: 'relative', marginBottom: 4 },
+    ssHeader: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+      paddingTop: 10,
+      paddingBottom: 6,
+      paddingLeft: 7,
+    },
+    ssRail: {
+      position: 'absolute',
+      left: 7,
+      top: 0,
+      bottom: 0,
+      width: 2,
+      borderRadius: 1,
+      backgroundColor: color.text3,
+    },
+    kbdAccessoryAction: {
+      fontFamily: font.bodyMedium,
+      fontSize: 16,
+      color: color.text1,
+      paddingHorizontal: 6,
+    },
+    kbdAccessoryDone: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      color: color.accent,
+      paddingHorizontal: 6,
+    },
+  }),
+);

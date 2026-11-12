@@ -23,7 +23,7 @@ import { getSummary, saveSummary } from '../lib/summaryCache';
 import { getCountWarmups } from '../lib/warmupVolume';
 import { nowMs } from './ids';
 import type { WorkoutSetRow } from './map';
-import { completedSessionsFor, loadWorkout, muscleLabel } from './queries';
+import { completedSessionsFor, loadWorkout, muscleTagFor } from './queries';
 import { prCountHolders, recomputeForExercise, reflagExercisePrs } from './recordStore';
 
 type Kind = 'weighted' | 'bodyweight';
@@ -394,11 +394,11 @@ async function refreshCachedSummary(
     prs,
     volume_by_muscle: volumeByMuscle(
       workout.exercises.map((we) => ({
-        muscleLabel: muscleLabel(
+        muscleLabel: muscleTagFor(
           we.exercise.primary_muscle
             ? {
                 id: we.exercise.primary_muscle.id,
-                name: we.exercise.primary_muscle.name,
+                name: we.exercise.primary_muscle.englishName,
                 group: we.exercise.primary_muscle.group ?? null,
               }
             : null,

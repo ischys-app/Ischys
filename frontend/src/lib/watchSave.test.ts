@@ -99,3 +99,18 @@ test('an older confirmation does not replace a newer one', async () => {
   assert.equal(log.uuid, 'live');
   assert.equal(await log.wait(5_050, 5), true);
 });
+
+test('a profile switch forgets the confirmation, but a waiting finish still hears the next one', async () => {
+  const { clock, log } = logAt(1_000);
+  clock.now = 1_200;
+  log.note({ action: 'workoutSaved', uuid: 'u1' });
+  log.forget();
+  assert.equal(log.uuid, null);
+  assert.equal(await log.wait(1_000, 5), false);
+  const waiting = log.wait(1_000, 5_000);
+  log.forget();
+  clock.now = 1_500;
+  log.note({ action: 'workoutSaved', uuid: 'u2' });
+  assert.equal(await waiting, true);
+  assert.equal(log.uuid, 'u2');
+});

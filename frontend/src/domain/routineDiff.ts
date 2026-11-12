@@ -16,6 +16,7 @@
  * `node --test` only sees `src/`.
  */
 import type { RoutineOut, WorkoutOut } from '../api/types';
+import { t } from '../i18n/t.ts';
 
 export type DiffMarker = 'added' | 'removed' | 'changed';
 export type DiffRow = { key: string; marker: DiffMarker; name: string; detail: string };
@@ -26,11 +27,10 @@ export function workingSetCount(sets: { type: string }[]): number {
   return sets.filter((s) => s.type !== 'warmup').length;
 }
 
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 /** Rest duration for the diff row: "1:30", "45s". */
 export function restLabel(s: number): string {
-  return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`;
+  return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : t('rest.seconds', { n: s });
 }
 
 /** Values kept in the longest common subsequence of two id sequences — used to
@@ -62,13 +62,8 @@ function lcsKept(a: string[], b: string[]): Set<string> {
 }
 
 /** How a set type reads inside a diff row. */
-const TYPE_LABEL: Record<string, string> = {
-  normal: 'normal',
-  warmup: 'warm-up',
-  drop: 'drop set',
-  failure: 'to failure',
-};
-const typeLabel = (t: string) => TYPE_LABEL[t] ?? t;
+const TYPE_KEYS = ['normal', 'warmup', 'drop', 'failure'];
+const typeLabel = (type: string) => (TYPE_KEYS.includes(type) ? t(`routineDiff.type.${type}`) : type);
 
 /**
  * The first position where two set-type sequences disagree, or -1 when they
@@ -129,7 +124,7 @@ export function buildRoutineDiff(routine: RoutineOut, workout: WorkoutOut): Diff
         key: `add-${we.id}`,
         marker: 'added',
         name: we.exercise.name,
-        detail: plural(workingSetCount(we.sets), 'set'),
+        detail: t('routineDiff.sets', { count: workingSetCount(we.sets) }),
       });
       continue;
     }
@@ -143,7 +138,7 @@ export function buildRoutineDiff(routine: RoutineOut, workout: WorkoutOut): Diff
         key: `set-${we.id}`,
         marker: 'changed',
         name: we.exercise.name,
-        detail: `${rCount} → ${wCount} sets`,
+        detail: t('routineDiff.setsChanged', { from: rCount, to: wCount }),
       });
     } else if (typeAt !== -1) {
       // Same number of working sets, different kinds of them. Checked ahead of
@@ -156,8 +151,10 @@ export function buildRoutineDiff(routine: RoutineOut, workout: WorkoutOut): Diff
         marker: 'changed',
         name: we.exercise.name,
         detail: to
-          ? `set ${typeAt + 1} ${from ? `${typeLabel(from.type)} → ` : ''}${typeLabel(to.type)}`
-          : `set ${typeAt + 1} removed`,
+          ? from
+            ? t('routineDiff.typeChange', { n: typeAt + 1, from: typeLabel(from.type), to: typeLabel(to.type) })
+            : t('routineDiff.typeSet', { n: typeAt + 1, to: typeLabel(to.type) })
+          : t('routineDiff.setRemoved', { n: typeAt + 1 }),
       });
     } else if (groupingChanged(re, we)) {
       // Pairing exercises into a superset, or breaking one apart, changes how
@@ -168,23 +165,23 @@ export function buildRoutineDiff(routine: RoutineOut, workout: WorkoutOut): Diff
         key: `ss-${we.id}`,
         marker: 'changed',
         name: we.exercise.name,
-        detail: nowGrouped ? 'now a superset' : 'no longer a superset',
+        detail: nowGrouped ? t('routineDiff.nowSuperset') : t('routineDiff.noSuperset'),
       });
     } else if (we.rest_seconds !== re.rest_seconds) {
       changed.push({
         key: `rest-${we.id}`,
         marker: 'changed',
         name: we.exercise.name,
-        detail: `rest ${restLabel(re.rest_seconds)} → ${restLabel(we.rest_seconds)}`,
+        detail: t('routineDiff.rest', { from: restLabel(re.rest_seconds), to: restLabel(we.rest_seconds) }),
       });
     } else if (!kept.has(id)) {
-      changed.push({ key: `move-${we.id}`, marker: 'changed', name: we.exercise.name, detail: 'moved' });
+      changed.push({ key: `move-${we.id}`, marker: 'changed', name: we.exercise.name, detail: t('routineDiff.moved') });
     }
   }
 
   const removed: DiffRow[] = rExs
     .filter((re) => !wHas.has(re.exercise.id))
-    .map((re) => ({ key: `rm-${re.id}`, marker: 'removed' as const, name: re.exercise.name, detail: 'removed' }));
+    .map((re) => ({ key: `rm-${re.id}`, marker: 'removed' as const, name: re.exercise.name, detail: t('routineDiff.removed') }));
 
   return [...added, ...removed, ...changed];
 }

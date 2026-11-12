@@ -18,6 +18,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { getSettings } from '../data/settingsRepo';
 import { isEffortMode, type EffortMode } from '../domain/effort';
+import { onProfileSwitch } from './activeProfile';
 
 let current: EffortMode = 'off';
 const listeners = new Set<() => void>();
@@ -43,6 +44,13 @@ export function setEffortMode(mode: EffortMode): void {
 
 /** Set once the settings row has been read (or written); see `useEffortMode`. */
 let primed = false;
+
+// The setting is the profile's (#117): off, the default, until the new
+// profile's settings row is read (switchProfile primes it before the remount).
+onProfileSwitch(() => {
+  setEffortMode('off');
+  primed = false;
+});
 
 /** The setting, live. Reads storage only until one read has succeeded. */
 export function useEffortMode(): EffortMode {

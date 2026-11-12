@@ -5,52 +5,92 @@
  */
 import { eq } from 'drizzle-orm';
 
-import { db } from '../db/client';
+import { db, deviceDb } from '../db/client';
 import * as schema from '../db/schema';
-import type { SettingsOut, SettingsUpdate, Unit } from '../api/types';
+import type { Appearance, SettingsOut, SettingsUpdate, Unit } from '../api/types';
 import { isEffortMode } from '../domain/effort';
 import { nowMs } from './ids';
+import { splitUpdate } from './settingsScope';
 
 export const SETTINGS_ID = 'local';
 
 const bool = (n: number) => n !== 0;
 
+const isAppearance = (v: string): v is Appearance => v === 'dark' || v === 'light' || v === 'system';
+
 function rowToOut(r: {
   unit: string;
   autoStartRestTimer: number;
+  keepExerciseNotes: number;
   restTimerAlerts: number;
   hapticFeedback: number;
   effortMode: string;
+  appearance: string;
 }): SettingsOut {
   return {
     unit: r.unit as Unit,
     effort_mode: isEffortMode(r.effortMode) ? r.effortMode : 'off',
+    appearance: isAppearance(r.appearance) ? r.appearance : 'system',
     auto_start_rest_timer: bool(r.autoStartRestTimer),
+    keep_exercise_notes: bool(r.keepExerciseNotes),
     rest_timer_alerts: bool(r.restTimerAlerts),
     haptic_feedback: bool(r.hapticFeedback),
   };
 }
 
-export async function getSettings(): Promise<SettingsOut> {
-  const r = (await db.select().from(schema.settings).where(eq(schema.settings.id, SETTINGS_ID)))[0];
-  if (r) return rowToOut(r);
-  // Defaults if the seed hasn't run yet.
+const DEFAULTS: SettingsOut = {
+  unit: 'kg',
+  effort_mode: 'off',
+  appearance: 'system',
+  auto_start_rest_timer: true,
+  keep_exercise_notes: false,
+  rest_timer_alerts: true,
+  haptic_feedback: true,
+};
+
+const settingsRow = (conn: typeof db) =>
+  conn.select().from(schema.settings).where(eq(schema.settings.id, SETTINGS_ID));
+
+/**
+ * Device-wide fields (appearance, haptics, rest-timer alerts) come from the
+ * owner's row, the rest from the current profile's. With the owner active both
+ * are the same file. A missing row falls back to the defaults.
+ *
+ * `from` reads the profile half from another profile's file (a switch reads
+ * the target's before `db` moves to it); by default, the current profile's.
+ */
+export async function getSettings(from: typeof db = db): Promise<SettingsOut> {
+  const deviceRow = (await settingsRow(deviceDb))[0];
+  const profileRow = (await settingsRow(from))[0];
+  const device = deviceRow ? rowToOut(deviceRow) : DEFAULTS;
+  const profile = profileRow ? rowToOut(profileRow) : DEFAULTS;
   return {
-    unit: 'kg',
-    effort_mode: 'off',
-    auto_start_rest_timer: true,
-    rest_timer_alerts: true,
-    haptic_feedback: true,
+    unit: profile.unit,
+    effort_mode: profile.effort_mode,
+    auto_start_rest_timer: profile.auto_start_rest_timer,
+    keep_exercise_notes: profile.keep_exercise_notes,
+    appearance: device.appearance,
+    rest_timer_alerts: device.rest_timer_alerts,
+    haptic_feedback: device.haptic_feedback,
   };
 }
 
 export async function updateSettings(body: SettingsUpdate): Promise<SettingsOut> {
-  const patch: Record<string, unknown> = { updatedAt: nowMs() };
-  if (body.unit !== undefined) patch.unit = body.unit;
-  if (body.effort_mode !== undefined) patch.effortMode = body.effort_mode;
-  if (body.auto_start_rest_timer !== undefined) patch.autoStartRestTimer = body.auto_start_rest_timer ? 1 : 0;
-  if (body.rest_timer_alerts !== undefined) patch.restTimerAlerts = body.rest_timer_alerts ? 1 : 0;
-  if (body.haptic_feedback !== undefined) patch.hapticFeedback = body.haptic_feedback ? 1 : 0;
-  await db.update(schema.settings).set(patch).where(eq(schema.settings.id, SETTINGS_ID));
+  const { device, profile } = splitUpdate(body);
+  if (Object.keys(device).length > 0) {
+    const patch: Record<string, unknown> = { updatedAt: nowMs() };
+    if (device.appearance !== undefined) patch.appearance = device.appearance;
+    if (device.rest_timer_alerts !== undefined) patch.restTimerAlerts = device.rest_timer_alerts ? 1 : 0;
+    if (device.haptic_feedback !== undefined) patch.hapticFeedback = device.haptic_feedback ? 1 : 0;
+    await deviceDb.update(schema.settings).set(patch).where(eq(schema.settings.id, SETTINGS_ID));
+  }
+  if (Object.keys(profile).length > 0) {
+    const patch: Record<string, unknown> = { updatedAt: nowMs() };
+    if (profile.unit !== undefined) patch.unit = profile.unit;
+    if (profile.effort_mode !== undefined) patch.effortMode = profile.effort_mode;
+    if (profile.auto_start_rest_timer !== undefined) patch.autoStartRestTimer = profile.auto_start_rest_timer ? 1 : 0;
+    if (profile.keep_exercise_notes !== undefined) patch.keepExerciseNotes = profile.keep_exercise_notes ? 1 : 0;
+    await db.update(schema.settings).set(patch).where(eq(schema.settings.id, SETTINGS_ID));
+  }
   return getSettings();
 }

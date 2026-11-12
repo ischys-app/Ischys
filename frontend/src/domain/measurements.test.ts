@@ -156,3 +156,20 @@ test('a delta returns only a signed value, never a judgement', () => {
 test('a delta smaller than the fixed precision rounds to zero rather than jittering', () => {
   assert.equal(deltaBetween(84, 84.02, 'waist', metric), '0.0 cm');
 });
+
+test('formatMeasurement / deltaBetween: ru decimal comma, en and zh-Hans unchanged', () => {
+  assert.equal(formatMeasurement(84.25, 'waist', metric, 'ru'), '84,3 cm');
+  assert.equal(formatMeasurement(84, 'waist', imperial, 'ru'), '33,1 in');
+  assert.equal(deltaBetween(84, 82.5, 'waist', metric, 'ru'), '-1,5 cm');
+  for (const lang of ['en', 'zh-Hans'] as const) {
+    assert.equal(formatMeasurement(84.25, 'waist', metric, lang), '84.3 cm');
+    assert.equal(formatMeasurement(84, 'waist', imperial, lang), '33.1 in');
+    assert.equal(deltaBetween(84, 82.5, 'waist', metric, lang), '-1.5 cm');
+  }
+});
+
+test('a ru-formatted measurement number round-trips through toCanonical', () => {
+  const shown = formatMeasurement(84.3, 'waist', metric, 'ru').split(' ')[0];
+  assert.equal(shown, '84,3');
+  assert.equal(toCanonical(shown, 'waist', metric), 84.3);
+});

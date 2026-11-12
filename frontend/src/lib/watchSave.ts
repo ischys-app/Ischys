@@ -41,6 +41,15 @@ export function createWatchSaveLog(now: () => number = Date.now) {
     note,
 
     /**
+     * Drops what has been recorded, on a profile switch. A finish already
+     * waiting keeps waiting: it is woken by the next confirmation, as before.
+     */
+    forget(): void {
+      savedAt = 0;
+      savedUuid = null;
+    },
+
+    /**
      * Records the confirmations among actions that arrived before JS was
      * listening and were buffered natively, and returns the instant a finish
      * drained with them must wait from.

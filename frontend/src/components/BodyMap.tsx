@@ -12,15 +12,16 @@ import Svg, { Ellipse, Path, Rect } from 'react-native-svg';
 
 import { BODY_BACK, BODY_FRONT, BODY_SILHOUETTE, BODY_VIEWBOX, type BodyShape } from '../data/bodyMap';
 import { isNeglected, tintFor, type MuscleTint } from '../domain/muscleMap';
-import { color } from '../theme/tokens';
+import { color, themed } from '../theme/tokens';
+import { useThemed } from '../theme/ThemeProvider';
 
 /** Neutral ramp — more work reads as brighter, never as hotter. */
-const TINT: Record<MuscleTint, string> = {
+const TINT: Record<MuscleTint, string> = themed(() => ({
   none: color.surface3,
   low: color.text3,
   medium: color.text2,
   high: color.text1,
-};
+}));
 
 type Props = {
   side: 'front' | 'back';
@@ -45,6 +46,7 @@ function Shape({
   stroke?: string;
   onPress?: () => void;
 }) {
+  useThemed();
   // `onPress` on an SVG primitive gives a tap target the exact shape of the
   // muscle, which a wrapping View could not.
   const common = {
@@ -74,6 +76,7 @@ export const BodyMap = memo(function BodyMap({
   onPressRegion,
   width = 150,
 }: Props) {
+  useThemed();
   const shapes = side === 'front' ? BODY_FRONT : BODY_BACK;
   const height = (width / BODY_VIEWBOX.width) * BODY_VIEWBOX.height;
 

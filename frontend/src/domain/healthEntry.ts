@@ -16,6 +16,7 @@
  *
  * Pure, so `node --test` covers it.
  */
+import { t } from '../i18n/t.ts';
 
 /** Who wrote the HKWorkout: Ischys on the phone, or the Watch app's session. */
 export type HealthWriter = 'phone' | 'watch';
@@ -70,9 +71,9 @@ export function healthEditCase(state: HealthEditState): HealthEditCase {
 
 /** `product` is the health store's name on this platform. */
 const LINE: Record<Exclude<HealthEditCase, 'none'>, (product: string) => string> = {
-  updates: (product) => `Saving updates this workout in ${product} too.`,
-  watch: (product) => `${product} keeps your Watch’s recording. Only Ischys changes.`,
-  writeOff: (product) => `Writing to ${product} is off, so it won’t change.`,
+  updates: (product) => t('healthEdit.updates', { product }),
+  watch: (product) => t('healthEdit.watch', { product }),
+  writeOff: (product) => t('healthEdit.writeOff', { product }),
 };
 
 /**

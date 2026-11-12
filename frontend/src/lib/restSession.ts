@@ -18,7 +18,9 @@
  * the workout is finished / discarded (see clearRest) — so restoring on remount
  * cannot race a clear.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
+
+import { onProfileSwitch } from './activeProfile';
 
 export interface RestSession {
   /** Epoch ms the rest ends. remaining = max(0, endsAt - now). */
@@ -31,6 +33,11 @@ export interface RestSession {
 
 const KEY = 'ischys.restSession';
 const mem = new Map<string, RestSession>();
+
+// Rests of the previous profile's workouts (#117). The persisted entry names
+// its workout, which no other profile's file holds, so it is left for the
+// profile it belongs to.
+onProfileSwitch(() => mem.clear());
 
 /** Record/replace the in-flight rest for a workout. */
 export function saveRest(workoutId: string, rest: RestSession): void {

@@ -29,7 +29,10 @@ import {
 } from '../../../src/domain/routineView';
 import { fmtDuration, fmtShortDayUpper } from '../../../src/lib/format';
 import { useWeightUnit } from '../../../src/lib/weightUnit';
-import { color, font, TAP_TARGET } from '../../../src/theme/tokens';
+import { color, font, TAP_TARGET, themed } from '../../../src/theme/tokens';
+import { useThemed } from '../../../src/theme/ThemeProvider';
+import { t } from '../../../src/i18n';
+import { upperDisplay } from '../../../src/i18n/upper';
 
 /** Header: 8 above the row, a 34pt row, 12 below. */
 const HEADER_TOP = 8;
@@ -41,10 +44,10 @@ const CTA_HEIGHT = 52;
 
 /** "Dumbbell · Rest 2:30", "Barbell · then A2", "Barbell · Rest after round 1:30". */
 function restText(rest: ViewRest): string {
-  if (rest.kind === 'then') return `then ${rest.tag}`;
+  if (rest.kind === 'then') return t('routineView.then', { tag: rest.tag });
   const clock = fmtRest(rest.seconds);
-  if (rest.kind === 'afterRound') return rest.seconds > 0 ? `Rest after round ${clock}` : 'Rest off';
-  return rest.seconds > 0 ? `Rest ${clock}` : 'Rest off';
+  if (rest.kind === 'afterRound') return rest.seconds > 0 ? t('routineView.restAfterRound', { clock }) : t('routineView.restOff');
+  return rest.seconds > 0 ? t('routineView.rest', { clock }) : t('routineView.restOff');
 }
 
 /**
@@ -52,6 +55,7 @@ function restText(rest: ViewRest): string {
  * button. `stops` are [offset, opacity] pairs, top to bottom.
  */
 function Fade({ id, stops }: { id: string; stops: [number, number][] }) {
+  useThemed();
   return (
     // The Svg sizes against this View: on its own its 100% height resolved
     // against the parent's content box and left the bottom inset uncovered.
@@ -71,6 +75,7 @@ function Fade({ id, stops }: { id: string; stops: [number, number][] }) {
 }
 
 export default function RoutineView() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const unit = useWeightUnit();
@@ -145,11 +150,11 @@ export default function RoutineView() {
   }, [routine, history]);
 
   const lastLine = useMemo(() => {
-    if (!last) return 'NOT DONE YET';
+    if (!last) return t('routineView.notDone');
     const day = fmtShortDayUpper(new Date(last.startedAt));
     return last.durationSeconds > 0
-      ? `LAST · ${day} · ${fmtDuration(last.durationSeconds)}`
-      : `LAST · ${day}`;
+      ? t('routineView.lastWithDuration', { day, duration: fmtDuration(last.durationSeconds) })
+      : t('routineView.last', { day });
   }, [last]);
 
   const openBuilder = () => {
@@ -221,8 +226,8 @@ export default function RoutineView() {
 
               {isEmpty ? (
                 <View style={styles.empty}>
-                  <Text style={styles.emptyTitle}>No exercises yet</Text>
-                  <Text style={styles.emptySub}>Add some before this routine can be started.</Text>
+                  <Text style={styles.emptyTitle}>{t('routineView.noExercises')}</Text>
+                  <Text style={styles.emptySub}>{t('routineView.noExercisesSub')}</Text>
                 </View>
               ) : null}
             </View>
@@ -245,7 +250,7 @@ export default function RoutineView() {
           style={styles.backBtn}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
         >
           <Svg width={9} height={15} viewBox="0 0 9 15" fill="none">
             <Path
@@ -257,13 +262,13 @@ export default function RoutineView() {
             />
           </Svg>
         </Pressable>
-        <Text style={styles.headerLabel}>ROUTINE</Text>
+        <Text style={styles.headerLabel}>{t('routineView.header')}</Text>
         <PressableScale
           onPress={openBuilder}
           style={styles.editBtn}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Edit routine"
+          accessibilityLabel={t('routineView.editLabel')}
         >
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
             <Path
@@ -274,7 +279,7 @@ export default function RoutineView() {
               strokeLinejoin="round"
             />
           </Svg>
-          <Text style={styles.editText}>Edit</Text>
+          <Text style={styles.editText}>{t('routineView.edit')}</Text>
         </PressableScale>
       </View>
 
@@ -303,7 +308,7 @@ export default function RoutineView() {
             ) : (
               <PlayFilledIcon size={16} color={color.accentFg} />
             )}
-            <Text style={styles.ctaLabel}>{isEmpty ? 'Add exercises' : 'Start Routine'}</Text>
+            <Text style={styles.ctaLabel}>{isEmpty ? t('routineView.addExercises') : t('routineView.start')}</Text>
           </PressableScale>
         </View>
       ) : null}
@@ -312,11 +317,12 @@ export default function RoutineView() {
 }
 
 function ExerciseCard({ card, hasLast }: { card: ViewCard; hasLast: boolean }) {
+  useThemed();
   return (
     <View style={styles.card}>
       <View style={styles.cardHead}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{card.initials}</Text>
+          <Text style={styles.avatarText}>{upperDisplay(card.initials)}</Text>
         </View>
         <View style={styles.cardHeadText}>
           <Text style={styles.exName}>{card.name}</Text>
@@ -336,9 +342,9 @@ function ExerciseCard({ card, hasLast }: { card: ViewCard; hasLast: boolean }) {
       {card.note ? <Text style={styles.note}>{card.note}</Text> : null}
 
       <View style={styles.tableHead}>
-        <Text style={[styles.th, styles.colSet]}>SET</Text>
-        <Text style={[styles.th, styles.colTarget]}>{`TARGET ${card.unitLabel}`}</Text>
-        {hasLast ? <Text style={styles.th}>LAST</Text> : null}
+        <Text style={[styles.th, styles.colSet]}>{t('exerciseCard.colSet')}</Text>
+        <Text style={[styles.th, styles.colTarget]}>{t('routineView.colTarget', { unit: card.unitLabel })}</Text>
+        {hasLast ? <Text style={styles.th}>{t('routineView.colLast')}</Text> : null}
       </View>
       {card.sets.map((s, i) => (
         <View key={s.key} style={[styles.row, i < card.sets.length - 1 && styles.rowRule]}>
@@ -361,265 +367,267 @@ function ExerciseCard({ card, hasLast }: { card: ViewCard; hasLast: boolean }) {
 
 const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  scroll: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    scroll: { flex: 1 },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: HEADER_BOTTOM,
-  },
-  backBtn: {
-    width: 34,
-    height: HEADER_ROW,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-  },
-  editBtn: {
-    height: HEADER_ROW,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  editText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text1,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: HEADER_BOTTOM,
+    },
+    backBtn: {
+      width: 34,
+      height: HEADER_ROW,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    editBtn: {
+      height: HEADER_ROW,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    editText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text1,
+    },
 
-  // Title -------------------------------------------------------------
-  titleBlock: { paddingTop: 4, paddingHorizontal: 2, paddingBottom: 20 },
-  title: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    lineHeight: 29.9,
-    letterSpacing: -0.52,
-    color: color.text1,
-  },
-  meta: {
-    fontFamily: font.monoRegular,
-    fontSize: 12.5,
-    color: color.text2,
-    marginTop: 8,
-    fontVariant: tabular,
-  },
-  last: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    letterSpacing: 0.46,
-    color: color.text3,
-    marginTop: 4,
-    fontVariant: tabular,
-  },
+    // Title -------------------------------------------------------------
+    titleBlock: { paddingTop: 4, paddingHorizontal: 2, paddingBottom: 20 },
+    title: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      lineHeight: 29.9,
+      letterSpacing: -0.52,
+      color: color.text1,
+    },
+    meta: {
+      fontFamily: font.monoRegular,
+      fontSize: 12.5,
+      color: color.text2,
+      marginTop: 8,
+      fontVariant: tabular,
+    },
+    last: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      letterSpacing: 0.46,
+      color: color.text3,
+      marginTop: 4,
+      fontVariant: tabular,
+    },
 
-  // Blocks ------------------------------------------------------------
-  blocks: { gap: 10 },
-  rail: {
-    position: 'absolute',
-    left: -9,
-    top: 9,
-    bottom: 6,
-    width: 2,
-    borderRadius: 2,
-    backgroundColor: color.text3,
-  },
-  groupHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 22,
-    marginBottom: 6,
-    paddingHorizontal: 2,
-  },
-  groupLabel: {
-    fontFamily: font.monoSemi,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text2,
-  },
-  groupSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    fontVariant: tabular,
-  },
-  groupCards: { gap: 4 },
+    // Blocks ------------------------------------------------------------
+    blocks: { gap: 10 },
+    rail: {
+      position: 'absolute',
+      left: -9,
+      top: 9,
+      bottom: 6,
+      width: 2,
+      borderRadius: 2,
+      backgroundColor: color.text3,
+    },
+    groupHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: 22,
+      marginBottom: 6,
+      paddingHorizontal: 2,
+    },
+    groupLabel: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text2,
+    },
+    groupSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      fontVariant: tabular,
+    },
+    groupCards: { gap: 4 },
 
-  // Exercise card -----------------------------------------------------
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingTop: 14,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
-  },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12,
-    color: color.accent,
-  },
-  cardHeadText: { flex: 1, minWidth: 0 },
-  exName: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    lineHeight: 19,
-    letterSpacing: -0.15,
-    color: color.text1,
-  },
-  exMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  tag: {
-    backgroundColor: color.surface3,
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  tagText: {
-    fontFamily: font.monoSemi,
-    fontSize: 10,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  exMeta: {
-    flexShrink: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    fontVariant: tabular,
-  },
-  note: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 18.85,
-    color: color.text2,
-    marginTop: 10,
-    paddingHorizontal: 2,
-  },
+    // Exercise card -----------------------------------------------------
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingTop: 14,
+      paddingHorizontal: 14,
+      paddingBottom: 10,
+    },
+    cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12,
+      color: color.accent,
+    },
+    cardHeadText: { flex: 1, minWidth: 0 },
+    exName: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      lineHeight: 19,
+      letterSpacing: -0.15,
+      color: color.text1,
+    },
+    exMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+    tag: {
+      backgroundColor: color.surface3,
+      borderRadius: 4,
+      paddingHorizontal: 5,
+      paddingVertical: 1,
+    },
+    tagText: {
+      fontFamily: font.monoSemi,
+      fontSize: 10,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    exMeta: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      fontVariant: tabular,
+    },
+    note: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 18.85,
+      color: color.text2,
+      marginTop: 10,
+      paddingHorizontal: 2,
+    },
 
-  // Table -------------------------------------------------------------
-  tableHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 12,
-    paddingHorizontal: 2,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  th: {
-    fontFamily: font.monoMedium,
-    fontSize: 9.5,
-    letterSpacing: 0.76,
-    color: color.text3,
-  },
-  colSet: { width: 26 },
-  colTarget: { flex: 1, minWidth: 0 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    height: 36,
-    paddingHorizontal: 2,
-  },
-  rowRule: { borderBottomWidth: 1, borderBottomColor: color.hair },
-  badge: {
-    fontFamily: font.monoSemi,
-    fontSize: 12.5,
-    fontVariant: tabular,
-  },
-  target: {
-    fontFamily: font.monoMedium,
-    fontSize: 14,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  lastCell: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: tabular,
-  },
+    // Table -------------------------------------------------------------
+    tableHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingTop: 12,
+      paddingHorizontal: 2,
+      paddingBottom: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    th: {
+      fontFamily: font.monoMedium,
+      fontSize: 9.5,
+      letterSpacing: 0.76,
+      color: color.text3,
+    },
+    colSet: { width: 26 },
+    colTarget: { flex: 1, minWidth: 0 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      height: 36,
+      paddingHorizontal: 2,
+    },
+    rowRule: { borderBottomWidth: 1, borderBottomColor: color.hair },
+    badge: {
+      fontFamily: font.monoSemi,
+      fontSize: 12.5,
+      fontVariant: tabular,
+    },
+    target: {
+      fontFamily: font.monoMedium,
+      fontSize: 14,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    lastCell: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: tabular,
+    },
 
-  // Empty -------------------------------------------------------------
-  empty: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    lineHeight: 20.25,
-    color: color.text2,
-    textAlign: 'center',
-    marginTop: 6,
-  },
+    // Empty -------------------------------------------------------------
+    empty: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingVertical: 28,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      lineHeight: 20.25,
+      color: color.text2,
+      textAlign: 'center',
+      marginTop: 6,
+    },
 
-  // Footer ------------------------------------------------------------
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingTop: FOOTER_TOP,
-    paddingHorizontal: 16,
-  },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: CTA_HEIGHT,
-    minHeight: TAP_TARGET,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-  },
-  ctaLabel: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    color: color.accentFg,
-  },
-});
+    // Footer ------------------------------------------------------------
+    footer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingTop: FOOTER_TOP,
+      paddingHorizontal: 16,
+    },
+    cta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      height: CTA_HEIGHT,
+      minHeight: TAP_TARGET,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+    },
+    ctaLabel: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      color: color.accentFg,
+    },
+  }),
+);

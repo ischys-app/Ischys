@@ -9,8 +9,10 @@ import { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { exerciseArt } from '../lib/exerciseArt';
-import { color, font } from '../theme/tokens';
+import { upperDisplay } from '../i18n/upper';
+import { color, font, themed } from '../theme/tokens';
 import { ExerciseArt } from './ExerciseArt';
+import { useThemed } from '../theme/ThemeProvider';
 
 type Props = {
   imageUrl?: string | null;
@@ -30,6 +32,7 @@ export function ExerciseAvatar({
   radius = 11,
   style,
 }: Props) {
+  useThemed();
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(imageUrl) && !failed;
   // Held on the first frame: these appear in scrolling lists, where a loop in
@@ -75,23 +78,25 @@ export function ExerciseAvatar({
           accessibilityIgnoresInvertColors
         />
       ) : (
-        <Text style={[styles.initials, { fontSize: Math.max(11, size * 0.3) }]}>{initials}</Text>
+        <Text style={[styles.initials, { fontSize: Math.max(11, size * 0.3) }]}>{upperDisplay(initials)}</Text>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    backgroundColor: color.surface2,
-  },
-  initialsBg: { backgroundColor: color.surface3 },
-  initials: {
-    fontFamily: font.monoSemi,
-    color: color.text2,
-    letterSpacing: 0.5,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    base: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      backgroundColor: color.surface2,
+    },
+    initialsBg: { backgroundColor: color.surface3 },
+    initials: {
+      fontFamily: font.monoSemi,
+      color: color.text2,
+      letterSpacing: 0.5,
+    },
+  }),
+);

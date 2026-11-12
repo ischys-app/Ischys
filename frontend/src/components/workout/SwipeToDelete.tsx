@@ -11,6 +11,7 @@
  * *velocity* not just position (§6), and hands that velocity to an interruptible
  * spring so drag → snap has no seam (§5). A light haptic telegraphs the reveal (§13).
  */
+import { t } from '../../i18n';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -24,7 +25,8 @@ import Animated, {
 
 import { haptics } from '../../lib/haptics';
 import { TrashIcon } from '../icons';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
+import { useThemed } from '../../theme/ThemeProvider';
 
 const OPEN_X = -72; // resting reveal
 const MAX_X = -84; // hard bound before rubber-banding
@@ -58,6 +60,7 @@ export function SwipeToDelete({
   rowStyle,
   children,
 }: Props) {
+  useThemed();
   const swipeEnabled = !!onDelete;
 
   const tx = useSharedValue(isOpen ? OPEN_X : 0);
@@ -124,7 +127,7 @@ export function SwipeToDelete({
           accessibilityLabel={accessibilityLabel}
         >
           <TrashIcon size={16} color="#fff" strokeWidth={2} />
-          <Text style={styles.deleteLabel}>Delete</Text>
+          <Text style={styles.deleteLabel}>{t('common.delete')}</Text>
         </Pressable>
       )}
 
@@ -135,26 +138,28 @@ export function SwipeToDelete({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  deletePanel: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 76,
-    backgroundColor: color.error,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  deleteLabel: {
-    color: '#fff',
-    fontFamily: font.titleSemi,
-    fontSize: 11,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    container: {
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    deletePanel: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: 76,
+      backgroundColor: color.error,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+    },
+    deleteLabel: {
+      color: '#fff',
+      fontFamily: font.titleSemi,
+      fontSize: 11,
+    },
+  }),
+);

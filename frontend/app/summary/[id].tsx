@@ -6,6 +6,7 @@
  *
  * Source of truth: `export/ischys-app/Workout Summary.dc.html`.
  */
+import { t } from '../../src/i18n';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -44,16 +45,22 @@ import {
 import { deloadHistoryFor } from '../../src/data/deloadRepo';
 import { getDeloadState, setDeloadState } from '../../src/lib/deloadState';
 import { fmtDateOnly, fmtDuration } from '../../src/lib/format';
+import { PROFILES_ENABLED, useActiveProfile } from '../../src/lib/activeProfile';
+import { ProfileAvatar } from '../../src/components/ProfileAvatar';
 import { maybeRequestReviewAfterFinish } from '../../src/lib/reviewPrompt';
 import { getSummary } from '../../src/lib/summaryCache';
 import { recordDeltaDisplay, recordDisplay } from '../../src/domain/records';
 import { effortLabel, type EffortScaleKind } from '../../src/domain/effort';
 import { countWorkingSets } from '../../src/domain/stats';
-import { type Unit, volumeText, weightText } from '../../src/domain/units';
+import { type Unit, volumeText, weightLabel } from '../../src/domain/units';
 import { useEffortMode } from '../../src/lib/effortMode';
 import { useWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
 import { textScale } from '../../src/theme/textScale';
+import { useThemed } from '../../src/theme/ThemeProvider';
+import { getLang } from '../../src/i18n/current';
+import { groupLabel } from '../../src/i18n/catalogNames';
+import { workoutLabel } from '../../src/i18n/defaultLabels';
 
 /** Extract HH:MM in local time from an ISO string. */
 function hhmm(iso: string): string {
@@ -77,24 +84,25 @@ function bestSetLine(sets: WorkoutSetOut[], unit: Unit, effort: EffortScaleKind 
   const working = sets.filter((s) => s.done && s.type !== 'warmup');
   // No working set done: the same count the row's right-hand figure and the
   // header use, so a warm-up alone does not read as a set here and not there.
-  if (working.length === 0) return `${countWorkingSets(sets)} sets`;
+  if (working.length === 0) return t('common.setsCount', { count: countWorkingSets(sets) });
   let best = working[0];
   for (const s of working) {
     const bw = s.weight ?? -Infinity;
     const bbest = best.weight ?? -Infinity;
     if (bw > bbest) best = s;
   }
-  const w = best.weight == null ? 'BW' : `${weightText(best.weight, unit)}${unit}`;
+  const w = best.weight == null ? 'BW' : `${weightLabel(best.weight, unit)}${unit}`;
   const r = best.reps ?? 0;
   const rated = effort && best.rpe != null ? ` ${effortLabel(best.rpe, effort)}` : '';
-  return `Best set · ${w} × ${r}${rated}`;
+  return t('summary.bestSet', { weight: w, reps: r, rated });
 }
 
 /** Compute a degraded volume-by-muscle from a WorkoutOut for the fallback view. */
 function computeMuscleFromWorkout(w: WorkoutOut): { name: string; sets: number }[] {
   const tally = new Map<string, number>();
   for (const we of w.exercises) {
-    const primary = we.exercise.primary_muscle?.group ?? we.exercise.primary_muscle?.name;
+    const pm = we.exercise.primary_muscle;
+    const primary = pm?.group ? groupLabel(pm.group, getLang()) : pm?.name;
     if (!primary) continue;
     const done = we.sets.filter((s) => s.done && s.type !== 'warmup').length;
     if (done === 0) continue;
@@ -116,13 +124,13 @@ function computeMuscleFromWorkout(w: WorkoutOut): { name: string; sets: number }
  */
 const resolvedPrompts = new Set<string>();
 
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 /** Map a full routine payload back to the update-input shape (for Undo). */
 function routineToInput(routine: RoutineOut): RoutineExerciseIn[] {
   return routine.exercises.map((re) => ({
     exercise_id: re.exercise.id,
     rest_seconds: re.rest_seconds,
+    superset_group: re.superset_group ?? null,
     note: re.note ?? null,
     sets: re.sets.map((s) => ({ type: s.type, target_weight: s.target_weight, target_reps: s.target_reps })),
   }));
@@ -134,12 +142,14 @@ function workoutToInput(workout: WorkoutOut): RoutineExerciseIn[] {
   return workout.exercises.map((we) => ({
     exercise_id: we.exercise.id,
     rest_seconds: we.rest_seconds,
+    superset_group: we.superset_group ?? null,
     note: we.note ?? null,
     sets: we.sets.map((s) => ({ type: s.type, target_weight: s.weight, target_reps: s.reps })),
   }));
 }
 
 function CloseIcon({ size = 16, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -155,6 +165,7 @@ function CloseIcon({ size = 16, tint }: { size?: number; tint: string }) {
 }
 
 function ShareIcon({ size = 14, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -170,6 +181,9 @@ function ShareIcon({ size = 14, tint }: { size?: number; tint: string }) {
 }
 
 export default function WorkoutSummary() {
+  useThemed();
+  const { profile: activeProfileRow, count: profileCount } = useActiveProfile();
+  const multi = PROFILES_ENABLED && profileCount > 1;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; justFinished?: string }>();
@@ -278,7 +292,7 @@ export default function WorkoutSummary() {
         await saveAsRoutine(workoutId);
       } catch {
         // Nothing was stored. Stay here, so the button can be tapped again.
-        Alert.alert('Couldn’t save routine', 'Nothing was changed. Try again.');
+        Alert.alert(t('summary.saveRoutineFailed'), t('common.nothingChanged'));
         return;
       }
     }
@@ -346,7 +360,7 @@ export default function WorkoutSummary() {
     } catch {
       // The routine is as it was. No receipt for a change that did not
       // happen; the prompt stays, so it can be tried again.
-      Alert.alert('Couldn’t update routine', 'Nothing was changed. Try again.');
+      Alert.alert(t('summary.updateRoutineFailed'), t('common.nothingChanged'));
       return;
     }
     setReceiptName(routine.name);
@@ -372,7 +386,7 @@ export default function WorkoutSummary() {
     const created = await saveAsRoutine(workoutId).catch(() => null);
     if (!created) {
       // No routine was stored, so no receipt saying one was.
-      Alert.alert('Couldn’t save routine', 'Nothing was changed. Try again.');
+      Alert.alert(t('summary.saveRoutineFailed'), t('common.nothingChanged'));
       return;
     }
     setReceiptName(created.name);
@@ -450,12 +464,12 @@ export default function WorkoutSummary() {
           onPress={onClose}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close')}
         >
             <CloseIcon tint={color.text2} />
           </Pressable>
           <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
-            WORKOUT
+            {t('summary.header')}
           </Text>
           {/* Layout spacer only — no surface fill, no press target. */}
           <View style={styles.headerSpacer} />
@@ -518,7 +532,7 @@ export default function WorkoutSummary() {
           <View style={styles.checkBadge}>
             <CheckIcon size={30} color={color.accentFg} strokeWidth={3} />
           </View>
-          <Text maxFontSizeMultiplier={textScale.display} style={styles.workoutName}>{workout.name}</Text>
+          <Text maxFontSizeMultiplier={textScale.display} style={styles.workoutName}>{workoutLabel(workout.name)}</Text>
           <Text maxFontSizeMultiplier={textScale.control} style={styles.workoutWhen}>
             {formatWhen(workout.started_at, workout.ended_at)}
           </Text>
@@ -527,21 +541,21 @@ export default function WorkoutSummary() {
         {/* STAT GRID */}
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>DURATION</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('summary.statDuration')}</Text>
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>
               {fmtDuration(workout.duration_seconds)}
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statUnit}></Text>
             </Text>
           </View>
           <View style={styles.statCell}>
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>VOLUME</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('summary.statVolume')}</Text>
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>
               {volumeText(workout.total_volume, unit)}
               <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statUnit}> {unit}</Text>
             </Text>
           </View>
           <View style={styles.statCell}>
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>SETS</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statLabel}>{t('summary.statSets')}</Text>
             <Text maxFontSizeMultiplier={textScale.fixed} style={styles.statValue}>{workout.total_sets}</Text>
           </View>
         </View>
@@ -552,7 +566,7 @@ export default function WorkoutSummary() {
             <View style={styles.prHeader}>
               <StarIcon size={17} color={color.success} strokeWidth={2.4} />
               <Text maxFontSizeMultiplier={textScale.control} style={styles.prHeaderText}>
-                {`${prs.length} New Personal Record${prs.length === 1 ? '' : 's'}`}
+                {t('summary.prBanner', { count: prs.length })}
               </Text>
             </View>
             <View style={styles.prRows}>
@@ -575,7 +589,7 @@ export default function WorkoutSummary() {
 
         {/* EXERCISE BREAKDOWN */}
         <Text maxFontSizeMultiplier={textScale.control} style={styles.sectionLabel}>
-          {`EXERCISES · ${workout.exercises.length}`}
+          {t('summary.exercises', { count: workout.exercises.length })}
         </Text>
         <View style={styles.exerciseList}>
           {workout.exercises.map((we) => {
@@ -594,7 +608,7 @@ export default function WorkoutSummary() {
                 {anyPr && <StarIcon size={15} color={color.success} strokeWidth={2.4} />}
                 {/* Sets done, by the header's rule (countWorkingSets): one planned
                     and left unticked is not a set, and neither is a warm-up. */}
-                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.exerciseSetCount}>{`${countWorkingSets(we.sets)} sets`}</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.exerciseSetCount}>{t('common.setsCount', { count: countWorkingSets(we.sets) })}</Text>
               </View>
             );
           })}
@@ -603,7 +617,7 @@ export default function WorkoutSummary() {
         {/* MUSCLE SPLIT */}
         {muscles.length > 0 && (
           <>
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.sectionLabel}>VOLUME BY MUSCLE</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.sectionLabel}>{t('summary.volumeByMuscle')}</Text>
             <View style={styles.muscleCard}>
               {muscles.map((m) => {
                 const pct = maxSets > 0 ? (m.sets / maxSets) * 100 : 0;
@@ -611,7 +625,7 @@ export default function WorkoutSummary() {
                   <View key={m.name} style={styles.muscleRow}>
                     <View style={styles.muscleHeader}>
                       <Text maxFontSizeMultiplier={textScale.control} style={styles.muscleName}>{m.name}</Text>
-                      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.muscleSets}>{`${m.sets} sets`}</Text>
+                      <Text maxFontSizeMultiplier={textScale.fixed} style={styles.muscleSets}>{t('common.setsCount', { count: m.sets })}</Text>
                     </View>
                     <View style={styles.muscleTrack}>
                       <View style={[styles.muscleBar, { width: `${pct}%` }]} />
@@ -636,24 +650,24 @@ export default function WorkoutSummary() {
               <View style={styles.routineHeader}>
                 <View style={styles.deloadDot} />
                 <Text style={styles.routineTitle}>
-                  {advice.reason === 'stall' ? 'This lift has stalled' : 'Volume jumped fast'}
+                  {advice.reason === 'stall' ? t('summary.stalledTitle') : t('summary.rampTitle')}
                 </Text>
               </View>
               <Text style={styles.deloadBody}>
                 {advice.reason === 'stall'
-                  ? `No new best in a while. A week at ${Math.round(DELOAD_FACTOR * 100)}% often moves it further than pushing does.`
-                  : `This has climbed quickly. Holding for ${DELOAD_DAYS} days lets it catch up.`}
+                  ? t('summary.stalledBody', { percent: Math.round(DELOAD_FACTOR * 100) })
+                  : t('summary.rampBody', { days: DELOAD_DAYS })}
               </Text>
               <View style={styles.routineActions}>
                 <Pressable style={styles.deloadAccept} onPress={() => void onAcceptDeload()}>
                   <Text maxFontSizeMultiplier={textScale.control} style={styles.deloadAcceptText}>
                     {advice.reason === 'stall'
-                      ? `Ease off for ${DELOAD_DAYS} days`
-                      : `Hold for ${DELOAD_DAYS} days`}
+                      ? t('summary.easeOff', { days: DELOAD_DAYS })
+                      : t('summary.hold', { days: DELOAD_DAYS })}
                   </Text>
                 </Pressable>
                 <Pressable style={styles.keepBtn} onPress={() => void onDismissDeload()}>
-                  <Text maxFontSizeMultiplier={textScale.control} style={styles.keepBtnText}>Not now</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.keepBtnText}>{t('common.notNow')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -665,10 +679,10 @@ export default function WorkoutSummary() {
                 <CheckIcon size={14} color={color.success} strokeWidth={3.2} />
               </View>
               <Text style={styles.deloadBody}>
-                {`Suggestions will read ${Math.round(DELOAD_FACTOR * 100)}% for ${DELOAD_DAYS} days. Nothing was written to your sets.`}
+                {t('summary.deloadAccepted', { percent: Math.round(DELOAD_FACTOR * 100), days: DELOAD_DAYS })}
               </Text>
               <Pressable onPress={() => void onUndoDeload()} hitSlop={6}>
-                <Text style={styles.saveNewLink}>Undo</Text>
+                <Text style={styles.saveNewLink}>{t('common.undo')}</Text>
               </Pressable>
             </View>
           )}
@@ -677,8 +691,8 @@ export default function WorkoutSummary() {
             <View style={styles.routineCard}>
               <View style={styles.routineHeader}>
                 <View style={styles.routineDot} />
-                <Text style={styles.routineTitle}>You changed this routine</Text>
-                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.routineCount}>{plural(diff.length, 'change')}</Text>
+                <Text style={styles.routineTitle}>{t('summary.routineChanged')}</Text>
+                <Text maxFontSizeMultiplier={textScale.fixed} style={styles.routineCount}>{t('summary.changeCount', { count: diff.length })}</Text>
               </View>
               <View style={styles.routineRows}>
                 {visibleRows.map((row) => (
@@ -701,20 +715,20 @@ export default function WorkoutSummary() {
                 {hiddenCount > 0 && (
                   <Pressable style={styles.routineMoreRow} onPress={() => setExpanded(true)}>
                     <View style={styles.routineMarker} />
-                    <Text style={styles.routineMore}>{`and ${hiddenCount} more change${hiddenCount === 1 ? '' : 's'}`}</Text>
+                    <Text style={styles.routineMore}>{t('summary.moreChanges', { count: hiddenCount })}</Text>
                   </Pressable>
                 )}
               </View>
               <View style={styles.routineActions}>
                 <Pressable style={styles.updateBtn} onPress={() => void onUpdateRoutine()}>
-                  <Text maxFontSizeMultiplier={textScale.control} style={styles.updateBtnText}>Update routine</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.updateBtnText}>{t('summary.updateRoutine')}</Text>
                 </Pressable>
                 <Pressable style={styles.keepBtn} onPress={onKeepAsIs}>
-                  <Text maxFontSizeMultiplier={textScale.control} style={styles.keepBtnText}>Keep as-is</Text>
+                  <Text maxFontSizeMultiplier={textScale.control} style={styles.keepBtnText}>{t('summary.keepAsIs')}</Text>
                 </Pressable>
               </View>
               <Pressable onPress={() => void onSaveAsNew()} hitSlop={6}>
-                <Text style={styles.saveNewLink}>Save as a new routine instead</Text>
+                <Text style={styles.saveNewLink}>{t('summary.saveAsNew')}</Text>
               </Pressable>
             </View>
           )}
@@ -726,29 +740,29 @@ export default function WorkoutSummary() {
               </View>
               <View style={styles.receiptText}>
                 <Text style={styles.receiptTitle}>
-                  {promptState === 'updated' ? 'Routine updated' : 'Saved as new routine'}
+                  {promptState === 'updated' ? t('summary.routineUpdated') : t('summary.savedAsNew')}
                 </Text>
                 <Text style={styles.receiptSub}>
                   {promptState === 'updated'
-                    ? `${receiptName} · ${plural(diff.length, 'change')} saved`
-                    : `${receiptName} · added to routines`}
+                    ? t('summary.receiptUpdated', { name: receiptName, changes: t('summary.changeCount', { count: diff.length }) })
+                    : t('summary.receiptAdded', { name: receiptName })}
                 </Text>
               </View>
               <Pressable onPress={() => void onUndo()} hitSlop={8}>
-                <Text style={styles.receiptUndo}>Undo</Text>
+                <Text style={styles.receiptUndo}>{t('common.undo')}</Text>
               </Pressable>
             </Animated.View>
           )}
 
           <PressableScale style={styles.doneBtn} onPress={onDone}>
-            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneBtnText}>Done</Text>
+            <Text maxFontSizeMultiplier={textScale.control} style={styles.doneBtnText}>{t('common.done')}</Text>
           </PressableScale>
           {/* A session started from a routine already has one; offering to save
               it again would just duplicate that routine. Exception: the source
               routine was deleted mid-session — then this is the correct fallback. */}
           {(!workout.routine_id || routineDeleted) && (
             <Pressable style={styles.saveRoutineBtn} onPress={onSaveAsRoutine}>
-              <Text maxFontSizeMultiplier={textScale.control} style={styles.saveRoutineBtnText}>Save as Routine</Text>
+              <Text maxFontSizeMultiplier={textScale.control} style={styles.saveRoutineBtnText}>{t('summary.saveAsRoutine')}</Text>
             </Pressable>
           )}
         </View>
@@ -761,13 +775,23 @@ export default function WorkoutSummary() {
           onPress={onClose}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close')}
         >
           <CloseIcon tint={color.text2} />
         </Pressable>
-        <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
-          WORKOUT
-        </Text>
+        {multi ? (
+          // With 2+ profiles, whose workout this is (P5): the chip, not pressable.
+          <View style={styles.headerWho}>
+            <ProfileAvatar profile={activeProfileRow} size={18} />
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerWhoTitle} numberOfLines={1}>
+              {t('summary.header')}
+            </Text>
+          </View>
+        ) : (
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.headerTitle} numberOfLines={1}>
+            {t('summary.header')}
+          </Text>
+        )}
         {/* Edit sits before Share and is surface2 like it, so Done stays the
             screen's only accent. Only a finished workout is history to edit. */}
         {workout.status === 'completed' ? (
@@ -776,10 +800,10 @@ export default function WorkoutSummary() {
             onPress={() => router.push(`/workout/edit/${workout.id}`)}
             hitSlop={HEADER_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="Edit workout"
+            accessibilityLabel={t('summary.editLabel')}
           >
             <PencilIcon size={14} color={color.text1} strokeWidth={2.2} />
-            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.editBtnText}>Edit</Text>
+            <Text maxFontSizeMultiplier={textScale.fixed} style={styles.editBtnText}>{t('summary.edit')}</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -788,7 +812,7 @@ export default function WorkoutSummary() {
           hitSlop={HEADER_SLOP}
         >
           <ShareIcon tint={color.text2} />
-          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.shareBtnText}>Share</Text>
+          <Text maxFontSizeMultiplier={textScale.fixed} style={styles.shareBtnText}>{t('summary.share')}</Text>
         </Pressable>
       </View>
 
@@ -818,527 +842,544 @@ const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
  */
 const HEADER_SLOP = { top: 5, bottom: 5, left: 4, right: 4 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
 
-  // HEADER
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: 'rgba(10,10,11,0.96)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSpacer: { width: 34, height: 34 },
-  headerTitle: {
-    flex: 1,
-    minWidth: 0,
-    textAlign: 'center',
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-  },
-  editBtn: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  editBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text1,
-  },
-  shareBtn: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: color.surface2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  shareBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text2,
-  },
+    // HEADER
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      backgroundColor: color.headerBg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerSpacer: { width: 34, height: 34 },
+    headerTitle: {
+      flex: 1,
+      minWidth: 0,
+      textAlign: 'center',
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    headerWho: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    headerWhoTitle: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+    },
+    editBtn: {
+      height: 34,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    editBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text1,
+    },
+    shareBtn: {
+      height: 34,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      backgroundColor: color.surface2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    shareBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text2,
+    },
 
-  // SCROLL
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
+    // SCROLL
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
 
-  // HERO
-  hero: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 26,
-  },
-  checkBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 17,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: color.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
-  },
-  workoutName: {
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  workoutWhen: {
-    fontFamily: font.monoRegular,
-    fontSize: 12.5,
-    color: color.text2,
-    marginTop: 4,
-    textAlign: 'center',
-    fontVariant: tabular,
-  },
+    // HERO
+    hero: {
+      alignItems: 'center',
+      paddingTop: 10,
+      paddingBottom: 26,
+    },
+    checkBadge: {
+      width: 60,
+      height: 60,
+      borderRadius: 17,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      shadowColor: color.accent,
+      shadowOpacity: 0.5,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 12,
+    },
+    workoutName: {
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    workoutWhen: {
+      fontFamily: font.monoRegular,
+      fontSize: 12.5,
+      color: color.text2,
+      marginTop: 4,
+      textAlign: 'center',
+      fontVariant: tabular,
+    },
 
-  // STAT GRID
-  statGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  statCell: {
-    flex: 1,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    gap: 6,
-  },
-  statLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 9,
-    letterSpacing: 0.9,
-    color: color.text3,
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 21,
-    letterSpacing: -0.42,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    color: color.text3,
-  },
+    // STAT GRID
+    statGrid: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 14,
+    },
+    statCell: {
+      flex: 1,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      gap: 6,
+    },
+    statLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 9,
+      letterSpacing: 0.9,
+      color: color.text3,
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 21,
+      letterSpacing: -0.42,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 11,
+      color: color.text3,
+    },
 
-  // PR BANNER
-  prBanner: {
-    backgroundColor: 'rgba(45,216,129,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(45,216,129,0.28)',
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  prHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    marginBottom: 12,
-  },
-  prHeaderText: {
-    fontFamily: font.displayBold,
-    fontSize: 14,
-    color: color.success,
-  },
-  prRows: {
-    gap: 8,
-  },
-  prRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  prName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 13.5,
-    color: color.text1,
-  },
-  prValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 13,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  prDelta: {
-    color: color.success,
-  },
+    // PR BANNER
+    prBanner: {
+      backgroundColor: withAlpha(color.success, 0.10),
+      borderWidth: 1,
+      borderColor: withAlpha(color.success, 0.28),
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 16,
+      marginBottom: 24,
+    },
+    prHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      marginBottom: 12,
+    },
+    prHeaderText: {
+      fontFamily: font.displayBold,
+      fontSize: 14,
+      color: color.success,
+    },
+    prRows: {
+      gap: 8,
+    },
+    prRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    prName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 13.5,
+      color: color.text1,
+    },
+    prValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 13,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    prDelta: {
+      color: color.success,
+    },
 
-  // EXERCISES
-  sectionLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    paddingHorizontal: 2,
-    paddingBottom: 12,
-  },
-  exerciseList: {
-    gap: 8,
-    marginBottom: 26,
-  },
-  exerciseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 13,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12,
-    color: color.accent,
-  },
-  exerciseText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  exerciseName: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    letterSpacing: -0.14,
-    color: color.text1,
-  },
-  exerciseBest: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 1,
-    fontVariant: tabular,
-  },
-  exerciseSetCount: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    fontVariant: tabular,
-  },
+    // EXERCISES
+    sectionLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      paddingHorizontal: 2,
+      paddingBottom: 12,
+    },
+    exerciseList: {
+      gap: 8,
+      marginBottom: 26,
+    },
+    exerciseRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 13,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12,
+      color: color.accent,
+    },
+    exerciseText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    exerciseName: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      letterSpacing: -0.14,
+      color: color.text1,
+    },
+    exerciseBest: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 1,
+      fontVariant: tabular,
+    },
+    exerciseSetCount: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      fontVariant: tabular,
+    },
 
-  // MUSCLE SPLIT
-  muscleCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 26,
-    gap: 13,
-  },
-  muscleRow: {
-    gap: 6,
-  },
-  muscleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  muscleName: {
-    fontFamily: font.bodyMedium,
-    fontSize: 13,
-    color: color.text1,
-  },
-  muscleSets: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text2,
-    fontVariant: tabular,
-  },
-  muscleTrack: {
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: color.surface3,
-    overflow: 'hidden',
-  },
-  muscleBar: {
-    height: '100%',
-    borderRadius: 6,
-    backgroundColor: color.accent,
-  },
+    // MUSCLE SPLIT
+    muscleCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 26,
+      gap: 13,
+    },
+    muscleRow: {
+      gap: 6,
+    },
+    muscleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    muscleName: {
+      fontFamily: font.bodyMedium,
+      fontSize: 13,
+      color: color.text1,
+    },
+    muscleSets: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text2,
+      fontVariant: tabular,
+    },
+    muscleTrack: {
+      height: 6,
+      borderRadius: 6,
+      backgroundColor: color.surface3,
+      overflow: 'hidden',
+    },
+    muscleBar: {
+      height: '100%',
+      borderRadius: 6,
+      backgroundColor: color.accent,
+    },
 
-  // ACTIONS
-  actions: {
-    gap: 10,
-  },
-  doneBtn: {
-    height: 50,
-    borderRadius: 13,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  saveRoutineBtn: {
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveRoutineBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-  },
+    // ACTIONS
+    actions: {
+      gap: 10,
+    },
+    doneBtn: {
+      height: 50,
+      borderRadius: 13,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    doneBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    saveRoutineBtn: {
+      height: 46,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    saveRoutineBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+    },
 
-  // ROUTINE-UPDATE PROMPT (Need 2)
-  deloadCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 14,
-    padding: 16,
-    marginTop: 16,
-    gap: 10,
-  },
-  // Warning, not error: this is the colour the design system already assigns to
-  // "deload, missed", and the advisory is not a failure.
-  deloadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.warning },
-  deloadBody: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text2 },
-  deloadAccept: {
-    flex: 1,
-    height: 42,
-    borderRadius: 11,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deloadAcceptText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
-  routineCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-  },
-  routineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-  },
-  routineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: color.accent,
-    flexShrink: 0,
-  },
-  routineTitle: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.text1,
-  },
-  routineCount: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    flexShrink: 0,
-  },
-  routineRows: {
-    gap: 9,
-    marginTop: 14,
-  },
-  routineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  routineMarker: {
-    width: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  markerAdd: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-    color: color.success,
-    textAlign: 'center',
-  },
-  markerRemove: {
-    fontFamily: font.monoSemi,
-    fontSize: 14,
-    color: color.error,
-    textAlign: 'center',
-  },
-  routineName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 13.5,
-    color: color.text1,
-  },
-  routineDetail: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    flexShrink: 0,
-    fontVariant: tabular,
-  },
-  routineDetailStrong: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text2,
-    flexShrink: 0,
-    fontVariant: tabular,
-  },
-  routineMoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 3,
-  },
-  routineMore: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    textDecorationLine: 'underline',
-  },
-  routineActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  updateBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: color.surface3,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  updateBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  keepBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keepBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text2,
-  },
-  saveNewLink: {
-    textAlign: 'center',
-    marginTop: 13,
-    fontFamily: font.bodyMedium,
-    fontSize: 13,
-    color: color.text3,
-    textDecorationLine: 'underline',
-  },
+    // ROUTINE-UPDATE PROMPT (Need 2)
+    deloadCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 16,
+      gap: 10,
+    },
+    // Warning, not error: this is the colour the design system already assigns to
+    // "deload, missed", and the advisory is not a failure.
+    deloadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.warning },
+    deloadBody: { fontFamily: font.bodyRegular, fontSize: 13, lineHeight: 19, color: color.text2 },
+    deloadAccept: {
+      flex: 1,
+      height: 42,
+      borderRadius: 11,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deloadAcceptText: { fontFamily: font.titleSemi, fontSize: 14, color: color.text1 },
+    routineCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+    },
+    routineHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+    },
+    routineDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+      backgroundColor: color.accent,
+      flexShrink: 0,
+    },
+    routineTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.text1,
+    },
+    routineCount: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      flexShrink: 0,
+    },
+    routineRows: {
+      gap: 9,
+      marginTop: 14,
+    },
+    routineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    routineMarker: {
+      width: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    markerAdd: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+      color: color.success,
+      textAlign: 'center',
+    },
+    markerRemove: {
+      fontFamily: font.monoSemi,
+      fontSize: 14,
+      color: color.error,
+      textAlign: 'center',
+    },
+    routineName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 13.5,
+      color: color.text1,
+    },
+    routineDetail: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      flexShrink: 0,
+      fontVariant: tabular,
+    },
+    routineDetailStrong: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text2,
+      flexShrink: 0,
+      fontVariant: tabular,
+    },
+    routineMoreRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingTop: 3,
+    },
+    routineMore: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      textDecorationLine: 'underline',
+    },
+    routineActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 16,
+    },
+    updateBtn: {
+      flex: 1,
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: color.surface3,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    updateBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    keepBtn: {
+      flex: 1,
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    keepBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text2,
+    },
+    saveNewLink: {
+      textAlign: 'center',
+      marginTop: 13,
+      fontFamily: font.bodyMedium,
+      fontSize: 13,
+      color: color.text3,
+      textDecorationLine: 'underline',
+    },
 
-  // RESOLVED RECEIPT (R3)
-  receiptCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    backgroundColor: 'rgba(45,216,129,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(45,216,129,0.26)',
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-  },
-  receiptCheck: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    backgroundColor: 'rgba(45,216,129,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  receiptText: { flex: 1, minWidth: 0 },
-  receiptTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 14.5,
-    color: color.text1,
-  },
-  receiptSub: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.text3,
-    marginTop: 2,
-  },
-  receiptUndo: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    color: color.text2,
-    textDecorationLine: 'underline',
-    flexShrink: 0,
-  },
-});
+    // RESOLVED RECEIPT (R3)
+    receiptCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: withAlpha(color.success, 0.07),
+      borderWidth: 1,
+      borderColor: withAlpha(color.success, 0.26),
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 16,
+    },
+    receiptCheck: {
+      width: 26,
+      height: 26,
+      borderRadius: 999,
+      backgroundColor: withAlpha(color.success, 0.16),
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    receiptText: { flex: 1, minWidth: 0 },
+    receiptTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 14.5,
+      color: color.text1,
+    },
+    receiptSub: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.text3,
+      marginTop: 2,
+    },
+    receiptUndo: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.text2,
+      textDecorationLine: 'underline',
+      flexShrink: 0,
+    },
+  }),
+);

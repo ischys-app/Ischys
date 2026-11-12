@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ImportResult } from '../src/api/types';
 import { getSettings, importFile, saveAsRoutine } from '../src/api/workouts';
+import { backupWorkouts } from '../src/data/backupJson';
 import { summarizeWorkoutCsv } from '../src/data/workoutCsv';
 import type { Unit } from '../src/domain/units';
 import {
@@ -40,8 +41,14 @@ import {
 import { CheckIcon, ChevronDownIcon, UploadIcon } from '../src/components/icons';
 import { PressableScale } from '../src/components/PressableScale';
 import { Segment, SelectCircle, type SegmentOption } from '../src/components/ui';
+import { firstName } from '../src/domain/profiles';
+import { PROFILES_ENABLED, useActiveProfile } from '../src/lib/activeProfile';
 import { haptics } from '../src/lib/haptics';
-import { accentA, color, font } from '../src/theme/tokens';
+import { accentA, color, font, themed, withAlpha } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
+import { profileNameLabel, workoutLabel } from '../src/i18n/defaultLabels';
+import { t } from '../src/i18n';
+import { upperDisplay } from '../src/i18n/upper';
 
 type Step = 'file_pick' | 'preview' | 'progress' | 'success' | 'error';
 
@@ -76,8 +83,7 @@ type ParsePayload = ParsedPreview | { supported: false };
 /** Preview summary for an Ischys JSON backup. */
 function summarizeJson(text: string): ParsePayload {
   try {
-    const data = JSON.parse(text);
-    const wk = Array.isArray(data?.workouts) ? data.workouts : null;
+    const wk = backupWorkouts(text) as { name?: string; exercises?: { name?: string; sets?: unknown[] }[] }[] | null;
     if (!wk) return { supported: false };
     const exercises = new Set<string>();
     let sets = 0;
@@ -90,7 +96,7 @@ function summarizeJson(text: string): ParsePayload {
         count += Array.isArray(ex?.sets) ? ex.sets.length : 0;
       }
       sets += count;
-      if (i < 5) firstWorkouts.push({ name: (w.name ?? 'Workout') || 'Workout', count });
+      if (i < 5) firstWorkouts.push({ name: workoutLabel(w.name), count });
     }
     return { supported: true, kind: 'json', weightUnitKnown: true, workouts: wk.length, exercises: exercises.size, sets, firstWorkouts };
   } catch {
@@ -100,6 +106,7 @@ function summarizeJson(text: string): ParsePayload {
 
 /** Slim chevron-left glyph matching the header back button in `settings.tsx`. */
 function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
+  useThemed();
   return (
     <Svg width={9} height={15} viewBox="0 0 9 15">
       <Path
@@ -116,6 +123,7 @@ function BackChevronLeftIcon({ color: strokeColor }: { color: string }) {
 
 /** X close glyph — 14dp, used by the Import header left slot. */
 function XGlyph({ color: strokeColor }: { color: string }) {
+  useThemed();
   return (
     <Svg width={14} height={14} viewBox="0 0 24 24">
       <Path
@@ -245,6 +253,7 @@ type RoutinePicks = ReturnType<typeof useRoutinePicks>;
 
 /** The vertical fade that lifts the pinned CTA off the scrolling list. */
 function FooterFade() {
+  useThemed();
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
       <Defs>
@@ -272,6 +281,7 @@ function RoutineCandidateRow({
   dateLabel: string;
   onToggle: () => void;
 }) {
+  useThemed();
   return (
     // The whole row is the tap target — a 24pt circle alone is not a thumb target,
     // and people tap the name expecting it to tick.
@@ -284,7 +294,7 @@ function RoutineCandidateRow({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={candidate.name}
-      accessibilityHint="Saves this as a routine"
+      accessibilityHint={t('import.candidateHint')}
     >
       <SelectCircle selected={selected} />
       <View style={styles.candidateText}>
@@ -303,21 +313,21 @@ function RoutineCandidateRow({
 }
 
 function RoutinesCard({ picks }: { picks: RoutinePicks }) {
+  useThemed();
   const { candidates, rows, seenOnce, expanded, picked, newestAt } = picks;
   return (
     <View style={styles.routinesCard}>
-      <Text style={styles.routinesLabel}>ROUTINES</Text>
-      <Text style={styles.routinesHeading}>Save any as routines?</Text>
+      <Text style={styles.routinesLabel}>{t('import.routines')}</Text>
+      <Text style={styles.routinesHeading}>{t('import.routinesHeading')}</Text>
       <Text style={styles.routinesBody}>
-        Your import restored sessions, not routines. Pick the ones you still train. Each is
-        built from its most recent session.
+        {t('import.routinesBody')}
       </Text>
 
       <View style={styles.routinesListHead}>
         <Text style={[styles.routinesListHeadText, styles.routinesListHeadLeft]}>
           {titlesHeaderLabel(candidates.length)}
         </Text>
-        <Text style={styles.routinesListHeadText}>LAST TRAINED</Text>
+        <Text style={styles.routinesListHeadText}>{t('import.lastTrained')}</Text>
       </View>
 
       <View style={styles.routinesList}>
@@ -337,7 +347,7 @@ function RoutinesCard({ picks }: { picks: RoutinePicks }) {
             style={styles.seenOnceRow}
             accessibilityRole="button"
             accessibilityLabel={seenOnceLabel(seenOnce.length)}
-            accessibilityHint="Shows the titles trained once"
+            accessibilityHint={t('import.seenOnceHint')}
           >
             <View style={styles.seenOnceChevron}>
               <ChevronDownIcon size={14} color={color.text3} />
@@ -368,8 +378,9 @@ function SuccessFooter({
   onLayoutHeight: (h: number) => void;
   bottomInset: number;
 }) {
+  useThemed();
   const count = offerRoutines ? picks.picked.size : 0;
-  const label = picks.retrying ? 'Retry' : createRoutinesLabel(count);
+  const label = picks.retrying ? t('import.retry') : createRoutinesLabel(count);
   // 34dp is the design's home-indicator allowance; a deeper inset wins.
   const paddingBottom = Math.max(34, bottomInset);
   return (
@@ -394,9 +405,9 @@ function SuccessFooter({
           onPress={onDone}
           style={styles.skipBtn}
           accessibilityRole="button"
-          accessibilityLabel={picks.retrying ? 'Done' : 'Skip'}
+          accessibilityLabel={picks.retrying ? t('common.done') : t('import.skip')}
         >
-          <Text style={styles.skipBtnText}>{picks.retrying ? 'Done' : 'Skip'}</Text>
+          <Text style={styles.skipBtnText}>{picks.retrying ? t('common.done') : t('import.skip')}</Text>
         </Pressable>
       )}
     </View>
@@ -404,6 +415,7 @@ function SuccessFooter({
 }
 
 export default function ImportScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -553,7 +565,7 @@ export default function ImportScreen() {
           <SuccessState result={result} picks={offerRoutines ? picks : null} />
         )}
         {step === 'error' && (
-          <ErrorState message={errorMsg ?? 'Import failed'} onRetry={reset} />
+          <ErrorState message={errorMsg ?? t('import.failed')} onRetry={reset} />
         )}
       </ScrollView>
 
@@ -573,12 +585,12 @@ export default function ImportScreen() {
           ]}
           pointerEvents={inProgress ? 'none' : 'auto'}
           hitSlop={8}
-          accessibilityLabel="Close"
+          accessibilityLabel={t('import.close')}
           accessibilityRole="button"
         >
           <XGlyph color={color.text2} />
         </Pressable>
-        <Text style={styles.title} numberOfLines={1}>Import history</Text>
+        <Text style={styles.title} numberOfLines={1}>{t('import.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -606,40 +618,51 @@ function FilePickState({
   onPick: () => void;
   errorMsg: string | null;
 }) {
+  useThemed();
   return (
     <View style={styles.pickWrap}>
       <View style={styles.dropzone}>
         <View style={styles.dropzoneIconWrap}>
           <UploadIcon size={30} color={color.accent} strokeWidth={2} />
         </View>
-        <Text style={styles.dropzoneTitle}>Choose an export to import</Text>
+        <Text style={styles.dropzoneTitle}>{t('import.chooseTitle')}</Text>
         <Text style={styles.dropzoneSub}>
-          Point Ischys at an Ischys JSON backup or a workout CSV export and
-          we&apos;ll load every set into your log.
+          {t('import.chooseSub')}
         </Text>
         <PressableScale
           onPress={onPick}
           style={[styles.primaryBtn, styles.chooseBtn]}
           accessibilityRole="button"
-          accessibilityLabel="Browse files"
+          accessibilityLabel={t('import.browse')}
         >
-          <Text style={styles.primaryBtnText}>Browse files</Text>
+          <Text style={styles.primaryBtnText}>{t('import.browse')}</Text>
         </PressableScale>
       </View>
 
       {/* WHAT GETS IMPORTED checklist */}
-      <Text style={styles.checklistLabel}>WHAT GETS IMPORTED</Text>
+      <Text style={styles.checklistLabel}>{upperDisplay(t('import.whatImported'))}</Text>
       <View style={styles.checklistCard}>
-        <ChecklistRow text="Every set with weight × reps" />
-        <ChecklistRow text="Workout names, dates, and exercise groupings" />
-        <ChecklistRow text="Set types (warmup / drop / failure) mapped to Ischys" />
-        <ChecklistRow text="Effort ratings (RPE), when the file has them" />
+        <ChecklistRow text={t('import.check1')} />
+        <ChecklistRow text={t('import.check2')} />
+        <ChecklistRow text={t('import.check3')} />
+        <ChecklistRow text={t('import.check4')} />
       </View>
 
       <Text style={styles.smallPrint}>
-        Supported: <Text style={styles.smallPrintStrong}>Ischys JSON</Text> (a
-        full backup) and a <Text style={styles.smallPrintStrong}>workout CSV</Text>.
-        Cardio-only CSV rows (distance/duration without weight × reps) are skipped.
+        {t('import.supported', {
+          json: `\u0001${t('import.supportedJson')}\u0001`,
+          csv: `\u0001${t('import.supportedCsv')}\u0001`,
+        })
+          .split('\u0001')
+          .map((part, i) =>
+            i % 2 === 1 ? (
+              <Text key={i} style={styles.smallPrintStrong}>
+                {part}
+              </Text>
+            ) : (
+              part
+            ),
+          )}
       </Text>
       {!!errorMsg && (
         <View style={styles.errorBanner}>
@@ -651,6 +674,7 @@ function FilePickState({
 }
 
 function ChecklistRow({ text }: { text: string }) {
+  useThemed();
   return (
     <View style={styles.checklistRow}>
       <CheckIcon size={16} color={color.accent} strokeWidth={2.6} />
@@ -674,6 +698,7 @@ function PreviewState({
   onChangeFile: () => void;
   onImport: () => void;
 }) {
+  useThemed();
   const workoutCount = parse && parse.supported ? parse.workouts : 0;
   // When the file doesn't name its unit, name it on the button itself. The unit is
   // the one irreversible choice in this flow — a re-import is refused as a
@@ -681,16 +706,20 @@ function PreviewState({
   // a note above it that is easy to scroll past.
   const unitSuffix =
     parse && parse.supported && parse.kind === 'csv' && !parse.weightUnitKnown
-      ? ` as ${weightUnit.toUpperCase()}`
+      ? t('import.asUnit', { unit: upperDisplay(weightUnit) })
       : '';
+  // With 2+ profiles the button names the one the workouts go into (P11).
+  const { profile, count } = useActiveProfile();
+  const first = firstName(profileNameLabel(profile.name));
+  const into = PROFILES_ENABLED && count >= 2 && first ? t('import.into', { name: first }) : '';
   const importLabel =
     parse && parse.supported
-      ? `Import ${workoutCount} workout${workoutCount === 1 ? '' : 's'}${unitSuffix}`
-      : 'Import file';
+      ? t('import.importCount', { count: workoutCount, into, unit: unitSuffix })
+      : t('import.importFile');
 
   return (
     <View style={styles.previewWrap}>
-      <Text style={styles.label}>SELECTED FILE</Text>
+      <Text style={styles.label}>{upperDisplay(t('import.selectedFile'))}</Text>
       <View style={styles.fileRow}>
         <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
           {file.name}
@@ -702,19 +731,19 @@ function PreviewState({
             pressed && styles.changeBtnPressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Change file"
+          accessibilityLabel={t('import.changeFile')}
         >
-          <Text style={styles.changeBtnText}>Change file</Text>
+          <Text style={styles.changeBtnText}>{t('import.changeFile')}</Text>
         </Pressable>
       </View>
 
       {parse === null && (
-        <Text style={styles.parseHint}>Reading file…</Text>
+        <Text style={styles.parseHint}>{t('import.reading')}</Text>
       )}
 
       {parse && !parse.supported && (
         <Text style={styles.parseHint}>
-          This doesn&apos;t look like an Ischys JSON backup or a workout CSV. Pick one of those and try again.
+          {t('import.unsupported')}
         </Text>
       )}
 
@@ -722,24 +751,24 @@ function PreviewState({
         <>
           <View style={styles.summaryCard}>
             <View style={styles.statsRow}>
-              <StatCell label="WORKOUTS" value={parse.workouts} />
-              <StatCell label="EXERCISES" value={parse.exercises} />
-              <StatCell label="SETS" value={parse.sets} />
+              <StatCell label={t('import.statWorkouts')} value={parse.workouts} />
+              <StatCell label={t('import.statExercises')} value={parse.exercises} />
+              <StatCell label={t('import.statSets')} value={parse.sets} />
             </View>
             {(parse.cardioSkipped ?? 0) > 0 && (
               <Text style={styles.cardioSkip}>
-                {parse.cardioSkipped} rows will be skipped (cardio / rest-only)
+                {t('import.skipCardio', { count: parse.cardioSkipped ?? 0 })}
               </Text>
             )}
             {(parse.rowsSkipped ?? 0) > 0 && (
               <Text style={styles.cardioSkip}>
-                {parse.rowsSkipped} rows will be skipped (no exercise name)
+                {t('import.skipNoName', { count: parse.rowsSkipped ?? 0 })}
               </Text>
             )}
             {parse.kind === 'csv' && !parse.weightUnitKnown && (
               <>
                 <View style={styles.unitRow}>
-                  <Text style={styles.label}>WEIGHT UNIT</Text>
+                  <Text style={styles.label}>{upperDisplay(t('import.weightUnit'))}</Text>
                   <Segment
                     options={UNIT_OPTIONS}
                     value={weightUnit}
@@ -747,7 +776,7 @@ function PreviewState({
                   />
                 </View>
                 <Text style={styles.cardioSkip}>
-                  This file doesn&apos;t say, so weights are read as {weightUnit.toUpperCase()}
+                  {t('import.unitUnknown', { unit: upperDisplay(weightUnit) })}
                 </Text>
               </>
             )}
@@ -755,7 +784,7 @@ function PreviewState({
 
           {parse.firstWorkouts.length > 0 && (
             <>
-              <Text style={[styles.label, styles.firstLabel]}>FIRST WORKOUTS</Text>
+              <Text style={[styles.label, styles.firstLabel]}>{upperDisplay(t('import.firstWorkouts'))}</Text>
               <View style={styles.previewList}>
                 {parse.firstWorkouts.map((w, i) => (
                   <View key={`${w.name}-${i}`} style={styles.previewRow}>
@@ -767,7 +796,7 @@ function PreviewState({
                       {w.name}
                     </Text>
                     <Text style={styles.previewCount}>
-                      {w.count} set{w.count === 1 ? '' : 's'}
+                      {t('import.setsCount', { count: w.count })}
                     </Text>
                   </View>
                 ))}
@@ -796,9 +825,10 @@ function PreviewState({
 }
 
 function StatCell({ label, value }: { label: string; value: number }) {
+  useThemed();
   return (
     <View style={styles.statCell}>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statLabel}>{upperDisplay(label)}</Text>
       <Text style={styles.statValue}>{value}</Text>
     </View>
   );
@@ -806,6 +836,7 @@ function StatCell({ label, value }: { label: string; value: number }) {
 
 /** 118dp progress ring with a rotating arc + faked percentage counter. */
 function ProgressState() {
+  useThemed();
   const spin = useRef(new Animated.Value(0)).current;
   const [pct, setPct] = useState(0);
 
@@ -871,7 +902,7 @@ function ProgressState() {
           <Text style={styles.ringPct}>{pct}%</Text>
         </View>
       </View>
-      <Text style={styles.progressCaption}>Importing…</Text>
+      <Text style={styles.progressCaption}>{t('import.importing')}</Text>
     </View>
   );
 }
@@ -888,19 +919,19 @@ function SuccessState({
   result: ImportResult;
   picks: RoutinePicks | null;
 }) {
+  useThemed();
   return (
     <View style={styles.successWrap}>
       <View style={styles.successBadge}>
         <CheckIcon size={30} color={color.accentFg} strokeWidth={3} />
       </View>
-      <Text style={styles.successTitle}>History imported</Text>
+      <Text style={styles.successTitle}>{t('import.done')}</Text>
       <Text style={styles.successStats}>
-        {result.workouts_created} workouts · {result.exercises_created} exercises
-        · {result.sets_imported} sets
+        {t('import.doneStats', { workouts: result.workouts_created, exercises: result.exercises_created, sets: result.sets_imported })}
       </Text>
       {result.rows_skipped > 0 && (
         <Text style={styles.successSkipped}>
-          {result.rows_skipped} rows skipped
+          {t('import.rowsSkipped', { count: result.rows_skipped })}
         </Text>
       )}
       {result.warnings.map((w) => (
@@ -911,7 +942,7 @@ function SuccessState({
       {picks && (
         <>
           <RoutinesCard picks={picks} />
-          <Text style={styles.routinesFootnote}>You can save more later from History.</Text>
+          <Text style={styles.routinesFootnote}>{t('import.footnote')}</Text>
         </>
       )}
     </View>
@@ -925,6 +956,7 @@ function ErrorState({
   message: string;
   onRetry: () => void;
 }) {
+  useThemed();
   return (
     <View style={styles.pickWrap}>
       <View style={styles.errorBanner}>
@@ -937,9 +969,9 @@ function ErrorState({
           pressed && styles.retryBtnPressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Try again"
+        accessibilityLabel={t('import.tryAgain')}
       >
-        <Text style={styles.retryBtnText}>Try again</Text>
+        <Text style={styles.retryBtnText}>{t('import.tryAgain')}</Text>
       </Pressable>
     </View>
   );
@@ -947,575 +979,574 @@ function ErrorState({
 
 // --- Styles ---------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
 
-  // Header
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  backBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backBtnPressed: { opacity: 0.7 },
-  backBtnDisabled: { opacity: 0.5 },
-  headerSpacer: {
-    width: 30,
-    height: 30,
-  },
-  title: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
+    // Header
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    backBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backBtnPressed: { opacity: 0.7 },
+    backBtnDisabled: { opacity: 0.5 },
+    headerSpacer: {
+      width: 30,
+      height: 30,
+    },
+    title: {
+      flex: 1,
+      textAlign: 'center',
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
 
-  // Scroll
-  scrollContent: {
-    paddingHorizontal: 16,
-    flexGrow: 1,
-  },
+    // Scroll
+    scrollContent: {
+      paddingHorizontal: 16,
+      flexGrow: 1,
+    },
 
-  // --- File pick state ---
-  pickWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  dropzone: {
-    alignSelf: 'stretch',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    paddingTop: 28,
-    paddingBottom: 32,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    backgroundColor: color.surface1,
-    marginTop: 8,
-  },
-  dropzoneIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 15,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  dropzoneTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.36,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  dropzoneSub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    color: color.text2,
-    lineHeight: 21,
-    maxWidth: 280,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  chooseBtn: {
-    height: 50,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 22,
-  },
-  checklistLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-    marginTop: 22,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-    paddingLeft: 2,
-  },
-  checklistCard: {
-    alignSelf: 'stretch',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 14,
-    gap: 12,
-  },
-  checklistRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  checklistText: {
-    flex: 1,
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    color: color.text2,
-    lineHeight: 20,
-  },
-  smallPrint: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 22,
-    lineHeight: 18,
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-  smallPrintStrong: {
-    color: color.text2,
-    fontFamily: font.monoSemi,
-    fontWeight: '600',
-  },
+    // --- File pick state ---
+    pickWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    dropzone: {
+      alignSelf: 'stretch',
+      borderRadius: 20,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      paddingTop: 28,
+      paddingBottom: 32,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      backgroundColor: color.surface1,
+      marginTop: 8,
+    },
+    dropzoneIconWrap: {
+      width: 60,
+      height: 60,
+      borderRadius: 15,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 14,
+    },
+    dropzoneTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 18,
+      fontWeight: '700',
+      letterSpacing: -0.36,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    dropzoneSub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      color: color.text2,
+      lineHeight: 21,
+      maxWidth: 280,
+      marginTop: 8,
+      textAlign: 'center',
+    },
+    chooseBtn: {
+      height: 50,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      marginTop: 22,
+    },
+    checklistLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      marginTop: 22,
+      marginBottom: 8,
+      alignSelf: 'flex-start',
+      paddingLeft: 2,
+    },
+    checklistCard: {
+      alignSelf: 'stretch',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: 14,
+      gap: 12,
+    },
+    checklistRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
+    checklistText: {
+      flex: 1,
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      color: color.text2,
+      lineHeight: 20,
+    },
+    smallPrint: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 22,
+      lineHeight: 18,
+      textAlign: 'center',
+      paddingHorizontal: 8,
+    },
+    smallPrintStrong: {
+      color: color.text2,
+      fontFamily: font.monoSemi,
+      fontWeight: '600',
+    },
 
-  // Primary button (shared shell)
-  primaryBtn: {
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  primaryBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
+    // Primary button (shared shell)
+    primaryBtn: {
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+    },
+    primaryBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
 
-  // --- Preview state ---
-  previewWrap: { flexDirection: 'column' },
-  label: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-    paddingLeft: 2,
-  },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  fileName: {
-    flex: 1,
-    fontFamily: font.monoRegular,
-    fontSize: 14,
-    color: color.text1,
-  },
-  changeBtn: {
-    height: 30,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  changeBtnPressed: { borderColor: color.text3 },
-  changeBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: color.text2,
-  },
-  parseHint: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 18,
-    textAlign: 'center',
-  },
-  summaryCard: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 22,
-    gap: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'flex-start',
-    gap: 4,
-  },
-  statLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 10,
-    letterSpacing: 1.0,
-    color: color.text3,
-    textTransform: 'uppercase',
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 22,
-    fontWeight: '600',
-    letterSpacing: -0.44,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
-  cardioSkip: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-  },
-  unitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  firstLabel: { marginTop: 16 },
-  previewList: { flexDirection: 'column', gap: 8 },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  previewName: {
-    flex: 1,
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    fontWeight: '500',
-    color: color.text1,
-    paddingRight: 10,
-  },
-  previewCount: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  importBtn: {
-    height: 54,
-    borderRadius: 13,
-    marginTop: 22,
-    alignSelf: 'stretch',
-  },
-  importBtnDisabled: {
-    opacity: 0.4,
-  },
-  importBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.16,
-    color: color.accentFg,
-  },
+    // --- Preview state ---
+    previewWrap: { flexDirection: 'column' },
+    label: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+      marginBottom: 8,
+      paddingLeft: 2,
+    },
+    fileRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    fileName: {
+      flex: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 14,
+      color: color.text1,
+    },
+    changeBtn: {
+      height: 30,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    changeBtnPressed: { borderColor: color.text3 },
+    changeBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: color.text2,
+    },
+    parseHint: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 18,
+      textAlign: 'center',
+    },
+    summaryCard: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 22,
+      gap: 12,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    statCell: {
+      flex: 1,
+      alignItems: 'flex-start',
+      gap: 4,
+    },
+    statLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 10,
+      letterSpacing: 1.0,
+      color: color.text3,
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 22,
+      fontWeight: '600',
+      letterSpacing: -0.44,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
+    cardioSkip: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+    },
+    unitRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    firstLabel: { marginTop: 16 },
+    previewList: { flexDirection: 'column', gap: 8 },
+    previewRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    previewName: {
+      flex: 1,
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      fontWeight: '500',
+      color: color.text1,
+      paddingRight: 10,
+    },
+    previewCount: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    importBtn: {
+      height: 54,
+      borderRadius: 13,
+      marginTop: 22,
+      alignSelf: 'stretch',
+    },
+    importBtnDisabled: {
+      opacity: 0.4,
+    },
+    importBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: -0.16,
+      color: color.accentFg,
+    },
 
-  // --- Progress state ---
-  progressWrap: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  ring: {
-    width: 118,
-    height: 118,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringArc: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 118,
-    height: 118,
-  },
-  ringCenter: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringPct: {
-    fontFamily: font.monoBold,
-    fontSize: 26,
-    fontWeight: '700',
-    color: color.accent,
-    fontVariant: ['tabular-nums'],
-  },
-  progressCaption: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 16,
-    textAlign: 'center',
-  },
+    // --- Progress state ---
+    progressWrap: {
+      flex: 1,
+      alignItems: 'center',
+      paddingTop: 60,
+    },
+    ring: {
+      width: 118,
+      height: 118,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ringArc: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: 118,
+      height: 118,
+    },
+    ringCenter: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ringPct: {
+      fontFamily: font.monoBold,
+      fontSize: 26,
+      fontWeight: '700',
+      color: color.accent,
+      fontVariant: ['tabular-nums'],
+    },
+    progressCaption: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 16,
+      textAlign: 'center',
+    },
 
-  // --- Success state ---
-  successWrap: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  successBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 17,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: color.accent,
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: 10 },
-      },
-      android: { elevation: 12 },
-      default: {},
-    }),
-  },
-  successTitle: {
-    fontFamily: font.displayBold,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.48,
-    color: color.text1,
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  successStats: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text2,
-    marginTop: 8,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  successSkipped: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    marginTop: 4,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  // --- Routines from imported history (board 12a) ---
-  routinesCard: {
-    alignSelf: 'stretch',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 28,
-  },
-  routinesLabel: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54, // 0.14em
-    color: color.text3,
-  },
-  routinesHeading: {
-    fontFamily: font.titleSemi,
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.4,
-    color: color.text1,
-    marginTop: 8,
-  },
-  routinesBody: {
-    fontFamily: font.bodyRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: color.text2,
-    marginTop: 6,
-  },
-  routinesListHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 28,
-    marginTop: 14,
-    paddingHorizontal: 4,
-  },
-  routinesListHeadText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.1, // 0.1em
-    color: color.text3,
-  },
-  routinesListHeadLeft: { flex: 1 },
-  // The list bleeds 8dp past the card padding so a selected row's tint reads as a
-  // row rather than as a box inside a box.
-  routinesList: { marginHorizontal: -8, gap: 2 },
-  candidateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 56,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  candidateText: { flex: 1, minWidth: 0 },
-  candidateName: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: -0.15,
-    color: color.text1,
-  },
-  candidateMeta: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 0.66, // 0.06em
-    color: color.text3,
-    marginTop: 2,
-    fontVariant: ['tabular-nums'],
-  },
-  candidateDate: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    fontVariant: ['tabular-nums'],
-  },
-  seenOnceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  seenOnceChevron: { width: 24, alignItems: 'center' },
-  seenOnceText: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    letterSpacing: 0.92, // 0.08em
-    color: color.text2,
-  },
-  routinesFootnote: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-    textAlign: 'center',
-    marginTop: 14,
-  },
+    // --- Success state ---
+    successWrap: {
+      flex: 1,
+      alignItems: 'center',
+      paddingTop: 60,
+    },
+    successBadge: {
+      width: 60,
+      height: 60,
+      borderRadius: 17,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Platform.select({
+        ios: {
+          shadowColor: color.accent,
+          shadowOpacity: 0.5,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 10 },
+        },
+        android: { elevation: 12 },
+        default: {},
+      }),
+    },
+    successTitle: {
+      fontFamily: font.displayBold,
+      fontSize: 24,
+      fontWeight: '700',
+      letterSpacing: -0.48,
+      color: color.text1,
+      marginTop: 16,
+      textAlign: 'center',
+    },
+    successStats: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text2,
+      marginTop: 8,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    successSkipped: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      marginTop: 4,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    // --- Routines from imported history (board 12a) ---
+    routinesCard: {
+      alignSelf: 'stretch',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 28,
+    },
+    routinesLabel: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54, // 0.14em
+      color: color.text3,
+    },
+    routinesHeading: {
+      fontFamily: font.titleSemi,
+      fontSize: 20,
+      fontWeight: '600',
+      letterSpacing: -0.4,
+      color: color.text1,
+      marginTop: 8,
+    },
+    routinesBody: {
+      fontFamily: font.bodyRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: color.text2,
+      marginTop: 6,
+    },
+    routinesListHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 28,
+      marginTop: 14,
+      paddingHorizontal: 4,
+    },
+    routinesListHeadText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.1, // 0.1em
+      color: color.text3,
+    },
+    routinesListHeadLeft: { flex: 1 },
+    // The list bleeds 8dp past the card padding so a selected row's tint reads as a
+    // row rather than as a box inside a box.
+    routinesList: { marginHorizontal: -8, gap: 2 },
+    candidateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: 56,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+    },
+    candidateText: { flex: 1, minWidth: 0 },
+    candidateName: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      fontWeight: '600',
+      letterSpacing: -0.15,
+      color: color.text1,
+    },
+    candidateMeta: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 0.66, // 0.06em
+      color: color.text3,
+      marginTop: 2,
+      fontVariant: ['tabular-nums'],
+    },
+    candidateDate: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      fontVariant: ['tabular-nums'],
+    },
+    seenOnceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: 48,
+      paddingHorizontal: 12,
+    },
+    seenOnceChevron: { width: 24, alignItems: 'center' },
+    seenOnceText: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      letterSpacing: 0.92, // 0.08em
+      color: color.text2,
+    },
+    routinesFootnote: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+      textAlign: 'center',
+      marginTop: 14,
+    },
 
-  // --- Pinned success footer ---
-  successFooter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingTop: 36,
-    paddingHorizontal: 16,
-  },
-  routinesCta: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  routinesCtaText: {
-    fontFamily: font.displayBold,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.15,
-    color: color.accentFg,
-  },
-  skipBtn: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  skipBtnText: {
-    fontFamily: font.bodyMedium,
-    fontSize: 14,
-    fontWeight: '500',
-    color: color.text2,
-  },
-  failureNote: {
-    fontFamily: font.monoRegular,
-    fontSize: 11.5,
-    color: color.warning,
-    textAlign: 'center',
-    marginTop: 8,
-  },
+    // --- Pinned success footer ---
+    successFooter: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingTop: 36,
+      paddingHorizontal: 16,
+    },
+    routinesCta: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    routinesCtaText: {
+      fontFamily: font.displayBold,
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.15,
+      color: color.accentFg,
+    },
+    skipBtn: {
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    skipBtnText: {
+      fontFamily: font.bodyMedium,
+      fontSize: 14,
+      fontWeight: '500',
+      color: color.text2,
+    },
+    failureNote: {
+      fontFamily: font.monoRegular,
+      fontSize: 11.5,
+      color: color.warning,
+      textAlign: 'center',
+      marginTop: 8,
+    },
 
-  // --- Error banner + retry ---
-  errorBanner: {
-    alignSelf: 'stretch',
-    backgroundColor: 'rgba(255,77,77,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,77,77,0.28)',
-    borderRadius: 11,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 22,
-  },
-  errorText: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.error,
-  },
-  retryBtn: {
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    alignSelf: 'center',
-  },
-  retryBtnPressed: { borderColor: color.text3 },
-  retryBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    fontWeight: '600',
-    color: color.text1,
-  },
-});
+    // --- Error banner + retry ---
+    errorBanner: {
+      alignSelf: 'stretch',
+      backgroundColor: withAlpha(color.error, 0.08),
+      borderWidth: 1,
+      borderColor: withAlpha(color.error, 0.28),
+      borderRadius: 11,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginTop: 22,
+    },
+    errorText: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.error,
+    },
+    retryBtn: {
+      height: 44,
+      paddingHorizontal: 18,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      alignSelf: 'center',
+    },
+    retryBtnPressed: { borderColor: color.text3 },
+    retryBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      fontWeight: '600',
+      color: color.text1,
+    },
+  }),
+);

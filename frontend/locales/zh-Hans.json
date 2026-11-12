@@ -1,0 +1,4 @@
+{
+  "NSHealthShareUsageDescription": "当 Apple Watch 记录心率时，Ischys 会在训练期间读取你的心率；当你选择从健康中填入体重时，Ischys 会读取你的体重。",
+  "NSHealthUpdateUsageDescription": "Ischys 会将已完成的训练保存到 Apple 健康，以便在健身中显示。"
+}

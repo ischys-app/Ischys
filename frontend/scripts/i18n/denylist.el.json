@@ -1,0 +1,526 @@
+{
+  "_comment": "Deny-list for Greek output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only. Words starting with an allow stem are never flagged. Matching is lowercase and ignores accents (tonos, acutes, final sigma), so write stems without accents. Flagged lines stay English unless the review sets \"denyCleared\": true. Slur and crude entries have no English counterpart and are always flagged. «στρατιωτικό πρες» (military press) is a gym name, so the military stem is only flagged when the English has no military / soldier / army word, as with «армейский» for ru.",
+  "allow": [
+    {
+      "stem": "στρατηγικ",
+      "why": "strategy, not army"
+    },
+    {
+      "stem": "οπλισμ",
+      "why": "reinforcement / equipment sense"
+    }
+  ],
+  "deny": [
+    {
+      "stem": "ελλαδ",
+      "en": [
+        "greece",
+        "greek"
+      ]
+    },
+    {
+      "stem": "ελλην",
+      "en": [
+        "greece",
+        "greek"
+      ]
+    },
+    {
+      "stem": "ελληνικ",
+      "en": [
+        "greece",
+        "greek"
+      ]
+    },
+    {
+      "stem": "ρωσ",
+      "en": [
+        "russia"
+      ]
+    },
+    {
+      "stem": "ουκραν",
+      "en": [
+        "ukrain"
+      ]
+    },
+    {
+      "stem": "τουρκ",
+      "en": [
+        "turk"
+      ]
+    },
+    {
+      "stem": "κυπρ",
+      "en": [
+        "cyprus",
+        "cypriot"
+      ]
+    },
+    {
+      "stem": "αλβαν",
+      "en": [
+        "alban"
+      ]
+    },
+    {
+      "stem": "μακεδον",
+      "en": [
+        "macedon"
+      ]
+    },
+    {
+      "stem": "βουλγαρ",
+      "en": [
+        "bulgaria"
+      ]
+    },
+    {
+      "stem": "σερβ",
+      "en": [
+        "serb"
+      ]
+    },
+    {
+      "stem": "κοσοβ",
+      "en": [
+        "kosovo"
+      ]
+    },
+    {
+      "stem": "ισραηλ",
+      "en": [
+        "israel"
+      ]
+    },
+    {
+      "stem": "παλαιστιν",
+      "en": [
+        "palestin"
+      ]
+    },
+    {
+      "stem": "αμερικ",
+      "en": [
+        "america"
+      ]
+    },
+    {
+      "stem": "ηπα",
+      "en": [
+        "usa"
+      ],
+      "word": true
+    },
+    {
+      "stem": "αγγλ",
+      "en": [
+        "england",
+        "english"
+      ]
+    },
+    {
+      "stem": "βρετανι",
+      "en": [
+        "britain",
+        "british"
+      ]
+    },
+    {
+      "stem": "γαλλ",
+      "en": [
+        "france",
+        "french"
+      ]
+    },
+    {
+      "stem": "γερμαν",
+      "en": [
+        "german"
+      ]
+    },
+    {
+      "stem": "ιταλ",
+      "en": [
+        "ital"
+      ]
+    },
+    {
+      "stem": "ισπαν",
+      "en": [
+        "spain",
+        "spanish"
+      ]
+    },
+    {
+      "stem": "κινα",
+      "en": [
+        "china"
+      ]
+    },
+    {
+      "stem": "κινεζ",
+      "en": [
+        "china",
+        "chinese"
+      ]
+    },
+    {
+      "stem": "ιαπων",
+      "en": [
+        "japan"
+      ]
+    },
+    {
+      "stem": "ινδι",
+      "en": [
+        "india"
+      ]
+    },
+    {
+      "stem": "αιγυπτ",
+      "en": [
+        "egypt"
+      ]
+    },
+    {
+      "stem": "συρι",
+      "en": [
+        "syria"
+      ]
+    },
+    {
+      "stem": "ιραν",
+      "en": [
+        "iran"
+      ]
+    },
+    {
+      "stem": "ιρακ",
+      "en": [
+        "iraq"
+      ]
+    },
+    {
+      "stem": "ευρωπ",
+      "en": [
+        "europe"
+      ]
+    },
+    {
+      "stem": "βαλκαν",
+      "en": [
+        "balkan"
+      ]
+    },
+    {
+      "stem": "εβραι",
+      "en": [
+        "jew",
+        "hebrew"
+      ]
+    },
+    {
+      "stem": "μουσουλμαν",
+      "en": [
+        "muslim"
+      ]
+    },
+    {
+      "stem": "χριστιαν",
+      "en": [
+        "christian"
+      ]
+    },
+    {
+      "stem": "θρησκ",
+      "en": [
+        "religio"
+      ]
+    },
+    {
+      "stem": "πολιτικ",
+      "en": [
+        "politic"
+      ]
+    },
+    {
+      "stem": "εκλογ",
+      "en": [
+        "election"
+      ]
+    },
+    {
+      "stem": "κυβερνη",
+      "en": [
+        "government"
+      ]
+    },
+    {
+      "stem": "προεδρ",
+      "en": [
+        "president"
+      ]
+    },
+    {
+      "stem": "βουλη",
+      "en": [
+        "parliament"
+      ]
+    },
+    {
+      "stem": "δημοκρατ",
+      "en": [
+        "democra"
+      ]
+    },
+    {
+      "stem": "φασισ",
+      "en": [
+        "fascis"
+      ]
+    },
+    {
+      "stem": "ναζι",
+      "en": [
+        "nazi"
+      ]
+    },
+    {
+      "stem": "κομμουνισ",
+      "en": [
+        "communis"
+      ]
+    },
+    {
+      "stem": "σοσιαλισ",
+      "en": [
+        "socialis"
+      ]
+    },
+    {
+      "stem": "ακροδεξ",
+      "en": [
+        "far right"
+      ]
+    },
+    {
+      "stem": "εθνικ",
+      "en": [
+        "national"
+      ]
+    },
+    {
+      "stem": "πατριδ",
+      "en": [
+        "homeland"
+      ]
+    },
+    {
+      "stem": "σημαια",
+      "en": [
+        "flag"
+      ]
+    },
+    {
+      "stem": "σημαιε",
+      "en": [
+        "flag"
+      ]
+    },
+    {
+      "stem": "υμνο",
+      "en": [
+        "anthem"
+      ]
+    },
+    {
+      "stem": "πολεμ",
+      "en": [
+        "war"
+      ]
+    },
+    {
+      "stem": "στρατιωτ",
+      "en": [
+        "military",
+        "soldier",
+        "army"
+      ]
+    },
+    {
+      "stem": "στρατο",
+      "en": [
+        "army"
+      ]
+    },
+    {
+      "stem": "οπλο",
+      "en": [
+        "weapon",
+        "arm"
+      ]
+    },
+    {
+      "stem": "οπλα",
+      "en": [
+        "weapon"
+      ]
+    },
+    {
+      "stem": "πυροβολ",
+      "en": [
+        "shoot",
+        "gun"
+      ]
+    },
+    {
+      "stem": "βομβ",
+      "en": [
+        "bomb"
+      ]
+    },
+    {
+      "stem": "τρομοκρατ",
+      "en": [
+        "terror"
+      ]
+    },
+    {
+      "stem": "εισβολ",
+      "en": [
+        "invasion",
+        "invade"
+      ]
+    },
+    {
+      "stem": "προσφυγ",
+      "en": [
+        "refugee"
+      ]
+    },
+    {
+      "stem": "μεταναστ",
+      "en": [
+        "immigra",
+        "migra"
+      ]
+    },
+    {
+      "stem": "επιστρατευ",
+      "en": [
+        "mobiliz"
+      ]
+    },
+    {
+      "stem": "γαμω",
+      "en": []
+    },
+    {
+      "stem": "γαμη",
+      "en": []
+    },
+    {
+      "stem": "γαμι",
+      "en": []
+    },
+    {
+      "stem": "πουτσ",
+      "en": []
+    },
+    {
+      "stem": "πουστ",
+      "en": []
+    },
+    {
+      "stem": "σκατ",
+      "en": []
+    },
+    {
+      "stem": "κωλο",
+      "en": []
+    },
+    {
+      "stem": "κωλε",
+      "en": []
+    },
+    {
+      "stem": "πορν",
+      "en": []
+    },
+    {
+      "stem": "σεξ",
+      "en": []
+    },
+    {
+      "stem": "πουτανα",
+      "en": []
+    },
+    {
+      "stem": "ψωλ",
+      "en": []
+    },
+    {
+      "stem": "αρχιδ",
+      "en": []
+    },
+    {
+      "stem": "καριολ",
+      "en": []
+    },
+    {
+      "stem": "χεζ",
+      "en": []
+    },
+    {
+      "stem": "μουνι",
+      "en": []
+    },
+    {
+      "stem": "νεγρ",
+      "en": []
+    },
+    {
+      "stem": "τσιγγαν",
+      "en": []
+    },
+    {
+      "stem": "γουρουν",
+      "en": []
+    },
+    {
+      "stem": "βλακ",
+      "en": []
+    },
+    {
+      "stem": "ηλιθι",
+      "en": []
+    },
+    {
+      "stem": "μαλακας",
+      "en": [],
+      "word": true
+    },
+    {
+      "stem": "σκοπια",
+      "en": [],
+      "word": true
+    },
+    {
+      "stem": "ιμια",
+      "en": []
+    },
+    {
+      "stem": "κωνσταντινουπολ",
+      "en": []
+    },
+    {
+      "stem": "γυφτ",
+      "en": []
+    },
+    {
+      "stem": "αραπη",
+      "en": []
+    }
+  ]
+}

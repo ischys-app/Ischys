@@ -281,3 +281,17 @@ test('the preview counts cardio rows as skipped and leaves them out of the total
   assert.equal(s.sets, 2);
   assert.deepEqual(s.firstWorkouts, [{ name: 'Gym', count: 2 }]);
 });
+
+test('CSV export writes the stored English names under zh-Hans too (#136)', async () => {
+  const { setLang, getLang } = await import('../i18n/current.ts');
+  const before = getLang();
+  const workouts = ratedWorkout([{ position: 0, type: 'normal', weight: 60, reps: 8 }]);
+  try {
+    setLang('en');
+    const en = toWorkoutCsv(workouts);
+    setLang('zh-Hans');
+    assert.equal(toWorkoutCsv(workouts), en);
+  } finally {
+    setLang(before);
+  }
+});

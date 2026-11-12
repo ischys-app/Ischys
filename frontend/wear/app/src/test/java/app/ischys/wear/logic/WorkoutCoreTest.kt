@@ -28,6 +28,7 @@ class WorkoutCoreTest {
     override fun queueEnd() { calls += "queueEnd" }
     override fun requestState() { calls += "requestState" }
     override fun persistTheme(id: String) { calls += "theme:$id" }
+    override fun persistOff(profileName: String?) { calls += "off:${profileName ?: "-"}" }
   }
 
   private val t0 = 1_760_000_100_000L
@@ -67,6 +68,130 @@ class WorkoutCoreTest {
   private fun startSession(now: Long = t0) {
     host.sessionRunning = true
     core.sessionStarted(now, now)
+  }
+
+  // Another profile active on the phone
+
+  @Test fun anOffPushShowsTheOffScreenWithTheProfileName() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+    assertEquals("Maria", core.ui.profileName)
+  }
+
+  @Test fun noSessionMayStartWhileOff() {
+    assertTrue(core.sessionStartAllowed)
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    assertFalse(core.sessionStartAllowed)
+    core.apply(PhoneState(screen = WatchScreen.START), t0 + 1_000)
+    assertTrue(core.sessionStartAllowed)
+  }
+
+  @Test fun anOffPushIsRememberedAndAnOnPushForgetsIt() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    // Repeated, it is not written again.
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0 + 1_000)
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Nik"), t0 + 2_000)
+    core.apply(PhoneState(screen = WatchScreen.START), t0 + 3_000)
+    core.apply(session(), t0 + 4_000)
+    assertEquals(listOf("off:Maria", "off:Nik", "off:-"), host.calls.filter { it.startsWith("off:") })
+  }
+
+  @Test fun aRelaunchWhileOffOpensOffWithNoSessionAllowed() {
+    // The phone is out of reach and pushes nothing: the remembered state stands.
+    val relaunched = WorkoutCore(FakeHost(), offFor = "Maria")
+    assertEquals(WatchScreen.OFF, relaunched.ui.screen)
+    assertEquals("Maria", relaunched.ui.profileName)
+    assertFalse(relaunched.sessionStartAllowed)
+  }
+
+  @Test fun aRelaunchOffForABlankNameStillOpensOff() {
+    val relaunched = WorkoutCore(FakeHost(), offFor = "")
+    assertEquals(WatchScreen.OFF, relaunched.ui.screen)
+    assertFalse(relaunched.sessionStartAllowed)
+  }
+
+  @Test fun aRelaunchWithNothingRememberedLetsTheOwnerStartOffline() {
+    val relaunched = WorkoutCore(FakeHost().apply { phoneReachable = false })
+    assertEquals(WatchScreen.START, relaunched.ui.screen)
+    assertTrue(relaunched.sessionStartAllowed)
+  }
+
+  @Test fun anOffPushEndsARunningSessionAsADiscardAndStaysOff() {
+    startSession(t0)
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0 + 5_000)
+    assertTrue("discardSession" in host.calls)
+    assertFalse("endSession" in host.calls)
+    assertFalse(host.sessionRunning)
+    // The session reporting its end does not take the Watch to Start.
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+    assertEquals("Maria", core.ui.profileName)
+    assertEquals(0, core.ui.heartRate)
+    assertFalse(core.needsTicking)
+    assertFalse(core.sessionStartAllowed)
+  }
+
+  @Test fun aSessionThatStartsWhileOffIsDiscardedNotEntered() {
+    // The off push landed while the session was still starting.
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    host.calls.clear()
+    startSession(t0 + 1_000)
+    assertEquals(listOf("discardSession"), host.calls.filter { it.endsWith("Session") })
+    assertFalse("requestState" in host.calls)
+    assertFalse(host.sessionRunning)
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+    assertEquals("Maria", core.ui.profileName)
+    assertFalse(core.needsTicking)
+  }
+
+  @Test fun theOffScreenAppearingAsksThePhoneForState() {
+    val h = FakeHost()
+    val relaunched = WorkoutCore(h, offFor = "Maria").also { h.core = it }
+    relaunched.offAppeared()
+    assertEquals(listOf("requestState"), h.calls)
+    // And the answer, the owner back, lands on Start.
+    relaunched.apply(PhoneState(screen = WatchScreen.START), t0)
+    assertEquals(WatchScreen.START, relaunched.ui.screen)
+  }
+
+  @Test fun anOffPushWithNoSessionEndsNothing() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    assertFalse("discardSession" in host.calls)
+    assertFalse("endSession" in host.calls)
+  }
+
+  @Test fun aSessionEndingWhileOffLeavesTheWatchOff() {
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    core.sessionEnded()
+    assertEquals(WatchScreen.OFF, core.ui.screen)
+  }
+
+  @Test fun anOnPushAfterOffReturnsToStartEvenWithASessionRunning() {
+    // A session the off push could not end (one still starting, say).
+    core.apply(PhoneState(screen = WatchScreen.OFF, profileName = "Maria"), t0)
+    host.sessionRunning = true
+    val routines = listOf(RoutineItem("r1", "Push Day", "PD", 5))
+    core.apply(PhoneState(screen = WatchScreen.START, routines = routines), t0 + 1_000)
+    assertEquals(WatchScreen.START, core.ui.screen)
+    assertEquals("", core.ui.profileName)
+    assertEquals(routines, core.ui.routines)
+    assertTrue(core.sessionStartAllowed)
+  }
+
+  @Test fun aStartPushStillHoldsTheSessionScreenWhileRecording() {
+    startSession(t0)
+    val routines = listOf(RoutineItem("r1", "Push Day", "PD", 5))
+    core.apply(PhoneState(screen = WatchScreen.START, routines = routines), t0 + 1_000)
+    assertEquals(WatchScreen.SESSION, core.ui.screen)
+    assertEquals(routines, core.ui.routines)
+  }
+
+  @Test fun theOwnerComingBackAfterARelaunchWhileOffReturnsToStart() {
+    val h = FakeHost()
+    val relaunched = WorkoutCore(h, offFor = "Maria").also { h.core = it }
+    relaunched.apply(PhoneState(screen = WatchScreen.START), t0)
+    assertEquals(WatchScreen.START, relaunched.ui.screen)
+    assertTrue(relaunched.sessionStartAllowed)
+    assertEquals(listOf("off:-"), h.calls.filter { it.startsWith("off:") })
   }
 
   // Mirroring

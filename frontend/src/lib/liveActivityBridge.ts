@@ -25,10 +25,24 @@ import type { WorkoutOut } from '../api/types';
 import { getWorkout, listWorkouts, patchSet } from '../api/workouts';
 import { carryFor, completionPatch, resolveSet } from '../components/workout/setCarry';
 import { type Unit, weightText } from '../domain/units';
+import { liveActivityProfileFor } from '../domain/profiles';
+import { activeProfile, onProfileSwitch, profileCount } from './activeProfile';
+import { restAfterSet } from '../domain/supersets';
 import { setProgress } from './liveActivityProgress';
 import { buildLiveActivityState } from './liveActivityState';
 import { getThemeId } from './themePref';
 import { loadWeightUnit } from './weightUnit';
+
+/**
+ * Who the card names: the active profile's first name and initials, but only
+ * when the phone has two or more profiles. With one, undefined, and the card is
+ * exactly what it always was.
+ */
+export function liveActivityProfile(): LiveActivity.LiveActivityProfile | undefined {
+  if (profileCount() <= 1) return undefined;
+  const p = activeProfile();
+  return liveActivityProfileFor(p);
+}
 
 /** Rest lives only in the workout screen's state, so it is relayed, not applied. */
 export type RestAction = { type: 'skip' } | { type: 'adjust'; seconds: number };
@@ -73,8 +87,10 @@ const forSnapshot = (w: WorkoutOut, unit: Unit) =>
     // Only used to look up the card's thumbnail artwork.
     exerciseCatalogId: we.exercise.id,
     rest: we.rest_seconds,
+    supersetGroup: we.superset_group ?? null,
     sets: we.sets.map((s) => ({
       id: s.id,
+      type: s.type,
       weight: weightText(s.weight, unit),
       reps: numStr(s.reps),
       done: s.done,
@@ -84,8 +100,9 @@ const forSnapshot = (w: WorkoutOut, unit: Unit) =>
 /**
  * Marks a set done, filling in the carried-forward numbers first via the same
  * `completionPatch` the in-app ✓ uses, so a set completed from the Lock Screen
- * logs exactly what the app would have logged. Returns the rest to start, or
- * null if the set was already done (a queued tap can outlive a resume).
+ * logs exactly what the app would have logged. Returns the rest to start (0
+ * between superset partners, as the in-app ✓), or null if the set was already
+ * done (a queued tap can outlive a resume).
  */
 async function completeSet(
   w: WorkoutOut,
@@ -111,7 +128,17 @@ async function completeSet(
   if (patch.weight !== undefined) set.weight = patch.weight;
   if (patch.reps !== undefined) set.reps = patch.reps;
 
-  return { seconds: we.rest_seconds, exerciseId: we.id };
+  const decision = restAfterSet(
+    w.exercises.map((e) => ({
+      id: e.id,
+      supersetGroup: e.superset_group ?? null,
+      rest: e.rest_seconds,
+      sets: e.sets.map((x) => ({ id: x.id, type: x.type, done: x.done })),
+    })),
+    we.id,
+    setId,
+  );
+  return { seconds: decision.startRest ? decision.seconds : 0, exerciseId: we.id };
 }
 
 /** Re-push the card from server truth, refilling `next`. */
@@ -149,6 +176,14 @@ try {
 } catch {
   // No native module (web, tests): there is no card.
 }
+
+// The launch reconcile asks the launch profile's file whether its workout is
+// still running. After a switch that file is not `db` any more, so a card left
+// from the last run is not this profile's to end (#117). `running` stays: it
+// guards an in-flight drain, and no workout is running across a switch.
+onProfileSwitch(() => {
+  cardFromLastRun = false;
+});
 
 /**
  * Squares the card with reality once, at launch.
@@ -213,7 +248,7 @@ export async function applyPendingCardActions(): Promise<void> {
 
     if (rest == null) return; // every tap was stale
     changeListeners.forEach((l) => l(rest));
-    await pushCard(workout, rest.seconds);
+    await pushCard(workout, rest.seconds > 0 ? rest.seconds : null);
   } catch {
     // The queue is already drained. Losing a tap beats applying it twice, and
     // the screen refetches from the server whenever it regains focus.

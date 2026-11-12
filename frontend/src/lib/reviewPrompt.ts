@@ -12,7 +12,7 @@
  * best-effort: a single try/catch swallows any failure so a review nudge can
  * never break the Summary screen it's fired from.
  */
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './secureStore';
 import * as StoreReview from 'expo-store-review';
 
 /** Running count of genuinely-finished workouts. */

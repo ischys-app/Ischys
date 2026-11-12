@@ -8,6 +8,7 @@
  * ref to get a PNG file URI, then hand it to expo-media-library (save) or
  * expo-sharing (share).
  */
+import { t } from '../i18n';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -26,15 +27,17 @@ import * as Sharing from 'expo-sharing';
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import type { WorkoutSummaryOut } from '../api/types';
-import { type Unit, volumeText, weightText } from '../domain/units';
-import { fmtDuration } from '../lib/format';
+import { type Unit, volumeText, weightLabel } from '../domain/units';
+import { fmtCardDay, fmtDuration } from '../lib/format';
 import { parseServerDate } from '../lib/serverTime';
 import { useWeightUnit } from '../lib/weightUnit';
-import { accentA, color, font } from '../theme/tokens';
+import { accentA, byScheme, color, font, themed, withAlpha } from '../theme/tokens';
 import { DraggableSheet } from './DraggableSheet';
 import { PressableScale } from './PressableScale';
 import { StarIcon } from './icons';
 import { Wordmark } from './Wordmark';
+import { useThemed } from '../theme/ThemeProvider';
+import { workoutLabel } from '../i18n/defaultLabels';
 
 type Layout = 'compact' | 'standard' | 'detailed';
 
@@ -46,16 +49,11 @@ type Props = {
 
 const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
 
-const MONTH_UPPER = [
-  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-  'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
-];
-
 /** e.g. "7 JUL 2026" — the compact date used inside the preview card. */
 function fmtCardDate(iso: string): string {
   const d = new Date(parseServerDate(iso));
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MONTH_UPPER[d.getMonth()]} ${d.getFullYear()}`;
+  return fmtCardDay(d);
 }
 
 /**
@@ -74,11 +72,12 @@ function bestLine(
     const bb = best.weight ?? -Infinity;
     if (bw > bb) best = s;
   }
-  const w = best.weight == null ? 'BW' : weightText(best.weight, unit);
+  const w = best.weight == null ? 'BW' : weightLabel(best.weight, unit);
   return `${w} × ${best.reps ?? 0}`;
 }
 
 function DownloadIcon({ size = 16, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -94,6 +93,7 @@ function DownloadIcon({ size = 16, tint }: { size?: number; tint: string }) {
 }
 
 function ShareIcon({ size = 16, tint }: { size?: number; tint: string }) {
+  useThemed();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -109,12 +109,13 @@ function ShareIcon({ size = 16, tint }: { size?: number; tint: string }) {
 }
 
 const LAYOUTS: { key: Layout; label: string }[] = [
-  { key: 'compact', label: 'Compact' },
-  { key: 'standard', label: 'Standard' },
-  { key: 'detailed', label: 'Detailed' },
+  { key: 'compact', label: 'share.layoutCompact' },
+  { key: 'standard', label: 'share.layoutStandard' },
+  { key: 'detailed', label: 'share.layoutDetailed' },
 ];
 
 export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
+  useThemed();
   const insets = useSafeAreaInsets();
   const [layout, setLayout] = useState<Layout>('standard');
   const [busy, setBusy] = useState(false);
@@ -146,18 +147,18 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
         granted = req.granted;
       }
       if (!granted) {
-        Alert.alert('Permission needed', 'Ischys needs permission to save to Photos.');
+        Alert.alert(t('share.permTitle'), t('share.permBody'));
         return;
       }
       const uri = await capture();
       if (!uri) {
-        Alert.alert('Could not capture image', 'Please try again.');
+        Alert.alert(t('share.captureTitle'), t('share.tryAgain'));
         return;
       }
       await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Saved to Photos');
+      Alert.alert(t('share.savedTitle'));
     } catch {
-      Alert.alert('Save failed', 'Could not save to Photos.');
+      Alert.alert(t('share.saveFailedTitle'), t('share.saveFailedBody'));
     } finally {
       setBusy(false);
     }
@@ -169,17 +170,17 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
     try {
       const available = await Sharing.isAvailableAsync();
       if (!available) {
-        Alert.alert('Sharing unavailable', 'System sharing is not available on this device.');
+        Alert.alert(t('share.unavailableTitle'), t('share.unavailableBody'));
         return;
       }
       const uri = await capture();
       if (!uri) {
-        Alert.alert('Could not capture image', 'Please try again.');
+        Alert.alert(t('share.captureTitle'), t('share.tryAgain'));
         return;
       }
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: 'Share workout',
+        dialogTitle: t('share.dialogTitle'),
         UTI: 'public.png',
       });
     } catch {
@@ -200,12 +201,12 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Share workout</Text>
+        <Text style={styles.title}>{t('share.dialogTitle')}</Text>
         <Pressable
           onPress={onClose}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Close share sheet"
+          accessibilityLabel={t('share.closeLabel')}
           style={styles.closeBtn}
         >
           <Svg width={14} height={14} viewBox="0 0 24 24">
@@ -244,7 +245,7 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
                     accessibilityState={{ selected: active }}
                   >
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {l.label}
+                      {t(l.label)}
                     </Text>
                   </Pressable>
                 );
@@ -257,37 +258,37 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
                 disabled={busy}
                 style={[styles.saveBtn, busy && styles.actionDisabled]}
                 accessibilityRole="button"
-                accessibilityLabel="Save workout image to Photos"
+                accessibilityLabel={t('share.saveLabel')}
               >
                 <DownloadIcon tint={color.text1} />
-                <Text style={styles.saveBtnText}>Save image</Text>
+                <Text style={styles.saveBtnText}>{t('share.saveImage')}</Text>
               </PressableScale>
               <PressableScale
                 onPress={onShare}
                 disabled={busy}
                 style={[styles.shareBtn, busy && styles.actionDisabled]}
                 accessibilityRole="button"
-                accessibilityLabel="Share workout image"
+                accessibilityLabel={t('share.shareLabel')}
               >
                 <ShareIcon tint={color.accentFg} />
-                <Text style={styles.shareBtnText}>Share</Text>
+                <Text style={styles.shareBtnText}>{t('share.shareButton')}</Text>
               </PressableScale>
             </View>
           </>
         ) : (
           <>
             <View style={[styles.previewShot, styles.emptyPreview]}>
-              <Text style={styles.emptyText}>Nothing to share</Text>
-              <Text style={styles.emptySub}>This workout has no data yet.</Text>
+              <Text style={styles.emptyText}>{t('share.nothing')}</Text>
+              <Text style={styles.emptySub}>{t('share.nothingSub')}</Text>
             </View>
             <View style={styles.actionsRow}>
               <View style={[styles.saveBtn, styles.actionDisabled]}>
                 <DownloadIcon tint={color.text3} />
-                <Text style={[styles.saveBtnText, styles.disabledText]}>Save image</Text>
+                <Text style={[styles.saveBtnText, styles.disabledText]}>{t('share.saveImage')}</Text>
               </View>
               <View style={[styles.shareBtn, styles.actionDisabled]}>
                 <ShareIcon tint={color.text3} />
-                <Text style={[styles.shareBtnText, styles.disabledText]}>Share</Text>
+                <Text style={[styles.shareBtnText, styles.disabledText]}>{t('share.shareButton')}</Text>
               </View>
             </View>
           </>
@@ -302,6 +303,7 @@ export function ShareWorkoutSheet({ visible, summary, onClose }: Props) {
 // ---------------------------------------------------------------------------
 
 function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSummaryOut }) {
+  useThemed();
   const { workout, prs } = summary;
   const dateStr = fmtCardDate(workout.started_at);
   const duration = fmtDuration(workout.duration_seconds);
@@ -324,12 +326,12 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
 
       <View style={cardStyles.middle}>
         <Text style={[cardStyles.name, { fontSize: nameSize }]} numberOfLines={2}>
-          {workout.name}
+          {workoutLabel(workout.name)}
         </Text>
 
         {layout === 'compact' ? (
           <View style={cardStyles.compactStat}>
-            <Text style={cardStyles.compactStatLabel}>VOLUME</Text>
+            <Text style={cardStyles.compactStatLabel}>{t('share.cardVolume')}</Text>
             <Text style={cardStyles.compactStatValue}>
               {volume}
               <Text style={cardStyles.compactStatUnit}> {unit}</Text>
@@ -337,9 +339,9 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
           </View>
         ) : (
           <View style={cardStyles.statRow}>
-            <StatCell label="DURATION" value={duration} />
-            <StatCell label="VOLUME" value={volume} unit={` ${unit}`} />
-            <StatCell label="SETS" value={sets} />
+            <StatCell label={t('share.cardDuration')} value={duration} />
+            <StatCell label={t('share.cardVolume')} value={volume} unit={` ${unit}`} />
+            <StatCell label={t('share.cardSets')} value={sets} />
           </View>
         )}
 
@@ -372,7 +374,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
         <View style={cardStyles.prChipWrap}>
           <View style={cardStyles.prChip}>
             <StarIcon size={12} color={color.success} strokeWidth={2.4} />
-            <Text style={cardStyles.prChipText}>{`${prs.length} PR${prs.length === 1 ? '' : 's'}`}</Text>
+            <Text style={cardStyles.prChipText}>{t('share.prChip', { count: prs.length })}</Text>
           </View>
         </View>
       )}
@@ -381,6 +383,7 @@ function PreviewCard({ layout, summary }: { layout: Layout; summary: WorkoutSumm
 }
 
 function StatCell({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  useThemed();
   return (
     <View style={cardStyles.statCell}>
       <Text style={cardStyles.statLabel}>{label}</Text>
@@ -396,300 +399,304 @@ function StatCell({ label, value, unit }: { label: string; value: string; unit?:
 // Styles
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    maxHeight: '94%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -20 },
-    shadowOpacity: 0.8,
-    shadowRadius: 50,
-    elevation: 20,
-  },
-  grabberWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  grabber: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: color.surface3,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-  },
-  title: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    letterSpacing: -0.17,
-    color: color.text1,
-  },
-  closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  previewShot: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 22,
-    overflow: 'hidden',
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  emptyPreview: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  emptyText: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    color: color.text1,
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    color: color.text3,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-  },
-  chip: {
-    flex: 1,
-    minHeight: 38,
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: {
-    borderColor: color.accent,
-    backgroundColor: accentA(0.12),
-  },
-  chipText: {
-    fontFamily: font.titleSemi,
-    fontSize: 13,
-    fontWeight: '600',
-    color: color.text2,
-  },
-  chipTextActive: {
-    color: color.accent,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  saveBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  saveBtnText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.text1,
-    letterSpacing: -0.14,
-  },
-  shareBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: color.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  shareBtnText: {
-    fontFamily: font.displayBold,
-    fontSize: 16,
-    color: color.accentFg,
-    letterSpacing: -0.16,
-  },
-  actionDisabled: {
-    opacity: 0.5,
-  },
-  disabledText: {
-    color: color.text3,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      maxHeight: '94%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -20 },
+      shadowOpacity: 0.8,
+      shadowRadius: 50,
+      elevation: 20,
+    },
+    grabberWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    grabber: {
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: color.surface3,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+      paddingHorizontal: 18,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+    },
+    title: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      letterSpacing: -0.17,
+      color: color.text1,
+    },
+    closeBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    body: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    previewShot: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+    },
+    emptyPreview: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    emptyText: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      color: color.text1,
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      color: color.text3,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 14,
+    },
+    chip: {
+      flex: 1,
+      minHeight: 38,
+      height: 38,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipActive: {
+      borderColor: color.accent,
+      backgroundColor: accentA(0.12),
+    },
+    chipText: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      fontWeight: '600',
+      color: color.text2,
+    },
+    chipTextActive: {
+      color: color.accent,
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 14,
+    },
+    saveBtn: {
+      flex: 1,
+      height: 50,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    saveBtnText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.text1,
+      letterSpacing: -0.14,
+    },
+    shareBtn: {
+      flex: 1,
+      height: 50,
+      borderRadius: 12,
+      backgroundColor: color.accent,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    shareBtnText: {
+      fontFamily: font.displayBold,
+      fontSize: 16,
+      color: color.accentFg,
+      letterSpacing: -0.16,
+    },
+    actionDisabled: {
+      opacity: 0.5,
+    },
+    disabledText: {
+      color: color.text3,
+    },
+  }),
+);
 
-const cardStyles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#0F0F13',
-    borderRadius: 22,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-  },
-  glow: {
-    position: 'absolute',
-    top: -60,
-    right: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: accentA(0.12),
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  date: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    fontVariant: tabular,
-    letterSpacing: 0.5,
-  },
-  middle: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 14,
-  },
-  name: {
-    fontFamily: font.displayBold,
-    letterSpacing: -0.48,
-    color: color.text1,
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: 16,
-    flexWrap: 'wrap',
-  },
-  statCell: {
-    gap: 4,
-    minWidth: 70,
-  },
-  statLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 9,
-    letterSpacing: 1.1,
-    color: color.text3,
-  },
-  statValue: {
-    fontFamily: font.monoSemi,
-    fontSize: 17,
-    letterSpacing: -0.34,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  statUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    color: color.text3,
-  },
-  compactStat: {
-    gap: 6,
-  },
-  compactStatLabel: {
-    fontFamily: font.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: color.text3,
-  },
-  compactStatValue: {
-    fontFamily: font.monoBold,
-    fontSize: 19,
-    letterSpacing: -0.38,
-    color: color.text1,
-    fontVariant: tabular,
-  },
-  compactStatUnit: {
-    fontFamily: font.monoMedium,
-    fontSize: 12,
-    color: color.text3,
-  },
-  exerciseList: {
-    gap: 3,
-    marginTop: 4,
-  },
-  exerciseLine: {
-    fontFamily: font.monoMedium,
-    fontSize: 12,
-    color: color.text2,
-  },
-  detailedList: {
-    gap: 6,
-    marginTop: 4,
-  },
-  detailedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: color.hair,
-    paddingTop: 6,
-    gap: 12,
-  },
-  detailedName: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: font.bodyMedium,
-    fontSize: 12,
-    color: color.text2,
-  },
-  detailedBest: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    fontVariant: tabular,
-  },
-  prChipWrap: {
-    flexDirection: 'row',
-  },
-  prChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(45,216,129,0.12)',
-  },
-  prChipText: {
-    fontFamily: font.monoSemi,
-    fontSize: 10.5,
-    color: color.success,
-    fontVariant: tabular,
-  },
-});
+const cardStyles = themed(() =>
+  StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: byScheme('#0F0F13', color.surface1),
+      borderRadius: 22,
+      justifyContent: 'space-between',
+      overflow: 'hidden',
+    },
+    glow: {
+      position: 'absolute',
+      top: -60,
+      right: -60,
+      width: 220,
+      height: 220,
+      borderRadius: 110,
+      backgroundColor: accentA(0.12),
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    date: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      fontVariant: tabular,
+      letterSpacing: 0.5,
+    },
+    middle: {
+      flex: 1,
+      justifyContent: 'center',
+      gap: 14,
+    },
+    name: {
+      fontFamily: font.displayBold,
+      letterSpacing: -0.48,
+      color: color.text1,
+    },
+    statRow: {
+      flexDirection: 'row',
+      gap: 16,
+      flexWrap: 'wrap',
+    },
+    statCell: {
+      gap: 4,
+      minWidth: 70,
+    },
+    statLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 9,
+      letterSpacing: 1.1,
+      color: color.text3,
+    },
+    statValue: {
+      fontFamily: font.monoSemi,
+      fontSize: 17,
+      letterSpacing: -0.34,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    statUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      color: color.text3,
+    },
+    compactStat: {
+      gap: 6,
+    },
+    compactStatLabel: {
+      fontFamily: font.monoMedium,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: color.text3,
+    },
+    compactStatValue: {
+      fontFamily: font.monoBold,
+      fontSize: 19,
+      letterSpacing: -0.38,
+      color: color.text1,
+      fontVariant: tabular,
+    },
+    compactStatUnit: {
+      fontFamily: font.monoMedium,
+      fontSize: 12,
+      color: color.text3,
+    },
+    exerciseList: {
+      gap: 3,
+      marginTop: 4,
+    },
+    exerciseLine: {
+      fontFamily: font.monoMedium,
+      fontSize: 12,
+      color: color.text2,
+    },
+    detailedList: {
+      gap: 6,
+      marginTop: 4,
+    },
+    detailedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderTopWidth: 1,
+      borderTopColor: color.hair,
+      paddingTop: 6,
+      gap: 12,
+    },
+    detailedName: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: font.bodyMedium,
+      fontSize: 12,
+      color: color.text2,
+    },
+    detailedBest: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      fontVariant: tabular,
+    },
+    prChipWrap: {
+      flexDirection: 'row',
+    },
+    prChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: withAlpha(color.success, 0.12),
+    },
+    prChipText: {
+      fontFamily: font.monoSemi,
+      fontSize: 10.5,
+      color: color.success,
+      fontVariant: tabular,
+    },
+  }),
+);
 

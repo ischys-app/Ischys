@@ -8,6 +8,8 @@
  * an hour short of a whole number of weeks, and flooring then drops every
  * workout one bucket early — leaving the current week permanently empty.
  */
+import { fmtMonthNames } from './format.ts';
+
 export const WEEK_BARS = 26;
 
 /** A month label anchored to a bar index, for the chart's time axis. */
@@ -24,11 +26,10 @@ export type WeeklyBars = {
 type DatedWorkout = { started_at: string };
 
 const WEEK_MS = 7 * 86_400_000;
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Date helpers are inlined (not imported from ./format) so this module stays
-// self-contained and `node --test` can run it — the same reason format.ts is
-// kept import-free. Behaviour must match format.ts's versions.
+// self-contained: format.ts now pulls in the i18n tables, which this pure
+// module does not need. Behaviour must match format.ts's versions.
 const HAS_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/i;
 
 /** Parse the API's naive-UTC timestamp; offset-less strings are read as UTC. */
@@ -90,7 +91,7 @@ export function buildWeeklyBars(
   for (let i = 0; i < shown; i++) {
     const month = addDays(startMon, i * 7).getMonth();
     if (month !== prevMonth) {
-      ticks.push({ index: pad + i, label: MONTHS[month] });
+      ticks.push({ index: pad + i, label: fmtMonthNames()[month] });
       prevMonth = month;
     }
   }

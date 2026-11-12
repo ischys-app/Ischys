@@ -9,19 +9,23 @@
  * Pure, so `node --test` covers it. See setRowLabels.test.ts.
  */
 
+import { t } from '../i18n/t.ts';
+
 /** `badge` is what the row's badge shows: "1", "2", or "W", "D", "F". */
-const setName = (badge: string): string => `set ${badge}`;
+const setName = (badge: string): string => t('setRow.name', { badge });
 
 /** The weight field. `unit` is the unit it is typed in ("kg" or "lb"). */
 export function weightFieldLabel(badge: string, unit: string): string {
-  return `Weight in ${unit}, ${setName(badge)}`;
+  return t('setRow.weightField', { unit, set: setName(badge) });
 }
 
 export function repsFieldLabel(badge: string): string {
-  return `Reps, ${setName(badge)}`;
+  return t('setRow.repsField', { set: setName(badge) });
 }
 
 /** The tick: an action, so it reads as what a tap does next. */
 export function doneToggleLabel(badge: string, done: boolean): string {
-  return done ? `Mark ${setName(badge)} not done` : `Complete ${setName(badge)}`;
+  return done
+    ? t('setRow.markNotDone', { set: setName(badge) })
+    : t('setRow.complete', { set: setName(badge) });
 }

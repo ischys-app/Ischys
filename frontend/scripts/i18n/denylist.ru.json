@@ -1,0 +1,894 @@
+{
+  "_comment": "Deny-list for Russian output (spec: extra safety scan). A translation is flagged when a word starts with a deny stem and no word of the English starts with one of that entry's en stems. Entries with \"word\": true match whole words only (both sides). Words starting with an allow stem are never flagged. Matching is lowercase with ё read as е. Flagged lines stay English unless the review sets \"denyCleared\": true. «армейский» is allowed on purpose: «армейский жим» is a standard gym term. Slur and slogan entries have no English counterpart and are always flagged (укроп also hits the herb dill; review clears it).",
+  "allow": [
+    {
+      "stem": "армейск",
+      "why": "«армейский жим» is the standard Russian gym name for the military / overhead press"
+    },
+    {
+      "stem": "гимнаст",
+      "why": "gymnastics, not гимн (anthem)"
+    },
+    {
+      "stem": "страниц",
+      "why": "page, not страна (country)"
+    },
+    {
+      "stem": "грузит",
+      "why": "грузить (load), not Грузия"
+    },
+    {
+      "stem": "грузим",
+      "why": "грузим (we load), not Грузия"
+    },
+    {
+      "stem": "фронтальн",
+      "why": "фронтальный подъём (front raise), not фронт (war front)"
+    },
+    {
+      "stem": "жидк",
+      "why": "жидкость (liquid), not the slur"
+    }
+  ],
+  "deny": [
+    {
+      "stem": "росси",
+      "en": [
+        "russia"
+      ]
+    },
+    {
+      "stem": "русск",
+      "en": [
+        "russia"
+      ]
+    },
+    {
+      "stem": "рф",
+      "en": [
+        "russia"
+      ]
+    },
+    {
+      "stem": "украин",
+      "en": [
+        "ukrain"
+      ]
+    },
+    {
+      "stem": "белорус",
+      "en": [
+        "belarus"
+      ]
+    },
+    {
+      "stem": "беларус",
+      "en": [
+        "belarus"
+      ]
+    },
+    {
+      "stem": "казах",
+      "en": [
+        "kazakh"
+      ]
+    },
+    {
+      "stem": "грузин",
+      "en": [
+        "georgia"
+      ]
+    },
+    {
+      "stem": "грузи",
+      "en": [
+        "georgia"
+      ]
+    },
+    {
+      "stem": "армян",
+      "en": [
+        "armenia"
+      ]
+    },
+    {
+      "stem": "армени",
+      "en": [
+        "armenia"
+      ]
+    },
+    {
+      "stem": "азербайдж",
+      "en": [
+        "azerbaijan"
+      ]
+    },
+    {
+      "stem": "молдав",
+      "en": [
+        "moldova"
+      ]
+    },
+    {
+      "stem": "молдов",
+      "en": [
+        "moldova"
+      ]
+    },
+    {
+      "stem": "латыш",
+      "en": [
+        "latvia"
+      ]
+    },
+    {
+      "stem": "латви",
+      "en": [
+        "latvia"
+      ]
+    },
+    {
+      "stem": "литов",
+      "en": [
+        "lithuania"
+      ]
+    },
+    {
+      "stem": "литв",
+      "en": [
+        "lithuania"
+      ]
+    },
+    {
+      "stem": "эстон",
+      "en": [
+        "estonia"
+      ]
+    },
+    {
+      "stem": "советск",
+      "en": [
+        "soviet"
+      ]
+    },
+    {
+      "stem": "ссср",
+      "en": [
+        "soviet",
+        "ussr"
+      ]
+    },
+    {
+      "stem": "союзн",
+      "en": [
+        "union",
+        "allied"
+      ]
+    },
+    {
+      "stem": "америк",
+      "en": [
+        "america"
+      ]
+    },
+    {
+      "stem": "сша",
+      "en": [
+        "usa",
+        "america",
+        "united states"
+      ]
+    },
+    {
+      "stem": "европ",
+      "en": [
+        "europ"
+      ]
+    },
+    {
+      "stem": "евросоюз",
+      "en": [
+        "europ"
+      ]
+    },
+    {
+      "stem": "азиат",
+      "en": [
+        "asia"
+      ]
+    },
+    {
+      "stem": "китай",
+      "en": [
+        "china",
+        "chinese"
+      ]
+    },
+    {
+      "stem": "китаец",
+      "en": [
+        "china",
+        "chinese"
+      ]
+    },
+    {
+      "stem": "япон",
+      "en": [
+        "japan"
+      ]
+    },
+    {
+      "stem": "корей",
+      "en": [
+        "korea"
+      ]
+    },
+    {
+      "stem": "корея",
+      "en": [
+        "korea"
+      ]
+    },
+    {
+      "stem": "немец",
+      "en": [
+        "german"
+      ]
+    },
+    {
+      "stem": "немецк",
+      "en": [
+        "german"
+      ]
+    },
+    {
+      "stem": "герман",
+      "en": [
+        "german"
+      ]
+    },
+    {
+      "stem": "француз",
+      "en": [
+        "french",
+        "france"
+      ]
+    },
+    {
+      "stem": "франци",
+      "en": [
+        "france",
+        "french"
+      ]
+    },
+    {
+      "stem": "англи",
+      "en": [
+        "english",
+        "england",
+        "british"
+      ]
+    },
+    {
+      "stem": "британ",
+      "en": [
+        "brit"
+      ]
+    },
+    {
+      "stem": "польск",
+      "en": [
+        "polish",
+        "poland"
+      ]
+    },
+    {
+      "stem": "польш",
+      "en": [
+        "poland",
+        "polish"
+      ]
+    },
+    {
+      "stem": "поляк",
+      "en": [
+        "polish",
+        "poland"
+      ]
+    },
+    {
+      "stem": "болгар",
+      "en": [
+        "bulgaria"
+      ]
+    },
+    {
+      "stem": "румын",
+      "en": [
+        "romania"
+      ]
+    },
+    {
+      "stem": "турец",
+      "en": [
+        "turkish",
+        "turkey"
+      ]
+    },
+    {
+      "stem": "турци",
+      "en": [
+        "turkey",
+        "turkish"
+      ]
+    },
+    {
+      "stem": "израил",
+      "en": [
+        "israel"
+      ]
+    },
+    {
+      "stem": "палестин",
+      "en": [
+        "palestin"
+      ]
+    },
+    {
+      "stem": "иран",
+      "en": [
+        "iran"
+      ]
+    },
+    {
+      "stem": "сири",
+      "en": [
+        "syria"
+      ]
+    },
+    {
+      "stem": "чечен",
+      "en": [
+        "chechen"
+      ]
+    },
+    {
+      "stem": "чечн",
+      "en": [
+        "chechnya"
+      ]
+    },
+    {
+      "stem": "крым",
+      "en": [
+        "crimea"
+      ]
+    },
+    {
+      "stem": "донбасс",
+      "en": [
+        "donbas"
+      ]
+    },
+    {
+      "stem": "донецк",
+      "en": [
+        "donetsk"
+      ]
+    },
+    {
+      "stem": "луганск",
+      "en": [
+        "luhansk"
+      ]
+    },
+    {
+      "stem": "кавказ",
+      "en": [
+        "caucas"
+      ]
+    },
+    {
+      "stem": "сибир",
+      "en": [
+        "siberia"
+      ]
+    },
+    {
+      "stem": "москв",
+      "en": [
+        "moscow"
+      ]
+    },
+    {
+      "stem": "москов",
+      "en": [
+        "moscow"
+      ]
+    },
+    {
+      "stem": "киев",
+      "en": [
+        "kyiv",
+        "kiev"
+      ]
+    },
+    {
+      "stem": "кремл",
+      "en": [
+        "kremlin"
+      ]
+    },
+    {
+      "stem": "страна",
+      "en": [
+        "country"
+      ]
+    },
+    {
+      "stem": "страны",
+      "en": [
+        "country",
+        "countries"
+      ]
+    },
+    {
+      "stem": "стране",
+      "en": [
+        "country"
+      ]
+    },
+    {
+      "stem": "родин",
+      "en": [
+        "homeland",
+        "motherland"
+      ]
+    },
+    {
+      "stem": "отечеств",
+      "en": [
+        "fatherland",
+        "patriot"
+      ]
+    },
+    {
+      "stem": "государств",
+      "en": [
+        "state",
+        "country",
+        "government"
+      ]
+    },
+    {
+      "stem": "национальн",
+      "en": [
+        "national"
+      ]
+    },
+    {
+      "stem": "флаг",
+      "en": [
+        "flag"
+      ]
+    },
+    {
+      "stem": "гимн",
+      "en": [
+        "anthem"
+      ]
+    },
+    {
+      "stem": "герб",
+      "en": [
+        "coat of arms",
+        "emblem"
+      ]
+    },
+    {
+      "stem": "политик",
+      "en": [
+        "politic"
+      ]
+    },
+    {
+      "stem": "политич",
+      "en": [
+        "politic"
+      ]
+    },
+    {
+      "stem": "президент",
+      "en": [
+        "president"
+      ]
+    },
+    {
+      "stem": "парти",
+      "en": [
+        "party"
+      ]
+    },
+    {
+      "stem": "правительств",
+      "en": [
+        "government"
+      ]
+    },
+    {
+      "stem": "парламент",
+      "en": [
+        "parliament"
+      ]
+    },
+    {
+      "stem": "дума",
+      "en": [
+        "duma"
+      ],
+      "word": true
+    },
+    {
+      "stem": "санкци",
+      "en": [
+        "sanction"
+      ]
+    },
+    {
+      "stem": "митинг",
+      "en": [
+        "rally",
+        "protest"
+      ]
+    },
+    {
+      "stem": "протест",
+      "en": [
+        "protest"
+      ]
+    },
+    {
+      "stem": "революц",
+      "en": [
+        "revolution"
+      ]
+    },
+    {
+      "stem": "коммун",
+      "en": [
+        "communis"
+      ]
+    },
+    {
+      "stem": "ленин",
+      "en": [
+        "lenin"
+      ]
+    },
+    {
+      "stem": "сталин",
+      "en": [
+        "stalin"
+      ]
+    },
+    {
+      "stem": "путин",
+      "en": [
+        "putin"
+      ]
+    },
+    {
+      "stem": "зеленск",
+      "en": [
+        "zelensk"
+      ]
+    },
+    {
+      "stem": "фашист",
+      "en": [
+        "fascis"
+      ]
+    },
+    {
+      "stem": "фашизм",
+      "en": [
+        "fascis"
+      ]
+    },
+    {
+      "stem": "нацист",
+      "en": [
+        "nazi"
+      ]
+    },
+    {
+      "stem": "нацизм",
+      "en": [
+        "nazi"
+      ]
+    },
+    {
+      "stem": "патриот",
+      "en": [
+        "patriot"
+      ]
+    },
+    {
+      "stem": "либерал",
+      "en": [
+        "liberal"
+      ]
+    },
+    {
+      "stem": "пропаганд",
+      "en": [
+        "propaganda"
+      ]
+    },
+    {
+      "stem": "нато",
+      "en": [
+        "nato"
+      ]
+    },
+    {
+      "stem": "оккупац",
+      "en": [
+        "occupation"
+      ]
+    },
+    {
+      "stem": "оккупант",
+      "en": [
+        "occupation",
+        "occupier"
+      ]
+    },
+    {
+      "stem": "аннекс",
+      "en": [
+        "annex"
+      ]
+    },
+    {
+      "stem": "геноцид",
+      "en": [
+        "genocide"
+      ]
+    },
+    {
+      "stem": "террор",
+      "en": [
+        "terror"
+      ]
+    },
+    {
+      "stem": "экстрем",
+      "en": [
+        "extrem"
+      ]
+    },
+    {
+      "stem": "войн",
+      "en": [
+        "war"
+      ]
+    },
+    {
+      "stem": "военн",
+      "en": [
+        "military",
+        "war"
+      ]
+    },
+    {
+      "stem": "арми",
+      "en": [
+        "army",
+        "military"
+      ]
+    },
+    {
+      "stem": "солдат",
+      "en": [
+        "soldier"
+      ]
+    },
+    {
+      "stem": "боев",
+      "en": [
+        "combat",
+        "battle",
+        "fight"
+      ]
+    },
+    {
+      "stem": "фронт",
+      "en": [
+        "front"
+      ]
+    },
+    {
+      "stem": "оруж",
+      "en": [
+        "weapon",
+        "gun",
+        "arm"
+      ]
+    },
+    {
+      "stem": "ракет",
+      "en": [
+        "missile",
+        "rocket"
+      ]
+    },
+    {
+      "stem": "бомб",
+      "en": [
+        "bomb"
+      ]
+    },
+    {
+      "stem": "танк",
+      "en": [
+        "tank"
+      ]
+    },
+    {
+      "stem": "спецопераци",
+      "en": [
+        "operation"
+      ]
+    },
+    {
+      "stem": "сво",
+      "en": [
+        "operation"
+      ],
+      "word": true
+    },
+    {
+      "stem": "мобилизац",
+      "en": [
+        "mobiliz"
+      ]
+    },
+    {
+      "stem": "призыв",
+      "en": [
+        "draft",
+        "conscript"
+      ]
+    },
+    {
+      "stem": "вторжен",
+      "en": [
+        "invasion",
+        "invade"
+      ]
+    },
+    {
+      "stem": "героям",
+      "en": [
+        "hero"
+      ]
+    },
+    {
+      "stem": "слава",
+      "en": [
+        "glory"
+      ]
+    },
+    {
+      "stem": "z",
+      "en": [
+        "z"
+      ],
+      "word": true
+    },
+    {
+      "stem": "v",
+      "en": [
+        "v"
+      ],
+      "word": true
+    },
+    {
+      "stem": "страну",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "страной",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странам",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странами",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странах",
+      "en": [
+        "country",
+        "countries"
+      ],
+      "word": true
+    },
+    {
+      "stem": "странов",
+      "en": [
+        "country",
+        "countries"
+      ]
+    },
+    {
+      "stem": "москал",
+      "en": []
+    },
+    {
+      "stem": "хохл",
+      "en": []
+    },
+    {
+      "stem": "хохол",
+      "en": []
+    },
+    {
+      "stem": "кацап",
+      "en": []
+    },
+    {
+      "stem": "бандер",
+      "en": []
+    },
+    {
+      "stem": "жид",
+      "en": []
+    },
+    {
+      "stem": "чурк",
+      "en": []
+    },
+    {
+      "stem": "хач",
+      "en": []
+    },
+    {
+      "stem": "пиндос",
+      "en": []
+    },
+    {
+      "stem": "укроп",
+      "en": []
+    },
+    {
+      "stem": "гойд",
+      "en": []
+    },
+    {
+      "stem": "zov",
+      "en": [],
+      "word": true
+    }
+  ]
+}

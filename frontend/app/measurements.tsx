@@ -37,23 +37,15 @@ import {
 } from '../src/data/measurementsRepo';
 import { getSettings } from '../src/api/workouts';
 import { syncBodyMeasurementsFromHealth } from '../src/lib/healthSync';
-import { color, font } from '../src/theme/tokens';
+import { color, font, themed } from '../src/theme/tokens';
+import { useThemed } from '../src/theme/ThemeProvider';
+import { t } from '../src/i18n';
 
 /** Sentence-case labels; the ids are camelCase and not for reading. */
-const LABEL: Record<MetricId, string> = {
-  waist: 'Waist',
-  chest: 'Chest',
-  arms: 'Arms',
-  thighs: 'Thighs',
-  calves: 'Calves',
-  shoulders: 'Shoulders',
-  hips: 'Hips',
-  neck: 'Neck',
-  bodyweight: 'Bodyweight',
-  bodyFat: 'Body fat',
-};
+const labelOf = (metric: MetricId): string => t(`measurements.metric.${metric}`);
 
 export default function MeasurementsScreen() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [latest, setLatest] = useState<Map<MetricId, MeasurementRow>>(new Map());
@@ -104,7 +96,7 @@ export default function MeasurementsScreen() {
       } catch {
         // None of the readings were stored. The sheet stays open with what
         // was typed, so Save can be tapped again.
-        Alert.alert('Couldn’t save', 'Nothing was changed. Try again.');
+        Alert.alert(t('measurements.saveFailed'), t('common.nothingChanged'));
         return;
       }
     }
@@ -120,7 +112,7 @@ export default function MeasurementsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back} accessibilityRole="button">
           <BackChevronIcon color={color.text1} />
         </Pressable>
-        <Text style={styles.title}>Measurements</Text>
+        <Text style={styles.title}>{t('measurements.title')}</Text>
         <View style={styles.back} />
       </View>
 
@@ -136,7 +128,7 @@ export default function MeasurementsScreen() {
                 onPress={() => router.push(`/measurement/${metric}`)}
                 accessibilityRole="button"
               >
-                <Text style={styles.rowLabel}>{LABEL[metric]}</Text>
+                <Text style={styles.rowLabel}>{labelOf(metric)}</Text>
                 <View style={styles.rowRight}>
                   {row ? (
                     <>
@@ -151,7 +143,7 @@ export default function MeasurementsScreen() {
                       ) : null}
                     </>
                   ) : (
-                    <Text style={styles.rowEmpty}>Not logged</Text>
+                    <Text style={styles.rowEmpty}>{t('measurements.notLogged')}</Text>
                   )}
                   <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.2} />
                 </View>
@@ -163,7 +155,7 @@ export default function MeasurementsScreen() {
 
       <View style={[styles.ctaWrap, { bottom: 24 + insets.bottom }]}>
         <PressableScale style={styles.cta} onPress={() => setSheetOpen(true)} accessibilityRole="button">
-          <Text style={styles.ctaText}>Log</Text>
+          <Text style={styles.ctaText}>{t('measurements.log')}</Text>
         </PressableScale>
       </View>
 
@@ -172,21 +164,21 @@ export default function MeasurementsScreen() {
           <View style={styles.grabber} />
         </View>
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Log measurements</Text>
+          <Text style={styles.sheetTitle}>{t('measurements.logTitle')}</Text>
           <Pressable onPress={() => setSheetOpen(false)} hitSlop={8}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={styles.cancel}>{t('common.cancel')}</Text>
           </Pressable>
         </View>
-        <Text style={styles.sheetNote}>Fill in what you measured. Blanks are skipped.</Text>
+        <Text style={styles.sheetNote}>{t('measurements.logNote')}</Text>
 
         <ScrollView style={styles.sheetList} keyboardShouldPersistTaps="handled">
           {METRICS.map((metric) => (
             <View key={metric} style={styles.entryRow}>
-              <Text style={styles.entryLabel}>{LABEL[metric]}</Text>
+              <Text style={styles.entryLabel}>{labelOf(metric)}</Text>
               <View style={styles.entryBox}>
                 <TextInput
                   value={draft[metric] ?? ''}
-                  onChangeText={(t) => setDraft((d) => ({ ...d, [metric]: t }))}
+                  onChangeText={(text) => setDraft((d) => ({ ...d, [metric]: text }))}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
                   placeholder="—"
@@ -200,87 +192,89 @@ export default function MeasurementsScreen() {
         </ScrollView>
 
         <PressableScale style={styles.cta} onPress={() => void save()} accessibilityRole="button">
-          <Text style={styles.ctaText}>Save</Text>
+          <Text style={styles.ctaText}>{t('common.save')}</Text>
         </PressableScale>
       </DraggableSheet>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  content: { paddingHorizontal: 16 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    title: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    content: { paddingHorizontal: 16 },
 
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    height: 54,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: color.hair,
-  },
-  rowFirst: { borderTopWidth: 0 },
-  rowLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rowValue: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
-  rowDelta: { fontFamily: font.monoRegular, fontSize: 12, color: color.text2 },
-  rowEmpty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3 },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 54,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: color.hair,
+    },
+    rowFirst: { borderTopWidth: 0 },
+    rowLabel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text1 },
+    rowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    rowValue: { fontFamily: font.monoMedium, fontSize: 15, color: color.text1 },
+    rowDelta: { fontFamily: font.monoRegular, fontSize: 12, color: color.text2 },
+    rowEmpty: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3 },
 
-  ctaWrap: { position: 'absolute', left: 16, right: 16 },
-  cta: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
+    ctaWrap: { position: 'absolute', left: 16, right: 16 },
+    cta: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ctaText: { fontFamily: font.titleSemi, fontSize: 16, color: color.accentFg },
 
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 6 },
-  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sheetTitle: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
-  cancel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text2 },
-  sheetNote: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginTop: 2 },
-  sheetList: { maxHeight: 340, marginTop: 12, marginBottom: 12 },
-  entryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
-  entryLabel: { fontFamily: font.bodyRegular, fontSize: 15, color: color.text1 },
-  entryBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    width: 128,
-    height: 42,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-  },
-  entryInput: { flex: 1, fontFamily: font.monoMedium, fontSize: 16, color: color.text1, padding: 0 },
-  entryUnit: { fontFamily: font.monoRegular, fontSize: 12, color: color.text3 },
-});
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+    },
+    grabberWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 6 },
+    grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sheetTitle: { fontFamily: font.titleSemi, fontSize: 20, color: color.text1 },
+    cancel: { fontFamily: font.bodyMedium, fontSize: 15, color: color.text2 },
+    sheetNote: { fontFamily: font.bodyRegular, fontSize: 13, color: color.text3, marginTop: 2 },
+    sheetList: { maxHeight: 340, marginTop: 12, marginBottom: 12 },
+    entryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
+    entryLabel: { fontFamily: font.bodyRegular, fontSize: 15, color: color.text1 },
+    entryBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      width: 128,
+      height: 42,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+    },
+    entryInput: { flex: 1, fontFamily: font.monoMedium, fontSize: 16, color: color.text1, padding: 0 },
+    entryUnit: { fontFamily: font.monoRegular, fontSize: 12, color: color.text3 },
+  }),
+);

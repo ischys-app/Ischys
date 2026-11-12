@@ -11,6 +11,7 @@
  * `Platform.OS` in.
  */
 import type { ReadPref, Receipt } from './healthReceipts';
+import { t } from '../i18n/t.ts';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -47,105 +48,91 @@ export type HealthCopy = {
   noBodyweight: string;
 };
 
-const IOS_UNSURE =
-  "This means one of two things, and iOS won't say which: Health is holding the data back, or nothing has recorded any yet.";
+function buildIos(): HealthCopy {
+  return {
+    name: 'Apple Health',
+    connect: t('health.ios.connect'),
+    settingsSub: t('health.ios.settingsSub'),
+    device: t('health.ios.device'),
+    intro: t('health.ios.intro'),
+    next: t('health.ios.next'),
+    disconnectBody: t('health.ios.disconnectBody'),
+    unavailable: t('health.ios.unavailable'),
+    writeAllowed: t('health.ios.writeAllowed'),
+    writeDenied: t('health.ios.writeDenied'),
+    writeDeniedExplainer: t('health.ios.writeDeniedExplainer'),
+    writeDeniedCta: t('health.ios.writeDeniedCta'),
+    readsNote: t('health.ios.readsNote'),
+    readDenied: t('health.ios.readDenied'),
+    readDeniedExplainer: t('health.ios.readDeniedExplainer'),
+    checkCta: t('health.ios.checkCta'),
+    privacyNote: t('health.ios.privacyNote'),
+    reads: {
+      readHR: {
+        label: t('health.ios.readHR.label'),
+        offDesc: t('health.ios.readHR.offDesc'),
+        explainer: t('health.ios.readHR.explainer'),
+      },
+      readEnergy: {
+        label: t('health.ios.readEnergy.label'),
+        offDesc: t('health.ios.readEnergy.offDesc'),
+        explainer: t('health.ios.readEnergy.explainer'),
+      },
+      readBody: {
+        label: t('health.ios.readBody.label'),
+        offDesc: t('health.ios.readBody.offDesc'),
+        explainer: t('health.ios.readBody.explainer'),
+      },
+    },
+    useForBodyweight: t('health.ios.useForBodyweight'),
+    noBodyweight: t('health.ios.noBodyweight'),
+  };
+}
 
-const IOS: HealthCopy = {
-  name: 'Apple Health',
-  connect: 'Connect Apple Health',
-  settingsSub: 'Save finished workouts to Fitness',
-  device: 'This iPhone',
-  intro:
-    'Save finished workouts as Traditional Strength Training, and read heart rate and calories live from your Apple Watch.',
-  next: 'iOS asks you, not us. Ischys is told whether it may write, but never whether it may read — so afterwards this screen shows what data actually arrives instead of a permission list.',
-  disconnectBody:
-    'Ischys will stop reading and writing Health data. Any records already written stay in Health.',
-  unavailable:
-    'Apple Health needs a device build with HealthKit — it is not available on the simulator.',
-  writeAllowed: 'Allowed in Health',
-  writeDenied: 'Denied in Health',
-  writeDeniedExplainer:
-    "Health is blocking writes, so finished workouts aren't being saved there. Only you can change this — Ischys can't ask again.",
-  writeDeniedCta: 'Open Health → Sharing → Ischys',
-  readsNote:
-    'iOS never tells apps whether a read was allowed. These choose what Ischys asks for — Health decides what it returns.',
-  readDenied: 'Nothing received yet',
-  readDeniedExplainer: IOS_UNSURE,
-  checkCta: 'Check in the Health app',
-  privacyNote: 'Health data stays on this device. Ischys reads only what it writes back.',
-  reads: {
-    readHR: {
-      label: 'Heart rate',
-      offDesc: 'Live BPM from an Apple Watch',
-      explainer: `${IOS_UNSURE} Heart rate needs an Apple Watch worn during the session.`,
+function buildAndroid(): HealthCopy {
+  return {
+    name: 'Health Connect',
+    connect: t('health.android.connect'),
+    settingsSub: t('health.android.settingsSub'),
+    device: t('health.android.device'),
+    intro: t('health.android.intro'),
+    next: t('health.android.next'),
+    disconnectBody: t('health.android.disconnectBody'),
+    unavailable: t('health.android.unavailable'),
+    writeAllowed: t('health.android.writeAllowed'),
+    writeDenied: t('health.android.writeDenied'),
+    writeDeniedExplainer: t('health.android.writeDeniedExplainer'),
+    writeDeniedCta: t('health.android.writeDeniedCta'),
+    readsNote: t('health.android.readsNote'),
+    readDenied: t('health.android.readDenied'),
+    readDeniedExplainer: t('health.android.readDeniedExplainer'),
+    checkCta: t('health.android.checkCta'),
+    privacyNote: t('health.android.privacyNote'),
+    reads: {
+      readHR: {
+        label: t('health.android.readHR.label'),
+        offDesc: t('health.android.readHR.offDesc'),
+        explainer: t('health.android.readHR.explainer'),
+      },
+      readEnergy: {
+        label: t('health.android.readEnergy.label'),
+        offDesc: t('health.android.readEnergy.offDesc'),
+        explainer: t('health.android.readEnergy.explainer'),
+      },
+      readBody: {
+        label: t('health.android.readBody.label'),
+        offDesc: t('health.android.readBody.offDesc'),
+        explainer: t('health.android.readBody.explainer'),
+      },
     },
-    readEnergy: {
-      label: 'Active energy',
-      offDesc: 'Calories burned per session',
-      explainer: `${IOS_UNSURE} Active energy needs an Apple Watch worn during the session.`,
-    },
-    readBody: {
-      label: 'Waist and body fat',
-      offDesc: 'Into your measurement history',
-      explainer:
-        'These are the only body measurements HealthKit has a type for — the rest of your measurements are logged here and stay here. Nothing is written back to Health.',
-    },
-  },
-  useForBodyweight: 'Use Apple Health',
-  noBodyweight: 'No bodyweight in Apple Health',
-};
-
-const ANDROID: HealthCopy = {
-  name: 'Health Connect',
-  connect: 'Connect to Health Connect',
-  settingsSub: 'Save finished workouts, read heart rate',
-  device: 'This phone',
-  intro:
-    'Save finished workouts as strength training, and read the heart rate and calories your watch or band recorded for them.',
-  next: 'Android asks you, not us. You choose exactly what Ischys may write and what it may read, and can change either in Health Connect at any time. This screen then shows what you allowed and what data actually arrives.',
-  disconnectBody:
-    'Ischys will stop reading and writing Health Connect data. Any records already written stay in Health Connect.',
-  unavailable: 'Health Connect is not available on this device.',
-  writeAllowed: 'Allowed in Health Connect',
-  writeDenied: 'Not allowed in Health Connect',
-  writeDeniedExplainer:
-    "Ischys isn't allowed to write exercise, so finished workouts aren't being saved to Health Connect. You can allow it there.",
-  writeDeniedCta: 'Open Health Connect',
-  readsNote:
-    'These choose what Ischys asks for. What it may read is yours to allow in Health Connect.',
-  readDenied: 'Not allowed in Health Connect',
-  readDeniedExplainer:
-    "Ischys isn't allowed to read this, so nothing can arrive. You can allow it in Health Connect.",
-  checkCta: 'Open Health Connect',
-  privacyNote:
-    'Health data stays on this device. Ischys also reads your latest weight, for bodyweight exercises.',
-  reads: {
-    readHR: {
-      label: 'Heart rate',
-      offDesc: 'Average and max per session',
-      explainer:
-        'Reading is allowed, but Health Connect has had no heart rate for a workout yet. It needs a watch or band that syncs to Health Connect, worn during the session.',
-    },
-    readEnergy: {
-      label: 'Active energy',
-      offDesc: 'Calories burned per session',
-      explainer:
-        'Reading is allowed, but Health Connect has had no active calories for a workout yet. They need a watch or band that syncs to Health Connect, worn during the session.',
-    },
-    readBody: {
-      label: 'Body fat',
-      offDesc: 'Into your measurement history',
-      explainer:
-        'Reading is allowed, but Health Connect holds no body fat reading yet. It is the only body measurement Health Connect shares with your list — the rest are logged here and stay here. Nothing is written back.',
-    },
-  },
-  useForBodyweight: 'Use Health Connect',
-  noBodyweight: 'No bodyweight in Health Connect',
-};
+    useForBodyweight: t('health.android.useForBodyweight'),
+    noBodyweight: t('health.android.noBodyweight'),
+  };
+}
 
 /** The Health wording for a platform; anything that is not Android reads as iOS. */
 export function healthCopy(os: string): HealthCopy {
-  return os === 'android' ? ANDROID : IOS;
+  return os === 'android' ? buildAndroid() : buildIos();
 }
 
 /** A read row's state. `denied` only ever comes from a platform that says so. */

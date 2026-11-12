@@ -34,11 +34,13 @@ import {
   ChevronRightIcon,
   ClockRowIcon,
   DumbbellIcon,
+  ReorderIcon,
   SyncIcon,
   TrashIcon,
 } from '../../src/components/icons';
 import { PressableScale } from '../../src/components/PressableScale';
 import { RestPickerSheet } from '../../src/components/workout/RestPickerSheet';
+import { SupersetSheet, type SupersetCandidate } from '../../src/components/workout/SupersetSheet';
 import { SwipeToDelete } from '../../src/components/workout/SwipeToDelete';
 import {
   restLabel,
@@ -46,9 +48,21 @@ import {
   typeMeta,
 } from '../../src/components/workout/types';
 import { type Unit, inputToKg, unitLabel, weightText } from '../../src/domain/units';
+import {
+  groupLabels,
+  leaveSupersetGroup,
+  pairInSuperset,
+  supersetTag,
+  withoutLoneGroups,
+} from '../../src/domain/supersets';
 import { takePendingSelection } from '../../src/lib/pendingSelection';
 import { getWeightUnit } from '../../src/lib/weightUnit';
-import { color, font } from '../../src/theme/tokens';
+import { color, font, themed, withAlpha } from '../../src/theme/tokens';
+import { useThemed } from '../../src/theme/ThemeProvider';
+import { getLang } from '../../src/i18n/current';
+import { equipmentLabel } from '../../src/i18n/catalogNames';
+import { t } from '../../src/i18n';
+import { upperDisplay } from '../../src/i18n/upper';
 
 const DEFAULT_REST_SECONDS = 120;
 
@@ -70,16 +84,13 @@ type REx = {
   id: string;
   exercise: ExerciseOut;
   restSeconds: number;
+  /** Shared by exercises paired as a superset. Null for an ordinary one. */
+  supersetGroup: number | null;
   note: string;
   sets: RSet[];
 };
 
-const TYPE_LABEL: Record<SetType, string> = {
-  normal: 'Working',
-  warmup: 'Warmup',
-  drop: 'Drop set',
-  failure: 'To failure',
-};
+const typeLabel = (type: SetType): string => t(`routineEdit.type.${type}`);
 
 /** "KG" / "LB" for weighted exercises, with a "+" for bodyweight (added weight). */
 function weightColumnLabelFor(kind: ExerciseOut['kind'], unit: Unit): string {
@@ -95,6 +106,7 @@ function numStr(n: number | null | undefined): string {
 }
 
 export default function RoutineBuilder() {
+  useThemed();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -110,6 +122,7 @@ export default function RoutineBuilder() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [restSheetExId, setRestSheetExId] = useState<string | null>(null);
+  const [supersetExId, setSupersetExId] = useState<string | null>(null);
   /** Set row whose swipe-to-delete panel is revealed — at most one at a time. */
   const [openSetId, setOpenSetId] = useState<string | null>(null);
   /** Set once Save was tapped with a blank name, so the requirement is explained. */
@@ -131,6 +144,7 @@ export default function RoutineBuilder() {
             id: uid('rex'),
             exercise: rex.exercise,
             restSeconds: rex.rest_seconds,
+            supersetGroup: rex.superset_group ?? null,
             note: rex.note ?? '',
             sets: rex.sets.map((s) => ({
               id: uid('rset'),
@@ -199,6 +213,7 @@ export default function RoutineBuilder() {
           id: uid('rex'),
           exercise: ex,
           restSeconds: DEFAULT_REST_SECONDS,
+          supersetGroup: null,
           note: '',
           sets: [{ id: uid('rset'), type: 'normal', targetWeight: '', targetReps: '' }],
         })),
@@ -212,8 +227,9 @@ export default function RoutineBuilder() {
   );
 
   // --- exercise mutations ---
+  // A removed partner can leave the other in a superset of one.
   const removeExercise = (rexId: string) =>
-    setExercises((prev) => prev.filter((e) => e.id !== rexId));
+    setExercises((prev) => withoutLoneGroups(prev.filter((e) => e.id !== rexId)));
 
   const setNote = (rexId: string, note: string) =>
     setExercises((prev) =>
@@ -280,6 +296,7 @@ export default function RoutineBuilder() {
     exercises.map((rex) => ({
       exercise_id: rex.exercise.id,
       rest_seconds: rex.restSeconds,
+      superset_group: rex.supersetGroup,
       note: rex.note || undefined,
       sets: rex.sets.map((s) => ({
         type: s.type,
@@ -327,7 +344,32 @@ export default function RoutineBuilder() {
   };
 
   const restSheetExercise = exercises.find((e) => e.id === restSheetExId) ?? null;
-  const titleText = isNew ? 'New Routine' : name || 'Edit Routine';
+
+  // --- supersets (#53): the same rounds as a workout's, planned ahead ---
+  const ssLabels = useMemo(() => groupLabels(exercises), [exercises]);
+  const asCandidate = (rex: REx): SupersetCandidate => ({
+    id: rex.id,
+    name: rex.exercise.name,
+    equipment: rex.exercise.equipment,
+    rest: rex.restSeconds,
+    supersetGroup: rex.supersetGroup,
+  });
+  /** Partners in list order, or null for an ordinary exercise. */
+  const partnersOf = (rex: REx): REx[] | null =>
+    rex.supersetGroup == null ? null : exercises.filter((e) => e.supersetGroup === rex.supersetGroup);
+  /**
+   * Only the round's last partner rests (restAfterSet), so the earlier ones say
+   * where the rest is rather than a duration that will never run. Their own
+   * value is kept, for when the pair is broken up.
+   */
+  const restOverrideFor = (rex: REx): string | null => {
+    const partners = partnersOf(rex);
+    if (!partners) return null;
+    const i = partners.findIndex((e) => e.id === rex.id);
+    if (i === partners.length - 1) return null;
+    return t('workout.supersetNone', { tag: `${ssLabels.get(rex.supersetGroup!)}${i + 2}` });
+  };
+  const titleText = isNew ? t('routineEdit.new') : name || t('routineEdit.edit');
 
   return (
     <View style={styles.root}>
@@ -355,54 +397,77 @@ export default function RoutineBuilder() {
               setName(t);
               if (t.trim() !== '') setNameMissing(false);
             }}
-            placeholder="Routine name"
+            placeholder={t('routineEdit.namePlaceholder')}
             placeholderTextColor={nameMissing ? color.error : color.text3}
             style={styles.titleInput}
             multiline
           />
 
           {nameMissing ? (
-            <Text style={styles.nameError}>Give your routine a name to save it.</Text>
+            <Text style={styles.nameError}>{t('routineEdit.nameError')}</Text>
           ) : null}
 
           <View style={styles.metaRow}>
-            <Text style={styles.metaText}>{exercises.length} exercises</Text>
+            <Text style={styles.metaText}>{t('routineEdit.exercisesCount', { n: exercises.length })}</Text>
             <Text style={styles.metaText}> · </Text>
-            <Text style={styles.metaText}>{totalSets} sets</Text>
+            <Text style={styles.metaText}>{t('common.setsCount', { count: totalSets })}</Text>
           </View>
 
           {!loading && exercises.length === 0 && <EmptyBuilder />}
 
           {exercises.length > 0 && (
             <View style={styles.exList}>
-              {exercises.map((rex) => (
-                <ExerciseCardBuilder
-                  onReplace={() => openReplace(rex.id)}
-                  key={rex.id}
-                  rex={rex}
-                  unit={unit}
-                  onRemove={() => removeExercise(rex.id)}
-                  onNoteChange={(t) => setNote(rex.id, t)}
-                  onOpenRest={() => setRestSheetExId(rex.id)}
-                  onAddSet={() => addSet(rex.id)}
-                  onRemoveSet={(setId) => removeSet(rex.id, setId)}
-                  openSetId={openSetId}
-                  onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
-                  onCycleType={(setId) => cycleType(rex.id, setId)}
-                  onWeightChange={(setId, t) =>
-                    patchSet(rex.id, setId, { targetWeight: t })
-                  }
-                  onRepsChange={(setId, t) =>
-                    patchSet(rex.id, setId, { targetReps: t })
-                  }
-                />
-              ))}
+              {exercises.map((rex) => {
+                const partners = partnersOf(rex);
+                const header =
+                  partners && partners[0].id === rex.id
+                    ? t('workoutEdit.ssHeader', { letter: String(ssLabels.get(rex.supersetGroup!)) })
+                    : null;
+                return (
+                  <View key={rex.id}>
+                    {header ? <Text style={styles.ssHeader}>{header}</Text> : null}
+                    <ExerciseCardBuilder
+                      onReplace={() => openReplace(rex.id)}
+                      rex={rex}
+                      supersetTag={supersetTag(exercises, rex.id)}
+                      supersetWith={partners?.filter((e) => e.id !== rex.id).map((e) => e.exercise.name) ?? []}
+                      restOverride={restOverrideFor(rex)}
+                      onSuperset={
+                        exercises.length < 2
+                          ? undefined
+                          : () => {
+                              if (rex.supersetGroup != null) {
+                                setExercises((prev) => leaveSupersetGroup(prev, rex.id));
+                              } else {
+                                setSupersetExId(rex.id);
+                              }
+                            }
+                      }
+                      unit={unit}
+                      onRemove={() => removeExercise(rex.id)}
+                      onNoteChange={(t) => setNote(rex.id, t)}
+                      onOpenRest={() => setRestSheetExId(rex.id)}
+                      onAddSet={() => addSet(rex.id)}
+                      onRemoveSet={(setId) => removeSet(rex.id, setId)}
+                      openSetId={openSetId}
+                      onSetOpenChange={(setId, open) => setOpenSetId(open ? setId : null)}
+                      onCycleType={(setId) => cycleType(rex.id, setId)}
+                      onWeightChange={(setId, t) =>
+                        patchSet(rex.id, setId, { targetWeight: t })
+                      }
+                      onRepsChange={(setId, t) =>
+                        patchSet(rex.id, setId, { targetReps: t })
+                      }
+                    />
+                  </View>
+                );
+              })}
             </View>
           )}
 
           <PressableScale onPress={openLibrary} style={styles.addExercise}>
             <Text style={styles.addExercisePlus}>+</Text>
-            <Text style={styles.addExerciseText}>Add Exercise</Text>
+            <Text style={styles.addExerciseText}>{t('editWorkout.addExercise')}</Text>
           </PressableScale>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -410,7 +475,7 @@ export default function RoutineBuilder() {
       {/* Absolute header */}
       <View style={[styles.header, { paddingTop: 54 + insets.top }]}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={styles.cancel}>{t('common.cancel')}</Text>
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {titleText}
@@ -421,7 +486,7 @@ export default function RoutineBuilder() {
           hitSlop={8}
           style={[styles.saveBtn, (!canSave || saving) && { opacity: 0.5 }]}
         >
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>{t('common.save')}</Text>
         </PressableScale>
       </View>
 
@@ -434,19 +499,35 @@ export default function RoutineBuilder() {
         }}
         onClose={() => setRestSheetExId(null)}
       />
+
+      <SupersetSheet
+        visible={supersetExId != null}
+        anchorExercise={(() => {
+          const rex = exercises.find((e) => e.id === supersetExId);
+          return rex ? asCandidate(rex) : null;
+        })()}
+        candidates={exercises.filter((e) => e.id !== supersetExId).map(asCandidate)}
+        onConfirm={(ids) => {
+          const anchor = supersetExId;
+          if (anchor) setExercises((prev) => pairInSuperset(prev, [anchor, ...ids]));
+          setSupersetExId(null);
+        }}
+        onClose={() => setSupersetExId(null)}
+      />
     </View>
   );
 }
 
 function EmptyBuilder() {
+  useThemed();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIconWrap}>
         <DumbbellIcon size={26} color={color.accent} strokeWidth={2} />
       </View>
-      <Text style={styles.emptyTitle}>Build your routine</Text>
+      <Text style={styles.emptyTitle}>{t('routineEdit.emptyTitle')}</Text>
       <Text style={styles.emptySub}>
-        Add exercises and set target reps and weights. Pull them up instantly every session.
+        {t('routineEdit.emptySub')}
       </Text>
     </View>
   );
@@ -456,6 +537,10 @@ function ExerciseCardBuilder({
   unit,
   rex,
   onReplace,
+  supersetTag: tag,
+  supersetWith,
+  restOverride,
+  onSuperset,
   onRemove,
   onNoteChange,
   onOpenRest,
@@ -471,6 +556,14 @@ function ExerciseCardBuilder({
   /** The unit the target weights are typed in. */
   unit: Unit;
   onReplace: () => void;
+  /** "A1" when in a superset. */
+  supersetTag: string | null;
+  /** The partners' names, empty when solo. */
+  supersetWith: string[];
+  /** Shown in place of the rest when another partner owns the round's rest. */
+  restOverride: string | null;
+  /** Absent when there is nothing to pair with. */
+  onSuperset?: () => void;
   onRemove: () => void;
   onNoteChange: (t: string) => void;
   onOpenRest: () => void;
@@ -482,8 +575,9 @@ function ExerciseCardBuilder({
   onWeightChange: (setId: string, t: string) => void;
   onRepsChange: (setId: string, t: string) => void;
 }) {
+  useThemed();
   const ex = rex.exercise;
-  const muscleLine = ex.category?.name ?? ex.primary_muscle?.name ?? ex.equipment;
+  const muscleLine = ex.category?.name ?? ex.primary_muscle?.name ?? equipmentLabel(ex.equipment, getLang());
   const wLabel = weightColumnLabelFor(ex.kind, unit);
 
   // Working-set index counter — resets per exercise.
@@ -494,7 +588,7 @@ function ExerciseCardBuilder({
       {/* Header row */}
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{ex.initials}</Text>
+          <Text style={styles.avatarText}>{upperDisplay(ex.initials)}</Text>
         </View>
         <View style={styles.headerText}>
           <Text style={styles.exName} numberOfLines={1}>
@@ -509,7 +603,7 @@ function ExerciseCardBuilder({
           hitSlop={8}
           style={styles.removeBtn}
           accessibilityRole="button"
-          accessibilityLabel={`Replace ${ex.name}`}
+          accessibilityLabel={t('routineEdit.replaceLabel', { name: ex.name })}
         >
           <SyncIcon size={16} color={color.text3} strokeWidth={2.2} />
         </Pressable>
@@ -518,7 +612,7 @@ function ExerciseCardBuilder({
           hitSlop={8}
           style={styles.removeBtn}
           accessibilityRole="button"
-          accessibilityLabel={`Remove ${ex.name}`}
+          accessibilityLabel={t('routineEdit.removeLabel', { name: ex.name })}
         >
           <TrashIcon size={16} color={color.text3} strokeWidth={2.2} />
         </Pressable>
@@ -528,7 +622,7 @@ function ExerciseCardBuilder({
       <TextInput
         value={rex.note}
         onChangeText={onNoteChange}
-        placeholder="Add notes here…"
+        placeholder={t('exerciseCard.notesPlaceholder')}
         placeholderTextColor={color.text3}
         multiline
         style={[styles.noteInput, rex.note.length > 0 && styles.noteInputFilled]}
@@ -537,19 +631,47 @@ function ExerciseCardBuilder({
       {/* Rest timer row */}
       <Pressable onPress={onOpenRest} style={styles.restRow}>
         <ClockRowIcon size={15} color={color.accent} strokeWidth={2.4} />
-        <Text style={styles.restLabel}>Rest Timer</Text>
+        <Text style={styles.restLabel}>{t('routineEdit.restTimer')}</Text>
         <View style={styles.restValueWrap}>
-          <Text style={styles.restValue}>{restLabel(rex.restSeconds)}</Text>
+          <Text style={styles.restValue}>{restOverride ?? restLabel(rex.restSeconds)}</Text>
           <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
         </View>
       </Pressable>
 
+      {/* Superset row: pair with another exercise, or leave the pair */}
+      {onSuperset ? (
+        <Pressable
+          onPress={onSuperset}
+          style={[styles.restRow, styles.ssRow]}
+          accessibilityRole="button"
+          accessibilityLabel={tag ? t('routineEdit.leaveLabel', { tag }) : t('exerciseMenu.supersetLabel')}
+        >
+          <ReorderIcon size={15} color={color.accent} strokeWidth={2.2} />
+          <Text style={styles.restLabel}>{t('routineEdit.superset')}</Text>
+          <View style={styles.restValueWrap}>
+            {tag ? (
+              <>
+                <Text style={styles.ssWith} numberOfLines={1}>
+                  {t('routineEdit.ssWith', { tag, names: supersetWith.join(', ') })}
+                </Text>
+                <Text style={styles.ssLeave}>{t('routineEdit.leave')}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.restValue}>{t('routineEdit.none')}</Text>
+                <ChevronRightIcon size={14} color={color.text3} strokeWidth={2.4} />
+              </>
+            )}
+          </View>
+        </Pressable>
+      ) : null}
+
       {/* Column labels */}
       <View style={styles.colLabels}>
-        <Text style={[styles.colLabelText, styles.colSet]}>SET</Text>
-        <Text style={[styles.colLabelText, styles.colType]}>TYPE</Text>
-        <Text style={[styles.colLabelText, styles.colWeight]}>{wLabel}</Text>
-        <Text style={[styles.colLabelText, styles.colReps]}>REPS</Text>
+        <Text style={[styles.colLabelText, styles.colSet]}>{upperDisplay(t('exerciseCard.colSet'))}</Text>
+        <Text style={[styles.colLabelText, styles.colType]}>{upperDisplay(t('routineEdit.colType'))}</Text>
+        <Text style={[styles.colLabelText, styles.colWeight]}>{upperDisplay(wLabel)}</Text>
+        <Text style={[styles.colLabelText, styles.colReps]}>{upperDisplay(t('exerciseCard.colReps'))}</Text>
       </View>
 
       {/* Set rows */}
@@ -570,7 +692,7 @@ function ExerciseCardBuilder({
               onDelete={() => onRemoveSet(s.id)}
               isOpen={openSetId === s.id}
               onOpenChange={(open) => onSetOpenChange(s.id, open)}
-              accessibilityLabel={`Delete set ${badge}`}
+              accessibilityLabel={t('setRow.deleteLabel', { badge })}
               radius={9}
               rowStyle={styles.setRow}
             >
@@ -587,7 +709,7 @@ function ExerciseCardBuilder({
                 </Pressable>
               </View>
               <View style={styles.colType}>
-                <Text style={styles.typeLabelText}>{TYPE_LABEL[s.type]}</Text>
+                <Text style={styles.typeLabelText}>{typeLabel(s.type)}</Text>
               </View>
               <View style={styles.colWeight}>
                 <TextInput
@@ -616,7 +738,7 @@ function ExerciseCardBuilder({
 
       {/* + Add Set */}
       <PressableScale onPress={onAddSet} style={styles.addSet}>
-        <Text style={styles.addSetText}>+ Add Set</Text>
+        <Text style={styles.addSetText}>{t('exerciseCard.addSet')}</Text>
       </PressableScale>
     </View>
   );
@@ -626,338 +748,364 @@ const COL_SET = 40;
 const COL_WEIGHT = 74;
 const COL_REPS = 64;
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  flex: { flex: 1 },
+const styles = themed(() =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    flex: { flex: 1 },
 
-  // Header ------------------------------------------------------------
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(10,10,11,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: color.hair,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  cancel: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text2,
-  },
-  headerTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 16,
-    letterSpacing: -0.16,
-    color: color.text1,
-    maxWidth: 200,
-    textAlign: 'center',
-  },
-  saveBtn: {
-    height: 32,
-    paddingHorizontal: 16,
-    borderRadius: 9,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveText: {
-    fontFamily: font.titleSemi,
-    fontSize: 14,
-    color: color.accentFg,
-  },
+    // Header ------------------------------------------------------------
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: color.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: color.hair,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    cancel: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text2,
+    },
+    headerTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 16,
+      letterSpacing: -0.16,
+      color: color.text1,
+      maxWidth: 200,
+      textAlign: 'center',
+    },
+    saveBtn: {
+      height: 32,
+      paddingHorizontal: 16,
+      borderRadius: 9,
+      backgroundColor: color.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    saveText: {
+      fontFamily: font.titleSemi,
+      fontSize: 14,
+      color: color.accentFg,
+    },
 
-  // Title + meta ------------------------------------------------------
-  titleInput: {
-    width: '100%',
-    backgroundColor: 'transparent',
-    color: color.text1,
-    fontFamily: font.displayBold,
-    fontSize: 26,
-    letterSpacing: -0.52,
-    paddingHorizontal: 2,
-    paddingVertical: 0,
-  },
-  nameError: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.error,
-    marginTop: 8,
-    marginHorizontal: 2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-    marginHorizontal: 2,
-    marginBottom: 22,
-  },
-  metaText: {
-    fontFamily: font.monoRegular,
-    fontSize: 12,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
+    // Title + meta ------------------------------------------------------
+    titleInput: {
+      width: '100%',
+      backgroundColor: 'transparent',
+      color: color.text1,
+      fontFamily: font.displayBold,
+      fontSize: 26,
+      letterSpacing: -0.52,
+      paddingHorizontal: 2,
+      paddingVertical: 0,
+    },
+    nameError: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.error,
+      marginTop: 8,
+      marginHorizontal: 2,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+      marginHorizontal: 2,
+      marginBottom: 22,
+    },
+    metaText: {
+      fontFamily: font.monoRegular,
+      fontSize: 12,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Empty state ------------------------------------------------------
-  empty: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    paddingTop: 30,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    borderRadius: 16,
-  },
-  emptyIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 15,
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontFamily: font.titleSemi,
-    fontSize: 17,
-    letterSpacing: -0.17,
-    color: color.text1,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13.5,
-    color: color.text2,
-    lineHeight: 20,
-    maxWidth: 250,
-    marginTop: 6,
-    textAlign: 'center',
-  },
+    // Empty state ------------------------------------------------------
+    empty: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      paddingTop: 30,
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      borderRadius: 16,
+    },
+    emptyIconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 15,
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      fontFamily: font.titleSemi,
+      fontSize: 17,
+      letterSpacing: -0.17,
+      color: color.text1,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13.5,
+      color: color.text2,
+      lineHeight: 20,
+      maxWidth: 250,
+      marginTop: 6,
+      textAlign: 'center',
+    },
 
-  // Exercise cards ---------------------------------------------------
-  exList: { flexDirection: 'column', gap: 12 },
-  card: {
-    backgroundColor: color.surface1,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 16,
-    paddingTop: 14,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingHorizontal: 2,
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: color.surface3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: font.monoSemi,
-    fontSize: 13,
-    color: color.accent,
-  },
-  headerText: { flex: 1, minWidth: 0 },
-  exName: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    letterSpacing: -0.15,
-    color: color.accent,
-  },
-  exMuscle: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    color: color.text3,
-    marginTop: 1,
-  },
-  removeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Exercise cards ---------------------------------------------------
+    exList: { flexDirection: 'column', gap: 12 },
+    card: {
+      backgroundColor: color.surface1,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      paddingTop: 14,
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingHorizontal: 2,
+      marginBottom: 12,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: color.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontFamily: font.monoSemi,
+      fontSize: 13,
+      color: color.accent,
+    },
+    headerText: { flex: 1, minWidth: 0 },
+    exName: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      letterSpacing: -0.15,
+      color: color.accent,
+    },
+    exMuscle: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      color: color.text3,
+      marginTop: 1,
+    },
+    removeBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  // Note
-  noteInput: {
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 10,
-    color: color.warning,
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 20,
-    minHeight: 40,
-    textAlignVertical: 'top',
-  },
-  noteInputFilled: {
-    backgroundColor: 'rgba(255,194,75,0.07)',
-    borderColor: 'rgba(255,194,75,0.22)',
-  },
+    // Note
+    noteInput: {
+      marginBottom: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 10,
+      color: color.warning,
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 20,
+      minHeight: 40,
+      textAlignVertical: 'top',
+    },
+    noteInputFilled: {
+      backgroundColor: withAlpha(color.warning, 0.07),
+      borderColor: withAlpha(color.warning, 0.22),
+    },
 
-  // Rest row
-  restRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 40,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    borderRadius: 10,
-  },
-  restLabel: {
-    fontFamily: font.bodyMedium,
-    fontSize: 13,
-    color: color.text2,
-  },
-  restValueWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 'auto',
-  },
-  restValue: {
-    fontFamily: font.monoRegular,
-    fontSize: 13,
-    color: color.text1,
-    fontVariant: ['tabular-nums'],
-  },
+    // Rest row
+    restRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: 40,
+      paddingHorizontal: 12,
+      marginBottom: 12,
+      borderRadius: 10,
+    },
+    restLabel: {
+      fontFamily: font.bodyMedium,
+      fontSize: 13,
+      color: color.text2,
+    },
+    restValueWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginLeft: 'auto',
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    restValue: {
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text1,
+      fontVariant: ['tabular-nums'],
+    },
 
-  // Column labels
-  colLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingBottom: 6,
-  },
-  colLabelText: {
-    fontFamily: font.monoMedium,
-    fontSize: 9.5,
-    letterSpacing: 0.76,
-    color: color.text3,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
+    // Superset row, tucked under the rest row
+    ssRow: { marginTop: -10 },
+    ssWith: {
+      flexShrink: 1,
+      fontFamily: font.monoRegular,
+      fontSize: 13,
+      color: color.text1,
+    },
+    ssLeave: {
+      fontFamily: font.titleSemi,
+      fontSize: 13,
+      color: color.accent,
+      marginLeft: 4,
+    },
+    ssHeader: {
+      fontFamily: font.monoSemi,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text2,
+      paddingHorizontal: 2,
+      marginBottom: 6,
+    },
 
-  colSet: { width: COL_SET, alignItems: 'center' },
-  colType: { flex: 1, alignItems: 'flex-start' },
-  colWeight: { width: COL_WEIGHT, alignItems: 'center' },
-  colReps: { width: COL_REPS, alignItems: 'center' },
+    // Column labels
+    colLabels: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingBottom: 6,
+    },
+    colLabelText: {
+      fontFamily: font.monoMedium,
+      fontSize: 9.5,
+      letterSpacing: 0.76,
+      color: color.text3,
+      textAlign: 'center',
+    },
 
-  // Set rows
-  setsList: { flexDirection: 'column', gap: 2 },
-  setRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    height: 46,
-    borderRadius: 9,
-    // Opaque (same tone as the card it sits on) so the swipe-revealed delete
-    // panel stays hidden behind the row until it slides away.
-    backgroundColor: color.surface1,
-  },
-  badge: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: color.hair,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontFamily: font.monoSemi,
-    fontSize: 12.5,
-  },
-  typeLabelText: {
-    fontFamily: font.monoRegular,
-    fontSize: 12.5,
-    color: color.text3,
-  },
-  numInput: {
-    width: '100%',
-    height: 36,
-    textAlign: 'center',
-    backgroundColor: color.surface2,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    borderRadius: 8,
-    color: color.text1,
-    fontFamily: font.monoMedium,
-    fontSize: 15,
-    fontVariant: ['tabular-nums'],
-    paddingVertical: 0,
-  },
+    colSet: { width: COL_SET, alignItems: 'center' },
+    colType: { flex: 1, alignItems: 'flex-start' },
+    colWeight: { width: COL_WEIGHT, alignItems: 'center' },
+    colReps: { width: COL_REPS, alignItems: 'center' },
 
-  // + Add Set
-  addSet: {
-    marginTop: 8,
-    width: '100%',
-    height: 36,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: color.border,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addSetText: {
-    fontFamily: font.titleSemi,
-    fontSize: 12.5,
-    color: color.text2,
-  },
+    // Set rows
+    setsList: { flexDirection: 'column', gap: 2 },
+    setRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      height: 46,
+      borderRadius: 9,
+      // Opaque (same tone as the card it sits on) so the swipe-revealed delete
+      // panel stays hidden behind the row until it slides away.
+      backgroundColor: color.surface1,
+    },
+    badge: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: color.hair,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeText: {
+      fontFamily: font.monoSemi,
+      fontSize: 12.5,
+    },
+    typeLabelText: {
+      fontFamily: font.monoRegular,
+      fontSize: 12.5,
+      color: color.text3,
+    },
+    numInput: {
+      width: '100%',
+      height: 36,
+      textAlign: 'center',
+      backgroundColor: color.surface2,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+      borderRadius: 8,
+      color: color.text1,
+      fontFamily: font.monoMedium,
+      fontSize: 15,
+      fontVariant: ['tabular-nums'],
+      paddingVertical: 0,
+    },
 
-  // + Add Exercise
-  addExercise: {
-    marginTop: 12,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface1,
-  },
-  addExercisePlus: {
-    fontFamily: font.titleSemi,
-    fontSize: 20,
-    lineHeight: 20,
-    color: color.accent,
-  },
-  addExerciseText: {
-    fontFamily: font.titleSemi,
-    fontSize: 15,
-    color: color.text1,
-  },
-});
+    // + Add Set
+    addSet: {
+      marginTop: 8,
+      width: '100%',
+      height: 36,
+      borderRadius: 9,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: color.border,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addSetText: {
+      fontFamily: font.titleSemi,
+      fontSize: 12.5,
+      color: color.text2,
+    },
+
+    // + Add Exercise
+    addExercise: {
+      marginTop: 12,
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      padding: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface1,
+    },
+    addExercisePlus: {
+      fontFamily: font.titleSemi,
+      fontSize: 20,
+      lineHeight: 20,
+      color: color.accent,
+    },
+    addExerciseText: {
+      fontFamily: font.titleSemi,
+      fontSize: 15,
+      color: color.text1,
+    },
+  }),
+);

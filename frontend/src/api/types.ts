@@ -55,18 +55,27 @@ export type ExerciseKind = 'weighted' | 'bodyweight';
 
 export type CategoryOut = {
   id: string;
+  /** Display label (translated catalog name). */
   name: string;
+  /** The stored (English) name. Use for anything that writes or compares. */
+  englishName: string;
 };
 
 export type MuscleOut = {
   id: string;
+  /** Display label (translated catalog name). */
   name: string;
+  /** The stored (English) name. Use for anything that writes or compares. */
+  englishName: string;
   group?: string | null;
 };
 
 export type ExerciseOut = {
   id: string;
+  /** Display label (translated catalog name). */
   name: string;
+  /** The stored (English) name. Use for anything that writes or compares. */
+  englishName: string;
   initials: string;
   kind: ExerciseKind;
   equipment: string;
@@ -281,11 +290,17 @@ export type Unit = 'kg' | 'lb';
 /** Effort per set: hidden, or shown as RPE or as RIR. */
 export type EffortMode = 'off' | 'rpe' | 'rir';
 
+/** Dark, light, or whatever the phone is set to. */
+export type Appearance = 'dark' | 'light' | 'system';
+
 /** Full locally-persisted settings payload. */
 export type SettingsOut = {
   unit: Unit;
   effort_mode: EffortMode;
+  appearance: Appearance;
   auto_start_rest_timer: boolean;
+  /** Copy each exercise's last note into the next session as a saved value (#137). */
+  keep_exercise_notes: boolean;
   rest_timer_alerts: boolean;
   haptic_feedback: boolean;
 };

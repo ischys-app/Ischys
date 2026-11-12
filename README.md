@@ -16,6 +16,8 @@ Nothing ever leaves the device.
 free · iPhone. Or [build it from source](#build--run) — it's open, MIT-licensed,
 and the whole thing runs on-device either way.
 
+If Ischys is useful to you, a ⭐ on GitHub helps other people find it.
+
 **Android and Wear OS:** the app now runs there too. It is in closed testing on
 Google Play and not publicly listed yet — coming soon. See
 [Platform support](#platform-support).
@@ -32,6 +34,9 @@ I wanted a workout app that sent my data to no one, was fully mine, and lacked
 nothing next to the well-known ones. So I built it, and open-sourced it because
 there was no reason not to. There is no premium tier: every feature is in the
 free app.
+
+If Ischys is useful to you, you can leave an optional tip on
+[Ko-fi](https://ko-fi.com/vplsdev), the only official way to support Ischys.
 
 ## What it is
 
@@ -65,6 +70,17 @@ free app.
   it from Apple Health or Health Connect, snapshotted per workout so past sessions
   keep their numbers.
 - **Merge duplicate exercises** without losing history or PRs.
+- **English, Spanish (Español), Greek (Ελληνικά), Russian (Русский) and
+  Simplified Chinese (简体中文)** on iPhone (Android from its next release) — by
+  default the app follows your phone's first language, and any other language
+  shows English; **Settings → Language** picks any of the five regardless.
+  Exercise, muscle and equipment names are translated too (Greek: almost all
+  exercise names); the Watch app,
+  widgets, Live Activity and how-to steps stay English, text the phone draws
+  itself (Apple Health prompts, system menus) follows the phone's language, and
+  your data, backups and exports are unchanged.
+  Spot a clumsy translation? Say so in
+  [#136](https://github.com/ischys-app/Ischys/issues/136).
 - **736-exercise catalog** bundled in the app — names, muscles and instructions
   from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (public
   domain). Its exercise *photographs* are deliberately not used; see
@@ -94,10 +110,9 @@ themes. The iOS extras have Android counterparts:
 | Live Activity | **Ongoing workout notification** with the rest countdown and actions (a Live Update on Android 16) |
 | Apple Watch app | **Wear OS app** — follows the phone's workout, logs sets and controls rest from the wrist, live heart rate and calories |
 
-**Where it stands.** The Android phone app is in closed testing on Google Play
-and is not publicly listed yet. The Wear OS app has been submitted to its own
-closed testing track and is awaiting Google's review. Google requires a new
-developer account to run a closed test before a public release, so both will be
+**Where it stands.** The Android phone app and the Wear OS app are in closed
+testing on Google Play, each on its own track, and are not publicly listed yet.
+Google requires a new developer account to run a closed test before a public release, so both will be
 publicly available soon, but there is no date. When it is public, the listing
 will be at `play.google.com/store/apps/details?id=app.ischys.mobile`.
 
@@ -112,6 +127,41 @@ will be at `play.google.com/store/apps/details?id=app.ischys.mobile`.
   workout but cannot start one or log sets.
 - The Wear OS app has been verified on an emulator paired with a real phone, not
   yet on real watch hardware.
+
+## FAQ
+
+**Is Ischys free?** Yes. It is free and MIT-licensed, with no subscription, no
+premium tier and no ads. Optional tips go to [Ko-fi](https://ko-fi.com/vplsdev).
+
+**Where is my data stored?** Only on your phone, in a local SQLite database.
+There is no account and no server, and the app uses no analytics or tracking service. It
+is included in your normal device backup, and you can export a JSON or CSV copy
+at any time.
+
+**Does it work offline?** Yes. The exercise catalog and all the training logic
+are bundled in the app, so it works with no connection.
+
+**Is there an Apple Watch app?** Yes. It mirrors and controls a live workout from
+the wrist, and the rest timer also shows on the Lock Screen as a Live Activity.
+
+**Is it on Android?** The Android app and its Wear OS companion are in closed
+testing on Google Play and coming soon. See [Platform support](#platform-support).
+
+**Which languages does it support?** English, Spanish, Greek, Russian and
+Simplified Chinese on iPhone; Android gets all five with its next release. The
+app follows your phone's first language (English if it is not one of the five),
+or pick any of them in Settings → Language. The app, exercise names (almost all
+in Greek), muscles and equipment are translated; the Apple Watch app, widgets, Live Activity and
+exercise instructions stay in English, and Apple Health prompts and system menus
+follow the phone's own language. Workouts, backups and exports are the same in
+every language.
+
+**Can I bring my history from another app?** Yes. Ischys imports a workout CSV
+export. See [importing your workout history](https://ischys.app/import-workout-history).
+
+**How does it compare with other workout trackers?** There is a sourced, dated
+comparison of the open-source options at
+[ischys.app/compare](https://ischys.app/compare).
 
 ## Stack
 

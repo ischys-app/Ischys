@@ -6,15 +6,18 @@
  * ignored, the set was logged on the Watch, or the rating was simply wrong. A
  * tap saves and closes; so does Clear rating.
  */
+import { t } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { effortSentence, type EffortScaleKind } from '../../domain/effort';
 import type { Unit } from '../../domain/units';
-import { color, font } from '../../theme/tokens';
+import { color, font, themed } from '../../theme/tokens';
 import { DraggableSheet } from '../DraggableSheet';
 import { EffortScale } from './EffortScale';
+import { useThemed } from '../../theme/ThemeProvider';
+import { upperDisplay } from '../../i18n/upper';
 
 type Props = {
   visible: boolean;
@@ -38,13 +41,11 @@ type Props = {
 };
 
 /** "Incline Bench Press (Dumbbell)" titles the sheet as "INCLINE BENCH PRESS". */
-const titleName = (name: string): string => name.replace(/\s*\([^)]*\)\s*$/, '').toUpperCase();
+const titleName = (name: string): string => upperDisplay(name.replace(/\s*\([^)]*\)\s*$/, ''));
 
 /** What the scale means before it is touched, as a sentence. */
-const UNRATED: Record<EffortScaleKind, string> = {
-  rpe: '8 means about two reps left in the tank.',
-  rir: '0 means nothing left in the tank.',
-};
+const unrated = (kind: EffortScaleKind): string =>
+  kind === 'rir' ? t('effort.unratedRir') : t('effort.unratedRpe');
 
 export function EffortSheet({
   visible,
@@ -59,6 +60,7 @@ export function EffortSheet({
   onRate,
   onClose,
 }: Props) {
+  useThemed();
   const insets = useSafeAreaInsets();
   const [preview, setPreview] = useState<number | null>(null);
   useEffect(() => {
@@ -80,7 +82,7 @@ export function EffortSheet({
     >
       <View style={styles.grabber} />
       <Text style={styles.title} numberOfLines={1}>
-        {`${titleName(exerciseName)} · SET ${badge}`}
+        {t('effort.sheetTitle', { name: titleName(exerciseName), badge })}
       </Text>
       <Text style={styles.value} numberOfLines={1}>
         {lead}
@@ -92,12 +94,12 @@ export function EffortSheet({
         <EffortScale kind={kind} value={rpe} size="sheet" onPreview={setPreview} onCommit={onRate} />
       </View>
       <View style={styles.ends}>
-        <Text style={styles.end}>EASIER</Text>
-        <Text style={styles.end}>NOTHING LEFT</Text>
+        <Text style={styles.end}>{t('effort.easier')}</Text>
+        <Text style={styles.end}>{t('effort.nothingLeftEnd')}</Text>
       </View>
 
       <Text style={styles.meaning}>
-        {shown != null ? effortSentence(shown, kind) : UNRATED[kind]}
+        {shown != null ? effortSentence(shown, kind) : unrated(kind)}
       </Text>
 
       {/* Nothing to clear on an unrated set, so the button isn't there. */}
@@ -106,73 +108,75 @@ export function EffortSheet({
           onPress={() => onRate(null)}
           style={({ pressed }) => [styles.clear, pressed && styles.clearPressed]}
           accessibilityRole="button"
-          accessibilityLabel="Clear rating"
+          accessibilityLabel={t('workout.clearRating')}
         >
-          <Text style={styles.clearText}>Clear rating</Text>
+          <Text style={styles.clearText}>{t('workout.clearRating')}</Text>
         </Pressable>
       ) : null}
     </DraggableSheet>
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: color.surface1,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingTop: 10,
-    paddingHorizontal: 18,
-  },
-  grabber: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: color.surface3,
-    alignSelf: 'center',
-    marginBottom: 18,
-  },
-  title: {
-    fontFamily: font.monoRegular,
-    fontSize: 11,
-    letterSpacing: 1.54,
-    color: color.text3,
-    fontVariant: ['tabular-nums'],
-  },
-  value: {
-    fontFamily: font.monoMedium,
-    fontSize: 28,
-    color: color.text1,
-    marginTop: 6,
-    fontVariant: ['tabular-nums'],
-  },
-  valueJoin: { fontSize: 15, color: color.text3 },
-  scale: { marginTop: 18 },
-  ends: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  end: {
-    fontFamily: font.monoRegular,
-    fontSize: 10.5,
-    letterSpacing: 0.84,
-    color: color.text3,
-  },
-  meaning: {
-    fontFamily: font.bodyRegular,
-    fontSize: 13,
-    lineHeight: 19.5,
-    color: color.text2,
-    marginTop: 14,
-  },
-  clear: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  clearPressed: { borderColor: color.text3 },
-  clearText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text2 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: color.surface1,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingTop: 10,
+      paddingHorizontal: 18,
+    },
+    grabber: {
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: color.surface3,
+      alignSelf: 'center',
+      marginBottom: 18,
+    },
+    title: {
+      fontFamily: font.monoRegular,
+      fontSize: 11,
+      letterSpacing: 1.54,
+      color: color.text3,
+      fontVariant: ['tabular-nums'],
+    },
+    value: {
+      fontFamily: font.monoMedium,
+      fontSize: 28,
+      color: color.text1,
+      marginTop: 6,
+      fontVariant: ['tabular-nums'],
+    },
+    valueJoin: { fontSize: 15, color: color.text3 },
+    scale: { marginTop: 18 },
+    ends: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+    end: {
+      fontFamily: font.monoRegular,
+      fontSize: 10.5,
+      letterSpacing: 0.84,
+      color: color.text3,
+    },
+    meaning: {
+      fontFamily: font.bodyRegular,
+      fontSize: 13,
+      lineHeight: 19.5,
+      color: color.text2,
+      marginTop: 14,
+    },
+    clear: {
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      backgroundColor: color.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+    },
+    clearPressed: { borderColor: color.text3 },
+    clearText: { fontFamily: font.titleSemi, fontSize: 14.5, color: color.text2 },
+  }),
+);

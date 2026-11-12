@@ -154,3 +154,14 @@ test('what the Watch did not measure is left as the health store had it', () => 
   assert.deepEqual(withWearSession(read, blind), read);
   assert.deepEqual(withWearSession(read, null), read);
 });
+
+test('a profile switch forgets the session, but a waiting finish still hears the next one', async () => {
+  const log = createWearSessionLog();
+  log.note(session());
+  log.forget();
+  assert.equal(await log.wait(T0 - 1_000, T0 + 61 * MIN, 5), null);
+  const waiting = log.wait(T0 - 1_000, T0 + 61 * MIN, 5_000);
+  log.forget();
+  log.note(session());
+  assert.deepEqual(await waiting, session());
+});

@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
-import { atomically, db } from '../db/client';
+import { atomically, db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
 import { newId } from '../db/ids';
 import { nowMs } from './ids';
@@ -103,25 +103,29 @@ export async function addMeasurements(
  * Keyed on the HealthKit uuid so a re-read updates the same row rather than
  * appending a duplicate on every sync. Health rows are read-only in Ischys;
  * nothing is ever written back.
+ *
+ * healthSync passes `deviceDb`: Health is the phone owner's only (#117), and
+ * a switch while it runs must not move the rest into someone else's file.
  */
 export async function upsertHealthMeasurement(
   metric: MetricId,
   value: number,
   measuredAt: number,
   healthUuid: string,
+  ex: Executor = db,
 ): Promise<void> {
-  const existing = await db
+  const existing = await ex
     .select()
     .from(schema.bodyMeasurements)
     .where(eq(schema.bodyMeasurements.healthUuid, healthUuid));
   if (existing.length > 0) {
-    await db
+    await ex
       .update(schema.bodyMeasurements)
       .set({ value, measuredAt, updatedAt: nowMs() })
       .where(eq(schema.bodyMeasurements.id, existing[0].id));
     return;
   }
-  await db.insert(schema.bodyMeasurements).values({
+  await ex.insert(schema.bodyMeasurements).values({
     id: newId(),
     metric,
     value,

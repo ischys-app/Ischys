@@ -12,7 +12,10 @@
  * two stats helpers are inlined here — kept in step with domain/stats.ts).
  */
 import type { RecordMetric } from '../api/types.ts';
-import { type Unit, formatVolume, toDisplay, volumeToDisplay, weightText } from './units.ts';
+import { t } from '../i18n/t.ts';
+import { getLang } from '../i18n/current.ts';
+import type { Lang } from '../i18n/locale.ts';
+import { type Unit, formatVolume, localizeNumber, toDisplay, volumeToDisplay, weightLabel } from './units.ts';
 
 type SetLike = {
   type: string;
@@ -213,11 +216,13 @@ export function recordDisplay(
   value: number,
   display: string,
   unit: Unit,
+  lang: Lang = getLang(),
 ): string {
-  if (metric === 'est_1rm') return `${Math.round(volumeToDisplay(value, unit))} ${unit}`;
-  if (metric === 'best_volume') return formatVolume(value, unit);
+  if (metric === 'est_1rm') return `${localizeNumber(String(Math.round(volumeToDisplay(value, unit))), lang)} ${unit}`;
+  if (metric === 'best_volume') return formatVolume(value, unit, lang);
   const m = _WEIGHT_BY_REPS.exec(display);
-  return m ? `${weightText(Number(m[1]), unit)} × ${m[2]}` : display;
+  if (m) return `${weightLabel(Number(m[1]), unit, lang)} × ${m[2]}`;
+  return display.startsWith('BW × ') ? `${t('record.bodyweightAbbr')}${display.slice(2)}` : display;
 }
 
 /**
@@ -229,11 +234,12 @@ export function recordDeltaDisplay(
   metric: RecordMetric,
   delta: number | null,
   unit: Unit,
+  lang: Lang = getLang(),
 ): string {
-  if (delta === null) return 'NEW';
+  if (delta === null) return t('record.new');
   if (REP_METRICS.has(metric)) return deltaDisplay(metric, delta);
-  if (metric === 'best_volume' && unit !== 'kg') return `▲ ${formatVolume(delta, unit)}`;
-  return `▲ ${g(toDisplay(delta, unit) as number)} ${unit}`;
+  if (metric === 'best_volume' && unit !== 'kg') return `▲ ${formatVolume(delta, unit, lang)}`;
+  return `▲ ${localizeNumber(g(toDisplay(delta, unit) as number), lang)} ${unit}`;
 }
 
 /** Metrics that strictly improved over `previous` (absent metric = first-ever PR). */

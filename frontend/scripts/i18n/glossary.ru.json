@@ -1,0 +1,100 @@
+{
+  "_comment": "Glossary for the ru translation script. Rows without extension:true come from the design spec and are fixed. Rows with extension:true were added by the builder (mirroring the zh-Hans extensions); reviewers may edit them.",
+  "terms": [
+    {
+      "en": "set",
+      "ru": "подход"
+    },
+    {
+      "en": "rep / reps",
+      "ru": "повторение / повторения",
+      "note": "short form: повт."
+    },
+    {
+      "en": "exercise",
+      "ru": "упражнение"
+    },
+    {
+      "en": "workout",
+      "ru": "тренировка"
+    },
+    {
+      "en": "routine",
+      "ru": "программа"
+    },
+    {
+      "en": "warm-up set",
+      "ru": "разминочный подход"
+    },
+    {
+      "en": "drop set",
+      "ru": "дроп-сет"
+    },
+    {
+      "en": "failure set",
+      "ru": "подход до отказа"
+    },
+    {
+      "en": "superset",
+      "ru": "суперсет"
+    },
+    {
+      "en": "personal record",
+      "ru": "личный рекорд",
+      "note": "the abbreviation PR stays PR"
+    },
+    {
+      "en": "rest",
+      "ru": "отдых",
+      "extension": true
+    },
+    {
+      "en": "rest timer",
+      "ru": "таймер отдыха",
+      "extension": true
+    },
+    {
+      "en": "volume (total weight lifted)",
+      "ru": "объём",
+      "extension": true
+    },
+    {
+      "en": "bodyweight",
+      "ru": "собственный вес",
+      "extension": true
+    },
+    {
+      "en": "muscle group",
+      "ru": "группа мышц",
+      "extension": true
+    },
+    {
+      "en": "plate calculator",
+      "ru": "калькулятор блинов",
+      "extension": true
+    },
+    {
+      "en": "history",
+      "ru": "история",
+      "extension": true
+    },
+    {
+      "en": "template",
+      "ru": "шаблон",
+      "extension": true
+    },
+    {
+      "en": "estimated 1RM",
+      "ru": "расчётный 1RM",
+      "extension": true
+    }
+  ],
+  "untranslated": [
+    "RPE",
+    "1RM",
+    "PR",
+    "kg",
+    "lb",
+    "Ischys"
+  ]
+}

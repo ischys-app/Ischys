@@ -201,6 +201,25 @@ public class HealthModule: Module {
       }
     }
 
+    /// Deletes the entry the phone wrote, `uuid`, when the Watch's recording of
+    /// the same session has since reached Health (#167). Resolves `{ status }`:
+    /// "removed" (with the recording's `uuid`), "kept", "missing", "notOurs",
+    /// "failed" (includes a locked phone), or "unavailable". Never rejects.
+    AsyncFunction("removeIfWatchRecorded") { (uuid: String, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(["status": "unavailable"])
+        return
+      }
+      guard let id = UUID(uuidString: uuid) else {
+        promise.resolve(["status": "missing"])
+        return
+      }
+      Task {
+        let outcome = await self.entries.removeIfWatchRecorded(uuid: id)
+        promise.resolve(outcome.payload)
+      }
+    }
+
     /// Aggregates for a finished workout: average and max heart rate (bpm) and
     /// total active energy (kcal) over [startMs, endMs]. Any field is null when
     /// HealthKit holds no samples for it — i.e. no Watch was recording.

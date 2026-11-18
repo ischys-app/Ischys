@@ -15,12 +15,15 @@ import { getDashboard, listWorkouts } from '../api/workouts';
 import {
   getWorkoutHealthEntry,
   healthEntryHeldByAnother,
+  phoneHealthEntriesSince,
   recentWorkoutSpans,
   setWorkoutHealthEntry,
 } from '../data/healthEntryRepo';
 import { writeHeartRate } from '../data/workoutsRepo';
 import { deviceDb } from '../db/client';
 import {
+  duplicateCheckSince,
+  entryAfterDuplicateCheck,
   entryAfterLookup,
   entryAfterReplace,
   entryAtFinish,
@@ -320,6 +323,12 @@ async function finishSync(
               () => null,
             );
       const entry = entryAtFinish({ watchConfirmed: watchSaved, watchUuid, found, phoneSaved });
+      // The phone wrote its own entry although the Watch was recording: the
+      // recording is likely on its way over. Look again once it has had time
+      // to arrive, and take the phone's copy back if it has (#167).
+      if (watchWasActive && entry?.writer === 'phone') {
+        setTimeout(() => void removeWatchDuplicates({ force: true }), DUPLICATE_RECHECK_AFTER_FINISH_MS);
+      }
       if (entry) {
         // Kept with the workout, so an edit to its time knows whether there is
         // an entry to move and whether it is Ischys's to move. Failing to
@@ -480,6 +489,61 @@ export function syncEditedWorkout(
       // A Health failure must not surface as a failed edit.
     }
   });
+}
+
+// --- a phone copy of a Watch recording (#167) ---------------------------------
+
+/** How long after a finish the phone looks again for the Watch's recording. */
+const DUPLICATE_RECHECK_AFTER_FINISH_MS = 3 * 60_000;
+/** At most one sweep per this long, unless one is asked for after a finish. */
+const DUPLICATE_SWEEP_MIN_GAP_MS = 10 * 60_000;
+let lastDuplicateSweep = 0;
+let duplicateSweep: Promise<void> | null = null;
+
+/**
+ * Deletes the phone's own Health entry for each recent workout whose Watch
+ * recording has since reached Health, so the session is listed once (#167).
+ *
+ * The phone writes an entry when the Watch has not confirmed its save within
+ * a few seconds and Health on the phone does not have the recording yet. That
+ * keeps a workout from being lost, but the recording often arrives minutes
+ * later, and then the session shows twice in Health and Fitness. This takes
+ * the stand-in back once the recording is there, and records the recording
+ * as the workout's entry. The recording itself is never touched.
+ *
+ * Runs at launch, on coming to the foreground, and a few minutes after a
+ * finish in which the phone wrote its own entry. Takes its turn with the edit
+ * path, which reads and writes the same record. Stops at the first check
+ * Health could not answer — a locked phone refuses every one — and tries again
+ * next time. Never throws.
+ */
+export function removeWatchDuplicates(opts?: { force?: boolean }): Promise<void> {
+  if (Platform.OS !== 'ios' || !Health.isAvailable()) return Promise.resolve();
+  if (duplicateSweep) return duplicateSweep;
+  const now = Date.now();
+  if (!opts?.force && now - lastDuplicateSweep < DUPLICATE_SWEEP_MIN_GAP_MS) {
+    return Promise.resolve();
+  }
+  lastDuplicateSweep = now;
+  duplicateSweep = inTurn(() => sweepWatchDuplicates(now)).finally(() => {
+    duplicateSweep = null;
+  });
+  return duplicateSweep;
+}
+
+async function sweepWatchDuplicates(now: number): Promise<void> {
+  try {
+    if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return;
+    for (const w of await phoneHealthEntriesSince(duplicateCheckSince(now), deviceDb)) {
+      const outcome = await Health.removeIfWatchRecorded(w.uuid);
+      if (outcome.status === 'failed' || outcome.status === 'unavailable') return;
+      const entry = { uuid: w.uuid, writer: 'phone' } as const;
+      const next = entryAfterDuplicateCheck(entry, outcome);
+      if (next !== entry) await setWorkoutHealthEntry(w.id, next, deviceDb);
+    }
+  } catch {
+    // Best-effort: a duplicate left in place is what there was before.
+  }
 }
 
 /**

@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  DUPLICATE_CHECK_DAYS,
+  duplicateCheckSince,
+  entryAfterDuplicateCheck,
   entryAfterLookup,
   entryAfterReplace,
   entryAtFinish,
@@ -13,6 +16,7 @@ import {
   healthWindow,
   lookupAccepted,
   needsLookup,
+  needsDuplicateCheck,
   PHONE_START_TOLERANCE_MS,
   type HealthEditState,
   type HealthEntry,
@@ -338,4 +342,42 @@ test('the line names the platform\'s own health store', () => {
     healthEditLine(state(), 'Health Connect'),
     'Saving updates this workout in Health Connect too.',
   );
+});
+
+// --- a phone copy of a Watch recording (#167) ---------------------------------
+
+test('only a phone entry with a known UUID is checked for a Watch recording', () => {
+  assert.equal(needsDuplicateCheck(phone), true);
+  assert.equal(needsDuplicateCheck({ uuid: null, writer: 'phone' }), false);
+  assert.equal(needsDuplicateCheck(watch), false);
+  assert.equal(needsDuplicateCheck(null), false);
+});
+
+test('a removed phone copy hands the workout to the Watch recording', () => {
+  assert.deepEqual(entryAfterDuplicateCheck(phone, { status: 'removed', uuid: 'W-9' }), {
+    uuid: 'W-9',
+    writer: 'watch',
+  });
+});
+
+test('an entry deleted in Health is no longer recorded', () => {
+  assert.equal(entryAfterDuplicateCheck(phone, { status: 'missing' }), null);
+});
+
+test('an entry the phone did not write is recorded as the Watch one', () => {
+  assert.deepEqual(entryAfterDuplicateCheck(phone, { status: 'notOurs' }), {
+    uuid: 'P-1',
+    writer: 'watch',
+  });
+});
+
+test('kept, failed and unavailable leave the record as it is', () => {
+  for (const status of ['kept', 'failed', 'unavailable'] as const) {
+    assert.deepEqual(entryAfterDuplicateCheck(phone, { status }), phone);
+  }
+});
+
+test('the check looks back DUPLICATE_CHECK_DAYS days', () => {
+  const now = Date.UTC(2026, 10, 18);
+  assert.equal(duplicateCheckSince(now), now - DUPLICATE_CHECK_DAYS * 86_400_000);
 });

@@ -148,36 +148,102 @@ final class WorkoutEntries {
   /// When both halves wrote one — the rare duplicate — the Watch's is the one
   /// returned: it is the recording, and the one that must never be altered.
   func find(start: Date, end: Date) async -> Entry? {
+    var best: Match?
+    // An error is "nothing found" here, and deliberately: the finish path asks
+    // this before writing, and must write rather than lose a workout.
+    for match in await matches(start: start, end: end) ?? [] {
+      if let current = best {
+        let better =
+          current.writer == match.writer
+          ? match.overlap > current.overlap : match.writer == .watch
+        if !better { continue }
+      }
+      best = match
+    }
+
+    guard let best else { return nil }
+    return Entry(workout: best.workout, writer: best.writer, energyKcal: energyKcal(of: best.workout))
+  }
+
+  /// Ischys's strength workouts covering most of [start, end], each with who
+  /// wrote it and how much of the window it covers. Nil when HealthKit could
+  /// not answer, which is not the same as there being none.
+  private typealias Match = (workout: HKWorkout, writer: Writer, overlap: TimeInterval)
+
+  private func matches(start: Date, end: Date) async -> [Match]? {
     let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
       HKQuery.predicateForSamples(withStart: start, end: end, options: []),
       HKQuery.predicateForWorkouts(with: .traditionalStrengthTraining),
     ])
     let sessionLength = end.timeIntervalSince(start)
+    guard let found = await workouts(matching: predicate) else { return nil }
 
-    var best: (workout: HKWorkout, writer: Writer, overlap: TimeInterval)?
-    // An error is "nothing found" here, and deliberately: the finish path asks
-    // this before writing, and must write rather than lose a workout.
-    for workout in await workouts(matching: predicate) ?? [] {
-      guard let writer = writer(of: workout) else { continue }
-
+    return found.compactMap { workout -> Match? in
+      guard let writer = writer(of: workout) else { return nil }
       // Back-to-back sessions touch at an endpoint and would otherwise match on
       // overlap alone. A real match covers most of both intervals, so require
       // that of it.
       let overlap = min(end, workout.endDate).timeIntervalSince(max(start, workout.startDate))
-      guard overlap > 0 else { continue }
+      guard overlap > 0 else { return nil }
       let length = workout.endDate.timeIntervalSince(workout.startDate)
-      guard overlap >= length / 2, overlap >= sessionLength / 2 else { continue }
-
-      if let current = best {
-        let better =
-          current.writer == writer ? overlap > current.overlap : writer == .watch
-        if !better { continue }
-      }
-      best = (workout, writer, overlap)
+      guard overlap >= length / 2, overlap >= sessionLength / 2 else { return nil }
+      return (workout, writer, overlap)
     }
+  }
 
-    guard let best else { return nil }
-    return Entry(workout: best.workout, writer: best.writer, energyKcal: energyKcal(of: best.workout))
+  // MARK: Removing a duplicate
+
+  enum DuplicateOutcome {
+    /// The Watch's recording of the same session is in Health, so the phone's
+    /// copy was deleted. Carries the recording's UUID.
+    case removed(UUID)
+    /// No Watch recording covers it (yet): the phone's entry stays.
+    case kept
+    /// Health answered, and has no such entry any more.
+    case missing
+    /// The entry is not one the phone wrote. Nothing was done to it.
+    case notOurs
+    /// Nothing changed and nothing was learned: a query or the delete did not
+    /// go through (a locked phone refuses both).
+    case failed
+
+    var payload: [String: Any] {
+      switch self {
+      case .removed(let uuid): return ["status": "removed", "uuid": uuid.uuidString]
+      case .kept: return ["status": "kept"]
+      case .missing: return ["status": "missing"]
+      case .notOurs: return ["status": "notOurs"]
+      case .failed: return ["status": "failed"]
+      }
+    }
+  }
+
+  /// Deletes the entry the PHONE wrote, `uuid`, when the Watch's recording of
+  /// the same session is also in Health (#167).
+  ///
+  /// The phone writes its own entry when the Watch has not confirmed its save
+  /// within a few seconds and Health on the phone does not have the recording
+  /// yet. The recording often reaches the phone minutes later, and then the
+  /// session shows twice. The recording is the measurement and is never
+  /// touched; the phone's entry was only ever a stand-in for it.
+  ///
+  /// Matched over the phone entry's own window, by the same rules as `find`.
+  func removeIfWatchRecorded(uuid: UUID) async -> DuplicateOutcome {
+    guard let stored = await workouts(matching: HKQuery.predicateForObject(with: uuid)) else {
+      return .failed
+    }
+    guard let phoneEntry = stored.first else { return .missing }
+    guard writer(of: phoneEntry) == .phone else { return .notOurs }
+
+    guard let found = await matches(start: phoneEntry.startDate, end: phoneEntry.endDate) else {
+      return .failed
+    }
+    let recording = found
+      .filter { $0.writer == .watch }
+      .max { $0.overlap < $1.overlap }
+    guard let recording else { return .kept }
+
+    return await discard(phoneEntry) ? .removed(recording.workout.uuid) : .failed
   }
 
   // MARK: Replacing

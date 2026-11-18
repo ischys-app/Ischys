@@ -9,7 +9,7 @@
  * and a finish sync can outlive a switch to someone else's profile, so
  * healthSync passes `deviceDb` (always the owner's file) rather than `db`.
  */
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, ne } from 'drizzle-orm';
 
 import { db, type Executor } from '../db/client';
 import * as schema from '../db/schema';
@@ -67,6 +67,29 @@ export async function healthEntryHeldByAnother(
     .where(and(eq(schema.workouts.healthWorkoutUuid, uuid), ne(schema.workouts.id, workoutId)))
     .limit(1);
   return rows.length > 0;
+}
+
+/**
+ * Workouts started at or after `since` whose Health entry the phone wrote, with
+ * its UUID: the ones whose entry may be a stand-in for a Watch recording that
+ * has since arrived (#167).
+ */
+export async function phoneHealthEntriesSince(
+  since: number,
+  ex: Executor = db,
+): Promise<{ id: string; uuid: string }[]> {
+  const rows = await ex
+    .select({ id: schema.workouts.id, uuid: schema.workouts.healthWorkoutUuid })
+    .from(schema.workouts)
+    .where(
+      and(
+        eq(schema.workouts.healthWorkoutWriter, 'phone'),
+        isNotNull(schema.workouts.healthWorkoutUuid),
+        gte(schema.workouts.startedAt, since),
+      ),
+    )
+    .orderBy(desc(schema.workouts.startedAt));
+  return rows.flatMap((r) => (r.uuid ? [{ id: r.id, uuid: r.uuid }] : []));
 }
 
 /** A workout's span, for matching a watch session to it (lib/wearSession.ts). */

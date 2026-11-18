@@ -67,6 +67,7 @@ type HealthNativeModule = {
   findWorkout?(startedAt: number, endedAt: number): Promise<Record<string, unknown> | null>;
   canWriteWorkouts?(): boolean;
   replaceWorkout?(uuid: string, startedAt: number, endedAt: number): Promise<Record<string, unknown>>;
+  removeIfWatchRecorded?(uuid: string): Promise<Record<string, unknown>>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -272,6 +273,43 @@ export const replaceWorkout = async (
       case 'missing':
       case 'notOurs':
       case 'denied':
+      case 'unavailable':
+        return { status: result.status };
+      default:
+        return { status: 'failed' };
+    }
+  } catch {
+    return { status: 'failed' };
+  }
+};
+
+/** What `removeIfWatchRecorded` did. */
+export type DuplicateResult =
+  | { status: 'removed'; uuid: string }
+  | { status: 'kept' | 'missing' | 'notOurs' | 'failed' | 'unavailable' };
+
+/**
+ * Deletes an entry the PHONE wrote when the Watch's recording of the same
+ * session has since reached Health, so the session is not listed twice
+ * (#167). The recording itself is never touched. iOS only: anywhere else, or
+ * on an older native module, it is `unavailable`.
+ *
+ * Never throws: every way it can go wrong is a status.
+ */
+export const removeIfWatchRecorded = async (uuid: string): Promise<DuplicateResult> => {
+  if (!native || typeof native.removeIfWatchRecorded !== 'function') {
+    return { status: 'unavailable' };
+  }
+  try {
+    const result = await native.removeIfWatchRecorded(uuid);
+    switch (result?.status) {
+      case 'removed':
+        return typeof result.uuid === 'string'
+          ? { status: 'removed', uuid: result.uuid }
+          : { status: 'failed' };
+      case 'kept':
+      case 'missing':
+      case 'notOurs':
       case 'unavailable':
         return { status: result.status };
       default:

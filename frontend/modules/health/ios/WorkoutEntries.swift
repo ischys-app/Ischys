@@ -197,8 +197,10 @@ final class WorkoutEntries {
     /// The Watch's recording of the same session is in Health, so the phone's
     /// copy was deleted. Carries the recording's UUID.
     case removed(UUID)
-    /// No Watch recording covers it (yet): the phone's entry stays.
-    case kept
+    /// No Watch recording covers it (yet): the phone's entry stays. Carries a
+    /// UUID only when the entry is a different one from the one asked about:
+    /// the stand-in a cut-short replace saved.
+    case kept(UUID?)
     /// Health answered, and has no such entry any more.
     case missing
     /// The entry is not one the phone wrote. Nothing was done to it.
@@ -210,7 +212,9 @@ final class WorkoutEntries {
     var payload: [String: Any] {
       switch self {
       case .removed(let uuid): return ["status": "removed", "uuid": uuid.uuidString]
-      case .kept: return ["status": "kept"]
+      case .kept(let uuid):
+        if let uuid { return ["status": "kept", "uuid": uuid.uuidString] }
+        return ["status": "kept"]
       case .missing: return ["status": "missing"]
       case .notOurs: return ["status": "notOurs"]
       case .failed: return ["status": "failed"]
@@ -228,20 +232,33 @@ final class WorkoutEntries {
   /// touched; the phone's entry was only ever a stand-in for it.
   ///
   /// Matched over the phone entry's own window, by the same rules as `find`.
-  func removeIfWatchRecorded(uuid: UUID) async -> DuplicateOutcome {
+  func removeIfWatchRecorded(uuid: UUID, excluding held: Set<UUID> = []) async -> DuplicateOutcome {
     guard let stored = await workouts(matching: HKQuery.predicateForObject(with: uuid)) else {
       return .failed
     }
-    guard let phoneEntry = stored.first else { return .missing }
+    var phoneEntry = stored.first
+    var adopted = false
+    if phoneEntry == nil {
+      // Gone may mean a replace that was cut short after deleting it: then the
+      // entry it saved in its place is the workout's, as `replace` treats it.
+      guard let leftovers = await replacements(of: uuid) else { return .failed }
+      guard let leftover = leftovers.first else { return .missing }
+      phoneEntry = leftover
+      adopted = true
+    }
+    guard let phoneEntry else { return .missing }
     guard writer(of: phoneEntry) == .phone else { return .notOurs }
 
     guard let found = await matches(start: phoneEntry.startDate, end: phoneEntry.endDate) else {
       return .failed
     }
+    // A recording another workout already holds is that workout's, however
+    // much this window overlaps it (an edited time, say): never a reason to
+    // delete this one.
     let recording = found
-      .filter { $0.writer == .watch }
+      .filter { $0.writer == .watch && !held.contains($0.workout.uuid) }
       .max { $0.overlap < $1.overlap }
-    guard let recording else { return .kept }
+    guard let recording else { return .kept(adopted ? phoneEntry.uuid : nil) }
 
     return await discard(phoneEntry) ? .removed(recording.workout.uuid) : .failed
   }

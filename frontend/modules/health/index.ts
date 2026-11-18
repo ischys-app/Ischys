@@ -67,7 +67,7 @@ type HealthNativeModule = {
   findWorkout?(startedAt: number, endedAt: number): Promise<Record<string, unknown> | null>;
   canWriteWorkouts?(): boolean;
   replaceWorkout?(uuid: string, startedAt: number, endedAt: number): Promise<Record<string, unknown>>;
-  removeIfWatchRecorded?(uuid: string): Promise<Record<string, unknown>>;
+  removeIfWatchRecorded?(uuid: string, excluding: string[]): Promise<Record<string, unknown>>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -286,28 +286,36 @@ export const replaceWorkout = async (
 /** What `removeIfWatchRecorded` did. */
 export type DuplicateResult =
   | { status: 'removed'; uuid: string }
-  | { status: 'kept' | 'missing' | 'notOurs' | 'failed' | 'unavailable' };
+  | { status: 'kept'; uuid?: string }
+  | { status: 'missing' | 'notOurs' | 'failed' | 'unavailable' };
 
 /**
  * Deletes an entry the PHONE wrote when the Watch's recording of the same
  * session has since reached Health, so the session is not listed twice
- * (#167). The recording itself is never touched. iOS only: anywhere else, or
+ * (#167). A recording in `excluding` is another workout's and never counts.
+ * The recording itself is never touched. iOS only: anywhere else, or
  * on an older native module, it is `unavailable`.
  *
  * Never throws: every way it can go wrong is a status.
  */
-export const removeIfWatchRecorded = async (uuid: string): Promise<DuplicateResult> => {
+export const removeIfWatchRecorded = async (
+  uuid: string,
+  excluding: string[] = [],
+): Promise<DuplicateResult> => {
   if (!native || typeof native.removeIfWatchRecorded !== 'function') {
     return { status: 'unavailable' };
   }
   try {
-    const result = await native.removeIfWatchRecorded(uuid);
+    const result = await native.removeIfWatchRecorded(uuid, excluding);
     switch (result?.status) {
       case 'removed':
         return typeof result.uuid === 'string'
           ? { status: 'removed', uuid: result.uuid }
           : { status: 'failed' };
       case 'kept':
+        return typeof result.uuid === 'string'
+          ? { status: 'kept', uuid: result.uuid }
+          : { status: 'kept' };
       case 'missing':
       case 'notOurs':
       case 'unavailable':

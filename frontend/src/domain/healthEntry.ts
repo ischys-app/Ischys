@@ -262,7 +262,10 @@ export function needsDuplicateCheck(entry: HealthEntry | null): boolean {
 export type DuplicateCheckOutcome =
   /** The phone's copy was deleted; `uuid` is the Watch recording's. */
   | { status: 'removed'; uuid: string }
-  | { status: 'kept' | 'missing' | 'notOurs' | 'failed' | 'unavailable' };
+  /** No recording yet. `uuid` only when the phone entry is now a different
+   *  one: the stand-in a cut-short replace saved in its place. */
+  | { status: 'kept'; uuid?: string }
+  | { status: 'missing' | 'notOurs' | 'failed' | 'unavailable' };
 
 /** What to store about the entry once it has been checked. */
 export function entryAfterDuplicateCheck(
@@ -272,6 +275,8 @@ export function entryAfterDuplicateCheck(
   switch (outcome.status) {
     case 'removed':
       return { uuid: outcome.uuid, writer: 'watch' };
+    case 'kept':
+      return outcome.uuid ? { uuid: outcome.uuid, writer: 'phone' } : entry;
     case 'missing':
       return null;
     case 'notOurs':

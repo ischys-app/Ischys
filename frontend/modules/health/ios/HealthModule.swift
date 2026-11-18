@@ -202,10 +202,12 @@ public class HealthModule: Module {
     }
 
     /// Deletes the entry the phone wrote, `uuid`, when the Watch's recording of
-    /// the same session has since reached Health (#167). Resolves `{ status }`:
-    /// "removed" (with the recording's `uuid`), "kept", "missing", "notOurs",
+    /// the same session has since reached Health (#167). A recording whose UUID
+    /// is in `excluding` (held by another workout) never counts. Resolves
+    /// `{ status }`: "removed" (with the recording's `uuid`), "kept" (with a
+    /// `uuid` when the entry is a cut-short replace's stand-in), "missing", "notOurs",
     /// "failed" (includes a locked phone), or "unavailable". Never rejects.
-    AsyncFunction("removeIfWatchRecorded") { (uuid: String, promise: Promise) in
+    AsyncFunction("removeIfWatchRecorded") { (uuid: String, excluding: [String], promise: Promise) in
       guard HKHealthStore.isHealthDataAvailable() else {
         promise.resolve(["status": "unavailable"])
         return
@@ -215,7 +217,8 @@ public class HealthModule: Module {
         return
       }
       Task {
-        let outcome = await self.entries.removeIfWatchRecorded(uuid: id)
+        let held = Set(excluding.compactMap { UUID(uuidString: $0) })
+        let outcome = await self.entries.removeIfWatchRecorded(uuid: id, excluding: held)
         promise.resolve(outcome.payload)
       }
     }

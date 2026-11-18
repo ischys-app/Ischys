@@ -92,6 +92,15 @@ export async function phoneHealthEntriesSince(
   return rows.flatMap((r) => (r.uuid ? [{ id: r.id, uuid: r.uuid }] : []));
 }
 
+/** Every Health entry UUID a workout records, with the workout it is on. */
+export async function recordedHealthUuids(ex: Executor = db): Promise<{ id: string; uuid: string }[]> {
+  const rows = await ex
+    .select({ id: schema.workouts.id, uuid: schema.workouts.healthWorkoutUuid })
+    .from(schema.workouts)
+    .where(isNotNull(schema.workouts.healthWorkoutUuid));
+  return rows.flatMap((r) => (r.uuid ? [{ id: r.id, uuid: r.uuid }] : []));
+}
+
 /** A workout's span, for matching a watch session to it (lib/wearSession.ts). */
 export type WorkoutSpan = {
   id: string;

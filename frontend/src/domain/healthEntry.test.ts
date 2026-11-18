@@ -381,3 +381,10 @@ test('the check looks back DUPLICATE_CHECK_DAYS days', () => {
   const now = Date.UTC(2026, 10, 18);
   assert.equal(duplicateCheckSince(now), now - DUPLICATE_CHECK_DAYS * 86_400_000);
 });
+
+test("a cut-short replace's stand-in becomes the recorded phone entry", () => {
+  assert.deepEqual(entryAfterDuplicateCheck(phone, { status: 'kept', uuid: 'P-2' }), {
+    uuid: 'P-2',
+    writer: 'phone',
+  });
+});

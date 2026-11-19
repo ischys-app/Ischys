@@ -42,9 +42,9 @@ If Ischys is useful to you, you can leave an optional tip on
   local SQLite database and all the training logic (volume, estimated 1RM, PR
   detection, streaks, charts) running in TypeScript on the phone.
 - **Private by construction.** Because there is no server, your data can't be
-  collected, sold, or breached. It backs up with your normal device backup
-  (iCloud on iPhone, Google's device backup on Android), and you can **export**
-  a JSON/CSV copy anytime.
+  collected, sold, or breached. On iPhone it backs up with your normal device
+  backup (iCloud). On Android it is not in Google's device backup yet, so keep
+  an export. You can **export** a JSON/CSV copy anytime.
 - **Yours to build.** MIT-licensed. Clone it, build it, run it, change it.
 
 ## Features
@@ -130,9 +130,9 @@ the Play Store on the watch.
 premium tier and no ads. Optional tips go to [Ko-fi](https://ko-fi.com/vplsdev).
 
 **Where is my data stored?** Only on your phone, in a local SQLite database.
-There is no account and no server, and the app uses no analytics or tracking service. It
-is included in your normal device backup, and you can export a JSON or CSV copy
-at any time.
+There is no account and no server, and the app uses no analytics or tracking service. On
+iPhone it is included in your normal device backup; on Android it is not in
+Google's device backup yet. You can export a JSON or CSV copy at any time.
 
 **Does it work offline?** Yes. The exercise catalog and all the training logic
 are bundled in the app, so it works with no connection.

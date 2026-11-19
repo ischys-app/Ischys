@@ -72,8 +72,9 @@ If Ischys is useful to you, you can leave an optional tip on
   default the app follows your phone's first language, and any other language
   shows English; **Settings → Language** picks any of the five regardless.
   Exercise, muscle and equipment names are translated too (Greek: almost all
-  exercise names); the Watch app,
-  widgets, Live Activity and how-to steps stay English, text the phone draws
+  exercise names); the Apple Watch
+  and Wear OS apps, widgets, the Live Activity, the Android workout notification
+  and how-to steps stay English, text the phone draws
   itself (Apple Health prompts, system menus) follows the phone's language, and
   your data, backups and exports are unchanged.
   Spot a clumsy translation? Say so in
@@ -146,8 +147,8 @@ the wrist, and the rest timer also shows on the Lock Screen as a Live Activity.
 Simplified Chinese, on iPhone and Android. The
 app follows your phone's first language (English if it is not one of the five),
 or pick any of them in Settings → Language. The app, exercise names (almost all
-in Greek), muscles and equipment are translated; the Apple Watch app, widgets, Live Activity and
-exercise instructions stay in English, and Apple Health prompts and system menus
+in Greek), muscles and equipment are translated; the Apple Watch and Wear OS apps, widgets, the Live
+Activity, the Android workout notification and exercise instructions stay in English, and Apple Health prompts and system menus
 follow the phone's own language. Workouts, backups and exports are the same in
 every language.
 

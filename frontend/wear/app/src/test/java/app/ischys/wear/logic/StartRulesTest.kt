@@ -5,27 +5,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StartRulesTest {
-  private fun rules(reachable: Boolean = true, appClosed: Boolean = false, handingOff: Boolean = false) =
-    StartRules(reachable, appClosed, handingOff)
+  private fun rules(reachable: Boolean = true, handingOff: Boolean = false) = StartRules(reachable, handingOff)
 
-  @Test fun aRoutineStartsWhenThePhoneIsReadyAndIdle() {
+  @Test fun aRoutineStartsWhenThePhoneIsInReachAndIdle() {
     assertTrue(rules().canStartRoutine)
+    assertFalse(rules().routineDimmed(pending = false))
   }
 
   @Test fun aDimmedRoutineCannotBeTappedWhenThePhoneIsOutOfReach() {
     val r = rules(reachable = false)
     assertTrue(r.routineDimmed(pending = false))
     assertFalse(r.canStartRoutine)
-  }
-
-  @Test fun nothingStartsWhileIschysIsClosedOnThePhone() {
-    // The phone refuses a start it cannot apply and drops it, so the Watch
-    // must not record a workout the phone will never see.
-    val r = rules(appClosed = true)
-    assertFalse(r.canStartRoutine)
-    assertFalse(r.canStartEmpty)
-    assertTrue(r.routineDimmed(pending = false))
-    assertTrue(r.emptyDimmed)
   }
 
   @Test fun anEmptyWorkoutStillStartsOutOfReach() {
@@ -38,6 +28,7 @@ class StartRulesTest {
     val r = rules(handingOff = true)
     assertFalse(r.canStartRoutine)
     assertFalse(r.canStartEmpty)
+    assertTrue(r.emptyDimmed)
     assertFalse(r.routineDimmed(pending = true))
     assertTrue(r.routineDimmed(pending = false))
   }

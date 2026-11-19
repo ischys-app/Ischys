@@ -54,7 +54,7 @@ import app.ischys.wear.logic.UiState
 @Composable
 fun StartScreen(ui: UiState) {
   val handingOff = ui.pendingRoutineId != null
-  val rules = StartRules(ui.phoneReachable, ui.phoneAppClosed, handingOff)
+  val rules = StartRules(ui.phoneReachable, handingOff)
   // A fresh appearance is never mid-handoff, and asks the phone for the
   // routine list: opened on its own, nothing else would ever send it.
   LaunchedEffect(Unit) { WorkoutModel.startAppeared() }
@@ -139,8 +139,7 @@ private fun EmptyCard(reachable: Boolean, rules: StartRules) {
   Row(
     Modifier
       .fillMaxWidth()
-      // Stays enabled offline; a hand-off in flight, or Ischys closed on a
-      // phone in reach (which would refuse the start), dims it.
+      // Stays enabled offline; only a hand-off in flight dims it.
       .dimmed(rules.emptyDimmed)
       .clip(shape)
       .background(Ischys.surface1)

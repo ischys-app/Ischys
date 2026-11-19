@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { watchStartTime, MAX_WATCH_START_AGE_MS } from './watchStartTime.ts';
+import { watchStartTime, MAX_WATCH_START_AGE_MS, MIN_WATCH_START_AGE_MS } from './watchStartTime.ts';
 
 const now = 1_760_000_000_000;
 
@@ -31,4 +31,9 @@ test('anything that is not a whole number of milliseconds is ignored', () => {
   for (const bad of ['1760000000000', Number.NaN, 1.5, null, -1]) {
     assert.equal(watchStartTime({ action: 'startEmpty', startedAt: bad }, now), undefined);
   }
+});
+
+test('a start under a minute old starts now, so watch clock drift never shifts it', () => {
+  assert.equal(watchStartTime({ action: 'startEmpty', startedAt: now - 800 }, now), undefined);
+  assert.equal(watchStartTime({ action: 'startEmpty', startedAt: now - MIN_WATCH_START_AGE_MS }, now), now - MIN_WATCH_START_AGE_MS);
 });

@@ -18,10 +18,15 @@ class StartRulesTest {
     assertFalse(r.canStartRoutine)
   }
 
-  @Test fun anEmptyWorkoutStillStartsOutOfReach() {
+  @Test fun anEmptyWorkoutNeedsThePhoneInReachToo() {
+    // Sets are logged through the phone, and a start queued out of reach is
+    // dropped if Ischys is not running when it syncs: an offline start could
+    // only ever record a session the phone may never see.
     val r = rules(reachable = false)
-    assertTrue(r.canStartEmpty)
-    assertFalse(r.emptyDimmed)
+    assertFalse(r.canStartEmpty)
+    assertTrue(r.emptyDimmed)
+    assertTrue(rules().canStartEmpty)
+    assertFalse(rules().emptyDimmed)
   }
 
   @Test fun aHandOffDimsEveryOtherRowAndBlocksSecondStarts() {

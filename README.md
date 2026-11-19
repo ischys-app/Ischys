@@ -130,9 +130,9 @@ the Play Store on the watch.
 premium tier and no ads. Optional tips go to [Ko-fi](https://ko-fi.com/vplsdev).
 
 **Where is my data stored?** Only on your phone, in a local SQLite database.
-There is no account and no server, and the app uses no analytics or tracking service. It
-is included in your normal device backup, and you can export a JSON or CSV copy
-at any time.
+There is no account and no server, and the app uses no analytics or tracking service. On
+iPhone it is included in your normal device backup; on Android it is not in
+Google's device backup yet. You can export a JSON or CSV copy at any time.
 
 **Does it work offline?** Yes. The exercise catalog and all the training logic
 are bundled in the app, so it works with no connection.

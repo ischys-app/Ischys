@@ -4,9 +4,9 @@
  * An Apple Watch saves its session to Apple Health itself, and the phone reads
  * the heart rate back from there. A Wear OS watch has no health store of its
  * own to save into, so as its session ends it sends the numbers to the phone
- * (`sessionMetrics`, see wear/.../ExerciseService.kt) and the phone keeps them:
- * the average and maximum heart rate on the workout, the energy on the entry
- * it writes to Health Connect.
+ * (`sessionMetrics`, see wear/.../ExerciseService.kt) and the phone keeps the
+ * average and maximum heart rate on the workout. Its calories are total, not
+ * active, so they are not written to Health Connect (see withWearSession).
  *
  * The message says when the session ran, not which workout it was for — the
  * Watch never knows the workout's id — so time decides it: a session belongs
@@ -159,9 +159,14 @@ export const WEAR_SESSION_WAIT_MS = 6_000;
 type ReadMetrics = { avgHr: number | null; maxHr: number | null; energyKcal: number | null };
 
 /**
- * What was measured, from the Watch's own session where it has a number and
- * from the health store where it does not. The Watch's is the direct reading;
- * the store's is whatever some other app wrote over the same minutes.
+ * What was measured: the heart rate from the Watch's own session where it has
+ * one, and from the health store where it does not. The Watch's is the direct
+ * reading; the store's is whatever some other app wrote over the same minutes.
+ *
+ * Energy always comes from the store. The Watch measures total calories
+ * (Health Services has no active-only reading), and the phone writes the
+ * workout's energy to Health Connect as active calories, so using the Watch's
+ * number there would overstate them.
  */
 export function withWearSession(read: ReadMetrics, session: WearSession | null): ReadMetrics {
   if (!session) return read;
@@ -169,6 +174,6 @@ export function withWearSession(read: ReadMetrics, session: WearSession | null):
   return {
     avgHr: hr ? session.avgHr : read.avgHr,
     maxHr: hr ? session.maxHr : read.maxHr,
-    energyKcal: session.energyKcal ?? read.energyKcal,
+    energyKcal: read.energyKcal,
   };
 }

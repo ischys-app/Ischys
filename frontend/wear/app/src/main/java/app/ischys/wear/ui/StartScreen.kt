@@ -45,8 +45,8 @@ import app.ischys.wear.logic.UiState
  * phone to begin; the phone pushes back the state that moves to the session.
  *
  * Four states beyond the happy path: no routines (a dashed box), phone not
- * reachable (a warning chip, dimmed rows, and an Empty Workout that stays
- * enabled), phone in reach but Ischys not running on it (the same chip,
+ * reachable (a warning chip, and every row, Empty Workout included, dimmed
+ * and untappable), phone in reach but Ischys not running on it (the same chip,
  * asking for it to be opened: nothing can be started there until it is), and
  * handing off (the tapped row holds a spinner while the phone spins the
  * workout up; the others dim).
@@ -139,7 +139,7 @@ private fun EmptyCard(reachable: Boolean, rules: StartRules) {
   Row(
     Modifier
       .fillMaxWidth()
-      // Stays enabled offline; only a hand-off in flight dims it.
+      // Dims out of reach or while a hand-off is in flight.
       .dimmed(rules.emptyDimmed)
       .clip(shape)
       .background(Ischys.surface1)
@@ -157,10 +157,9 @@ private fun EmptyCard(reachable: Boolean, rules: StartRules) {
     Spacer(Modifier.width(9.s()))
     Column {
       Text("Empty Workout", style = Ischys.ui(13.t()), maxLines = 1)
-      // Offline, sets logged on the wrist queue and reconcile, so say so
-      // rather than blocking the one action that still works.
+      // Out of reach it says why it is dimmed.
       Text(
-        if (reachable) "Start fresh" else "Syncs on reconnect",
+        if (reachable) "Start fresh" else "Needs your phone",
         style = Ischys.mono(8.5.t(), Ischys.text3),
         maxLines = 1,
       )

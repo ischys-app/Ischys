@@ -143,9 +143,14 @@ test("an arrival that is not this workout's does not end the wait", async () => 
   assert.deepEqual(await waiting, session());
 });
 
-test("the Watch's numbers take the place of the health store's", () => {
+test("the Watch's heart rate takes the place of the health store's", () => {
   const read = { avgHr: 99, maxHr: 140, energyKcal: 250 };
-  assert.deepEqual(withWearSession(read, session()), { avgHr: 121, maxHr: 164, energyKcal: 312 });
+  assert.deepEqual(withWearSession(read, session()), { avgHr: 121, maxHr: 164, energyKcal: 250 });
+});
+
+test("the Watch's calories are total, not active, so they never become the workout's active energy", () => {
+  const read = { avgHr: null, maxHr: null, energyKcal: null };
+  assert.equal(withWearSession(read, session({ energyKcal: 312 })).energyKcal, null);
 });
 
 test('what the Watch did not measure is left as the health store had it', () => {

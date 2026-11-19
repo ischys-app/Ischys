@@ -50,8 +50,10 @@ object Wire {
   fun endAsking(finishId: String): JSONObject = action("end").put("finishId", finishId)
   fun discard(): JSONObject = action("discard")
   fun addSet(): JSONObject = action("addSet")
-  fun startEmpty(): JSONObject = action("startEmpty")
-  fun startRoutine(id: String): JSONObject = action("startRoutine").put("routineId", id)
+  /** `startedAt` is when it was tapped: a start queued out of reach reaches the phone late. */
+  fun startEmpty(startedAt: Long): JSONObject = action("startEmpty").put("startedAt", startedAt)
+  fun startRoutine(id: String, startedAt: Long): JSONObject =
+    action("startRoutine").put("routineId", id).put("startedAt", startedAt)
   fun requestState(): JSONObject = action("requestState")
 
   /**

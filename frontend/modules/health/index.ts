@@ -382,8 +382,9 @@ export type WatchAction =
   | { action: 'end'; finishId?: string }
   | { action: 'discard' }
   | { action: 'addSet' }
-  | { action: 'startEmpty' }
-  | { action: 'startRoutine'; routineId: string }
+  /** `startedAt` (epoch ms): when a Wear OS watch was tapped. An Apple Watch sends none. */
+  | { action: 'startEmpty'; startedAt?: number }
+  | { action: 'startRoutine'; routineId: string; startedAt?: number }
   | { action: 'requestState' }
   /**
    * The Watch confirming it saved this session's HKWorkout (see healthSync).

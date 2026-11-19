@@ -211,14 +211,14 @@ object WorkoutModel : WorkoutCore.Host {
 
   fun startEmpty() {
     ExerciseService.start(app)
-    PhoneLink.send(Wire.startEmpty())
+    PhoneLink.send(Wire.startEmpty(System.currentTimeMillis()))
   }
 
   fun startRoutine(id: String) {
     // The row holds a pending state while the phone spins the workout up.
     act { routineTapped(id) }
     ExerciseService.start(app)
-    PhoneLink.send(Wire.startRoutine(id))
+    PhoneLink.send(Wire.startRoutine(id, System.currentTimeMillis()))
   }
 
   fun stepWeight(notches: Int) = act { stepWeight(notches, it) }

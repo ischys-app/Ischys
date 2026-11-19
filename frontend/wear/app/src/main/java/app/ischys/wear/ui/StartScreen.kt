@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.ischys.wear.logic.StartRules
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -53,6 +54,7 @@ import app.ischys.wear.logic.UiState
 @Composable
 fun StartScreen(ui: UiState) {
   val handingOff = ui.pendingRoutineId != null
+  val rules = StartRules(ui.phoneReachable, ui.phoneAppClosed, handingOff)
   // A fresh appearance is never mid-handoff, and asks the phone for the
   // routine list: opened on its own, nothing else would ever send it.
   LaunchedEffect(Unit) { WorkoutModel.startAppeared() }
@@ -77,7 +79,7 @@ fun StartScreen(ui: UiState) {
       } else if (ui.phoneAppClosed) {
         item { WarningChip("Open Ischys on phone") }
       }
-      item { EmptyCard(ui.phoneReachable, handingOff) }
+      item { EmptyCard(ui.phoneReachable, rules) }
       item {
         Text(
           "ROUTINES",
@@ -93,9 +95,8 @@ fun StartScreen(ui: UiState) {
           RoutineRow(
             routine = routine,
             pending = pending,
-            // Unreachable dims every row; a hand-off dims all but its own.
-            dimmed = (!ui.phoneReachable && !handingOff) || (handingOff && !pending),
-            enabled = !handingOff,
+            dimmed = rules.routineDimmed(pending),
+            enabled = rules.canStartRoutine,
           )
         }
       }
@@ -133,17 +134,18 @@ private fun WarningChip(text: String) {
 }
 
 @Composable
-private fun EmptyCard(reachable: Boolean, handingOff: Boolean) {
+private fun EmptyCard(reachable: Boolean, rules: StartRules) {
   val shape = RoundedCornerShape(17.s())
   Row(
     Modifier
       .fillMaxWidth()
-      // Stays enabled offline; only a hand-off in flight dims it.
-      .dimmed(handingOff)
+      // Stays enabled offline; a hand-off in flight, or Ischys closed on a
+      // phone in reach (which would refuse the start), dims it.
+      .dimmed(rules.emptyDimmed)
       .clip(shape)
       .background(Ischys.surface1)
       .border(1.dp, Ischys.border, shape)
-      .clickable(enabled = !handingOff) { WorkoutModel.startEmpty() }
+      .clickable(enabled = rules.canStartEmpty) { WorkoutModel.startEmpty() }
       .padding(9.s()),
     verticalAlignment = Alignment.CenterVertically,
   ) {

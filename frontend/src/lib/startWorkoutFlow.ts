@@ -32,7 +32,7 @@ const askOnPhone = (running: RunningWorkout): Promise<RunningChoice> =>
  * answer here too, and the wrist is put back in it by its screen.
  */
 export function beginWorkout(
-  body: { routine_id?: string; name?: string },
+  body: { routine_id?: string; name?: string; started_at?: number },
   { from = 'phone' }: { from?: 'phone' | 'watch' } = {},
 ): Promise<StartOutcome> {
   return guard({

@@ -216,9 +216,14 @@ export async function setWorkoutExerciseRest(weId: string, seconds: number): Pro
 
 // --- Writes ---
 
-export async function startWorkout(body: { routine_id?: string; name?: string }): Promise<WorkoutOut> {
+export async function startWorkout(body: {
+  routine_id?: string;
+  name?: string;
+  /** When it began, if not now: a Watch start that reached the phone late (watchStartTime.ts). */
+  started_at?: number;
+}): Promise<WorkoutOut> {
   const id = newId();
-  const startedAt = nowMs();
+  const startedAt = body.started_at ?? nowMs();
   let name = body.name || 'Empty Workout';
 
   const routine = body.routine_id

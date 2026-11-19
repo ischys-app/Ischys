@@ -58,6 +58,7 @@ import {
   screenHoldsWatchFinish,
 } from '../src/lib/watchFinish';
 import { parseServerDate } from '../src/lib/serverTime';
+import { watchStartTime } from '../src/lib/watchStartTime';
 import { color } from '../src/theme/tokens';
 import { ThemeProvider, useThemed } from '../src/theme/ThemeProvider';
 import { t } from '../src/i18n';
@@ -129,8 +130,9 @@ function useWatchStart(dbReady: boolean) {
           // one already running — tapped twice, or a Watch that never heard
           // the first had begun. The one there is is opened instead; its
           // screen puts the wrist back in it.
+          const started_at = watchStartTime(a, Date.now());
           const begun = await beginWorkout(
-            a.action === 'startRoutine' ? { routine_id: a.routineId } : {},
+            a.action === 'startRoutine' ? { routine_id: a.routineId, started_at } : { started_at },
             { from: 'watch' },
           );
           if (!begun) return;

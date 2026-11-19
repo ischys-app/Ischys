@@ -6,8 +6,8 @@
   { "action": "end", "finishId": "finish-1" },
   { "action": "discard" },
   { "action": "addSet" },
-  { "action": "startEmpty" },
-  { "action": "startRoutine", "routineId": "r1" },
+  { "action": "startEmpty", "startedAt": 1760000000000 },
+  { "action": "startRoutine", "routineId": "r1", "startedAt": 1760000000000 },
   { "action": "requestState" },
   {
     "action": "sessionMetrics",

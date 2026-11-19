@@ -73,6 +73,8 @@ data class PhoneState(
   val unit: String? = null,
   /** Session volume, already in `unit`. */
   val volume: Int = 0,
+  /** The workout's bodyweight in kg; 0 when the phone does not know it. */
+  val bodyweightKg: Double = 0.0,
   val setsDone: Int = 0,
   val setsTotal: Int = 0,
   val summary: SessionSummary? = null,
@@ -133,6 +135,7 @@ data class PhoneState(
         nextSetLabel = d.optString("nextSetLabel", ""),
         unit = unit,
         volume = d.optInt("volume", 0),
+        bodyweightKg = d.optDouble("bodyweightKg", 0.0).takeIf { it.isFinite() && it > 0 } ?: 0.0,
         setsDone = d.optInt("setsDone", 0),
         setsTotal = d.optInt("setsTotal", 0),
         summary = d.optJSONObject("summary")?.let { s ->

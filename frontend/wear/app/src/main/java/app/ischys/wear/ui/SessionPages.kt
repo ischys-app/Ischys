@@ -87,7 +87,7 @@ fun MetricsPage(ui: UiState) {
             Spacer(Modifier.width(2.s()))
             Text("bpm", modifier = Modifier.alignByBaseline(), style = Ischys.ui(8.5.t(), color = Ischys.text2))
           }
-          StatCard("CALORIES") {
+          StatCard(if (ui.calActive) "ACTIVE CAL" else "CALORIES") {
             Text("${ui.activeCal}", style = Ischys.mono(17.t(), Ischys.warning))
           }
         }

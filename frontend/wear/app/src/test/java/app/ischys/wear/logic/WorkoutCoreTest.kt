@@ -70,6 +70,24 @@ class WorkoutCoreTest {
     core.sessionStarted(now, now)
   }
 
+  // Bodyweight, for active calories
+
+  @Test fun theBodyweightIsKeptWhenALaterPushDoesNotCarryIt() {
+    startSession()
+    core.apply(session().copy(bodyweightKg = 82.5), t0 + 1_000)
+    core.apply(session(setNum = 3), t0 + 2_000)
+    assertEquals(82.5, core.ui.bodyweightKg, 0.0)
+  }
+
+  @Test fun caloriesSayWhetherTheyAreActive() {
+    startSession()
+    core.setMetrics(120, 300, calActive = true)
+    assertTrue(core.ui.calActive)
+    core.setMetrics(125, null, calActive = false) // a heart-rate-only update
+    assertTrue(core.ui.calActive)
+    assertEquals(300, core.ui.activeCal)
+  }
+
   // Another profile active on the phone
 
   @Test fun anOffPushShowsTheOffScreenWithTheProfileName() {

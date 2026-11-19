@@ -35,7 +35,7 @@ test('the action the Watch really sends parses', () => {
     endedAt: sent.endedAt,
     avgHr: sent.avgHr,
     maxHr: sent.maxHr,
-    energyKcal: sent.cal,
+    energyKcal: sent.activeCal,
   });
 });
 
@@ -51,13 +51,13 @@ test('a heart rate the Watch never read is no heart rate, and the energy still c
     endedAt: T0 + MIN,
     avgHr: 0,
     maxHr: 0,
-    cal: 40,
+    activeCal: 40,
   });
   assert.deepEqual(s, { startedAt: T0, endedAt: T0 + MIN, avgHr: null, maxHr: null, energyKcal: 40 });
 });
 
 test('an unbelievable heart rate drops both numbers, not one', () => {
-  const base = { action: 'sessionMetrics', startedAt: T0, endedAt: T0 + MIN, cal: 0 };
+  const base = { action: 'sessionMetrics', startedAt: T0, endedAt: T0 + MIN, activeCal: 0 };
   for (const [avgHr, maxHr] of [
     [130, 120], // average above the maximum
     [120, 300],
@@ -143,14 +143,15 @@ test("an arrival that is not this workout's does not end the wait", async () => 
   assert.deepEqual(await waiting, session());
 });
 
-test("the Watch's heart rate takes the place of the health store's", () => {
+test("the Watch's numbers take the place of the health store's", () => {
   const read = { avgHr: 99, maxHr: 140, energyKcal: 250 };
-  assert.deepEqual(withWearSession(read, session()), { avgHr: 121, maxHr: 164, energyKcal: 250 });
+  assert.deepEqual(withWearSession(read, session()), { avgHr: 121, maxHr: 164, energyKcal: 312 });
 });
 
-test("the Watch's calories are total, not active, so they never become the workout's active energy", () => {
-  const read = { avgHr: null, maxHr: null, energyKcal: null };
-  assert.equal(withWearSession(read, session({ energyKcal: 312 })).energyKcal, null);
+test('only the active calories the Watch sends are energy; its total never is', () => {
+  const s = parseWearSession({ action: 'sessionMetrics', startedAt: T0, endedAt: T0 + MIN, cal: 400 });
+  assert.equal(s?.energyKcal, null);
+  assert.equal(withWearSession({ avgHr: null, maxHr: null, energyKcal: null }, s).energyKcal, null);
 });
 
 test('what the Watch did not measure is left as the health store had it', () => {

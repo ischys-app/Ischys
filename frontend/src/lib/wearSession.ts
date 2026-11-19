@@ -5,8 +5,8 @@
  * the heart rate back from there. A Wear OS watch has no health store of its
  * own to save into, so as its session ends it sends the numbers to the phone
  * (`sessionMetrics`, see wear/.../ExerciseService.kt) and the phone keeps the
- * average and maximum heart rate on the workout. Its calories are total, not
- * active, so they are not written to Health Connect (see withWearSession).
+ * average and maximum heart rate on the workout, and the active calories on
+ * the entry it writes to Health Connect (see withWearSession).
  *
  * The message says when the session ran, not which workout it was for — the
  * Watch never knows the workout's id — so time decides it: a session belongs
@@ -32,7 +32,11 @@ export type WearSession = {
   /** Null when no heart rate was read, or what was read is not believable. */
   avgHr: number | null;
   maxHr: number | null;
-  /** Kilocalories over the session; null when none were counted. */
+  /**
+   * Active kilocalories over the session (`activeCal`: the Watch's total less
+   * resting burn, see wear/.../ActiveCalories.kt); null when the Watch could
+   * not work them out, which it cannot without the user's bodyweight.
+   */
   energyKcal: number | null;
 };
 
@@ -46,7 +50,7 @@ const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFi
  */
 export function parseWearSession(a: Record<string, unknown>): WearSession | null {
   if (a.action !== 'sessionMetrics') return null;
-  const { startedAt, endedAt, avgHr, maxHr, cal } = a;
+  const { startedAt, endedAt, avgHr, maxHr, activeCal } = a;
   if (!finite(startedAt) || !finite(endedAt) || startedAt <= 0 || endedAt <= startedAt) return null;
   const hrOk =
     finite(avgHr) &&
@@ -61,7 +65,7 @@ export function parseWearSession(a: Record<string, unknown>): WearSession | null
     endedAt,
     avgHr: hrOk ? Math.round(avgHr) : null,
     maxHr: hrOk ? Math.round(maxHr) : null,
-    energyKcal: finite(cal) && cal > 0 ? cal : null,
+    energyKcal: finite(activeCal) && activeCal > 0 ? activeCal : null,
   };
 }
 
@@ -163,10 +167,9 @@ type ReadMetrics = { avgHr: number | null; maxHr: number | null; energyKcal: num
  * one, and from the health store where it does not. The Watch's is the direct
  * reading; the store's is whatever some other app wrote over the same minutes.
  *
- * Energy always comes from the store. The Watch measures total calories
- * (Health Services has no active-only reading), and the phone writes the
- * workout's energy to Health Connect as active calories, so using the Watch's
- * number there would overstate them.
+ * Energy likewise: the Watch's active calories where it worked them out
+ * (total less resting burn; it sends none without a bodyweight), the store's
+ * otherwise. Never its total, which Health Connect would take as active.
  */
 export function withWearSession(read: ReadMetrics, session: WearSession | null): ReadMetrics {
   if (!session) return read;
@@ -174,6 +177,6 @@ export function withWearSession(read: ReadMetrics, session: WearSession | null):
   return {
     avgHr: hr ? session.avgHr : read.avgHr,
     maxHr: hr ? session.maxHr : read.maxHr,
-    energyKcal: read.energyKcal,
+    energyKcal: session.energyKcal ?? read.energyKcal,
   };
 }

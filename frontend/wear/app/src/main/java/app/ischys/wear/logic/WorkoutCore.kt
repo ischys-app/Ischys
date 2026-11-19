@@ -47,7 +47,11 @@ data class UiState(
   // and sets from the phone.
   val routineName: String = "",
   val heartRate: Int = 0,
+  /** Active kcal when `calActive`, else the total Health Services measured. */
   val activeCal: Int = 0,
+  val calActive: Boolean = false,
+  /** The phone's bodyweight for this workout (kg), kept across pushes; 0 = unknown. */
+  val bodyweightKg: Double = 0.0,
   val volume: Int = 0,
   val setsDone: Int = 0,
   val setsTotal: Int = 0,
@@ -216,6 +220,7 @@ class WorkoutCore(
         paused = false,
         heartRate = 0,
         activeCal = 0,
+        calActive = false,
       )
     }
   }
@@ -227,9 +232,13 @@ class WorkoutCore(
     restEndsAt = null
   }
 
-  fun setMetrics(heartRate: Int?, activeCal: Int?) {
+  fun setMetrics(heartRate: Int?, cal: Int?, calActive: Boolean) {
     update {
-      it.copy(heartRate = heartRate ?: it.heartRate, activeCal = activeCal ?: it.activeCal)
+      it.copy(
+        heartRate = heartRate ?: it.heartRate,
+        activeCal = cal ?: it.activeCal,
+        calActive = if (cal != null) calActive else it.calActive,
+      )
     }
   }
 
@@ -502,6 +511,7 @@ class WorkoutCore(
         nextSetLabel = s.nextSetLabel,
         restTotal = s.restTotal,
         volume = s.volume,
+        bodyweightKg = if (s.bodyweightKg > 0) s.bodyweightKg else it.bodyweightKg,
         setsDone = s.setsDone,
         setsTotal = s.setsTotal,
         summary = s.summary,

@@ -57,9 +57,10 @@
     "plugins": [
       "./plugins/withAndroidReleaseSigning",
       "./plugins/withAndroidLintIosStrings",
+      "./plugins/withAndroidBackupRules",
       "@bacons/apple-targets",
       "expo-router",
-      "expo-secure-store",
+      ["expo-secure-store", { "configureAndroidBackup": false }],
       "expo-font",
       "expo-video",
       [

@@ -24,6 +24,7 @@
   "nextSetLabel": "",
   "unit": "kg",
   "volume": 2765,
+  "bodyweightKg": 80,
   "setsDone": 5,
   "setsTotal": 5,
   "currentExerciseId": "e2",

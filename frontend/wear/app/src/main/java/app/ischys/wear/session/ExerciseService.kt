@@ -38,6 +38,7 @@ import app.ischys.wear.R
 import app.ischys.wear.WorkoutModel
 import app.ischys.wear.link.LinkLog
 import app.ischys.wear.link.PhoneLink
+import app.ischys.wear.logic.ActiveCalories
 import app.ischys.wear.logic.Wire
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +74,8 @@ class ExerciseService : Service() {
   private var hrMax = 0
   private var lastHr = 0
   private var lastCal = 0
+  /** Active kcal (ActiveCalories); null while there is no bodyweight to work them out by. */
+  private var lastActiveCal: Int? = null
 
   private val callback = object : ExerciseUpdateCallback {
     override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
@@ -170,17 +173,24 @@ class ExerciseService : Service() {
     if (instance !== this) return
     val hr = update.latestMetrics.getData(DataType.HEART_RATE_BPM)
       .lastOrNull()?.value?.roundToInt()?.takeIf { it > 0 }
-    val cal = update.latestMetrics.getData(DataType.CALORIES_TOTAL)?.total?.roundToInt()
+    val total = update.latestMetrics.getData(DataType.CALORIES_TOTAL)?.total
+    val cal = total?.roundToInt()
+    val active = total?.let { ActiveCalories.of(it, activeMillis(update), WorkoutModel.bodyweightKg()) }
     if (hr != null) {
       lastHr = hr
       hrSum += hr
       hrCount += 1
       if (hr > hrMax) hrMax = hr
     }
-    if (cal != null) lastCal = cal
+    if (cal != null) {
+      lastCal = cal
+      lastActiveCal = active
+    }
     if (hr != null || cal != null) {
-      WorkoutModel.setMetrics(hr, cal)
-      PhoneLink.sendMetrics(lastHr, lastCal)
+      // Active calories where they can be worked out, as an Apple Watch shows;
+      // the total otherwise, labelled as such. The phone only ever gets active.
+      WorkoutModel.setMetrics(hr, if (cal != null) active ?: cal else null, active != null)
+      PhoneLink.sendMetrics(lastHr, lastActiveCal ?: 0)
     }
 
     val state = update.exerciseStateInfo.state
@@ -191,6 +201,17 @@ class ExerciseService : Service() {
     // Ended without being asked: another app started an exercise, or a
     // permission was taken away.
     if (state.isEnded && !ending) tearDown(discard = false)
+  }
+
+  /**
+   * The exercise's active (unpaused) time so far: Health Services' last
+   * checkpoint, plus the time since it while the exercise is running.
+   */
+  private fun activeMillis(update: ExerciseUpdate): Long {
+    val cp = update.activeDurationCheckpoint ?: return 0L
+    val since = if (update.exerciseStateInfo.state.isPaused) 0L
+    else (System.currentTimeMillis() - cp.time.toEpochMilli()).coerceAtLeast(0L)
+    return cp.activeDuration.toMillis() + since
   }
 
   private fun togglePauseNow() {
@@ -232,10 +253,10 @@ class ExerciseService : Service() {
     // A session that lasted under 3s is a phantom — a start immediately
     // dropped — and a discard keeps nothing. Neither is reported.
     val tooShort = started == null || ended - started < MIN_SESSION_MS
-    LinkLog.d { "session end discard=$discard tooShort=$tooShort hrCount=$hrCount hrMax=$hrMax cal=$lastCal" }
+    LinkLog.d { "session end discard=$discard tooShort=$tooShort hrCount=$hrCount hrMax=$hrMax cal=$lastCal active=$lastActiveCal" }
     if (!discard && !tooShort && started != null) {
       val avg = if (hrCount > 0) (hrSum.toDouble() / hrCount).roundToInt() else 0
-      PhoneLink.send(Wire.sessionMetrics(started, ended, avg, hrMax, lastCal))
+      PhoneLink.send(Wire.sessionMetrics(started, ended, avg, hrMax, lastCal, lastActiveCal))
     }
     setBridging(true)
     ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)

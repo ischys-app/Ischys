@@ -201,7 +201,10 @@ object WorkoutModel : WorkoutCore.Host {
 
   fun sessionStarted(sessionStart: Long) = act { sessionStarted(sessionStart, it) }
   fun sessionEnded() = act { sessionEnded() }
-  fun setMetrics(heartRate: Int?, activeCal: Int?) = act { setMetrics(heartRate, activeCal) }
+  fun setMetrics(heartRate: Int?, cal: Int?, calActive: Boolean) = act { setMetrics(heartRate, cal, calActive) }
+
+  /** The workout's bodyweight as the phone last pushed it; 0 when unknown. */
+  fun bodyweightKg(): Double = core.ui.bodyweightKg
   fun setPaused(paused: Boolean) = act { setPaused(paused) }
 
   // From the screens

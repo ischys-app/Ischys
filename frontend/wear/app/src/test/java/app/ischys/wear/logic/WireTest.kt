@@ -149,7 +149,7 @@ class WireTest {
       Wire.startEmpty(1_760_000_000_000L),
       Wire.startRoutine("r1", 1_760_000_000_000L),
       Wire.requestState(),
-      Wire.sessionMetrics(1_760_000_000_000L, 1_760_003_600_000L, 121, 164, 312),
+      Wire.sessionMetrics(1_760_000_000_000L, 1_760_003_600_000L, 121, 164, 312, 245),
     )
     assertEquals(expected.length(), actual.size)
     actual.forEachIndexed { i, action ->

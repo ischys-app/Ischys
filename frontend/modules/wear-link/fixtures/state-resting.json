@@ -25,6 +25,7 @@
   "nextSetLabel": "Next: Set 3 of 3",
   "unit": "lb",
   "volume": 800,
+  "bodyweightKg": 80,
   "setsDone": 2,
   "setsTotal": 5,
   "currentExerciseId": "e1",

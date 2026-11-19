@@ -66,14 +66,19 @@ object Wire {
     endedAt: Long,
     avgHr: Int,
     maxHr: Int,
+    /** Total kcal, as Health Services measured them. */
     cal: Int,
+    /** Active kcal (ActiveCalories); null without a bodyweight, and then not sent. */
+    activeCal: Int?,
   ): JSONObject = action("sessionMetrics")
     .put("startedAt", startedAt)
     .put("endedAt", endedAt)
     .put("avgHr", avgHr)
     .put("maxHr", maxHr)
     .put("cal", cal)
+    .also { if (activeCal != null) it.put("activeCal", activeCal) }
 
+  /** Live, for the phone's screen. `cal` is active kcal, 0 when not known. */
   fun metrics(hr: Int, cal: Int): JSONObject =
     JSONObject().put("metrics", true).put("hr", hr).put("cal", cal)
 

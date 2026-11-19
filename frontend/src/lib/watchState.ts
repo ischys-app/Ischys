@@ -80,6 +80,11 @@ export type WatchState = {
   unit: Unit;
   /** Session volume, whole, already in `unit`. */
   volume: number;
+  /**
+   * The workout's bodyweight in kg, 0 when unknown. A Wear OS watch subtracts
+   * resting burn by it to show active calories (wear/.../ActiveCalories.kt).
+   */
+  bodyweightKg: number;
   setsDone: number;
   setsTotal: number;
   /**
@@ -196,6 +201,11 @@ function supersetLabelFor(
   return `SUPERSET ${letter} · ${idx} OF ${partners.length}`;
 }
 
+/** The bodyweight as the Watch is sent it: kg to one decimal, 0 when unknown. */
+function wireBodyweight(kg: number): number {
+  return Number.isFinite(kg) && kg > 0 ? Math.round(kg * 10) / 10 : 0;
+}
+
 export function buildFinishedWatchState(
   exercises: readonly (ExerciseLike & { id: string })[],
   routineName: string,
@@ -235,6 +245,7 @@ export function buildFinishedWatchState(
     nextSetLabel: '',
     unit,
     volume: t.volume,
+    bodyweightKg: wireBodyweight(bodyweightKg),
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,
     currentExerciseId: last.id,
@@ -302,6 +313,7 @@ export function buildWatchState(
     nextSetLabel: `Next: Set ${index + 1} of ${ex.sets.length}`,
     unit,
     volume: t.volume,
+    bodyweightKg: wireBodyweight(bodyweightKg),
     setsDone: t.setsDone,
     setsTotal: t.setsTotal,
     currentExerciseId: ex.id,

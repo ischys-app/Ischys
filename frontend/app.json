@@ -3,7 +3,7 @@
     "name": "Ischys",
     "slug": "ischys",
     "scheme": "ischys",
-    "version": "4.7.1",
+    "version": "4.7.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "app.ischys.mobile",
-      "versionCode": 14,
+      "versionCode": 15,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_AUDIO",

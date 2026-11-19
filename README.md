@@ -42,9 +42,9 @@ If Ischys is useful to you, you can leave an optional tip on
   local SQLite database and all the training logic (volume, estimated 1RM, PR
   detection, streaks, charts) running in TypeScript on the phone.
 - **Private by construction.** Because there is no server, your data can't be
-  collected, sold, or breached. It backs up with your normal device backup
-  (iCloud on iPhone, Google's device backup on Android), and you can **export**
-  a JSON/CSV copy anytime.
+  collected, sold, or breached. On iPhone it backs up with your normal device
+  backup (iCloud). On Android it is not in Google's device backup yet, so keep
+  an export. You can **export** a JSON/CSV copy anytime.
 - **Yours to build.** MIT-licensed. Clone it, build it, run it, change it.
 
 ## Features

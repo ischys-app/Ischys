@@ -173,9 +173,14 @@ class ExerciseService : Service() {
     if (instance !== this) return
     val hr = update.latestMetrics.getData(DataType.HEART_RATE_BPM)
       .lastOrNull()?.value?.roundToInt()?.takeIf { it > 0 }
-    val total = update.latestMetrics.getData(DataType.CALORIES_TOTAL)?.total
+    val point = update.latestMetrics.getData(DataType.CALORIES_TOTAL)
+    val total = point?.total
     val cal = total?.roundToInt()
-    val active = total?.let { ActiveCalories.of(it, activeMillis(update), WorkoutModel.bodyweightKg()) }
+    // Without a checkpoint the active time is unknown, and 0 would count the
+    // whole total as active: the last active number stands instead.
+    val active = if (point == null) null else activeMillis(update, point.end)?.let {
+      ActiveCalories.of(point.total, it, WorkoutModel.bodyweightKg())
+    } ?: lastActiveCal
     if (hr != null) {
       lastHr = hr
       hrSum += hr
@@ -204,13 +209,14 @@ class ExerciseService : Service() {
   }
 
   /**
-   * The exercise's active (unpaused) time so far: Health Services' last
-   * checkpoint, plus the time since it while the exercise is running.
+   * The exercise's active (unpaused) time up to `at`, the moment the calorie
+   * total was measured: Health Services' last checkpoint, plus the time from
+   * it to `at` while the exercise is running. Null without a checkpoint.
    */
-  private fun activeMillis(update: ExerciseUpdate): Long {
-    val cp = update.activeDurationCheckpoint ?: return 0L
+  private fun activeMillis(update: ExerciseUpdate, at: java.time.Instant): Long? {
+    val cp = update.activeDurationCheckpoint ?: return null
     val since = if (update.exerciseStateInfo.state.isPaused) 0L
-    else (System.currentTimeMillis() - cp.time.toEpochMilli()).coerceAtLeast(0L)
+    else (at.toEpochMilli() - cp.time.toEpochMilli()).coerceAtLeast(0L)
     return cp.activeDuration.toMillis() + since
   }
 

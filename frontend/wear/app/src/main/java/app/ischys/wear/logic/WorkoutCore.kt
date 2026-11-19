@@ -220,6 +220,7 @@ class WorkoutCore(
         paused = false,
         heartRate = 0,
         activeCal = 0,
+        calActive = false,
       )
     }
   }

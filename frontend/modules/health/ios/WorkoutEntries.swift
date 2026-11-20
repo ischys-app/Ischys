@@ -82,15 +82,34 @@ final class WorkoutEntries {
   ///
   /// Only workouts written by Ischys ever count. Another app's strength session
   /// overlapping a window must not be mistaken for the user's workout, so the
-  /// source is matched against our own bundle id — exactly for the phone, and
-  /// as a prefix for the Watch companion.
+  /// source must be our own bundle id, or the Watch companion's (ours plus a
+  /// suffix).
+  ///
+  /// The bundle id alone does not tell the halves apart: on a real phone, Health
+  /// gives the Watch app's recordings the PHONE app's bundle id (#167). What
+  /// does is the hardware the sample was written on, so that decides.
   func writer(of sample: HKSample) -> Writer? {
-    let ours = Bundle.main.bundleIdentifier ?? ""
-    guard !ours.isEmpty else { return nil }
-    let id = sample.sourceRevision.source.bundleIdentifier
-    if id == ours { return .phone }
-    if id.hasPrefix(ours + ".") { return .watch }
-    return nil
+    Self.writer(
+      bundleId: sample.sourceRevision.source.bundleIdentifier,
+      ours: Bundle.main.bundleIdentifier ?? "",
+      productType: sample.sourceRevision.productType,
+      deviceModel: sample.device?.model
+    )
+  }
+
+  /// `writer(of:)` on plain values, so it can be tested without HealthKit.
+  static func writer(
+    bundleId id: String, ours: String, productType: String?, deviceModel: String?
+  ) -> Writer? {
+    guard !ours.isEmpty, id == ours || id.hasPrefix(ours + ".") else { return nil }
+    let onWatch =
+      (productType?.hasPrefix("Watch") ?? false) || deviceModel == "Watch"
+    if onWatch { return .watch }
+    // No hardware recorded: fall back to the bundle id.
+    let onPhone =
+      (productType?.hasPrefix("iPhone") ?? false) || deviceModel == "iPhone"
+    if onPhone { return .phone }
+    return id == ours ? .phone : .watch
   }
 
   // MARK: Writing

@@ -512,10 +512,8 @@ export async function askForMissingHealthAccess(): Promise<void> {
   if (Platform.OS !== 'ios' || !isOwnerActive() || !Health.isAvailable()) return;
   try {
     if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return;
-    const should = await Health.shouldRequestAuthorization();
-    logSweep(`shouldRequestAuthorization=${should}`);
-    if (!should) return;
-    logSweep(`requestAuthorization -> ${await Health.requestAuthorization()}`);
+    if (!(await Health.shouldRequestAuthorization())) return;
+    await Health.requestAuthorization();
   } catch {
     // Asked again on the next launch.
   }
@@ -529,30 +527,6 @@ const DUPLICATE_RECHECK_AFTER_FINISH_MS = 3 * 60_000;
 const DUPLICATE_SWEEP_MIN_GAP_MS = 10 * 60_000;
 let lastDuplicateSweep = 0;
 let duplicateSweep: Promise<void> | null = null;
-// TEMPORARY (#167 diagnosis): what the latest sweeps did, newest last.
-const sweepLog: string[] = [];
-const logSweep = (line: string) => {
-  sweepLog.push(`${new Date().toISOString()} ${line}`);
-  if (sweepLog.length > 60) sweepLog.splice(0, sweepLog.length - 60);
-};
-
-/** TEMPORARY (#167 diagnosis): a text report to share from the Health screen. */
-export async function healthDiagnosticsText(): Promise<string> {
-  const now = Date.now();
-  const health = await Health.duplicateDiagnostics(duplicateCheckSince(now));
-  let recorded: unknown = null;
-  try {
-    recorded = await recordedHealthUuids(deviceDb);
-  } catch (e) {
-    recorded = String(e);
-  }
-  const connected = await SecureStore.getItemAsync(HEALTH_KEYS.connected).catch((e) => String(e));
-  return JSON.stringify(
-    { now: new Date(now).toISOString(), connected, lastDuplicateSweep, sweepLog, recorded, health },
-    null,
-    1,
-  );
-}
 
 /**
  * Deletes the phone's own Health entry for each recent workout whose Watch
@@ -580,7 +554,6 @@ export function removeWatchDuplicates(opts?: { force?: boolean }): Promise<void>
   }
   const now = Date.now();
   if (!opts?.force && now - lastDuplicateSweep < DUPLICATE_SWEEP_MIN_GAP_MS) {
-    logSweep('throttled');
     return Promise.resolve();
   }
   duplicateSweep = inTurn(() => sweepWatchDuplicates(now))
@@ -598,20 +571,16 @@ export function removeWatchDuplicates(opts?: { force?: boolean }): Promise<void>
 /** True when every candidate was checked; false when Health could not answer. */
 async function sweepWatchDuplicates(now: number): Promise<boolean> {
   try {
-    const connected = await SecureStore.getItemAsync(HEALTH_KEYS.connected);
-    logSweep(`sweep start, connected=${connected}`);
-    if (connected !== '1') return true;
+    if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return true;
     // From Health, not from what the app recorded: an entry written before the
     // app recorded entries is a duplicate all the same.
     const phoneEntries = await Health.phoneWorkoutEntries(duplicateCheckSince(now));
-    logSweep(`phone entries: ${phoneEntries == null ? 'null' : phoneEntries.join(',') || 'none'}`);
     if (phoneEntries == null) return false;
     if (phoneEntries.length === 0) return true;
     const recorded: RecordedEntry[] = await recordedHealthUuids(deviceDb);
     for (const uuid of phoneEntries) {
       const { holderId, held } = duplicateCheckFor(uuid, recorded);
       const outcome = await Health.removeIfWatchRecorded(uuid, held);
-      logSweep(`${uuid} holder=${holderId} held=${held.length} -> ${JSON.stringify(outcome)}`);
       if (outcome.status === 'failed' || outcome.status === 'unavailable') return false;
       if (!holderId) continue;
       const entry = { uuid, writer: 'phone' } as const;
@@ -624,8 +593,7 @@ async function sweepWatchDuplicates(now: number): Promise<boolean> {
       if (next?.uuid) recorded.push({ id: holderId, uuid: next.uuid });
     }
     return true;
-  } catch (e) {
-    logSweep(`sweep threw: ${String(e)}`);
+  } catch {
     // Best-effort: a duplicate left in place is what there was before.
     return false;
   }

@@ -70,7 +70,6 @@ type HealthNativeModule = {
   removeIfWatchRecorded?(uuid: string, excluding: string[]): Promise<Record<string, unknown>>;
   phoneWorkoutEntries?(sinceMs: number): Promise<string[] | null>;
   shouldRequestAuthorization?(): Promise<boolean>;
-  duplicateDiagnostics?(sinceMs: number): Promise<Record<string, unknown>>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -283,16 +282,6 @@ export const replaceWorkout = async (
     }
   } catch {
     return { status: 'failed' };
-  }
-};
-
-/** TEMPORARY (#167 diagnosis): what Health holds for the duplicate sweep. */
-export const duplicateDiagnostics = async (since: number): Promise<unknown> => {
-  if (!native || typeof native.duplicateDiagnostics !== 'function') return { error: 'no native function' };
-  try {
-    return await native.duplicateDiagnostics(since);
-  } catch (e) {
-    return { error: String(e) };
   }
 };
 

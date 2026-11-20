@@ -255,33 +255,6 @@ final class WorkoutEntries {
     return found.filter { writer(of: $0) == .phone }.map(\.uuid)
   }
 
-  /// TEMPORARY (#167 diagnosis): every strength workout from any source that
-  /// starts at or after `since`, with what identifies who wrote it. Nil when
-  /// HealthKit could not answer.
-  func diagnostics(since: Date) async -> [[String: Any]]? {
-    let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
-      HKQuery.predicateForSamples(withStart: since, end: nil, options: .strictStartDate),
-      HKQuery.predicateForWorkouts(with: .traditionalStrengthTraining),
-    ])
-    guard let found = await workouts(matching: predicate) else { return nil }
-    let iso = ISO8601DateFormatter()
-    return found.sorted { $0.startDate < $1.startDate }.map { w in
-      let revision = w.sourceRevision
-      return [
-        "uuid": w.uuid.uuidString,
-        "start": iso.string(from: w.startDate),
-        "end": iso.string(from: w.endDate),
-        "sourceName": revision.source.name,
-        "bundleId": revision.source.bundleIdentifier,
-        "productType": revision.productType ?? "",
-        "deviceName": w.device?.name ?? "",
-        "deviceModel": w.device?.model ?? "",
-        "writer": writer(of: w)?.rawValue ?? "other",
-        "kcal": energyKcal(of: w),
-      ]
-    }
-  }
-
   /// Deletes the entry the PHONE wrote, `uuid`, when the Watch's recording of
   /// the same session is also in Health (#167).
   ///

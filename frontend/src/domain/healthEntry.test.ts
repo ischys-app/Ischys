@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 import {
   DUPLICATE_CHECK_DAYS,
+  duplicateCheckFor,
   duplicateCheckSince,
   entryAfterDuplicateCheck,
   entryAfterLookup,
@@ -16,7 +17,6 @@ import {
   healthWindow,
   lookupAccepted,
   needsLookup,
-  needsDuplicateCheck,
   PHONE_START_TOLERANCE_MS,
   type HealthEditState,
   type HealthEntry,
@@ -346,13 +346,6 @@ test('the line names the platform\'s own health store', () => {
 
 // --- a phone copy of a Watch recording (#167) ---------------------------------
 
-test('only a phone entry with a known UUID is checked for a Watch recording', () => {
-  assert.equal(needsDuplicateCheck(phone), true);
-  assert.equal(needsDuplicateCheck({ uuid: null, writer: 'phone' }), false);
-  assert.equal(needsDuplicateCheck(watch), false);
-  assert.equal(needsDuplicateCheck(null), false);
-});
-
 test('a removed phone copy hands the workout to the Watch recording', () => {
   assert.deepEqual(entryAfterDuplicateCheck(phone, { status: 'removed', uuid: 'W-9' }), {
     uuid: 'W-9',
@@ -387,4 +380,18 @@ test("a cut-short replace's stand-in becomes the recorded phone entry", () => {
     uuid: 'P-2',
     writer: 'phone',
   });
+});
+
+test("a phone entry no workout records may be matched to any recording", () => {
+  const recorded = [{ id: 'B', uuid: 'W-1' }];
+  assert.deepEqual(duplicateCheckFor('P-1', recorded), { holderId: null, held: [] });
+});
+
+test("a recording another workout holds is off-limits to a recorded phone entry", () => {
+  const recorded = [
+    { id: 'A', uuid: 'P-1' },
+    { id: 'B', uuid: 'W-1' },
+    { id: 'C', uuid: 'W-2' },
+  ];
+  assert.deepEqual(duplicateCheckFor('P-1', recorded), { holderId: 'A', held: ['W-1', 'W-2'] });
 });

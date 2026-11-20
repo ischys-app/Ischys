@@ -251,12 +251,25 @@ export function duplicateCheckSince(now: number): number {
   return now - DUPLICATE_CHECK_DAYS * 86_400_000;
 }
 
+/** A Health entry a workout records, with the workout's id. */
+export type RecordedEntry = { id: string; uuid: string };
+
 /**
- * True when the workout's entry is one the phone wrote and can be found by
- * UUID: the only kind that can be a stand-in for a Watch recording.
+ * For a phone-written entry found in Health: the workout that records it, if
+ * any, and the Watch recordings it must not be matched to.
+ *
+ * A recording another workout holds is that workout's, so it never makes a
+ * workout's own entry a duplicate (an edited time can make two overlap). An
+ * entry no workout records is a stand-in nobody tracks — written before the
+ * app recorded entries, say — and any recording that covers it may count.
  */
-export function needsDuplicateCheck(entry: HealthEntry | null): boolean {
-  return entry?.writer === 'phone' && entry.uuid != null;
+export function duplicateCheckFor(
+  phoneUuid: string,
+  recorded: readonly RecordedEntry[],
+): { holderId: string | null; held: string[] } {
+  const holder = recorded.find((r) => r.uuid === phoneUuid);
+  if (!holder) return { holderId: null, held: [] };
+  return { holderId: holder.id, held: recorded.filter((r) => r.id !== holder.id).map((r) => r.uuid) };
 }
 
 export type DuplicateCheckOutcome =

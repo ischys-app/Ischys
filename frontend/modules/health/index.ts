@@ -68,6 +68,7 @@ type HealthNativeModule = {
   canWriteWorkouts?(): boolean;
   replaceWorkout?(uuid: string, startedAt: number, endedAt: number): Promise<Record<string, unknown>>;
   removeIfWatchRecorded?(uuid: string, excluding: string[]): Promise<Record<string, unknown>>;
+  phoneWorkoutEntries?(sinceMs: number): Promise<string[] | null>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -280,6 +281,21 @@ export const replaceWorkout = async (
     }
   } catch {
     return { status: 'failed' };
+  }
+};
+
+/**
+ * UUIDs of the strength workouts the PHONE wrote to Health that start at or
+ * after `since` (epoch ms). Null when Health could not answer (a locked phone),
+ * on an older native module, and off iOS.
+ */
+export const phoneWorkoutEntries = async (since: number): Promise<string[] | null> => {
+  if (!native || typeof native.phoneWorkoutEntries !== 'function') return null;
+  try {
+    const uuids = await native.phoneWorkoutEntries(since);
+    return Array.isArray(uuids) ? uuids.filter((u): u is string => typeof u === 'string') : null;
+  } catch {
+    return null;
   }
 };
 

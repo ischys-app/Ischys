@@ -201,6 +201,21 @@ public class HealthModule: Module {
       }
     }
 
+    /// UUIDs of the strength workouts the phone wrote that start at or after
+    /// `sinceMs`; null when Health could not answer. Where the duplicate sweep
+    /// starts (#167).
+    AsyncFunction("phoneWorkoutEntries") { (sinceMs: Double, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(nil)
+        return
+      }
+      let since = Date(timeIntervalSince1970: sinceMs / 1000)
+      Task {
+        let uuids = await self.entries.phoneEntries(since: since)
+        promise.resolve(uuids?.map(\.uuidString) as Any?)
+      }
+    }
+
     /// Deletes the entry the phone wrote, `uuid`, when the Watch's recording of
     /// the same session has since reached Health (#167). A recording whose UUID
     /// is in `excluding` (held by another workout) never counts. Resolves

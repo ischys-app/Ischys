@@ -222,6 +222,20 @@ final class WorkoutEntries {
     }
   }
 
+  /// Every strength workout the PHONE wrote that starts at or after `since`, by
+  /// UUID. Nil when HealthKit could not answer (a locked phone, above all).
+  ///
+  /// Where the duplicate sweep starts (#167): Health itself, not what the app
+  /// recorded, so entries written before the app recorded them are found too.
+  func phoneEntries(since: Date) async -> [UUID]? {
+    let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+      HKQuery.predicateForSamples(withStart: since, end: nil, options: .strictStartDate),
+      HKQuery.predicateForWorkouts(with: .traditionalStrengthTraining),
+    ])
+    guard let found = await workouts(matching: predicate) else { return nil }
+    return found.filter { writer(of: $0) == .phone }.map(\.uuid)
+  }
+
   /// Deletes the entry the PHONE wrote, `uuid`, when the Watch's recording of
   /// the same session is also in Health (#167).
   ///

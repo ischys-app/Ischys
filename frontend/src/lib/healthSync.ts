@@ -15,7 +15,6 @@ import { getDashboard, listWorkouts } from '../api/workouts';
 import {
   getWorkoutHealthEntry,
   healthEntryHeldByAnother,
-  phoneHealthEntriesSince,
   recordedHealthUuids,
   recentWorkoutSpans,
   setWorkoutHealthEntry,
@@ -23,6 +22,7 @@ import {
 import { writeHeartRate } from '../data/workoutsRepo';
 import { deviceDb } from '../db/client';
 import {
+  duplicateCheckFor,
   duplicateCheckSince,
   entryAfterDuplicateCheck,
   entryAfterLookup,
@@ -33,6 +33,7 @@ import {
   lookupAccepted,
   needsLookup,
   type HealthEditState,
+  type RecordedEntry,
   type PlannedWhen,
 } from '../domain/healthEntry';
 import { activeProfile, isOwnerActive, onProfileSwitch } from './activeProfile';
@@ -545,22 +546,25 @@ export function removeWatchDuplicates(opts?: { force?: boolean }): Promise<void>
 async function sweepWatchDuplicates(now: number): Promise<boolean> {
   try {
     if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return true;
-    const candidates = await phoneHealthEntriesSince(duplicateCheckSince(now), deviceDb);
-    if (candidates.length === 0) return true;
-    const recorded: { id: string; uuid: string }[] = await recordedHealthUuids(deviceDb);
-    for (const w of candidates) {
-      // A recording another workout holds is that workout's (an edited time
-      // can make two overlap): it must never cost this one its entry.
-      const held = recorded.filter((r) => r.id !== w.id).map((r) => r.uuid);
-      const outcome = await Health.removeIfWatchRecorded(w.uuid, held);
+    // From Health, not from what the app recorded: an entry written before the
+    // app recorded entries is a duplicate all the same.
+    const phoneEntries = await Health.phoneWorkoutEntries(duplicateCheckSince(now));
+    if (phoneEntries == null) return false;
+    if (phoneEntries.length === 0) return true;
+    const recorded: RecordedEntry[] = await recordedHealthUuids(deviceDb);
+    for (const uuid of phoneEntries) {
+      const { holderId, held } = duplicateCheckFor(uuid, recorded);
+      const outcome = await Health.removeIfWatchRecorded(uuid, held);
       if (outcome.status === 'failed' || outcome.status === 'unavailable') return false;
-      const entry = { uuid: w.uuid, writer: 'phone' } as const;
+      if (!holderId) continue;
+      const entry = { uuid, writer: 'phone' } as const;
       const next = entryAfterDuplicateCheck(entry, outcome);
-      if (next !== entry) {
-        await setWorkoutHealthEntry(w.id, next, deviceDb);
-        // What this workout now holds is held for the rest of the sweep too.
-        if (next?.uuid) recorded.push({ id: w.id, uuid: next.uuid });
-      }
+      if (next === entry) continue;
+      await setWorkoutHealthEntry(holderId, next, deviceDb);
+      // What the workout holds now is what the rest of the sweep must respect.
+      const at = recorded.findIndex((r) => r.id === holderId && r.uuid === uuid);
+      if (at >= 0) recorded.splice(at, 1);
+      if (next?.uuid) recorded.push({ id: holderId, uuid: next.uuid });
     }
     return true;
   } catch {

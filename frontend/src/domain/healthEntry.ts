@@ -236,3 +236,65 @@ export function entryAtFinish(i: {
   if (i.phoneSaved?.saved) return { uuid: i.phoneSaved.uuid, writer: 'phone' };
   return null;
 }
+
+// --- a phone copy of a Watch recording (#167) ---------------------------------
+
+/**
+ * How far back finished workouts are checked for a phone copy of a Watch
+ * recording. The recording usually reaches the phone within minutes; the long
+ * reach is for the copies written before this check existed.
+ */
+export const DUPLICATE_CHECK_DAYS = 30;
+
+/** The earliest start (epoch ms) a workout may have and still be checked. */
+export function duplicateCheckSince(now: number): number {
+  return now - DUPLICATE_CHECK_DAYS * 86_400_000;
+}
+
+/** A Health entry a workout records, with the workout's id. */
+export type RecordedEntry = { id: string; uuid: string };
+
+/**
+ * For a phone-written entry found in Health: the workout that records it, if
+ * any, and the Watch recordings it must not be matched to.
+ *
+ * A recording another workout holds is that workout's, so it never makes a
+ * workout's own entry a duplicate (an edited time can make two overlap). An
+ * entry no workout records is a stand-in nobody tracks — written before the
+ * app recorded entries, say — and any recording that covers it may count.
+ */
+export function duplicateCheckFor(
+  phoneUuid: string,
+  recorded: readonly RecordedEntry[],
+): { holderId: string | null; held: string[] } {
+  const holder = recorded.find((r) => r.uuid === phoneUuid);
+  if (!holder) return { holderId: null, held: [] };
+  return { holderId: holder.id, held: recorded.filter((r) => r.id !== holder.id).map((r) => r.uuid) };
+}
+
+export type DuplicateCheckOutcome =
+  /** The phone's copy was deleted; `uuid` is the Watch recording's. */
+  | { status: 'removed'; uuid: string }
+  /** No recording yet. `uuid` only when the phone entry is now a different
+   *  one: the stand-in a cut-short replace saved in its place. */
+  | { status: 'kept'; uuid?: string }
+  | { status: 'missing' | 'notOurs' | 'failed' | 'unavailable' };
+
+/** What to store about the entry once it has been checked. */
+export function entryAfterDuplicateCheck(
+  entry: HealthEntry,
+  outcome: DuplicateCheckOutcome,
+): HealthEntry | null {
+  switch (outcome.status) {
+    case 'removed':
+      return { uuid: outcome.uuid, writer: 'watch' };
+    case 'kept':
+      return outcome.uuid ? { uuid: outcome.uuid, writer: 'phone' } : entry;
+    case 'missing':
+      return null;
+    case 'notOurs':
+      return { ...entry, writer: 'watch' };
+    default:
+      return entry;
+  }
+}

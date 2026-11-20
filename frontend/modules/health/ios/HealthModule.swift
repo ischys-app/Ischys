@@ -38,6 +38,33 @@ public class HealthModule: Module {
   private var bodyMassType: HKQuantityType? { HKObjectType.quantityType(forIdentifier: .bodyMass) }
   private let bpmUnit = HKUnit.count().unitDivided(by: .minute())
 
+  /// Everything the phone app asks Health for. Asking and checking whether
+  /// anything is still unasked must use the same sets, so both read them here.
+  private func authorizationTypes() -> (share: Set<HKSampleType>, read: Set<HKObjectType>) {
+    var share: Set<HKSampleType> = [HKObjectType.workoutType()]
+    var read: Set<HKObjectType> = [HKObjectType.workoutType()]
+    if let energyType {
+      share.insert(energyType)
+      read.insert(energyType)
+    }
+    if let hrType {
+      read.insert(hrType)
+    }
+    if let bodyMassType {
+      read.insert(bodyMassType)
+    }
+    // Waist and body fat are the only body measurements HealthKit has types
+    // for; the rest of the measurement list is ours alone. Read-only —
+    // neither is ever written back.
+    if let waist = HKObjectType.quantityType(forIdentifier: .waistCircumference) {
+      read.insert(waist)
+    }
+    if let fat = HKObjectType.quantityType(forIdentifier: .bodyFatPercentage) {
+      read.insert(fat)
+    }
+    return (share, read)
+  }
+
   public func definition() -> ModuleDefinition {
     Name("Health")
     // onHeartRate: HealthKit-read live HR (no Watch app). onWatchMetrics: real-time
@@ -69,33 +96,29 @@ public class HealthModule: Module {
         promise.resolve(false)
         return
       }
-      var share: Set<HKSampleType> = [HKObjectType.workoutType()]
-      var read: Set<HKObjectType> = [HKObjectType.workoutType()]
-      if let energyType {
-        share.insert(energyType)
-        read.insert(energyType)
-      }
-      if let hrType {
-        read.insert(hrType)
-      }
-      if let bodyMassType {
-        read.insert(bodyMassType)
-      }
-      // Waist and body fat are the only body measurements HealthKit has types
-      // for; the rest of the measurement list is ours alone. Read-only —
-      // neither is ever written back.
-      if let waist = HKObjectType.quantityType(forIdentifier: .waistCircumference) {
-        read.insert(waist)
-      }
-      if let fat = HKObjectType.quantityType(forIdentifier: .bodyFatPercentage) {
-        read.insert(fat)
-      }
+      let (share, read) = self.authorizationTypes()
       self.store.requestAuthorization(toShare: share, read: read) { granted, error in
         if let error {
           promise.reject("E_HEALTH_AUTH", error.localizedDescription)
         } else {
           promise.resolve(granted)
         }
+      }
+    }
+
+    /// True when the phone app has types it has never asked the user about —
+    /// the case for anyone who connected Health on a build that asked for fewer
+    /// (workout read above all, without which the Watch's workouts are invisible
+    /// here and every Watch session gets a phone copy too, #167). False when
+    /// every type has been asked about, whatever the answers, and on error.
+    AsyncFunction("shouldRequestAuthorization") { (promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(false)
+        return
+      }
+      let (share, read) = self.authorizationTypes()
+      self.store.getRequestStatusForAuthorization(toShare: share, read: read) { status, error in
+        promise.resolve(error == nil && status == .shouldRequest)
       }
     }
 
@@ -197,6 +220,43 @@ public class HealthModule: Module {
       let end = Date(timeIntervalSince1970: endMs / 1000)
       Task {
         let outcome = await self.entries.replace(uuid: id, start: start, end: end)
+        promise.resolve(outcome.payload)
+      }
+    }
+
+    /// UUIDs of the strength workouts the phone wrote that start at or after
+    /// `sinceMs`; null when Health could not answer. Where the duplicate sweep
+    /// starts (#167).
+    AsyncFunction("phoneWorkoutEntries") { (sinceMs: Double, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(nil)
+        return
+      }
+      let since = Date(timeIntervalSince1970: sinceMs / 1000)
+      Task {
+        let uuids = await self.entries.phoneEntries(since: since)
+        promise.resolve(uuids?.map(\.uuidString) as Any?)
+      }
+    }
+
+    /// Deletes the entry the phone wrote, `uuid`, when the Watch's recording of
+    /// the same session has since reached Health (#167). A recording whose UUID
+    /// is in `excluding` (held by another workout) never counts. Resolves
+    /// `{ status }`: "removed" (with the recording's `uuid`), "kept" (with a
+    /// `uuid` when the entry is a cut-short replace's stand-in), "missing", "notOurs",
+    /// "failed" (includes a locked phone), or "unavailable". Never rejects.
+    AsyncFunction("removeIfWatchRecorded") { (uuid: String, excluding: [String], promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(["status": "unavailable"])
+        return
+      }
+      guard let id = UUID(uuidString: uuid) else {
+        promise.resolve(["status": "missing"])
+        return
+      }
+      Task {
+        let held = Set(excluding.compactMap { UUID(uuidString: $0) })
+        let outcome = await self.entries.removeIfWatchRecorded(uuid: id, excluding: held)
         promise.resolve(outcome.payload)
       }
     }

@@ -67,6 +67,9 @@ type HealthNativeModule = {
   findWorkout?(startedAt: number, endedAt: number): Promise<Record<string, unknown> | null>;
   canWriteWorkouts?(): boolean;
   replaceWorkout?(uuid: string, startedAt: number, endedAt: number): Promise<Record<string, unknown>>;
+  removeIfWatchRecorded?(uuid: string, excluding: string[]): Promise<Record<string, unknown>>;
+  phoneWorkoutEntries?(sinceMs: number): Promise<string[] | null>;
+  shouldRequestAuthorization?(): Promise<boolean>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -272,6 +275,81 @@ export const replaceWorkout = async (
       case 'missing':
       case 'notOurs':
       case 'denied':
+      case 'unavailable':
+        return { status: result.status };
+      default:
+        return { status: 'failed' };
+    }
+  } catch {
+    return { status: 'failed' };
+  }
+};
+
+/**
+ * True when the phone app has Health types it has never asked the user about,
+ * so `requestAuthorization` would show the sheet (for those types only). False
+ * when everything has been asked about, on error, on an older native module,
+ * and off iOS.
+ */
+export const shouldRequestAuthorization = async (): Promise<boolean> => {
+  if (!native || typeof native.shouldRequestAuthorization !== 'function') return false;
+  try {
+    return (await native.shouldRequestAuthorization()) === true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * UUIDs of the strength workouts the PHONE wrote to Health that start at or
+ * after `since` (epoch ms). Null when Health could not answer (a locked phone),
+ * on an older native module, and off iOS.
+ */
+export const phoneWorkoutEntries = async (since: number): Promise<string[] | null> => {
+  if (!native || typeof native.phoneWorkoutEntries !== 'function') return null;
+  try {
+    const uuids = await native.phoneWorkoutEntries(since);
+    return Array.isArray(uuids) ? uuids.filter((u): u is string => typeof u === 'string') : null;
+  } catch {
+    return null;
+  }
+};
+
+/** What `removeIfWatchRecorded` did. */
+export type DuplicateResult =
+  | { status: 'removed'; uuid: string }
+  | { status: 'kept'; uuid?: string }
+  | { status: 'missing' | 'notOurs' | 'failed' | 'unavailable' };
+
+/**
+ * Deletes an entry the PHONE wrote when the Watch's recording of the same
+ * session has since reached Health, so the session is not listed twice
+ * (#167). A recording in `excluding` is another workout's and never counts.
+ * The recording itself is never touched. iOS only: anywhere else, or
+ * on an older native module, it is `unavailable`.
+ *
+ * Never throws: every way it can go wrong is a status.
+ */
+export const removeIfWatchRecorded = async (
+  uuid: string,
+  excluding: string[] = [],
+): Promise<DuplicateResult> => {
+  if (!native || typeof native.removeIfWatchRecorded !== 'function') {
+    return { status: 'unavailable' };
+  }
+  try {
+    const result = await native.removeIfWatchRecorded(uuid, excluding);
+    switch (result?.status) {
+      case 'removed':
+        return typeof result.uuid === 'string'
+          ? { status: 'removed', uuid: result.uuid }
+          : { status: 'failed' };
+      case 'kept':
+        return typeof result.uuid === 'string'
+          ? { status: 'kept', uuid: result.uuid }
+          : { status: 'kept' };
+      case 'missing':
+      case 'notOurs':
       case 'unavailable':
         return { status: result.status };
       default:

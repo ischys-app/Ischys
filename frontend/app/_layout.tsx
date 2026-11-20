@@ -35,11 +35,13 @@ import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { usePrFlagBackfill } from '../src/data/prBackfill';
 import { applyPendingCardActions, reconcileCardOnLaunch } from '../src/lib/liveActivityBridge';
 import {
+  askForMissingHealthAccess,
   consumeWatchActions,
   ensureWatchSaveListener,
   onWatchAction,
   pushStartWatchState,
   pushWatchState,
+  removeWatchDuplicates,
   setWatchThemeId,
   syncFinishedWorkout,
 } from '../src/lib/healthSync';
@@ -292,6 +294,26 @@ function useWatchFinish(dbReady: boolean) {
   }, [dbReady]);
 }
 
+/**
+ * Takes back the phone's own Health entry for a workout whose Watch recording
+ * has since arrived, so a session is not listed twice (#167), after asking for
+ * any Health access the phone app has never asked about. At launch and
+ * whenever the app comes to the foreground; `removeWatchDuplicates` keeps it
+ * to one sweep every few minutes. Not before `dbReady`: it reads the database.
+ */
+function useWatchDuplicateCleanup(dbReady: boolean) {
+  useEffect(() => {
+    if (!dbReady) return;
+    // Missing workout read access is what hides the Watch's recordings from
+    // the phone, so it is asked for first: the sweep can only see with it.
+    void askForMissingHealthAccess().then(() => removeWatchDuplicates());
+    const resumed = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void removeWatchDuplicates();
+    });
+    return () => resumed.remove();
+  }, [dbReady]);
+}
+
 export default function RootLayout() {
   // Migrate and seed the on-device DB, register the owner profile, and open
   // the profile to launch into (#117). The splash stays until it is ready, and
@@ -301,6 +323,7 @@ export default function RootLayout() {
   useWatchStart(dbBootstrap.ready);
   useWatchFinish(dbBootstrap.ready);
   usePrFlagBackfill(dbBootstrap.ready);
+  useWatchDuplicateCleanup(dbBootstrap.ready);
 
   // Mirror the accent onto Watch pushes for the rest of the session.
   useEffect(() => {

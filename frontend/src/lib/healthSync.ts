@@ -15,12 +15,16 @@ import { getDashboard, listWorkouts } from '../api/workouts';
 import {
   getWorkoutHealthEntry,
   healthEntryHeldByAnother,
+  recordedHealthUuids,
   recentWorkoutSpans,
   setWorkoutHealthEntry,
 } from '../data/healthEntryRepo';
 import { writeHeartRate } from '../data/workoutsRepo';
 import { deviceDb } from '../db/client';
 import {
+  duplicateCheckFor,
+  duplicateCheckSince,
+  entryAfterDuplicateCheck,
   entryAfterLookup,
   entryAfterReplace,
   entryAtFinish,
@@ -29,6 +33,7 @@ import {
   lookupAccepted,
   needsLookup,
   type HealthEditState,
+  type RecordedEntry,
   type PlannedWhen,
 } from '../domain/healthEntry';
 import { activeProfile, isOwnerActive, onProfileSwitch } from './activeProfile';
@@ -320,6 +325,12 @@ async function finishSync(
               () => null,
             );
       const entry = entryAtFinish({ watchConfirmed: watchSaved, watchUuid, found, phoneSaved });
+      // The phone wrote its own entry although the Watch was recording: the
+      // recording is likely on its way over. Look again once it has had time
+      // to arrive, and take the phone's copy back if it has (#167).
+      if (watchWasActive && entry?.writer === 'phone') {
+        setTimeout(() => void removeWatchDuplicates({ force: true }), DUPLICATE_RECHECK_AFTER_FINISH_MS);
+      }
       if (entry) {
         // Kept with the workout, so an edit to its time knows whether there is
         // an entry to move and whether it is Ischys's to move. Failing to
@@ -480,6 +491,112 @@ export function syncEditedWorkout(
       // A Health failure must not surface as a failed edit.
     }
   });
+}
+
+/**
+ * Asks for the Health types the phone app has never asked about, when the
+ * owner connected Health on a build that asked for fewer (#167).
+ *
+ * iOS prompts only on `requestAuthorization`, and only for undecided types,
+ * and the app asks only when Health is connected. Someone who connected on an
+ * older build, or whose only prompt came from the Watch app, has never been
+ * asked to let the phone read workouts. Without that, the Watch's recordings
+ * are invisible to the phone: it cannot tell the Watch saved, writes its own
+ * copy of every Watch session, and cannot take the copy back.
+ *
+ * The sheet lists only what is new and shows once; a type the user turned
+ * down is decided, and never asked again. iOS only, the owner only, and only
+ * while connected. Never throws.
+ */
+export async function askForMissingHealthAccess(): Promise<void> {
+  if (Platform.OS !== 'ios' || !isOwnerActive() || !Health.isAvailable()) return;
+  try {
+    if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return;
+    if (!(await Health.shouldRequestAuthorization())) return;
+    await Health.requestAuthorization();
+  } catch {
+    // Asked again on the next launch.
+  }
+}
+
+// --- a phone copy of a Watch recording (#167) ---------------------------------
+
+/** How long after a finish the phone looks again for the Watch's recording. */
+const DUPLICATE_RECHECK_AFTER_FINISH_MS = 3 * 60_000;
+/** At most one sweep per this long, unless one is asked for after a finish. */
+const DUPLICATE_SWEEP_MIN_GAP_MS = 10 * 60_000;
+let lastDuplicateSweep = 0;
+let duplicateSweep: Promise<void> | null = null;
+
+/**
+ * Deletes the phone's own Health entry for each recent workout whose Watch
+ * recording has since reached Health, so the session is listed once (#167).
+ *
+ * The phone writes an entry when the Watch has not confirmed its save within
+ * a few seconds and Health on the phone does not have the recording yet. That
+ * keeps a workout from being lost, but the recording often arrives minutes
+ * later, and then the session shows twice in Health and Fitness. This takes
+ * the stand-in back once the recording is there, and records the recording
+ * as the workout's entry. The recording itself is never touched.
+ *
+ * Runs at launch, on coming to the foreground, and a few minutes after a
+ * finish in which the phone wrote its own entry. Takes its turn with the edit
+ * path, which reads and writes the same record. Stops at the first check
+ * Health could not answer — a locked phone refuses every one — and tries again
+ * next time. Never throws.
+ */
+export function removeWatchDuplicates(opts?: { force?: boolean }): Promise<void> {
+  if (Platform.OS !== 'ios' || !Health.isAvailable()) return Promise.resolve();
+  // One already running may have started before what a forced call is for
+  // (the recording arriving): go again once it is done.
+  if (duplicateSweep) {
+    return opts?.force ? duplicateSweep.then(() => removeWatchDuplicates(opts)) : duplicateSweep;
+  }
+  const now = Date.now();
+  if (!opts?.force && now - lastDuplicateSweep < DUPLICATE_SWEEP_MIN_GAP_MS) {
+    return Promise.resolve();
+  }
+  duplicateSweep = inTurn(() => sweepWatchDuplicates(now))
+    .then((done) => {
+      // Only a sweep Health answered holds the next one off. One a locked
+      // phone cut short leaves the next foreground free to try again.
+      if (done) lastDuplicateSweep = now;
+    })
+    .finally(() => {
+      duplicateSweep = null;
+    });
+  return duplicateSweep;
+}
+
+/** True when every candidate was checked; false when Health could not answer. */
+async function sweepWatchDuplicates(now: number): Promise<boolean> {
+  try {
+    if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return true;
+    // From Health, not from what the app recorded: an entry written before the
+    // app recorded entries is a duplicate all the same.
+    const phoneEntries = await Health.phoneWorkoutEntries(duplicateCheckSince(now));
+    if (phoneEntries == null) return false;
+    if (phoneEntries.length === 0) return true;
+    const recorded: RecordedEntry[] = await recordedHealthUuids(deviceDb);
+    for (const uuid of phoneEntries) {
+      const { holderId, held } = duplicateCheckFor(uuid, recorded);
+      const outcome = await Health.removeIfWatchRecorded(uuid, held);
+      if (outcome.status === 'failed' || outcome.status === 'unavailable') return false;
+      if (!holderId) continue;
+      const entry = { uuid, writer: 'phone' } as const;
+      const next = entryAfterDuplicateCheck(entry, outcome);
+      if (next === entry) continue;
+      await setWorkoutHealthEntry(holderId, next, deviceDb);
+      // What the workout holds now is what the rest of the sweep must respect.
+      const at = recorded.findIndex((r) => r.id === holderId && r.uuid === uuid);
+      if (at >= 0) recorded.splice(at, 1);
+      if (next?.uuid) recorded.push({ id: holderId, uuid: next.uuid });
+    }
+    return true;
+  } catch {
+    // Best-effort: a duplicate left in place is what there was before.
+    return false;
+  }
 }
 
 /**

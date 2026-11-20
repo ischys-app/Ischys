@@ -536,17 +536,17 @@ const logSweep = (line: string) => {
   if (sweepLog.length > 60) sweepLog.splice(0, sweepLog.length - 60);
 };
 
-/** TEMPORARY (#167 diagnosis): a text report to share from the Health screen. */
+/** TEMPORARY (#167 diagnosis): a text report to show on the Health screen. */
 export async function healthDiagnosticsText(): Promise<string> {
+  const step = <T,>(name: string, p: Promise<T>): Promise<T | string> =>
+    Promise.race([
+      p.catch((e) => `${name} threw: ${String(e)}`),
+      new Promise<string>((r) => setTimeout(() => r(`${name} timed out after 8s`), 8000)),
+    ]);
   const now = Date.now();
-  const health = await Health.duplicateDiagnostics(duplicateCheckSince(now));
-  let recorded: unknown = null;
-  try {
-    recorded = await recordedHealthUuids(deviceDb);
-  } catch (e) {
-    recorded = String(e);
-  }
-  const connected = await SecureStore.getItemAsync(HEALTH_KEYS.connected).catch((e) => String(e));
+  const connected = await step('secureStore', SecureStore.getItemAsync(HEALTH_KEYS.connected));
+  const recorded = await step('recordedHealthUuids', recordedHealthUuids(deviceDb));
+  const health = await step('duplicateDiagnostics', Health.duplicateDiagnostics(duplicateCheckSince(now)));
   return JSON.stringify(
     { now: new Date(now).toISOString(), connected, lastDuplicateSweep, sweepLog, recorded, health },
     null,

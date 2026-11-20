@@ -210,7 +210,6 @@ function OwnerHealth() {
   const insets = useSafeAreaInsets();
 
   const [loaded, setLoaded] = useState(false);
-  const [diag, setDiag] = useState<string | null>(null); // TEMPORARY (#167)
   const [connected, setConnectedState] = useState(false);
   const [prefs, setPrefsState] = useState<Record<PrefKey, boolean>>(DEFAULT_PREFS);
   const [receipts, setReceipts] = useState<Record<ReadPref, Receipt | null>>({
@@ -415,28 +414,16 @@ function OwnerHealth() {
 
         {/* TEMPORARY (#167 diagnosis): remove before release. */}
         {loaded && connected && Platform.OS === 'ios' && (
-          <View style={{ paddingVertical: 24 }}>
-            <Pressable
-              onPress={() => {
-                setDiag('Collecting…');
-                healthDiagnosticsText()
-                  .then((text) => {
-                    setDiag(text);
-                    Share.share({ message: text }).catch(() => {});
-                  })
-                  .catch((e) => setDiag(`Failed: ${String(e)}`));
-              }}
-              style={{ alignItems: 'center', paddingVertical: 12 }}
-              accessibilityRole="button"
-            >
-              <Text style={{ color: color.accent }}>Share Health diagnostics</Text>
-            </Pressable>
-            {diag != null && (
-              <Text selectable style={{ color: color.text1, fontSize: 11, fontFamily: 'Menlo' }}>
-                {diag}
-              </Text>
-            )}
-          </View>
+          <Pressable
+            onPress={async () => {
+              const message = await healthDiagnosticsText();
+              await Share.share({ message }).catch(() => {});
+            }}
+            style={{ paddingVertical: 24, alignItems: 'center' }}
+            accessibilityRole="button"
+          >
+            <Text style={{ color: color.accent }}>Share Health diagnostics</Text>
+          </Pressable>
         )}
       </ScrollView>
     </View>

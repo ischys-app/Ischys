@@ -35,6 +35,7 @@ import { useLocalDbBootstrap } from '../src/db/bootstrap';
 import { usePrFlagBackfill } from '../src/data/prBackfill';
 import { applyPendingCardActions, reconcileCardOnLaunch } from '../src/lib/liveActivityBridge';
 import {
+  askForMissingHealthAccess,
   consumeWatchActions,
   ensureWatchSaveListener,
   onWatchAction,
@@ -295,14 +296,17 @@ function useWatchFinish(dbReady: boolean) {
 
 /**
  * Takes back the phone's own Health entry for a workout whose Watch recording
- * has since arrived, so a session is not listed twice (#167). At launch and
+ * has since arrived, so a session is not listed twice (#167), after asking for
+ * any Health access the phone app has never asked about. At launch and
  * whenever the app comes to the foreground; `removeWatchDuplicates` keeps it
  * to one sweep every few minutes. Not before `dbReady`: it reads the database.
  */
 function useWatchDuplicateCleanup(dbReady: boolean) {
   useEffect(() => {
     if (!dbReady) return;
-    void removeWatchDuplicates();
+    // Missing workout read access is what hides the Watch's recordings from
+    // the phone, so it is asked for first: the sweep can only see with it.
+    void askForMissingHealthAccess().then(() => removeWatchDuplicates());
     const resumed = AppState.addEventListener('change', (state) => {
       if (state === 'active') void removeWatchDuplicates();
     });

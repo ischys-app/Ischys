@@ -69,6 +69,7 @@ type HealthNativeModule = {
   replaceWorkout?(uuid: string, startedAt: number, endedAt: number): Promise<Record<string, unknown>>;
   removeIfWatchRecorded?(uuid: string, excluding: string[]): Promise<Record<string, unknown>>;
   phoneWorkoutEntries?(sinceMs: number): Promise<string[] | null>;
+  shouldRequestAuthorization?(): Promise<boolean>;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -281,6 +282,21 @@ export const replaceWorkout = async (
     }
   } catch {
     return { status: 'failed' };
+  }
+};
+
+/**
+ * True when the phone app has Health types it has never asked the user about,
+ * so `requestAuthorization` would show the sheet (for those types only). False
+ * when everything has been asked about, on error, on an older native module,
+ * and off iOS.
+ */
+export const shouldRequestAuthorization = async (): Promise<boolean> => {
+  if (!native || typeof native.shouldRequestAuthorization !== 'function') return false;
+  try {
+    return (await native.shouldRequestAuthorization()) === true;
+  } catch {
+    return false;
   }
 };
 

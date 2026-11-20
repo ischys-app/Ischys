@@ -493,6 +493,32 @@ export function syncEditedWorkout(
   });
 }
 
+/**
+ * Asks for the Health types the phone app has never asked about, when the
+ * owner connected Health on a build that asked for fewer (#167).
+ *
+ * iOS prompts only on `requestAuthorization`, and only for undecided types,
+ * and the app asks only when Health is connected. Someone who connected on an
+ * older build, or whose only prompt came from the Watch app, has never been
+ * asked to let the phone read workouts. Without that, the Watch's recordings
+ * are invisible to the phone: it cannot tell the Watch saved, writes its own
+ * copy of every Watch session, and cannot take the copy back.
+ *
+ * The sheet lists only what is new and shows once; a type the user turned
+ * down is decided, and never asked again. iOS only, the owner only, and only
+ * while connected. Never throws.
+ */
+export async function askForMissingHealthAccess(): Promise<void> {
+  if (Platform.OS !== 'ios' || !isOwnerActive() || !Health.isAvailable()) return;
+  try {
+    if ((await SecureStore.getItemAsync(HEALTH_KEYS.connected)) !== '1') return;
+    if (!(await Health.shouldRequestAuthorization())) return;
+    await Health.requestAuthorization();
+  } catch {
+    // Asked again on the next launch.
+  }
+}
+
 // --- a phone copy of a Watch recording (#167) ---------------------------------
 
 /** How long after a finish the phone looks again for the Watch's recording. */

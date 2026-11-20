@@ -30,6 +30,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -47,7 +48,7 @@ import {
   openProviderListing,
   openSettings,
 } from '../modules/health';
-import { connectHealth, isHealthAvailable } from '../src/lib/healthSync';
+import { connectHealth, healthDiagnosticsText, isHealthAvailable } from '../src/lib/healthSync';
 import { healthCopy, readRowKind, readsAllowed } from '../src/lib/healthSyncPlatform';
 import {
   clearReadReceipts,
@@ -409,6 +410,20 @@ function OwnerHealth() {
             onTogglePref={setPref}
             onDisconnect={onDisconnect}
           />
+        )}
+
+        {/* TEMPORARY (#167 diagnosis): remove before release. */}
+        {loaded && connected && Platform.OS === 'ios' && (
+          <Pressable
+            onPress={async () => {
+              const message = await healthDiagnosticsText();
+              await Share.share({ message }).catch(() => {});
+            }}
+            style={{ paddingVertical: 24, alignItems: 'center' }}
+            accessibilityRole="button"
+          >
+            <Text style={{ color: color.accent }}>Share Health diagnostics</Text>
+          </Pressable>
         )}
       </ScrollView>
     </View>

@@ -224,6 +224,28 @@ public class HealthModule: Module {
       }
     }
 
+    /// TEMPORARY (#167 diagnosis): what Health holds for Ischys's sweep to see.
+    AsyncFunction("duplicateDiagnostics") { (sinceMs: Double, promise: Promise) in
+      guard HKHealthStore.isHealthDataAvailable() else {
+        promise.resolve(["error": "health unavailable"])
+        return
+      }
+      let since = Date(timeIntervalSince1970: sinceMs / 1000)
+      let workoutType = HKObjectType.workoutType()
+      Task {
+        let found = await self.entries.diagnostics(since: since)
+        let (share, read) = self.authorizationTypes()
+        self.store.getRequestStatusForAuthorization(toShare: share, read: read) { status, _ in
+          promise.resolve([
+            "ourBundleId": Bundle.main.bundleIdentifier ?? "",
+            "workoutShareStatus": self.store.authorizationStatus(for: workoutType).rawValue,
+            "requestStatus": status.rawValue,
+            "workouts": found.map { $0 as Any } ?? NSNull(),
+          ])
+        }
+      }
+    }
+
     /// UUIDs of the strength workouts the phone wrote that start at or after
     /// `sinceMs`; null when Health could not answer. Where the duplicate sweep
     /// starts (#167).

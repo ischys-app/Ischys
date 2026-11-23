@@ -40,7 +40,7 @@ import { activeProfile, isOwnerActive, onProfileSwitch } from './activeProfile';
 import { acceptsWatchMessage, createInFlight } from './ownerHealthGate';
 import { recordReadReceipt } from './healthReceipts';
 import { setBodyweightKg } from './bodyweight';
-import { watchSaveWaitMs } from './watchFinish';
+import { watchMayHaveSaved, watchSaveWaitMs } from './watchFinish';
 import { createWatchSaveLog } from './watchSave';
 import { buildOffWatchState } from './watchState';
 import { profileNameLabel } from '../i18n/defaultLabels';
@@ -263,8 +263,15 @@ async function finishSync(
     // Begin listening for the Watch's save confirmation immediately, before any
     // await, so a fast confirmation can't slip past while we read prefs/metrics.
     const finishedAt = finishBeganAtMs;
+    // Not only a Watch this finish saw recording: an installed Watch app may
+    // have been, unseen, and will save its own copy (#167).
+    const watchMaySave = watchMayHaveSaved({
+      seenRecording: watchWasActive,
+      ios: Platform.OS === 'ios',
+      watchAppInstalled: Health.isWatchAppInstalled(),
+    });
     let watchSavePromise: Promise<boolean> = Promise.resolve(false);
-    if (watchWasActive) {
+    if (watchMaySave) {
       ensureWatchSaveListener();
       watchSavePromise = watchSaves.wait(finishedAt, watchSaveWaitMs(watchAwaitsOutcome));
     }
@@ -328,7 +335,7 @@ async function finishSync(
       // The phone wrote its own entry although the Watch was recording: the
       // recording is likely on its way over. Look again once it has had time
       // to arrive, and take the phone's copy back if it has (#167).
-      if (watchWasActive && entry?.writer === 'phone') {
+      if (watchMaySave && entry?.writer === 'phone') {
         setTimeout(() => void removeWatchDuplicates({ force: true }), DUPLICATE_RECHECK_AFTER_FINISH_MS);
       }
       if (entry) {

@@ -87,6 +87,17 @@ public class HealthModule: Module {
       PhoneConnectivity.shared.drainPendingActions()
     }
 
+    /// Whether the Ischys Watch app is installed on a paired Apple Watch. The
+    /// finish uses it to tell whether the Watch may be recording (and so saving
+    /// the workout itself) when the phone never saw its live metrics — after a
+    /// relaunch mid-workout, say (#167). False until WatchConnectivity has
+    /// activated, which it does at launch.
+    Function("isWatchAppInstalled") { () -> Bool in
+      guard WCSession.isSupported() else { return false }
+      let session = WCSession.default
+      return session.activationState == .activated && session.isPaired && session.isWatchAppInstalled
+    }
+
     Function("isAvailable") { () -> Bool in
       HKHealthStore.isHealthDataAvailable()
     }

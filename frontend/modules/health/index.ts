@@ -70,6 +70,7 @@ type HealthNativeModule = {
   removeIfWatchRecorded?(uuid: string, excluding: string[]): Promise<Record<string, unknown>>;
   phoneWorkoutEntries?(sinceMs: number): Promise<string[] | null>;
   shouldRequestAuthorization?(): Promise<boolean>;
+  isWatchAppInstalled?(): boolean;
   readWorkoutMetrics(startedAt: number, endedAt: number): Promise<WorkoutMetrics>;
   readBodyMass(): Promise<number | null>;
   startHeartRateUpdates(): void;
@@ -414,6 +415,19 @@ export const onHeartRate = (listener: (bpm: number) => void): (() => void) => {
  * being paired — with none, every call below quietly does nothing. Not the
  * same question as `isAvailable`: on Android the link needs no Health Connect.
  */
+/**
+ * Whether the Ischys Watch app is installed on a paired Apple Watch (#167).
+ * False off iOS and on an older native module.
+ */
+export const isWatchAppInstalled = (): boolean => {
+  if (!native || typeof native.isWatchAppInstalled !== 'function') return false;
+  try {
+    return native.isWatchAppInstalled() === true;
+  } catch {
+    return false;
+  }
+};
+
 export const isWatchAvailable = (): boolean =>
   WearLink.handlesWatch ? WearLink.isAvailable() : isAvailable();
 

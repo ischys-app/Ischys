@@ -198,6 +198,24 @@ const WATCH_SAVE_WAIT_MS = 10_000;
  * and writing a second entry. So the wait covers the Watch's whole timeout and
  * then the usual allowance for the save and its confirmation.
  */
+/**
+ * Whether an Apple Watch may have recorded this workout, and so may save it to
+ * Health itself: the phone saw its live metrics, or the Ischys Watch app is
+ * installed on a paired Watch. The second covers a finish whose screen never
+ * saw the metrics — the app relaunched mid-workout, or they never reached the
+ * phone — which used to make the phone write at once, beside the Watch's own
+ * save (#167). Waiting when no Watch recorded costs only a few seconds before
+ * a write nobody is watching. Only an Apple Watch saves; off iOS it is false.
+ */
+export function watchMayHaveSaved(i: {
+  seenRecording: boolean;
+  ios: boolean;
+  watchAppInstalled: boolean;
+}): boolean {
+  if (i.seenRecording) return true;
+  return i.ios && i.watchAppInstalled;
+}
+
 export function watchSaveWaitMs(watchAwaitsOutcome: boolean): number {
   return watchAwaitsOutcome ? WATCH_VERDICT_TIMEOUT_MS + 12_000 : WATCH_SAVE_WAIT_MS;
 }

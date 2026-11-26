@@ -8,6 +8,7 @@ import {
   completesWorkout,
   finishRequestId,
   finishVerdict,
+  watchMayHaveSaved,
   notifyWatchFinished,
   onWatchFinished,
   releaseAllWatchFinishClaims,
@@ -223,4 +224,20 @@ test('the request that arrived last is the one the Watch is waiting on', () => {
   // The Watch waits on one request at a time, so a second id means it gave up
   // on the first and asked again.
   assert.deepEqual(watchAwaitingFinish(true, 'f1', 'f2'), { involved: true, finishId: 'f2' });
+});
+
+test('a Watch the phone saw recording may have saved', () => {
+  assert.equal(watchMayHaveSaved({ seenRecording: true, ios: true, watchAppInstalled: false }), true);
+});
+
+test('an installed Watch app may have saved, seen or not (#167)', () => {
+  assert.equal(watchMayHaveSaved({ seenRecording: false, ios: true, watchAppInstalled: true }), true);
+});
+
+test('no Watch app, nothing seen: the phone is the only writer', () => {
+  assert.equal(watchMayHaveSaved({ seenRecording: false, ios: true, watchAppInstalled: false }), false);
+});
+
+test('off iOS an installed watch app never saves to Health itself', () => {
+  assert.equal(watchMayHaveSaved({ seenRecording: false, ios: false, watchAppInstalled: true }), false);
 });
